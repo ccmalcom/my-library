@@ -51,10 +51,26 @@ _TOOL = {
                                 "'aversion' = trait shared by lower-rated books."
                             ),
                         },
-                        "supporting_book_ids": {
+                        "exhibits": {
                             "type": "array",
                             "items": {"type": "integer"},
-                            "description": "Book ids (from the provided data) that evidence this trait.",
+                            "description": (
+                                "Book ids that EXHIBIT the trait: for a 'reward', the "
+                                "high-rated books showing it; for an 'aversion', the "
+                                "low-rated books showing it. These must be consistent "
+                                "with the polarity — do NOT put high-rated books here "
+                                "for an aversion."
+                            ),
+                        },
+                        "contrasts": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "description": (
+                                "Book ids that anchor the CONTRAST — the counter-examples "
+                                "that make the distinction sharp (e.g. for an aversion to "
+                                "X, similar books WITHOUT X that scored higher). May be "
+                                "empty if the trait stands on its exhibits alone."
+                            ),
                         },
                         "inference_confidence": {
                             "type": "number",
@@ -64,7 +80,8 @@ _TOOL = {
                     "required": [
                         "claim",
                         "polarity",
-                        "supporting_book_ids",
+                        "exhibits",
+                        "contrasts",
                         "inference_confidence",
                     ],
                 },
@@ -129,9 +146,21 @@ def _build_prompt(tiers: dict[str, list[dict]]) -> str:
         "  1. What separates the 5-star books from the 4-star books?\n"
         "  2. What do the lowest-rated books (<=2 and 3) share? (these are 'aversion' traits)\n"
         "  3. Cross-cutting rewards visible across the high tiers.\n\n"
-        "Rules: every trait must cite supporting_book_ids drawn ONLY from the ids "
-        "below. Make claims specific and falsifiable, not generic genre labels. "
-        "Aim for 6-12 traits. Record them with the record_taste_traits tool.\n\n"
+        "For EACH trait, split the evidence into two fields:\n"
+        "  - `exhibits`: the books that SHOW the trait. These MUST match the polarity — "
+        "an aversion's exhibits are LOW-rated books, a reward's exhibits are HIGH-rated. "
+        "Never put high-rated books in an aversion's exhibits.\n"
+        "  - `contrasts`: the counter-examples that sharpen the distinction (e.g. for an "
+        "aversion to X, similar books WITHOUT X that scored higher). May be empty.\n\n"
+        "Quality rules:\n"
+        "  - Use ONLY book ids from the data below.\n"
+        "  - Make claims specific and falsifiable, not generic genre labels.\n"
+        "  - Do NOT force a book into a trait it doesn't fit just to pad the evidence.\n"
+        "  - Keep traits DISTINCT — don't emit two traits describing the same pattern.\n"
+        "  - Distinguish genuine taste from mechanical rating drift (e.g. later books in "
+        "a long series slipping a star is series fatigue, not a standalone taste trait).\n"
+        "  - Lower your inference_confidence when a trait rests on very few books.\n"
+        "  - Aim for 6-12 traits. Record them with the record_taste_traits tool.\n\n"
         "LIBRARY DATA (JSON):\n"
         + json.dumps(tiers, ensure_ascii=False)
     )
@@ -187,12 +216,14 @@ def extract_taste_profile(*, max_tokens: int = 3000) -> dict:
 
         saved = 0
         for t in traits:
-            supporting = [i for i in t.get("supporting_book_ids", []) if i in valid_ids]
+            exhibits = [i for i in t.get("exhibits", []) if i in valid_ids]
+            contrasts = [i for i in t.get("contrasts", []) if i in valid_ids]
             session.add(
                 TasteTrait(
                     claim=t.get("claim", "").strip(),
                     polarity=t.get("polarity", "reward"),
-                    supporting_book_ids=supporting,
+                    exhibits=exhibits,
+                    contrasts=contrasts,
                     inference_confidence=float(t.get("inference_confidence", 0.0)),
                     status="proposed",
                 )

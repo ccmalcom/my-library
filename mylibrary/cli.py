@@ -147,6 +147,7 @@ def traits() -> None:
     """Print the saved taste profile: each trait with its supporting books."""
     from .db import Book, TasteTrait, session_scope
 
+    init_db()  # also migrates the taste_traits table shape if it's out of date
     with session_scope() as session:
         rows = (
             session.query(TasteTrait)
@@ -157,17 +158,32 @@ def traits() -> None:
             typer.echo("No taste traits yet — run `profile` first.")
             return
         books = {b.id: b for b in session.query(Book).all()}
+
+        def _line(bid: int) -> str | None:
+            b = books.get(bid)
+            if not b:
+                return None
+            star = b.effective_rating
+            return f"        {b.title}" + (f"  ({star}★)" if star else "")
+
         for t in rows:
             mark = "▲ reward " if t.polarity == "reward" else "▼ aversion"
             typer.secho(
                 f"\n{mark}  ({t.inference_confidence:.2f})  {t.claim}",
                 fg=(typer.colors.GREEN if t.polarity == "reward" else typer.colors.RED),
             )
-            for bid in (t.supporting_book_ids or []):
-                b = books.get(bid)
-                if b:
-                    star = b.effective_rating
-                    typer.echo(f"      - {b.title}" + (f"  ({star}★)" if star else ""))
+            if t.exhibits:
+                typer.echo("   exhibits:")
+                for bid in t.exhibits:
+                    line = _line(bid)
+                    if line:
+                        typer.echo(line)
+            if t.contrasts:
+                typer.secho("   contrasts:", fg=typer.colors.BRIGHT_BLACK)
+                for bid in t.contrasts:
+                    line = _line(bid)
+                    if line:
+                        typer.secho(line, fg=typer.colors.BRIGHT_BLACK)
 
 
 @app.command()

@@ -44,7 +44,8 @@ class TraitOut(BaseModel):
     id: int
     claim: str
     polarity: str
-    supporting_book_ids: list[int] | None
+    exhibits: list[int] | None
+    contrasts: list[int] | None
     inference_confidence: float
     status: str
     user_note: str | None
