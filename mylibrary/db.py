@@ -1,7 +1,8 @@
 """Database: SQLAlchemy 2.0 models and session management.
 
 The schema follows the build plan (Section 6). MVP1 implements books, enrichment,
-and taste_traits. recommendations / feedback_events come in a later phase.
+and taste_traits. Phase 5 adds recommendations (served two-stage recs); feedback_events
+still come in a later phase.
 
 This Python side OWNS the schema/migrations. When the Next.js frontend is added it
 should READ this database (or call the API), not run its own migrations against it —
@@ -126,6 +127,47 @@ class TasteTrait(Base):
     __table_args__ = (UniqueConstraint("id", name="uq_taste_trait_id"),)
 
 
+class Recommendation(Base):
+    """One book served by a recommend run.
+
+    Phase 5 / two-stage recommender. Each row is a *real catalog* candidate that
+    survived retrieval + dedupe and was reranked/explained by Claude — never an
+    LLM-invented title. Persisting the served set (with its grounding) is what lets the
+    later feedback phase manufacture labeled negatives from rejected recs and lets the
+    UI show "why this".
+    """
+
+    __tablename__ = "recommendations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Groups the books served by a single recommend() run, so the latest run is one query.
+    run_id: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    rank: Mapped[int] = mapped_column(Integer)  # 1-based position within the run
+
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    author: Mapped[str | None] = mapped_column(String)
+    year: Mapped[int | None] = mapped_column(Integer)
+    isbn13: Mapped[str | None] = mapped_column(String)
+    cover_url: Mapped[str | None] = mapped_column(String)
+    subjects: Mapped[list | None] = mapped_column(JSON)
+
+    # Provenance: which catalog the candidate is real in, and how retrieval surfaced it.
+    catalog_source: Mapped[str | None] = mapped_column(String)  # openlibrary | googlebooks
+    catalog_id: Mapped[str | None] = mapped_column(String)
+    retrieval_pool: Mapped[str | None] = mapped_column(String)  # metadata | claude_seed | both
+    seed_reason: Mapped[str | None] = mapped_column(String)  # the subject/author/query that hit
+
+    # Stage-2 (Claude rerank/explain) output, grounded in the taste profile.
+    score: Mapped[float] = mapped_column(Float, default=0.0)  # 0..1 fit
+    rationale: Mapped[str | None] = mapped_column(Text)
+    grounded_trait_ids: Mapped[list | None] = mapped_column(JSON)
+    grounded_book_ids: Mapped[list | None] = mapped_column(JSON)
+
+    status: Mapped[str] = mapped_column(String, default="served")  # served|accepted|rejected|saved
+    user_note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 # --- engine / session plumbing ---------------------------------------------
 
 _engine = None
@@ -155,6 +197,14 @@ def init_db() -> None:
         cols = {c["name"] for c in insp.get_columns("taste_traits")}
         if not {"exhibits", "contrasts"} <= cols:
             TasteTrait.__table__.drop(engine)
+    # recommendations is disposable until the feedback phase attaches to it: a recommend
+    # run fully supersedes the previous one, so if the table predates the current shape we
+    # drop and recreate rather than carry a migration tool for ephemeral data. (Same
+    # rationale as taste_traits above; books/enrichment are never touched here.)
+    if "recommendations" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("recommendations")}
+        if not {"run_id", "retrieval_pool", "grounded_trait_ids"} <= cols:
+            Recommendation.__table__.drop(engine)
     Base.metadata.create_all(engine)
 
 

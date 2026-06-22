@@ -11,9 +11,10 @@ labeling, and evaluation of a problem with no clean ground truth.
 
 Working name is "MyLibrary" (the original "BetterReads" is taken).
 
-MVP1 (current state) is the **offline analysis pipeline only**: `ingest -> enrich ->
-taste profile`. No web UI yet. The recommender, NL discovery, feedback surface, and
-eval harness are later phases.
+Current state is the **offline pipeline + recommender**: `ingest -> enrich -> taste
+profile -> recommend`. MVP1 (ingest/enrich/profile) is done, and Phase 5 — the two-stage
+recommender (`recommend.py`) — has landed. No web UI yet. NL discovery, the feedback
+surface, and the eval harness are the remaining phases.
 
 ## Locked decisions (do not relitigate)
 
@@ -21,8 +22,11 @@ eval harness are later phases.
    or call its API.
 2. **Goodreads is import-once.** The CSV is a cold-start seed; MyLibrary owns ratings and
    feedback going forward. Import must never clobber in-app `app_rating`.
-3. **The recommender will be two-stage** (retrieval of real catalog candidates, then
-   Claude reranks/explains). The LLM is NOT the recommender. (Relevant once Phase 5 lands.)
+3. **The recommender is two-stage** (retrieval of real catalog candidates, then Claude
+   reranks/explains). The LLM is NOT the recommender. Landed in `recommend.py`: stage-1
+   retrieval is hybrid (deterministic metadata expansion + Claude-seeded *search queries*,
+   all resolved against the live catalog so no invented titles survive); stage 2 is the
+   Claude rerank/explain, grounded in trait ids + book ids. Keep it this way.
 4. **Taste profile is metadata-driven, not review-text-driven** — the library has ~no
    written reviews, so signal comes from ratings + enriched metadata grouped by tier.
 5. **Enrichment is the foundation.** Every book gets a `resolution_confidence`
@@ -48,6 +52,12 @@ eval harness are later phases.
 - `enrich.py` — resolves each rated book, scores confidence, commits per book (resumable).
 - `profile.py` — groups rated books by star tier, uses Claude tool-use to infer
   tier-distinguishing, evidence-cited taste traits.
+- `recommend.py` — two-stage recommender. Stage 1 retrieval = metadata expansion
+  (`catalog.openlibrary_subject` / `googlebooks_subject` / `googlebooks_author`) +
+  Claude-seeded queries (`catalog.googlebooks_query`), merged + deduped against the
+  library. Stage 2 = Claude rerank/explain. Persists each run to `recommendations`
+  (grouped by `run_id`). Anthropic key is checked at point of use, so the key only
+  matters when a Claude stage actually runs.
 - `stats.py` — read-only dataset stats.
 
 ## Conventions / gotchas
@@ -63,8 +73,12 @@ eval harness are later phases.
 - **Failed resolutions are committed as unresolved rows** (so they don't auto-retry).
   Re-attempt just those with `enrich --retry-unresolved` instead of `--force` (which
   redoes the whole library). Open Library is flaky; transient timeouts are common.
-- **Secrets** live in `.env` (gitignored): `ANTHROPIC_API_KEY` required for `profile`;
-  `GOOGLE_BOOKS_API_KEY` optional.
+- **Secrets** live in `.env` (gitignored): `ANTHROPIC_API_KEY` required for `profile` and
+  `recommend`; `GOOGLE_BOOKS_API_KEY` optional.
+- **`recommend` never re-recommends a library book** (dedup is by normalized title +
+  author surname, reusing `enrich._normalize_title` / `_surname`). The `recommendations`
+  table is disposable until the feedback phase — `init_db` drops+recreates it if its shape
+  is stale, same as `taste_traits`.
 - Currently developed on **Python 3.14** — first suspect for any odd runtime behavior.
 
 ## Commands
@@ -75,13 +89,16 @@ python -m mylibrary.cli ingest          # data/goodreads_library_export.csv
 python -m mylibrary.cli enrich          # --rps N, --limit N, --force, --retry-unresolved
 python -m mylibrary.cli profile         # needs ANTHROPIC_API_KEY
 python -m mylibrary.cli traits          # print the saved taste profile + evidence
+python -m mylibrary.cli recommend       # --n N; two-stage recs, needs ANTHROPIC_API_KEY
+python -m mylibrary.cli recs            # reprint the latest recommend run
 python -m mylibrary.cli stats
 python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
-python -m pytest                        # ingest idempotency + matching + catalog parse
+python -m pytest                        # ingest + matching + catalog + recommender
 ```
 
 ## Working agreements
 
 - After changing pipeline code, run `python -m pytest` before calling it done.
-- Don't add a web UI or the recommender yet unless asked — MVP1 stops at the taste profile.
+- Don't add a web UI or the feedback/eval phases yet unless asked — the engine currently
+  stops at `recommend`.
 - Prefer extending the core functions (so both CLI and API benefit) over CLI-only logic.

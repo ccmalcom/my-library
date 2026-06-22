@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -223,9 +224,10 @@ def openlibrary_search(title: str, author: str | None) -> list[dict]:
 # --- Google Books ----------------------------------------------------------
 
 
-def _google_books_query(q: str) -> list[dict]:
+def _google_books_query(q: str, *, max_results: int = 5) -> list[dict]:
     settings = get_settings()
-    params = httpx.QueryParams({"q": q, "maxResults": "5"})
+    max_results = max(1, min(max_results, 40))  # Google Books caps maxResults at 40
+    params = httpx.QueryParams({"q": q, "maxResults": str(max_results)})
     if settings.google_books_api_key:
         params = params.set("key", settings.google_books_api_key)
     url = f"https://www.googleapis.com/books/v1/volumes?{params}"
@@ -233,7 +235,7 @@ def _google_books_query(q: str) -> list[dict]:
     if not data:
         return []
     candidates = []
-    for item in data.get("items", [])[:5]:
+    for item in data.get("items", [])[:max_results]:
         info = item.get("volumeInfo", {})
         candidates.append(
             {
@@ -270,3 +272,64 @@ def googlebooks_search(title: str, author: str | None) -> list[dict]:
     if author:
         q += f' inauthor:"{author}"'
     return _google_books_query(q)
+
+
+# --- Discovery retrieval (Phase 5 recommender) -----------------------------
+#
+# Unlike the enrichment helpers above (which resolve a KNOWN book), these surface
+# *new* candidates for the two-stage recommender. They return the same normalized
+# candidate shape, so recommend.py can treat every source uniformly.
+
+
+def googlebooks_query(q: str, *, max_results: int = 10) -> list[dict]:
+    """Run an arbitrary Google Books query (used for Claude-seeded discovery)."""
+    return _google_books_query(q, max_results=max_results)
+
+
+def googlebooks_subject(subject: str, *, max_results: int = 10) -> list[dict]:
+    return _google_books_query(f'subject:"{subject}"', max_results=max_results)
+
+
+def googlebooks_author(author: str, *, max_results: int = 10) -> list[dict]:
+    return _google_books_query(f'inauthor:"{author}"', max_results=max_results)
+
+
+def _ol_subject_slug(subject: str) -> str:
+    """Open Library's subjects API keys on lowercase, underscore-joined slugs."""
+    slug = re.sub(r"[^a-z0-9]+", "_", subject.lower()).strip("_")
+    return slug
+
+
+def openlibrary_subject(subject: str, *, max_results: int = 10) -> list[dict]:
+    """Return works filed under a subject via Open Library's subjects API."""
+    slug = _ol_subject_slug(subject)
+    if not slug:
+        return []
+    url = f"https://openlibrary.org/subjects/{slug}.json?limit={max_results}"
+    data = _get_json(url)
+    if not data:
+        return []
+    candidates = []
+    for work in data.get("works", [])[:max_results]:
+        cover_id = work.get("cover_id")
+        candidates.append(
+            {
+                "source": "openlibrary",
+                "resolved_id": work.get("key"),
+                "title": work.get("title"),
+                "author": (
+                    (work.get("authors") or [{}])[0].get("name")
+                    if work.get("authors")
+                    else None
+                ),
+                "subjects": [subject],
+                "cover_url": (
+                    f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg"
+                    if cover_id
+                    else None
+                ),
+                "year": work.get("first_publish_year"),
+                "raw": work,
+            }
+        )
+    return candidates

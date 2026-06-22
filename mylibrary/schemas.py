@@ -21,6 +21,12 @@ class EnrichRequest(BaseModel):
     include_unrated: bool = False
 
 
+class RecommendRequest(BaseModel):
+    n: int = 10
+    use_metadata: bool = True
+    use_claude_seeds: bool = True
+
+
 class BookOut(BaseModel):
     id: int
     title: str
@@ -49,6 +55,31 @@ class TraitOut(BaseModel):
     inference_confidence: float
     status: str
     user_note: str | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class RecommendationOut(BaseModel):
+    id: int
+    run_id: str
+    rank: int
+    title: str
+    author: str | None
+    year: int | None
+    isbn13: str | None
+    cover_url: str | None
+    subjects: list[str] | None
+    catalog_source: str | None
+    catalog_id: str | None
+    retrieval_pool: str | None
+    seed_reason: str | None
+    score: float
+    rationale: str | None
+    grounded_trait_ids: list[int] | None
+    grounded_book_ids: list[int] | None
+    status: str
     created_at: datetime
 
     class Config:

@@ -1,9 +1,10 @@
-# MyLibrary — analysis engine (MVP1)
+# MyLibrary — analysis engine
 
-A personal, AI-powered book-analysis engine built on a Goodreads export. This first
-milestone is the **offline analysis pipeline**: ingest your library, enrich it with real
-catalog metadata, and infer an evidence-backed **taste profile**. No web UI yet — the
-recommender, discovery, feedback loop, and evals come in later phases.
+A personal, AI-powered book-analysis engine built on a Goodreads export. The pipeline
+ingests your library, enriches it with real catalog metadata, infers an evidence-backed
+**taste profile**, and recommends what to read next with a **two-stage recommender**
+(retrieve real catalog candidates → Claude reranks/explains). No web UI yet — NL
+discovery, the feedback loop, and evals come in later phases.
 
 > Working name: *MyLibrary* (the project was "BetterReads", but that name is taken).
 
@@ -18,6 +19,11 @@ Goodreads CSV ──▶ ingest ──▶ books ──▶ enrich ──▶ enrich
                                                         │
                                                         ▼
                                                    taste profile  ◀── Claude (tool use)
+                                                        │
+                                                        ▼
+                  Open Library / Google Books ──▶ recommend ──▶ recommendations
+                  (retrieve real candidates)          ▲
+                                                       └── Claude reranks + explains
 ```
 
 SQLite is the store and the future cross-language seam: this Python side owns the
@@ -37,6 +43,14 @@ schema; the frontend reads it (or calls the API).
    (via tool use / structured output) what *distinguishes* the tiers — what separates
    5★ from 4★, and what the rare low-rated books share. Every trait cites the book ids
    that support it. Needs `ANTHROPIC_API_KEY`.
+4. **Recommend** (`recommend.py`) — two-stage, and the LLM is *not* the recommender.
+   **Stage 1 (retrieval)** is hybrid: deterministic metadata expansion (more books in
+   your loved subjects/authors) plus Claude-seeded *search queries* — every query is run
+   against the live catalog, so only real books survive. Both pools are merged, deduped,
+   and filtered against your library. **Stage 2 (rerank)** has Claude score the real
+   candidates against your taste profile and explain each pick, citing the trait ids and
+   library book ids it leaned on. The served set is persisted (one `run_id` per call) for
+   the future feedback loop. Needs `ANTHROPIC_API_KEY`.
 
 ## Setup
 
@@ -57,6 +71,8 @@ save it as `data/goodreads_library_export.csv`.
 python -m mylibrary.cli ingest                 # uses data/goodreads_library_export.csv
 python -m mylibrary.cli enrich                 # add --limit 10 to test cheaply first
 python -m mylibrary.cli profile                # needs ANTHROPIC_API_KEY
+python -m mylibrary.cli recommend --n 10       # two-stage recs; needs ANTHROPIC_API_KEY
+python -m mylibrary.cli recs                   # reprint the latest recommend run
 python -m mylibrary.cli stats                  # rating dist, enrichment coverage, etc.
 ```
 
@@ -68,7 +84,7 @@ python -m mylibrary.cli serve                  # or: uvicorn mylibrary.api:app -
 
 Then open http://127.0.0.1:8000/docs for interactive endpoints:
 `GET /health`, `GET /stats`, `POST /ingest`, `POST /enrich`, `POST /profile`,
-`GET /books`, `GET /profile`.
+`GET /books`, `GET /profile`, `POST /recommend`, `GET /recommendations`.
 
 ## Tests
 
@@ -78,6 +94,6 @@ pytest          # ingest idempotency + CSV quirks + enrichment matching (no netw
 
 ## What's intentionally NOT here yet
 
-Recommender (two-stage retrieval + rerank), NL discovery, the feedback surface that
-manufactures labeled negatives, and the eval harness. Those are the next phases. This
-milestone exists to make the **library analysis** solid and inspectable first.
+NL discovery ("something cozy like X"), the feedback surface that turns rejected recs
+into labeled negatives and lets you refine the taste profile iteratively, the web UI, and
+the eval harness. Those are the next phases.

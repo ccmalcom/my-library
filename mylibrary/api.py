@@ -20,7 +20,15 @@ from .db import Book, init_db, session_scope
 from .enrich import enrich_library
 from .ingest import ingest_csv
 from .profile import extract_taste_profile
-from .schemas import BookOut, EnrichRequest, IngestRequest, TraitOut
+from .recommend import latest_recommendations, recommend
+from .schemas import (
+    BookOut,
+    EnrichRequest,
+    IngestRequest,
+    RecommendationOut,
+    RecommendRequest,
+    TraitOut,
+)
 from .stats import dataset_stats
 
 app = FastAPI(
@@ -113,6 +121,27 @@ def list_books(
                 )
             )
         return out
+
+
+@app.post("/recommend")
+def make_recommendations(req: RecommendRequest) -> dict:
+    """Run the two-stage recommender and persist the served set."""
+    try:
+        return recommend(
+            n=req.n,
+            use_metadata=req.use_metadata,
+            use_claude_seeds=req.use_claude_seeds,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/recommendations", response_model=list[RecommendationOut])
+def get_recommendations() -> list[RecommendationOut]:
+    """The most recent recommend run, in rank order."""
+    with session_scope() as session:
+        rows = latest_recommendations(session)
+        return [RecommendationOut.model_validate(r) for r in rows]
 
 
 @app.get("/profile", response_model=list[TraitOut])

@@ -4,6 +4,8 @@
   python -m mylibrary.cli ingest [PATH]      # defaults to data/goodreads_library_export.csv
   python -m mylibrary.cli enrich [--force] [--limit N] [--include-unrated]
   python -m mylibrary.cli profile
+  python -m mylibrary.cli recommend [--n N] [--no-claude-seeds]
+  python -m mylibrary.cli recs                # reprint the latest run
   python -m mylibrary.cli stats
   python -m mylibrary.cli serve              # launches the FastAPI service
 """
@@ -19,6 +21,7 @@ from .db import init_db
 from .enrich import enrich_library
 from .ingest import ingest_csv
 from .profile import extract_taste_profile
+from .recommend import recommend as run_recommend
 from .stats import dataset_stats
 
 app = typer.Typer(add_completion=False, help="MyLibrary offline analysis engine.")
@@ -184,6 +187,91 @@ def traits() -> None:
                     line = _line(bid)
                     if line:
                         typer.secho(line, fg=typer.colors.BRIGHT_BLACK)
+
+
+def _print_recs(recs: list[dict]) -> None:
+    """Pretty-print a served recommendation set."""
+    import typer as _typer
+
+    if not recs:
+        _typer.echo("No recommendations.")
+        return
+    for r in recs:
+        pool = r.get("retrieval_pool") or "?"
+        _typer.secho(
+            f"\n{r['rank']:>2}. {r['title']}"
+            + (f" — {r['author']}" if r.get("author") else "")
+            + (f" ({r['year']})" if r.get("year") else ""),
+            fg=_typer.colors.GREEN,
+            bold=True,
+        )
+        _typer.echo(f"    fit {r.get('score', 0):.2f}  ·  via {pool}")
+        if r.get("rationale"):
+            _typer.echo(f"    {r['rationale']}")
+
+
+@app.command()
+def recommend(
+    n: int = typer.Option(10, help="How many books to recommend."),
+    metadata: bool = typer.Option(
+        True, help="Use deterministic subject/author expansion for retrieval."
+    ),
+    claude_seeds: bool = typer.Option(
+        True, help="Also let Claude propose catalog search queries (needs API key)."
+    ),
+    rps: float = typer.Option(None, help="Catalog requests per second."),
+) -> None:
+    """Two-stage recommender: retrieve real catalog candidates, then Claude reranks/explains."""
+    from rich.console import Console
+
+    console = Console()
+    try:
+        with console.status("[bold]Retrieving candidates + reranking with Claude…", spinner="dots"):
+            result = run_recommend(
+                n=n,
+                use_metadata=metadata,
+                use_claude_seeds=claude_seeds,
+                requests_per_second=rps,
+            )
+    except RuntimeError as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    if result.get("note"):
+        typer.secho(result["note"], fg=typer.colors.YELLOW)
+    typer.echo(
+        f"run {result.get('run_id')}  ·  {result['served']} served "
+        f"from {result['candidates']} candidates "
+        f"(metadata={result.get('pool_metadata', 0)}, seed={result.get('pool_seed', 0)})"
+    )
+    _print_recs(result.get("recommendations", []))
+
+
+@app.command()
+def recs() -> None:
+    """Reprint the most recent recommendation run."""
+    from .db import session_scope
+    from .recommend import latest_recommendations
+
+    init_db()
+    with session_scope() as session:
+        rows = latest_recommendations(session)
+        out = [
+            {
+                "rank": r.rank,
+                "title": r.title,
+                "author": r.author,
+                "year": r.year,
+                "score": r.score,
+                "rationale": r.rationale,
+                "retrieval_pool": r.retrieval_pool,
+            }
+            for r in rows
+        ]
+    if not out:
+        typer.echo("No recommendations yet — run `python -m mylibrary.cli recommend`.")
+        return
+    _print_recs(out)
 
 
 @app.command()
