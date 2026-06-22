@@ -25,8 +25,10 @@ import httpx
 from .config import get_settings
 
 _USER_AGENT = "MyLibrary/0.1 (personal book-analysis project)"
-_TIMEOUT = 20.0
-_MAX_RETRIES = 3
+# Fail fast on a dead host (5s connect), but give slow-but-alive Open Library enough
+# time to actually answer (15s read) so we don't self-inflict timeouts on valid responses.
+_TIMEOUT = httpx.Timeout(connect=5.0, read=15.0, write=10.0, pool=5.0)
+_MAX_RETRIES = 2
 
 _last_call_at = 0.0
 # Per-request throttle in seconds. None = derive from settings on first use; can be

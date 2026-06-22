@@ -47,8 +47,11 @@ def enrich(
     force: bool = typer.Option(False, help="Re-resolve books that are already enriched."),
     limit: int = typer.Option(None, help="Stop after N books (handy for testing)."),
     include_unrated: bool = typer.Option(False, help="Also enrich unrated books."),
+    retry_unresolved: bool = typer.Option(
+        False, help="Re-attempt only books that previously failed to resolve."
+    ),
     rps: float = typer.Option(
-        None, help="Catalog requests per second (default 6). Lower it if you see 429s."
+        None, help="Catalog requests per second (default 8). Lower it if you see 429s."
     ),
     progress: bool = typer.Option(True, help="Show a live progress bar."),
 ) -> None:
@@ -56,7 +59,7 @@ def enrich(
     if not progress:
         result = enrich_library(
             force=force, limit=limit, include_unrated=include_unrated,
-            requests_per_second=rps,
+            retry_unresolved=retry_unresolved, requests_per_second=rps,
         )
         _echo(result)
         _warn_if_rate_limited(result)
@@ -99,6 +102,7 @@ def enrich(
             force=force,
             limit=limit,
             include_unrated=include_unrated,
+            retry_unresolved=retry_unresolved,
             requests_per_second=rps,
             progress=on_progress,
         )

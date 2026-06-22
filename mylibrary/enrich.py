@@ -52,6 +52,17 @@ def _title_sim(a: str | None, b: str | None) -> float:
     return SequenceMatcher(None, _normalize_title(a), _normalize_title(b)).ratio()
 
 
+def _search_title(title: str | None) -> str:
+    """A cleaner title for catalog *search* queries.
+
+    Goodreads titles often carry the series in parentheses — e.g.
+    'Evenfall (In the Company of Shadows)'. That parenthetical wrecks title search,
+    so strip it (keep original case; only the search query is affected, not scoring).
+    """
+    t = re.sub(r"\(.*?\)", "", title or "")
+    return re.sub(r"\s+", " ", t).strip()
+
+
 def _score_candidates(book: Book, candidates: list[dict]) -> tuple[dict | None, str]:
     """Pick the best candidate and a confidence label.
 
@@ -110,12 +121,13 @@ def _resolve_one(book: Book) -> tuple[dict | None, str, str]:
         if rec:
             return rec, "HIGH", "isbn:googlebooks"
 
-    ol = catalog.openlibrary_search(book.title, book.author)
+    search_title = _search_title(book.title)
+    ol = catalog.openlibrary_search(search_title, book.author)
     cand, label = _score_candidates(book, ol)
     if cand is not None and label == "MEDIUM":
         return cand, label, "search:openlibrary"
 
-    gb = catalog.googlebooks_search(book.title, book.author)
+    gb = catalog.googlebooks_search(search_title, book.author)
     gcand, glabel = _score_candidates(book, gb)
     if gcand is not None and glabel == "MEDIUM":
         return gcand, glabel, "search:googlebooks"
@@ -133,6 +145,7 @@ def enrich_library(
     force: bool = False,
     limit: int | None = None,
     include_unrated: bool = False,
+    retry_unresolved: bool = False,
     requests_per_second: float | None = None,
     progress: Callable[[int, int, str, str], None] | None = None,
 ) -> dict:
@@ -168,14 +181,28 @@ def enrich_library(
         candidates = [
             b for b in books if include_unrated or b.effective_rating is not None
         ]
-        # Already-enriched books are skipped (instant) unless force=True; the progress
-        # total reflects only books we'll actually resolve, so the percentage is honest.
-        work = [b for b in candidates if force or b.enrichment is None]
+        # Already-enriched books are skipped (instant) unless force=True. With
+        # retry_unresolved, books that previously failed to resolve (an enrichment row
+        # exists but matched nothing — resolved_source is None) are pulled back in, so
+        # transient timeouts/5xx can be re-attempted without re-doing the whole library.
+        # The progress total reflects only books we'll actually resolve.
+        def _needs_work(b: Book) -> bool:
+            if force or b.enrichment is None:
+                return True
+            if retry_unresolved and b.enrichment.resolved_source is None:
+                return True
+            return False
+
+        work = [b for b in candidates if _needs_work(b)]
         summary["skipped_existing"] = len(candidates) - len(work)
         if limit is not None:
             work = work[:limit]
         total = len(work)
         summary["total"] = total
+        # Announce the total up front so the UI shows "0/total" immediately rather than
+        # "0/?" while the first (possibly slow) lookup runs — otherwise it looks frozen.
+        if progress is not None:
+            progress(0, total, "", "starting")
 
         for i, book in enumerate(work, 1):
             cand, label, method = _resolve_one(book)

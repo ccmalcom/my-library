@@ -17,9 +17,10 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
-# Default catalog request rate. ~3/s was very gentle; 6/s is a bit faster but still
-# polite to the free APIs. Tune via MYLIBRARY_REQ_PER_SEC or `enrich --rps`.
-DEFAULT_REQ_PER_SEC = 6.0
+# Default catalog request rate. ~3/s was very gentle; 8/s is faster and, in practice,
+# does not provoke 429s from Open Library / Google Books. Tune via MYLIBRARY_REQ_PER_SEC
+# or `enrich --rps`; the enrich summary's http block flags any rate-limiting.
+DEFAULT_REQ_PER_SEC = 8.0
 
 
 @dataclass(frozen=True)

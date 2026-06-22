@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from mylibrary.db import Book
-from mylibrary.enrich import _normalize_title, _score_candidates, _title_sim
+from mylibrary.enrich import (
+    _normalize_title,
+    _score_candidates,
+    _search_title,
+    _title_sim,
+)
 
 
 def _book(title, author=None, isbn13=None):
@@ -14,6 +19,13 @@ def test_normalize_title_drops_subtitle_and_punctuation():
     assert _normalize_title("The Lord of the Rings: The Fellowship") == "the lord of the rings"
     assert _normalize_title("Dune (Special Edition)") == "dune"
     assert _normalize_title("The Three-Body Problem") == "the three body problem"
+
+
+def test_search_title_strips_series_parenthetical():
+    # The series in parentheses wrecks catalog search; it must be stripped (case kept).
+    assert _search_title("Evenfall (In the Company of Shadows)") == "Evenfall"
+    assert _search_title("Far Journeys (Journeys Trilogy)") == "Far Journeys"
+    assert _search_title("Dune") == "Dune"
 
 
 def test_title_sim_is_high_for_near_match():

@@ -58,8 +58,11 @@ eval harness are later phases.
   separately. Use a venv (`.venv`) and install deps into it.
 - **Enrichment commits per book** so Ctrl+C is safe and re-runs resume (already-enriched
   books are skipped; unresolved/LOW are committed and won't auto-retry without `--force`).
-- **Request rate** is tunable via `--rps` or `MYLIBRARY_REQ_PER_SEC` (default 6/s). The
+- **Request rate** is tunable via `--rps` or `MYLIBRARY_REQ_PER_SEC` (default 8/s). The
   enrich summary's `http` block reports 429s per host — lower the rate if they appear.
+- **Failed resolutions are committed as unresolved rows** (so they don't auto-retry).
+  Re-attempt just those with `enrich --retry-unresolved` instead of `--force` (which
+  redoes the whole library). Open Library is flaky; transient timeouts are common.
 - **Secrets** live in `.env` (gitignored): `ANTHROPIC_API_KEY` required for `profile`;
   `GOOGLE_BOOKS_API_KEY` optional.
 - Currently developed on **Python 3.14** — first suspect for any odd runtime behavior.
@@ -69,7 +72,7 @@ eval harness are later phases.
 ```bash
 pip install -r requirements.txt
 python -m mylibrary.cli ingest          # data/goodreads_library_export.csv
-python -m mylibrary.cli enrich          # --rps N, --limit N, --force, --no-progress
+python -m mylibrary.cli enrich          # --rps N, --limit N, --force, --retry-unresolved
 python -m mylibrary.cli profile         # needs ANTHROPIC_API_KEY
 python -m mylibrary.cli stats
 python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
