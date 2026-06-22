@@ -74,6 +74,7 @@ pip install -r requirements.txt
 python -m mylibrary.cli ingest          # data/goodreads_library_export.csv
 python -m mylibrary.cli enrich          # --rps N, --limit N, --force, --retry-unresolved
 python -m mylibrary.cli profile         # needs ANTHROPIC_API_KEY
+python -m mylibrary.cli traits          # print the saved taste profile + evidence
 python -m mylibrary.cli stats
 python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
 python -m pytest                        # ingest idempotency + matching + catalog parse

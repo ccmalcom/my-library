@@ -128,11 +128,46 @@ def _warn_if_rate_limited(result: dict) -> None:
 @app.command()
 def profile() -> None:
     """Extract the evidence-backed taste profile (needs ANTHROPIC_API_KEY)."""
+    from rich.console import Console
+
+    console = Console()
     try:
-        _echo(extract_taste_profile())
+        # A single Claude call (no per-item loop), so a spinner fits better than a bar.
+        with console.status("[bold]Analyzing taste tiers with Claude…", spinner="dots"):
+            result = extract_taste_profile()
     except RuntimeError as e:
         typer.secho(str(e), fg=typer.colors.RED)
         raise typer.Exit(code=1)
+    _echo(result)
+    typer.echo("\nRun `python -m mylibrary.cli traits` to read the inferred profile.")
+
+
+@app.command()
+def traits() -> None:
+    """Print the saved taste profile: each trait with its supporting books."""
+    from .db import Book, TasteTrait, session_scope
+
+    with session_scope() as session:
+        rows = (
+            session.query(TasteTrait)
+            .order_by(TasteTrait.polarity, TasteTrait.inference_confidence.desc())
+            .all()
+        )
+        if not rows:
+            typer.echo("No taste traits yet — run `profile` first.")
+            return
+        books = {b.id: b for b in session.query(Book).all()}
+        for t in rows:
+            mark = "▲ reward " if t.polarity == "reward" else "▼ aversion"
+            typer.secho(
+                f"\n{mark}  ({t.inference_confidence:.2f})  {t.claim}",
+                fg=(typer.colors.GREEN if t.polarity == "reward" else typer.colors.RED),
+            )
+            for bid in (t.supporting_book_ids or []):
+                b = books.get(bid)
+                if b:
+                    star = b.effective_rating
+                    typer.echo(f"      - {b.title}" + (f"  ({star}★)" if star else ""))
 
 
 @app.command()
