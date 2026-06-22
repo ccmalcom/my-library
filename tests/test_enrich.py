@@ -11,9 +11,7 @@ def _book(title, author=None, isbn13=None):
 
 
 def test_normalize_title_drops_subtitle_and_punctuation():
-    # Everything after a colon (the subtitle) is dropped.
     assert _normalize_title("The Lord of the Rings: The Fellowship") == "the lord of the rings"
-    # Parentheticals (edition markers) are dropped.
     assert _normalize_title("Dune (Special Edition)") == "dune"
     assert _normalize_title("The Three-Body Problem") == "the three body problem"
 
@@ -34,20 +32,19 @@ def test_strong_unique_match_scores_medium():
 
 
 def test_ambiguous_common_title_scores_low():
-    # Two different works sharing a common title -> ambiguous -> LOW (a known trap).
     book = _book("Recursion", "Blake Crouch")
     candidates = [
         {"title": "Recursion", "author": "Tony Ballantyne", "source": "openlibrary"},
         {"title": "Recursion", "author": "Blake Crouch", "source": "openlibrary"},
     ]
-    _cand, label = _score_candidates(book, candidates)
+    cand, label = _score_candidates(book, candidates)
     assert label == "LOW"
 
 
 def test_weak_match_scores_low():
     book = _book("A Little Life", "Hanya Yanagihara")
     candidates = [{"title": "Life After Life", "author": "Kate Atkinson", "source": "openlibrary"}]
-    _cand, label = _score_candidates(book, candidates)
+    cand, label = _score_candidates(book, candidates)
     assert label == "LOW"
 
 
