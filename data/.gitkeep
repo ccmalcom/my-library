@@ -1,0 +1,3 @@
+# Drop your Goodreads export here as goodreads_library_export.csv
+# (Goodreads > My Books > Import and export > Export Library)
+# This folder also holds the API response cache and the SQLite database.
