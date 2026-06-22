@@ -133,16 +133,26 @@ def enrich_library(
     force: bool = False,
     limit: int | None = None,
     include_unrated: bool = False,
+    requests_per_second: float | None = None,
     progress: Callable[[int, int, str, str], None] | None = None,
 ) -> dict:
     """Enrich rated books (or all, if include_unrated). Returns a summary dict.
+
+    ``requests_per_second`` overrides the catalog request rate for this run (else the
+    configured default is used).
 
     ``progress`` is an optional callback ``(done, total, title, label)`` invoked after
     each book is resolved. It's the reusable status-reporting seam: the CLI uses it to
     draw a progress bar, and a future API job can use it to publish percent-complete
     (status endpoint / SSE) to the client — same core, no duplicated logic.
+
+    The returned summary includes an ``http`` block (requests, 429s per host, etc.) so
+    you can see whether the chosen rate is provoking rate-limiting.
     """
     init_db()
+    if requests_per_second is not None:
+        catalog.set_rate(requests_per_second)
+    catalog.reset_stats()
     summary = {
         "total": 0,
         "processed": 0,
@@ -192,4 +202,5 @@ def enrich_library(
             if progress is not None:
                 progress(i, total, book.title, label)
 
+    summary["http"] = catalog.get_stats()
     return summary

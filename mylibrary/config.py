@@ -17,6 +17,9 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
+# Default catalog request rate. ~3/s was very gentle; 6/s is a bit faster but still
+# polite to the free APIs. Tune via MYLIBRARY_REQ_PER_SEC or `enrich --rps`.
+DEFAULT_REQ_PER_SEC = 6.0
 
 
 @dataclass(frozen=True)
@@ -29,6 +32,7 @@ class Settings:
     anthropic_api_key: str | None
     google_books_api_key: str | None
     model: str
+    requests_per_second: float
 
     @property
     def db_url(self) -> str:
@@ -57,4 +61,7 @@ def get_settings() -> Settings:
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
         google_books_api_key=os.getenv("GOOGLE_BOOKS_API_KEY"),
         model=os.getenv("MYLIBRARY_MODEL", DEFAULT_MODEL),
+        requests_per_second=float(
+            os.getenv("MYLIBRARY_REQ_PER_SEC", DEFAULT_REQ_PER_SEC)
+        ),
     )

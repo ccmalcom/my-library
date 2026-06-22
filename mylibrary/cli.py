@@ -47,11 +47,19 @@ def enrich(
     force: bool = typer.Option(False, help="Re-resolve books that are already enriched."),
     limit: int = typer.Option(None, help="Stop after N books (handy for testing)."),
     include_unrated: bool = typer.Option(False, help="Also enrich unrated books."),
+    rps: float = typer.Option(
+        None, help="Catalog requests per second (default 6). Lower it if you see 429s."
+    ),
     progress: bool = typer.Option(True, help="Show a live progress bar."),
 ) -> None:
     """Resolve books to catalog metadata with a confidence score."""
     if not progress:
-        _echo(enrich_library(force=force, limit=limit, include_unrated=include_unrated))
+        result = enrich_library(
+            force=force, limit=limit, include_unrated=include_unrated,
+            requests_per_second=rps,
+        )
+        _echo(result)
+        _warn_if_rate_limited(result)
         return
 
     from rich.progress import (
@@ -70,24 +78,47 @@ def enrich(
         MofNCompleteColumn(),
         TimeElapsedColumn(),
         TimeRemainingColumn(),
+        TextColumn("{task.fields[extra]}"),
     ) as bar:
-        task = bar.add_task("Enriching", total=None)
+        task = bar.add_task("Enriching", total=None, extra="")
 
         def on_progress(done: int, total: int, title: str, label: str) -> None:
+            from .catalog import get_stats
+
+            limited = get_stats().get("rate_limited", 0)
+            extra = f"[red]429s: {limited}[/red]" if limited else ""
             bar.update(
                 task,
                 total=total,
                 completed=done,
-                description=f"Enriching [{label:10}] {title[:34]}",
+                extra=extra,
+                description=f"Enriching [{label:10}] {title[:32]}",
             )
 
         result = enrich_library(
             force=force,
             limit=limit,
             include_unrated=include_unrated,
+            requests_per_second=rps,
             progress=on_progress,
         )
     _echo(result)
+    _warn_if_rate_limited(result)
+
+
+def _warn_if_rate_limited(result: dict) -> None:
+    http = result.get("http", {})
+    limited = http.get("rate_limited", 0)
+    if limited:
+        hosts = ", ".join(
+            f"{h} ({d['rate_limited']})"
+            for h, d in http.get("by_host", {}).items()
+            if d.get("rate_limited")
+        )
+        typer.secho(
+            f"\n  Rate-limited {limited}x ({hosts}). Consider a lower --rps next run.",
+            fg=typer.colors.YELLOW,
+        )
 
 
 @app.command()

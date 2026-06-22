@@ -15,8 +15,10 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -24,10 +26,57 @@ from .config import get_settings
 
 _USER_AGENT = "MyLibrary/0.1 (personal book-analysis project)"
 _TIMEOUT = 20.0
-_THROTTLE_SECONDS = 0.34  # be polite to free APIs (~3 req/s)
 _MAX_RETRIES = 3
 
 _last_call_at = 0.0
+# Per-request throttle in seconds. None = derive from settings on first use; can be
+# overridden at runtime via set_rate() (e.g. the CLI's --rps flag).
+_throttle_seconds: float | None = None
+
+
+def set_rate(requests_per_second: float) -> None:
+    """Override the request rate at runtime. <=0 disables throttling."""
+    global _throttle_seconds
+    _throttle_seconds = 1.0 / requests_per_second if requests_per_second > 0 else 0.0
+
+
+def _current_throttle() -> float:
+    global _throttle_seconds
+    if _throttle_seconds is None:
+        rps = get_settings().requests_per_second
+        _throttle_seconds = 1.0 / rps if rps > 0 else 0.0
+    return _throttle_seconds
+
+
+# --- request stats (so the caller can see rate-limiting) -------------------
+
+_stats: dict = {}
+
+
+def reset_stats() -> None:
+    global _stats
+    _stats = {
+        "requests": 0,
+        "rate_limited": 0,  # 429s
+        "server_errors": 0,  # 5xx
+        "network_errors": 0,  # timeouts / connection failures
+        "retries": 0,
+        "by_host": defaultdict(lambda: {"requests": 0, "rate_limited": 0}),
+    }
+
+
+def get_stats() -> dict:
+    """Return a plain (JSON-serializable) snapshot of request stats."""
+    snap = {k: v for k, v in _stats.items() if k != "by_host"}
+    snap["by_host"] = {h: dict(d) for h, d in _stats.get("by_host", {}).items()}
+    return snap
+
+
+reset_stats()
+
+
+def _host(url: str) -> str:
+    return urlsplit(url).netloc
 
 
 def _cache_path(url: str) -> Path:
@@ -37,9 +86,10 @@ def _cache_path(url: str) -> Path:
 
 def _throttle() -> None:
     global _last_call_at
+    throttle = _current_throttle()
     elapsed = time.monotonic() - _last_call_at
-    if elapsed < _THROTTLE_SECONDS:
-        time.sleep(_THROTTLE_SECONDS - elapsed)
+    if elapsed < throttle:
+        time.sleep(throttle - elapsed)
     _last_call_at = time.monotonic()
 
 
@@ -55,14 +105,21 @@ def _get_json(url: str, *, use_cache: bool = True) -> Any | None:
         except json.JSONDecodeError:
             pass  # corrupt cache entry; refetch
 
+    host = _host(url)
+    host_stats = _stats["by_host"][host]
     backoff = 1.0
     for attempt in range(1, _MAX_RETRIES + 1):
         _throttle()
+        _stats["requests"] += 1
+        host_stats["requests"] += 1
+        if attempt > 1:
+            _stats["retries"] += 1
         try:
             resp = httpx.get(
                 url, headers={"User-Agent": _USER_AGENT}, timeout=_TIMEOUT
             )
         except httpx.HTTPError:
+            _stats["network_errors"] += 1
             if attempt == _MAX_RETRIES:
                 return None
             time.sleep(backoff)
@@ -73,9 +130,17 @@ def _get_json(url: str, *, use_cache: bool = True) -> Any | None:
             cache_file.write_text("null", encoding="utf-8")
             return None
         if resp.status_code in (429, 500, 502, 503, 504):
+            if resp.status_code == 429:
+                _stats["rate_limited"] += 1
+                host_stats["rate_limited"] += 1
+            else:
+                _stats["server_errors"] += 1
             if attempt == _MAX_RETRIES:
                 return None
-            time.sleep(backoff)
+            # On a 429, prefer the server's Retry-After hint if present.
+            retry_after = resp.headers.get("Retry-After")
+            wait = float(retry_after) if (retry_after or "").isdigit() else backoff
+            time.sleep(wait)
             backoff *= 2
             continue
 
