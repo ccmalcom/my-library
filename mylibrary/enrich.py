@@ -21,6 +21,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from difflib import SequenceMatcher
+from typing import Callable
 
 from . import catalog
 from .db import Book, Enrichment, init_db, session_scope
@@ -128,11 +129,22 @@ def _resolve_one(book: Book) -> tuple[dict | None, str, str]:
 
 
 def enrich_library(
-    *, force: bool = False, limit: int | None = None, include_unrated: bool = False
+    *,
+    force: bool = False,
+    limit: int | None = None,
+    include_unrated: bool = False,
+    progress: Callable[[int, int, str, str], None] | None = None,
 ) -> dict:
-    """Enrich rated books (or all, if include_unrated). Returns a summary dict."""
+    """Enrich rated books (or all, if include_unrated). Returns a summary dict.
+
+    ``progress`` is an optional callback ``(done, total, title, label)`` invoked after
+    each book is resolved. It's the reusable status-reporting seam: the CLI uses it to
+    draw a progress bar, and a future API job can use it to publish percent-complete
+    (status endpoint / SSE) to the client — same core, no duplicated logic.
+    """
     init_db()
     summary = {
+        "total": 0,
         "processed": 0,
         "HIGH": 0,
         "MEDIUM": 0,
@@ -142,20 +154,22 @@ def enrich_library(
     }
 
     with session_scope() as session:
-        q = session.query(Book)
-        books = q.all()
-        for book in books:
-            if not include_unrated and book.effective_rating is None:
-                continue
-            if limit is not None and summary["processed"] >= limit:
-                break
+        books = session.query(Book).all()
+        candidates = [
+            b for b in books if include_unrated or b.effective_rating is not None
+        ]
+        # Already-enriched books are skipped (instant) unless force=True; the progress
+        # total reflects only books we'll actually resolve, so the percentage is honest.
+        work = [b for b in candidates if force or b.enrichment is None]
+        summary["skipped_existing"] = len(candidates) - len(work)
+        if limit is not None:
+            work = work[:limit]
+        total = len(work)
+        summary["total"] = total
 
-            enr = book.enrichment
-            if enr is not None and not force:
-                summary["skipped_existing"] += 1
-                continue
-
+        for i, book in enumerate(work, 1):
             cand, label, method = _resolve_one(book)
+            enr = book.enrichment
             if enr is None:
                 enr = Enrichment(book_id=book.id)
                 session.add(enr)
@@ -166,10 +180,16 @@ def enrich_library(
                 enr.match_method = method
                 enr.resolved_at = datetime.utcnow()
                 summary["unresolved"] += 1
+                label = "unresolved"
             else:
                 _apply(enr, cand, label, method)
                 summary[label] += 1
 
             summary["processed"] += 1
+            # Commit per book so an interrupted run (Ctrl+C) keeps its completed work
+            # and a re-run resumes from where it stopped instead of redoing everything.
+            session.commit()
+            if progress is not None:
+                progress(i, total, book.title, label)
 
     return summary

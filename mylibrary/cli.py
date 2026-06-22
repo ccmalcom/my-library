@@ -47,9 +47,47 @@ def enrich(
     force: bool = typer.Option(False, help="Re-resolve books that are already enriched."),
     limit: int = typer.Option(None, help="Stop after N books (handy for testing)."),
     include_unrated: bool = typer.Option(False, help="Also enrich unrated books."),
+    progress: bool = typer.Option(True, help="Show a live progress bar."),
 ) -> None:
     """Resolve books to catalog metadata with a confidence score."""
-    _echo(enrich_library(force=force, limit=limit, include_unrated=include_unrated))
+    if not progress:
+        _echo(enrich_library(force=force, limit=limit, include_unrated=include_unrated))
+        return
+
+    from rich.progress import (
+        BarColumn,
+        MofNCompleteColumn,
+        TextColumn,
+        TimeElapsedColumn,
+        TimeRemainingColumn,
+    )
+    from rich.progress import Progress as RichProgress
+
+    with RichProgress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.percentage:>3.0f}%"),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+    ) as bar:
+        task = bar.add_task("Enriching", total=None)
+
+        def on_progress(done: int, total: int, title: str, label: str) -> None:
+            bar.update(
+                task,
+                total=total,
+                completed=done,
+                description=f"Enriching [{label:10}] {title[:34]}",
+            )
+
+        result = enrich_library(
+            force=force,
+            limit=limit,
+            include_unrated=include_unrated,
+            progress=on_progress,
+        )
+    _echo(result)
 
 
 @app.command()
