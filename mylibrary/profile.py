@@ -112,6 +112,8 @@ def _tier(rating: int) -> str:
 def _book_payload(book: Book) -> dict:
     enr = book.enrichment
     subjects = (enr.subjects or [])[:8] if enr else []
+    # Prefer the actual read date; fall back to when it was added to the shelf.
+    read_date = book.date_read or book.date_added
     return {
         "id": book.id,
         "title": book.title,
@@ -120,6 +122,7 @@ def _book_payload(book: Book) -> dict:
         "pages": book.page_count,
         "subjects": subjects,
         "series": enr.series if enr else None,
+        "read_year": read_date.year if read_date else None,
     }
 
 
@@ -152,6 +155,15 @@ def _build_prompt(tiers: dict[str, list[dict]]) -> str:
         "Never put high-rated books in an aversion's exhibits.\n"
         "  - `contrasts`: the counter-examples that sharpen the distinction (e.g. for an "
         "aversion to X, similar books WITHOUT X that scored higher). May be empty.\n\n"
+        "Temporal context: The `read_year` field shows when each book was read (or "
+        "added to the shelf). Tastes evolve, so weight this accordingly:\n"
+        "  - Recent reads (2020+) are the strongest signal of current preferences.\n"
+        "  - Mid-era reads (2015-2019) are relevant but may reflect a transitional period.\n"
+        "  - Older reads (pre-2015) may reflect a different life stage entirely — for "
+        "example, a heavy YA phase in one's teens is not necessarily a current preference.\n"
+        "  - Lower `inference_confidence` for traits supported only by older reads unless "
+        "those same traits are echoed in more recent ones. If a trait is consistent across "
+        "all eras, call it an enduring preference (and note that in the claim).\n\n"
         "Quality rules:\n"
         "  - Use ONLY book ids from the data below.\n"
         "  - Make claims specific and falsifiable, not generic genre labels.\n"
