@@ -16,9 +16,10 @@ Design notes that match the locked decisions:
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 from .config import get_settings
-from .db import Book, TasteTrait, init_db, session_scope
+from .db import Book, ProfileMeta, TasteTrait, init_db, session_scope
 
 _TOOL = {
     "name": "record_taste_traits",
@@ -114,7 +115,7 @@ def _book_payload(book: Book) -> dict:
     subjects = (enr.subjects or [])[:8] if enr else []
     # Prefer the actual read date; fall back to when it was added to the shelf.
     read_date = book.date_read or book.date_added
-    return {
+    payload = {
         "id": book.id,
         "title": book.title,
         "author": book.author,
@@ -124,6 +125,10 @@ def _book_payload(book: Book) -> dict:
         "series": enr.series if enr else None,
         "read_year": read_date.year if read_date else None,
     }
+    # Reviews are the rare direct signal — include verbatim (capped) when present.
+    if book.app_review:
+        payload["review"] = book.app_review.strip()[:1000]
+    return payload
 
 
 def build_tiers(session) -> dict[str, list[dict]]:
@@ -137,12 +142,43 @@ def build_tiers(session) -> dict[str, list[dict]]:
     return tiers
 
 
+def get_profile_meta(session) -> ProfileMeta:
+    """Return the single ProfileMeta row, creating it (id=1) on first use."""
+    meta = session.get(ProfileMeta, 1)
+    if meta is None:
+        meta = ProfileMeta(id=1)
+        session.add(meta)
+        session.flush()
+    return meta
+
+
+def mark_profiled(session, kind: str) -> None:
+    """Stamp the profile as freshly built — clears the 'dirty' state."""
+    meta = get_profile_meta(session)
+    meta.last_profiled_at = datetime.utcnow()
+    meta.last_profile_kind = kind
+
+
+def books_changed_since(session, since: datetime | None) -> list[Book]:
+    """Rated books whose in-app rating/review changed after `since`.
+
+    `since=None` (never profiled) means every book carrying feedback is 'changed'.
+    Unrated books are excluded — they don't participate in taste analysis.
+    """
+    q = session.query(Book).filter(Book.feedback_updated_at.isnot(None))
+    if since is not None:
+        q = q.filter(Book.feedback_updated_at > since)
+    return [b for b in q.all() if b.effective_rating is not None]
+
+
 def _build_prompt(tiers: dict[str, list[dict]]) -> str:
     counts = {k: len(v) for k, v in tiers.items()}
     return (
         "Below is a reader's rated library, grouped by star rating. Each book has "
-        "enriched metadata (subjects, year, length, series). There is essentially no "
-        "review text, so reason from metadata + the rating tiers only.\n\n"
+        "enriched metadata (subjects, year, length, series). Most books have no review "
+        "text, so reason mainly from metadata + the rating tiers — but where a book "
+        "carries a `review` field, those are the reader's own words: treat them as the "
+        "strongest, most direct signal, above any metadata inference.\n\n"
         f"Tier sizes: {counts}. Note the heavy positive skew — 'loved it' has low "
         "discriminative power, so focus on what is genuinely distinguishing.\n\n"
         "Infer the reader's taste traits. Prioritize, in order:\n"
@@ -250,9 +286,203 @@ def extract_taste_profile(*, max_tokens: int = 3000) -> dict:
             )
             saved += 1
 
+        mark_profiled(session, "full")
+
     return {
+        "mode": "full",
         "rated_books": total_rated,
         "tiers": {k: len(v) for k, v in tiers.items()},
         "traits_saved": saved,
+        "model": settings.model,
+    }
+
+
+# --- incremental re-profile -------------------------------------------------
+#
+# The full extractor ships the entire rated library to Claude. After the cold start,
+# most re-profiles follow a handful of edits (a re-rate, a new review). Resending the
+# whole library each time is wasteful, so `update_taste_profile` sends only:
+#   - the CURRENT trait set (claims + cited evidence), and
+#   - the books that CHANGED since the last profile + the books those traits already cite
+# and asks Claude to REVISE the trait set in light of the new evidence. The payload scales
+# with the size of the edit, not the size of the library.
+
+_REVISE_TOOL = {
+    "name": "revise_taste_traits",
+    "description": (
+        "Return the REVISED full taste-trait set after accounting for the reader's "
+        "latest rating/review changes. Keep traits that still hold (adjusting confidence "
+        "or evidence as warranted), drop traits the new evidence contradicts, and add new "
+        "traits the changes reveal. Cite only book ids present in the provided data."
+    ),
+    # Same per-trait shape as the cold-start tool, so persistence is identical.
+    "input_schema": _TOOL["input_schema"],
+}
+
+_REVISE_SYSTEM = (
+    "You are a literary taste analyst maintaining a reader's evolving taste profile. "
+    "You are given the profile you previously inferred plus the reader's most recent "
+    "rating and review changes. You make the SMALLEST revision that honors the new "
+    "evidence: keep what still holds, adjust confidence where the new data strengthens "
+    "or weakens a claim, retire claims the new evidence contradicts, and add genuinely "
+    "new traits. Review text is the reader's own words — weight it above metadata "
+    "inference. Cite only book ids that appear in the provided data."
+)
+
+
+def _build_update_prompt(
+    current_traits: list[dict],
+    books_meta: dict[int, dict],
+    changed_ids: list[int],
+) -> str:
+    return (
+        "The reader has updated some ratings and/or written new reviews since this "
+        "profile was last built. Revise the profile accordingly — do NOT re-derive it "
+        "from scratch.\n\n"
+        "You are NOT given the whole library, only the books needed to reason about the "
+        "change: the books that changed, plus the books the current traits already cite. "
+        "Cite book ids only from the BOOKS map below.\n\n"
+        "How to revise:\n"
+        "  - Keep traits that still hold. Raise/lower `inference_confidence` if the new "
+        "evidence strengthens or weakens them, and add/remove cited book ids as fitting.\n"
+        "  - Drop a trait whose evidence the changes now contradict (e.g. the reader "
+        "re-rated its key exhibit, or a new review states the opposite).\n"
+        "  - Add new traits the changes reveal — especially anything stated outright in a "
+        "review.\n"
+        "  - A new/edited `review` is direct testimony; prefer it over metadata guesses.\n"
+        "  - Return the COMPLETE revised trait set (the unchanged traits too), 6-12 traits, "
+        "via the revise_taste_traits tool.\n\n"
+        f"CHANGED BOOK IDS (the edits driving this update): {changed_ids}\n\n"
+        "CURRENT TRAITS (JSON):\n"
+        + json.dumps(current_traits, ensure_ascii=False)
+        + "\n\nBOOKS (id -> metadata; the only books you may cite) (JSON):\n"
+        + json.dumps({str(k): v for k, v in books_meta.items()}, ensure_ascii=False)
+    )
+
+
+def update_taste_profile(*, max_tokens: int = 3000) -> dict:
+    """Incrementally revise the taste profile from recent edits only.
+
+    Sends just the changed books + the books the current traits cite (not the whole
+    library) and asks Claude to revise the trait set. Falls back to a full
+    `extract_taste_profile` when there is no prior profile to build on. Marks the profile
+    fresh on success (clearing the 'dirty' state). Returns a summary dict.
+    """
+    settings = get_settings()
+    if not settings.anthropic_api_key:
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY is not set. Copy .env.example to .env and add your key "
+            "(https://console.anthropic.com/) before running the taste-profile step."
+        )
+
+    init_db()
+    with session_scope() as session:
+        existing = (
+            session.query(TasteTrait)
+            .filter(TasteTrait.status == "proposed")
+            .all()
+        )
+        meta = get_profile_meta(session)
+        since = meta.last_profiled_at
+
+    # No prior profile to revise -> a full build is both correct and necessary.
+    if not existing or since is None:
+        return extract_taste_profile(max_tokens=max_tokens)
+
+    with session_scope() as session:
+        changed = books_changed_since(session, since)
+        if not changed:
+            return {
+                "mode": "update",
+                "changed_books": 0,
+                "traits_before": len(existing),
+                "traits_after": len(existing),
+                "note": "Profile already up to date — no rating/review changes since last build.",
+                "model": settings.model,
+            }
+
+        # Serialize the current traits and gather the books they cite.
+        current_rows = (
+            session.query(TasteTrait)
+            .filter(TasteTrait.status == "proposed")
+            .all()
+        )
+        current_traits = [
+            {
+                "id": t.id,
+                "claim": t.claim,
+                "polarity": t.polarity,
+                "inference_confidence": t.inference_confidence,
+                "exhibits": t.exhibits or [],
+                "contrasts": t.contrasts or [],
+            }
+            for t in current_rows
+        ]
+        cited_ids: set[int] = set()
+        for t in current_rows:
+            cited_ids.update(t.exhibits or [])
+            cited_ids.update(t.contrasts or [])
+
+        changed_ids = [b.id for b in changed]
+        wanted_ids = cited_ids.union(changed_ids)
+
+        books = {
+            b.id: b
+            for b in session.query(Book).filter(Book.id.in_(wanted_ids)).all()
+        }
+        books_meta: dict[int, dict] = {}
+        for bid, b in books.items():
+            payload = _book_payload(b)
+            payload["rating"] = b.effective_rating
+            books_meta[bid] = payload
+
+        prompt = _build_update_prompt(current_traits, books_meta, changed_ids)
+
+        from anthropic import Anthropic
+
+        client = Anthropic(api_key=settings.anthropic_api_key)
+        message = client.messages.create(
+            model=settings.model,
+            max_tokens=max_tokens,
+            system=_REVISE_SYSTEM,
+            tools=[_REVISE_TOOL],
+            tool_choice={"type": "tool", "name": "revise_taste_traits"},
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        traits = []
+        for block in message.content:
+            if getattr(block, "type", None) == "tool_use":
+                traits = block.input.get("traits", [])
+                break
+
+        valid_ids = set(books_meta.keys())
+
+        session.query(TasteTrait).filter(TasteTrait.status == "proposed").delete()
+
+        saved = 0
+        for t in traits:
+            exhibits = [i for i in t.get("exhibits", []) if i in valid_ids]
+            contrasts = [i for i in t.get("contrasts", []) if i in valid_ids]
+            session.add(
+                TasteTrait(
+                    claim=t.get("claim", "").strip(),
+                    polarity=t.get("polarity", "reward"),
+                    exhibits=exhibits,
+                    contrasts=contrasts,
+                    inference_confidence=float(t.get("inference_confidence", 0.0)),
+                    status="proposed",
+                )
+            )
+            saved += 1
+
+        mark_profiled(session, "update")
+
+    return {
+        "mode": "update",
+        "changed_books": len(changed_ids),
+        "books_sent": len(books_meta),
+        "traits_before": len(existing),
+        "traits_after": saved,
         "model": settings.model,
     }

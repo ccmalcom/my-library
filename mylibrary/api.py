@@ -20,13 +20,16 @@ from .config import get_settings
 from .db import Book, Enrichment, Recommendation, init_db, session_scope
 from .enrich import _normalize_title, _surname, enrich_library
 from .ingest import ingest_csv
-from .profile import extract_taste_profile
+from .library import BookNotFoundError, profile_status, set_book_feedback
+from .profile import extract_taste_profile, update_taste_profile
 from .recommend import latest_recommendations, recommend
 from .schemas import (
+    BookFeedbackRequest,
     BookOut,
     EnrichRequest,
     FeedbackRequest,
     IngestRequest,
+    ProfileStatusOut,
     RecommendationOut,
     RecommendRequest,
     TraitOut,
@@ -121,6 +124,7 @@ def list_books(
                     exclusive_shelf=book.exclusive_shelf,
                     goodreads_rating=book.goodreads_rating,
                     app_rating=book.app_rating,
+                    app_review=book.app_review,
                     effective_rating=book.effective_rating,
                     year_published=book.year_published,
                     page_count=book.page_count,
@@ -132,6 +136,41 @@ def list_books(
                 )
             )
         return out
+
+
+@app.patch("/books/{book_id}/feedback")
+def rate_or_review_book(book_id: int, req: BookFeedbackRequest) -> dict:
+    """Re-rate and/or review a library book.
+
+    Updates the in-app rating/review and marks the taste profile dirty. Does NOT
+    re-profile — the client shows a re-profile button when /profile/status reports dirty.
+    """
+    try:
+        return set_book_feedback(
+            book_id,
+            rating=req.rating,
+            review=req.review,
+            clear_review=req.clear_review,
+        )
+    except BookNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.get("/profile/status", response_model=ProfileStatusOut)
+def get_profile_status() -> ProfileStatusOut:
+    """Whether ratings/reviews have changed since the profile was last built."""
+    return ProfileStatusOut.model_validate(profile_status())
+
+
+@app.post("/profile/update")
+def update_profile() -> dict:
+    """Incrementally re-profile from recent edits only (cheaper than a full rebuild)."""
+    try:
+        return update_taste_profile()
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/recommend")

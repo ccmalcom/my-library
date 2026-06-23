@@ -146,6 +146,84 @@ def profile() -> None:
 
 
 @app.command()
+def rate(
+    book_id: int = typer.Argument(..., help="The library book id (see `stats`/`/books`)."),
+    rating: int = typer.Argument(..., help="1-5 to set, or 0 to clear the in-app rating."),
+) -> None:
+    """Re-rate a book in-app (overrides the imported Goodreads rating)."""
+    from .library import BookNotFoundError, set_book_feedback
+
+    try:
+        _echo(set_book_feedback(book_id, rating=rating))
+    except (BookNotFoundError, ValueError) as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    typer.echo("\nProfile may now be stale — run `profile-status` / `reprofile`.")
+
+
+@app.command()
+def review(
+    book_id: int = typer.Argument(..., help="The library book id."),
+    text: str = typer.Argument(None, help="Review text. Omit with --clear to remove."),
+    clear: bool = typer.Option(False, help="Remove the existing review."),
+) -> None:
+    """Write (or clear) an in-app text review for a book."""
+    from .library import BookNotFoundError, set_book_feedback
+
+    if text is None and not clear:
+        typer.secho("Provide review text, or pass --clear to remove it.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    try:
+        _echo(set_book_feedback(book_id, review=text, clear_review=clear))
+    except (BookNotFoundError, ValueError) as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    typer.echo("\nProfile may now be stale — run `profile-status` / `reprofile`.")
+
+
+@app.command(name="profile-status")
+def profile_status_cmd() -> None:
+    """Show whether ratings/reviews changed since the profile was last built."""
+    from .library import profile_status
+
+    status = profile_status()
+    _echo(status)
+    if status["dirty"]:
+        typer.secho(
+            f"\nProfile is stale ({status['changed_books']} changed book(s)). "
+            "Run `reprofile` to refresh.",
+            fg=typer.colors.YELLOW,
+        )
+    else:
+        typer.secho("\nProfile is up to date.", fg=typer.colors.GREEN)
+
+
+@app.command()
+def reprofile(
+    full: bool = typer.Option(
+        False, help="Force a full rebuild instead of the incremental update."
+    ),
+) -> None:
+    """Refresh the taste profile (incremental by default; --full to rebuild)."""
+    from rich.console import Console
+
+    from .profile import extract_taste_profile, update_taste_profile
+
+    console = Console()
+    runner = extract_taste_profile if full else update_taste_profile
+    try:
+        with console.status("[bold]Re-profiling with Claude…", spinner="dots"):
+            result = runner()
+    except RuntimeError as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    if result.get("note"):
+        typer.secho(result["note"], fg=typer.colors.YELLOW)
+    _echo(result)
+    typer.echo("\nRun `python -m mylibrary.cli traits` to read the refreshed profile.")
+
+
+@app.command()
 def traits() -> None:
     """Print the saved taste profile: each trait with its supporting books."""
     from .db import Book, TasteTrait, session_scope

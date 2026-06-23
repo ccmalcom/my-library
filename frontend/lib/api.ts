@@ -24,6 +24,7 @@ export interface Book {
   exclusive_shelf: string | null;
   goodreads_rating: number;
   app_rating: number | null;
+  app_review: string | null;
   effective_rating: number | null;
   year_published: number | null;
   page_count: number | null;
@@ -73,6 +74,43 @@ export interface FeedbackRequest {
   status: "accepted" | "rejected" | "already_read";
   user_note?: string;
 }
+
+/** In-app re-rate / review of a library book (PATCH /books/{id}/feedback). */
+export interface BookFeedbackRequest {
+  /** 1-5 to set, 0 to clear the in-app rating, omit to leave unchanged. */
+  rating?: number;
+  /** Review text to set; omit to leave unchanged. */
+  review?: string;
+  /** Remove an existing review. */
+  clear_review?: boolean;
+}
+
+/** Summary returned by PATCH /books/{id}/feedback (not a full Book). */
+export interface BookFeedbackResult {
+  id: number;
+  title: string;
+  author: string | null;
+  app_rating: number | null;
+  goodreads_rating: number;
+  effective_rating: number | null;
+  app_review: string | null;
+  feedback_updated_at: string | null;
+}
+
+/** Whether the taste profile is stale relative to in-app edits (GET /profile/status). */
+export interface ProfileStatus {
+  dirty: boolean;
+  changed_books: number;
+  changed_book_ids: number[];
+  last_profiled_at: string | null;
+  last_profile_kind: string | null;
+}
+
+/**
+ * Shared SWR key for the profile-status query, so any mutation (a re-rate/review)
+ * can revalidate the re-profile banner via `mutate(PROFILE_STATUS_KEY)`.
+ */
+export const PROFILE_STATUS_KEY = "profile-status";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -132,4 +170,14 @@ export const api = {
 
   feedback: (recId: number, req: FeedbackRequest) =>
     patch<Recommendation>(`/recommendations/${recId}/feedback`, req),
+
+  /** Re-rate and/or review a library book. */
+  setBookFeedback: (bookId: number, req: BookFeedbackRequest) =>
+    patch<BookFeedbackResult>(`/books/${bookId}/feedback`, req),
+
+  /** Is the taste profile stale relative to recent rating/review edits? */
+  profileStatus: () => get<ProfileStatus>("/profile/status"),
+
+  /** Incrementally refresh the taste profile from recent edits only. */
+  updateProfile: () => post<Record<string, unknown>>("/profile/update"),
 };

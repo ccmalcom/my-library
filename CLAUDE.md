@@ -24,7 +24,7 @@ surface, and the eval harness are the remaining phases.
    feedback going forward. Import must never clobber in-app `app_rating`.
 3. **The recommender is two-stage** (retrieval of real catalog candidates, then Claude
    reranks/explains). The LLM is NOT the recommender. Landed in `recommend.py`: stage-1
-   retrieval is hybrid (deterministic metadata expansion + Claude-seeded *search queries*,
+   retrieval is hybrid (deterministic metadata expansion + Claude-seeded _search queries_,
    all resolved against the live catalog so no invented titles survive); stage 2 is the
    Claude rerank/explain, grounded in trait ids + book ids. Keep it this way.
 4. **Taste profile is metadata-driven, not review-text-driven** — the library has ~no
@@ -45,6 +45,7 @@ surface, and the eval harness are the remaining phases.
   (gitignored).
 
 ### Pipeline modules
+
 - `ingest.py` — Goodreads CSV -> `books`, idempotent on `Book Id`. Handles Excel-escaped
   `="..."` ISBNs, `My Rating == 0` = unrated, `Exclusive Shelf`.
 - `catalog.py` — Open Library + Google Books clients. Disk-caches every raw response,
@@ -99,6 +100,5 @@ python -m pytest                        # ingest + matching + catalog + recommen
 ## Working agreements
 
 - After changing pipeline code, run `python -m pytest` before calling it done.
-- Don't add a web UI or the feedback/eval phases yet unless asked — the engine currently
-  stops at `recommend`.
+
 - Prefer extending the core functions (so both CLI and API benefit) over CLI-only logic.

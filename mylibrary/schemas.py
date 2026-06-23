@@ -32,6 +32,26 @@ class FeedbackRequest(BaseModel):
     user_note: str | None = None
 
 
+class BookFeedbackRequest(BaseModel):
+    """In-app re-rate / review for a library book (PATCH /books/{id}).
+
+    rating: 1-5 to set, 0 to clear the in-app rating, None to leave unchanged.
+    review: text to set, None to leave unchanged; clear_review removes it.
+    """
+
+    rating: int | None = None
+    review: str | None = None
+    clear_review: bool = False
+
+
+class ProfileStatusOut(BaseModel):
+    dirty: bool
+    changed_books: int
+    changed_book_ids: list[int]
+    last_profiled_at: datetime | None
+    last_profile_kind: str | None
+
+
 class BookOut(BaseModel):
     id: int
     title: str
@@ -40,6 +60,7 @@ class BookOut(BaseModel):
     exclusive_shelf: str | None
     goodreads_rating: int
     app_rating: int | None
+    app_review: str | None = None
     effective_rating: int | None
     year_published: int | None
     page_count: int | None
