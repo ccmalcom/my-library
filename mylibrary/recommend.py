@@ -43,7 +43,7 @@ _SEED_QUERIES = 8  # how many search terms to ask Claude to propose
 _MAX_CANDIDATES = 60  # cap on the pool handed to the reranker (token budget)
 _SEED_RESERVE_SHARE = 0.3  # min share of the cap reserved for Claude-seeded-only candidates
 _LOVED_MIN = 4  # effective rating at/above which a book counts as "loved"
-_LOVED_SAMPLE = 40  # loved books shown to Claude for context
+_LOVED_SAMPLE = 20  # loved books shown to Claude for context
 
 
 # --- Claude stage 1b: propose search queries -------------------------------
@@ -271,24 +271,34 @@ def _metadata_pool(signal: dict, *, per_query: int) -> list[tuple[dict, str]]:
 
 def _claude_seed_queries(signal: dict, *, n_queries: int) -> list[str]:
     """Ask Claude for catalog search terms (stage 1b). Returns query strings only."""
-    client, settings = _client()
-    prompt = (
-        "A reader's taste profile and a sample of their loved books are below. Propose "
-        f"up to {n_queries} CATALOG SEARCH QUERIES (search terms, not book titles) that "
-        "would surface books they are likely to rate highly. Chase their distinguishing "
-        "traits, cover their range, and avoid generic bestseller terms.\n\n"
+    client, _settings = _client()
+    profile_context = (
         "TASTE TRAITS (JSON):\n"
         + json.dumps(signal["traits"], ensure_ascii=False)
         + "\n\nLOVED BOOKS (JSON):\n"
         + json.dumps(signal["loved"][:_LOVED_SAMPLE], ensure_ascii=False)
     )
+    task_prompt = (
+        "A reader's taste profile and a sample of their loved books are above. Propose "
+        f"up to {n_queries} CATALOG SEARCH QUERIES (search terms, not book titles) that "
+        "would surface books they are likely to rate highly. Chase their distinguishing "
+        "traits, cover their range, and avoid generic bestseller terms."
+    )
     message = client.messages.create(
-        model=settings.model,
+        model="claude-haiku-4-5-20251001",
         max_tokens=1500,
         system=_SEED_SYSTEM,
         tools=[_SEED_TOOL],
         tool_choice={"type": "tool", "name": "propose_search_queries"},
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": profile_context,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": task_prompt},
+            ],
+        }],
+        extra_headers={"anthropic-beta": "prompt-caching-2024-07-31,extended-cache-ttl-2025-04-11"},
     )
     for block in message.content:
         if getattr(block, "type", None) == "tool_use":
@@ -408,16 +418,18 @@ def _claude_rerank(candidates: list[dict], signal: dict, *, n: int) -> list[dict
     ]
     valid_trait_ids = {t["id"] for t in signal["traits"]}
     valid_book_ids = {b["id"] for b in signal["loved"]}
-    prompt = (
-        f"Rank the best {n} candidates for this reader and explain each. Choose ONLY from "
-        "the CANDIDATES list (cite each by its `idx`). Score 0..1 for fit. Penalize "
-        "anything that trips an aversion trait. Ground every pick in specific trait ids "
-        "and the library book ids it most resembles — use only ids that appear below.\n\n"
+    profile_context = (
         "TASTE TRAITS (JSON):\n"
         + json.dumps(signal["traits"], ensure_ascii=False)
         + "\n\nLOVED BOOKS (JSON):\n"
         + json.dumps(signal["loved"][:_LOVED_SAMPLE], ensure_ascii=False)
-        + "\n\nCANDIDATES (JSON):\n"
+    )
+    task_prompt = (
+        f"Rank the best {n} candidates for this reader and explain each. Choose ONLY from "
+        "the CANDIDATES list (cite each by its `idx`). Score 0..1 for fit. Penalize "
+        "anything that trips an aversion trait. Ground every pick in specific trait ids "
+        "and the library book ids it most resembles — use only ids that appear above.\n\n"
+        "CANDIDATES (JSON):\n"
         + json.dumps(indexed, ensure_ascii=False)
     )
     message = client.messages.create(
@@ -426,7 +438,15 @@ def _claude_rerank(candidates: list[dict], signal: dict, *, n: int) -> list[dict
         system=_RANK_SYSTEM,
         tools=[_RANK_TOOL],
         tool_choice={"type": "tool", "name": "rank_recommendations"},
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": profile_context,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": task_prompt},
+            ],
+        }],
+        extra_headers={"anthropic-beta": "prompt-caching-2024-07-31,extended-cache-ttl-2025-04-11"},
     )
     ranked = []
     for block in message.content:
