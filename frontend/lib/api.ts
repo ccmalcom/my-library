@@ -5,7 +5,7 @@
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────────────
 
 export interface Stats {
   total: number;
@@ -70,6 +70,21 @@ export interface Trait {
   created_at: string;
 }
 
+export interface TraitUpdateRequest {
+  claim?: string;
+  user_note?: string;
+}
+
+export interface SubjectCount {
+  subject: string;
+  count: number;
+}
+
+export interface SubjectBreakdown {
+  overall: SubjectCount[];
+  by_tier: Record<string, SubjectCount[]>;
+}
+
 export interface FeedbackRequest {
   status: "accepted" | "rejected" | "already_read";
   user_note?: string;
@@ -129,7 +144,7 @@ export interface ProfileStatus {
  */
 export const PROFILE_STATUS_KEY = "profile-status";
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
@@ -172,7 +187,7 @@ async function del<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// ─── API calls ──────────────────────────────────────────────────────────────
+// ─── API calls ────────────────────────────────────────────────────────────────────────────
 
 export const api = {
   stats: () => get<Stats>("/stats"),
@@ -185,12 +200,17 @@ export const api = {
     if (params?.limit !== undefined) qs.set("limit", String(params.limit));
     if (params?.offset !== undefined) qs.set("offset", String(params.offset));
     const query = qs.toString();
-    return get<Book[]>(`/books${query ? `?${query}` : ""}`);
+    return get<Book[]>(query ? `/books?${query}` : "/books");
   },
 
   recommendations: () => get<Recommendation[]>("/recommendations"),
 
   profile: () => get<Trait[]>("/profile"),
+
+  updateTrait: (traitId: number, req: TraitUpdateRequest) =>
+    patch<Trait>(`/profile/traits/${traitId}`, req),
+
+  profileSubjects: () => get<SubjectBreakdown>("/profile/subjects"),
 
   runRecommend: (n = 10) => post<Record<string, unknown>>("/recommend", { n }),
 
@@ -217,4 +237,20 @@ export const api = {
 
   /** All recommendations the user has rejected, newest first. */
   rejectedRecs: () => get<Recommendation[]>("/recommendations/rejected"),
+
+  /** Upload a Goodreads CSV and run ingest. Used by the setup wizard. */
+  ingestUpload: async (file: File): Promise<Record<string, unknown>> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${BASE}/ingest/upload`, { method: "POST", body: form });
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(`Upload failed (${res.status}): ${detail}`);
+    }
+    return res.json() as Promise<Record<string, unknown>>;
+  },
+
+  /** Kick off library enrichment (Open Library + Google Books). Slow — can take minutes. */
+  runEnrich: (opts?: { limit?: number }) =>
+    post<Record<string, unknown>>("/enrich", { limit: opts?.limit ?? null }),
 };

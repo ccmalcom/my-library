@@ -70,8 +70,15 @@ labeling surface, and the eval harness are the remaining phases.
   Claude-seeded queries (`catalog.googlebooks_query`), merged + deduped against the
   library. Stage 2 = Claude rerank/explain. Persists each run to `recommendations`
   (grouped by `run_id`). Anthropic key is checked at point of use, so the key only
-  matters when a Claude stage actually runs.
-- `stats.py` — read-only dataset stats.
+  matters when a Claude stage actually runs. **Cost profile:** seed queries use
+  `claude-haiku-4-5-20251001` (low-stakes text generation); rerank uses `settings.model`
+  (Sonnet). Both calls share a cacheable prefix (traits + top 20 loved books, marked
+  `ephemeral` with extended-TTL beta) so repeated runs within ~1 hour get a cache hit
+  on the large data payload. `_LOVED_SAMPLE = 20` (top by rating/recency).
+- `stats.py` — read-only dataset stats. Returns fields named `total`, `rated`,
+  `unrated`, `mean_rating`, `by_star`, `shelves` — matching the TypeScript `Stats`
+  interface. Do not rename these back to the old `books_total` / `rating_distribution`
+  style; the frontend depends on the current names.
 
 ### Frontend (`frontend/`)
 
@@ -85,7 +92,8 @@ It is a pure HTTP client of the FastAPI engine — no DB access, no migrations.
 - `app/` — routes: `/` (dashboard + run recommend), `/swipe` (rec swiping; `already_read`
   lands the book on the read shelf then prompts a review), `/to-read` (per-book: start
   reading / mark finished → review / remove), `/library` (rated books; click a row to
-  re-rate/review; a "N books missing reviews" button steps through unrated read books).
+  re-rate/review; a "N books missing reviews" button steps through unrated read books),
+  `/profile` (taste traits with inline editing, rating distribution, genre breakdown).
   `layout.tsx` mounts `NavBar` + `ReprofileBanner` above all pages.
 - `components/` — `BookEditModal` (re-rate + review; diff-based save; optional
   `queuePosition`/`onFinishQueue` for the step-through review queue), `ReprofileBanner`
@@ -131,6 +139,14 @@ when to spend the Claude call.
   `POST /profile/update`) after edits — it's cheap. `extract_taste_profile` (`profile` /
   `reprofile --full` / `POST /profile`) is the full rebuild. Update falls back to a full
   build when there's no prior profile.
+- **Trait editing** (`PATCH /profile/traits/{id}`): updates `claim` text and sets
+  `status = "edited"` so human-edited traits are distinguishable from Claude-proposed ones.
+  The My Profile page exposes this inline; the `user_note` field is also patchable for
+  freeform annotation without changing the claim.
+- **`/profile/subjects`** (`GET`): aggregates enrichment subjects for all rated books,
+  grouped by star tier. Used by the My Profile genre breakdown. Subject counts normalise
+  capitalisation and cap per-book contribution at 8 subjects to avoid one over-tagged
+  book dominating the chart.
 - Currently developed on **Python 3.14** — first suspect for any odd runtime behavior.
 
 ## Commands
@@ -149,19 +165,4 @@ python -m mylibrary.cli recommend       # --n N; two-stage recs, needs ANTHROPIC
 python -m mylibrary.cli recs            # reprint the latest recommend run
 python -m mylibrary.cli stats
 python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
-python -m pytest                        # ingest + matching + catalog + recommender + feedback
-```
-
-Frontend (from `frontend/`):
-
-```bash
-npm install
-npm run dev        # Next.js dev server (expects the API at NEXT_PUBLIC_API_URL)
-npx tsc --noEmit   # typecheck
-```
-
-## Working agreements
-
-- After changing pipeline code, run `python -m pytest` before calling it done.
-
-- Prefer extending the core functions (so both CLI and API benefit) over CLI-only logic.
+python -m pytest                        # ingest + matching + catalog + recommender + fee

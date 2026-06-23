@@ -13,7 +13,10 @@ That's fine for MVP1 / local use; a later phase can move them to a background ta
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query
+import shutil
+import tempfile
+
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
@@ -41,6 +44,7 @@ from .schemas import (
     RecommendRequest,
     ShelfRequest,
     TraitOut,
+    TraitUpdateRequest,
 )
 from .stats import dataset_stats
 
@@ -139,7 +143,7 @@ def _ensure_library_book(session, rec: Recommendation, shelf: str) -> Book:
             cover_url=rec.cover_url,
             resolution_confidence=1.0,
             confidence_label="RECOMMENDATION",
-            match_method=f"recommendation_{shelf}",
+            match_method="recommendation_" + shelf,
         )
     )
     return book
@@ -152,6 +156,42 @@ def ingest(req: IngestRequest) -> dict:
         return ingest_csv(path)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post("/ingest/upload")
+async def ingest_upload(file: UploadFile = File(...)) -> dict:
+    """Accept a Goodreads CSV upload, save it to data/, and run ingest.
+
+    This is the first-run path: the user doesn't need to know where data/ lives or how
+    to put a file there manually. The frontend setup wizard calls this endpoint.
+    """
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=422, detail="Uploaded file must be a .csv")
+
+    settings = get_settings()
+    settings.csv_path.parent.mkdir(parents=True, exist_ok=True)
+    dest = settings.csv_path
+
+    # Stream the upload to a temp file first, then rename atomically so we never leave
+    # data/goodreads_library_export.csv in a half-written state.
+    with tempfile.NamedTemporaryFile(
+        delete=False, dir=dest.parent, suffix=".csv.tmp"
+    ) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    try:
+        import os
+        os.replace(tmp_path, dest)
+        return ingest_csv(str(dest))
+    except Exception as e:
+        # Clean up temp on failure
+        try:
+            import os
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/enrich")
@@ -283,10 +323,10 @@ def get_rejected_recommendations() -> list[RecommendationOut]:
 def feedback(rec_id: int, req: FeedbackRequest) -> RecFeedbackResult:
     """Record a swipe decision on a recommendation.
 
-    accepted     → writes the book to the to-read shelf (idempotent).
-    already_read → writes the book to the read shelf (idempotent) so it's in the library
+    accepted     -> writes the book to the to-read shelf (idempotent).
+    already_read -> writes the book to the read shelf (idempotent) so it's in the library
                    and never recommended again; the returned book lets the UI prompt a review.
-    rejected     → marks the rec so the recommender won't re-surface it.
+    rejected     -> marks the rec so the recommender won't re-surface it.
 
     Returns the affected library book (None for rejected).
     """
@@ -325,3 +365,68 @@ def get_profile() -> list[TraitOut]:
             .all()
         )
         return [TraitOut.model_validate(t) for t in traits]
+
+
+@app.patch("/profile/traits/{trait_id}", response_model=TraitOut)
+def update_trait(trait_id: int, req: TraitUpdateRequest) -> TraitOut:
+    """Edit a taste trait's claim text and/or attach a user note.
+
+    Editing the claim sets status to 'edited' so it's distinguishable from
+    Claude-proposed traits. User notes are stored alongside without changing status.
+    """
+    from .db import TasteTrait
+
+    with session_scope() as session:
+        trait = session.get(TasteTrait, trait_id)
+        if trait is None:
+            raise HTTPException(status_code=404, detail=f"Trait {trait_id} not found")
+        if req.claim is not None:
+            trait.claim = req.claim.strip()
+            trait.status = "edited"
+        if req.user_note is not None:
+            trait.user_note = req.user_note
+        session.flush()
+        return TraitOut.model_validate(trait)
+
+
+@app.get("/profile/subjects")
+def get_profile_subjects() -> dict:
+    """Subject/genre breakdown across rated books, split by star tier.
+
+    Aggregates enrichment subjects for every rated book. Each book contributes
+    its subjects to the tier matching its effective_rating. Returns top subjects
+    overall and per tier (highest rating first) so the frontend can show which
+    genres dominate 5-star reads vs. 1-2-star reads.
+    """
+    from collections import Counter, defaultdict
+
+    with session_scope() as session:
+        rated_books = [b for b in session.query(Book).all() if b.effective_rating is not None]
+
+        overall: Counter = Counter()
+        by_tier: dict[str, Counter] = defaultdict(Counter)
+
+        for book in rated_books:
+            enr = book.enrichment
+            if not enr or not enr.subjects:
+                continue
+            rating = str(book.effective_rating)
+            seen: set[str] = set()
+            for raw in enr.subjects[:15]:
+                normalised = raw.strip().title()
+                if normalised and normalised not in seen:
+                    seen.add(normalised)
+                    overall[normalised] += 1
+                    by_tier[rating][normalised] += 1
+                if len(seen) >= 8:
+                    break
+
+        return {
+            "overall": [
+                {"subject": s, "count": c} for s, c in overall.most_common(25)
+            ],
+            "by_tier": {
+                tier: [{"subject": s, "count": c} for s, c in counter.most_common(12)]
+                for tier, counter in sorted(by_tier.items(), key=lambda x: int(x[0]), reverse=True)
+            },
+        }

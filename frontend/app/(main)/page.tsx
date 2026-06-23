@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { api, type Stats } from "@/lib/api";
@@ -20,6 +20,13 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   const { data: stats, isLoading } = useSWR<Stats>("stats", () => api.stats());
+
+  // First-run detection: redirect to setup if no books have been imported yet.
+  useEffect(() => {
+    if (!isLoading && stats && stats.total === 0) {
+      router.replace("/setup");
+    }
+  }, [isLoading, stats, router]);
 
   async function handleRun() {
     setRunning(true);

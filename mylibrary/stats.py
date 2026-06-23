@@ -30,12 +30,23 @@ def dataset_stats() -> dict:
         traits = session.query(TasteTrait).all()
         trait_polarity = Counter(t.polarity for t in traits)
 
+        n_rated = len(rated)
+        mean_rating = (
+            round(sum(b.effective_rating for b in rated) / n_rated, 2)
+            if n_rated > 0
+            else None
+        )
+
         return {
-            "books_total": total,
-            "books_rated": len(rated),
+            # Fields used by the TypeScript Stats interface (home page + My Profile)
+            "total": total,
+            "rated": n_rated,
+            "unrated": total - n_rated,
+            "mean_rating": mean_rating,
+            "by_star": {str(k): v for k, v in sorted(rating_dist.items(), reverse=True)},
+            "shelves": dict(shelf_dist),
+            # Extended fields used by the CLI and internal tooling
             "has_isbn13": has_isbn,
-            "rating_distribution": {str(k): v for k, v in sorted(rating_dist.items(), reverse=True)},
-            "shelf_distribution": dict(shelf_dist),
             "enrichment": {
                 "rows": len(enr_rows),
                 "rated_books_enriched": rated_enriched,

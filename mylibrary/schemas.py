@@ -65,6 +65,13 @@ class ShelfRequest(BaseModel):
     shelf: str  # to-read | currently-reading | read | did-not-finish
 
 
+class TraitUpdateRequest(BaseModel):
+    """Update a taste trait's claim text and/or user note (PATCH /profile/traits/{id})."""
+
+    claim: str | None = None
+    user_note: str | None = None
+
+
 class ProfileStatusOut(BaseModel):
     dirty: bool
     changed_books: int
