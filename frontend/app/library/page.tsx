@@ -3,8 +3,10 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { api, type Book } from "@/lib/api";
+import BookEditModal from "@/components/BookEditModal";
 
 const STARS = [5, 4, 3, 2, 1] as const;
+const LIBRARY_KEY = "books-library";
 
 function StarRating({ rating }: { rating: number | null }) {
   if (!rating) return <span className="text-xs text-slate-600">unrated</span>;
@@ -19,9 +21,10 @@ function StarRating({ rating }: { rating: number | null }) {
 export default function LibraryPage() {
   const [filterStar, setFilterStar] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<Book | null>(null);
 
   const { data: books, isLoading, error } = useSWR<Book[]>(
-    "books-library",
+    LIBRARY_KEY,
     () => api.books({ limit: 500 })
   );
 
@@ -104,18 +107,42 @@ export default function LibraryPage() {
       ) : (
         <ul className="divide-y divide-slate-800">
           {filtered.map((book) => (
-            <li key={book.id} className="flex items-center gap-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-white">{book.title}</p>
-                <p className="truncate text-sm text-slate-400">
-                  {book.author ?? "Unknown"}
-                  {book.year_published ? ` · ${book.year_published}` : ""}
-                </p>
-              </div>
-              <StarRating rating={book.effective_rating} />
+            <li key={book.id}>
+              <button
+                type="button"
+                onClick={() => setEditing(book)}
+                className="flex w-full items-center gap-4 py-3 text-left transition hover:bg-slate-800/40 -mx-2 px-2 rounded-lg"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-white">
+                    {book.title}
+                    {book.app_review && (
+                      <span
+                        title="You reviewed this book"
+                        className="ml-2 align-middle text-xs text-blue-400"
+                      >
+                        ✎ reviewed
+                      </span>
+                    )}
+                  </p>
+                  <p className="truncate text-sm text-slate-400">
+                    {book.author ?? "Unknown"}
+                    {book.year_published ? ` · ${book.year_published}` : ""}
+                  </p>
+                </div>
+                <StarRating rating={book.effective_rating} />
+              </button>
             </li>
           ))}
         </ul>
+      )}
+
+      {editing && (
+        <BookEditModal
+          book={editing}
+          listKey={LIBRARY_KEY}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   );
