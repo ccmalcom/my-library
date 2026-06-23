@@ -214,4 +214,7 @@ export const api = {
 
   /** Incrementally refresh the taste profile from recent edits only. */
   updateProfile: () => post<Record<string, unknown>>("/profile/update"),
+
+  /** All recommendations the user has rejected, newest first. */
+  rejectedRecs: () => get<Recommendation[]>("/recommendations/rejected"),
 };

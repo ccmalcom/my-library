@@ -242,14 +242,30 @@ def init_db() -> None:
         cols = {c["name"] for c in insp.get_columns("taste_traits")}
         if not {"exhibits", "contrasts"} <= cols:
             TasteTrait.__table__.drop(engine)
-    # recommendations is disposable until the feedback phase attaches to it: a recommend
-    # run fully supersedes the previous one, so if the table predates the current shape we
-    # drop and recreate rather than carry a migration tool for ephemeral data. (Same
-    # rationale as taste_traits above; books/enrichment are never touched here.)
+    # recommendations holds rejection history (status="rejected") which must survive
+    # schema migrations — dropping the table loses the user's "not interested" decisions.
+    # Strategy: if the table predates Phase 5 entirely (missing `run_id` or `status`),
+    # it has no rejection data worth keeping, so drop and recreate. Otherwise add any
+    # missing columns in place so rejection records are preserved.
     if "recommendations" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("recommendations")}
-        if not {"run_id", "retrieval_pool", "grounded_trait_ids"} <= cols:
+        if not {"run_id", "status"} <= cols:
+            # Pre-Phase-5 table — safe to drop; no rejection history.
             Recommendation.__table__.drop(engine)
+        else:
+            # Modern table — add any missing columns rather than destroying rejection data.
+            model_col_names = {c.name for c in Recommendation.__table__.columns}
+            missing = model_col_names - cols
+            if missing:
+                with engine.begin() as conn:
+                    for col_name in missing:
+                        col = Recommendation.__table__.c[col_name]
+                        type_str = col.type.compile(dialect=engine.dialect)
+                        conn.execute(
+                            sa_text(
+                                f"ALTER TABLE recommendations ADD COLUMN {col_name} {type_str}"
+                            )
+                        )
     Base.metadata.create_all(engine)
 
 

@@ -61,7 +61,7 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
       className={[
         "drag-card absolute inset-0 mx-auto max-w-sm w-full",
         "rounded-2xl border border-slate-700 bg-[#1a1f2e] shadow-2xl",
-        "select-none overflow-hidden",
+        "select-none overflow-hidden flex flex-col",
       ].join(" ")}
     >
       {/* Accept overlay */}
@@ -103,7 +103,7 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
       </div>
 
       {/* Content */}
-      <div className="p-5 space-y-3">
+      <div className="flex-1 overflow-y-auto p-5 space-y-3">
         <div>
           <h2 className="text-lg font-bold leading-tight text-white">{rec.title}</h2>
           <p className="text-sm text-slate-400">
@@ -128,7 +128,7 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
 
         {/* Rationale */}
         {rec.rationale && (
-          <p className="text-sm leading-relaxed text-slate-300 line-clamp-4">
+          <p className="text-sm leading-relaxed text-slate-300">
             {rec.rationale}
           </p>
         )}

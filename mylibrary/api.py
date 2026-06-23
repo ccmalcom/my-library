@@ -266,6 +266,19 @@ def get_recommendations() -> list[RecommendationOut]:
         return [RecommendationOut.model_validate(r) for r in rows]
 
 
+@app.get("/recommendations/rejected", response_model=list[RecommendationOut])
+def get_rejected_recommendations() -> list[RecommendationOut]:
+    """All recommendations the user has rejected, across all runs, newest first."""
+    with session_scope() as session:
+        rows = (
+            session.query(Recommendation)
+            .filter(Recommendation.status == "rejected")
+            .order_by(Recommendation.created_at.desc(), Recommendation.id.desc())
+            .all()
+        )
+        return [RecommendationOut.model_validate(r) for r in rows]
+
+
 @app.patch("/recommendations/{rec_id}/feedback", response_model=RecFeedbackResult)
 def feedback(rec_id: int, req: FeedbackRequest) -> RecFeedbackResult:
     """Record a swipe decision on a recommendation.
