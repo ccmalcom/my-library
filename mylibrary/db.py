@@ -12,7 +12,7 @@ that keeps the cross-language seam clean (one source of truth for the schema).
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Iterator
 
 from sqlalchemy import (
@@ -38,6 +38,16 @@ from sqlalchemy.orm import (
 from sqlalchemy.types import JSON
 
 from .config import get_settings
+
+
+def utcnow() -> datetime:
+    """Naive UTC timestamp.
+
+    The DateTime columns are naive and SQLite reloads them naive, so we keep app-set
+    timestamps naive too (mixing aware + naive would break `>` comparisons). Replaces the
+    deprecated `datetime.utcnow()`.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Base(DeclarativeBase):

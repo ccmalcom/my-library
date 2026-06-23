@@ -202,6 +202,7 @@ def rate_or_review_book(book_id: int, req: BookFeedbackRequest) -> dict:
             rating=req.rating,
             review=req.review,
             clear_review=req.clear_review,
+            date_read=req.date_read,
         )
     except BookNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

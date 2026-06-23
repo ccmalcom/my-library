@@ -91,19 +91,28 @@ export default function SwipePage() {
 
   if (pending.length === 0) {
     return (
-      <div className="fade-in py-20 text-center space-y-4">
-        <p className="text-4xl">🎉</p>
-        <h2 className="text-xl font-semibold text-white">All done!</h2>
-        <p className="text-slate-400">
-          You reviewed all {total.length} recommendations.
-        </p>
-        <button
-          onClick={() => router.push("/to-read")}
-          className="mt-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
-        >
-          View To-Read Shelf
-        </button>
-      </div>
+      <>
+        <div className="fade-in py-20 text-center space-y-4">
+          <p className="text-4xl">🎉</p>
+          <h2 className="text-xl font-semibold text-white">All done!</h2>
+          <p className="text-slate-400">
+            You reviewed all {total.length} recommendations.
+          </p>
+          <button
+            onClick={() => router.push("/to-read")}
+            className="mt-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
+          >
+            View To-Read Shelf
+          </button>
+        </div>
+        {reviewing && (
+          <BookEditModal
+            book={reviewing}
+            listKey="recommendations"
+            onClose={() => setReviewing(null)}
+          />
+        )}
+      </>
     );
   }
 
@@ -111,6 +120,7 @@ export default function SwipePage() {
   const visibleStack = pending.slice(0, 3);
 
   return (
+    <>
     <div className="fade-in flex flex-col items-center gap-6 py-6">
       {/* Progress */}
       <p className="text-sm text-slate-400">
@@ -175,5 +185,13 @@ export default function SwipePage() {
         Drag left/right or use the buttons
       </p>
     </div>
+    {reviewing && (
+      <BookEditModal
+        book={reviewing}
+        listKey="recommendations"
+        onClose={() => setReviewing(null)}
+      />
+    )}
+    </>
   );
 }

@@ -19,7 +19,7 @@ import json
 from datetime import datetime
 
 from .config import get_settings
-from .db import Book, ProfileMeta, TasteTrait, init_db, session_scope
+from .db import Book, ProfileMeta, TasteTrait, init_db, session_scope, utcnow
 
 _TOOL = {
     "name": "record_taste_traits",
@@ -155,7 +155,7 @@ def get_profile_meta(session) -> ProfileMeta:
 def mark_profiled(session, kind: str) -> None:
     """Stamp the profile as freshly built — clears the 'dirty' state."""
     meta = get_profile_meta(session)
-    meta.last_profiled_at = datetime.utcnow()
+    meta.last_profiled_at = utcnow()
     meta.last_profile_kind = kind
 
 

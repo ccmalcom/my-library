@@ -13,7 +13,12 @@ interface Props {
   book: Book;
   /** SWR key of the list to revalidate after saving (so the row updates). */
   listKey: string;
+  /** Called after a save, a cancel, or a backdrop click (advances a queue). */
   onClose: () => void;
+  /** When set, the modal is part of a step-through queue and shows progress. */
+  queuePosition?: { index: number; total: number };
+  /** Abort the whole queue (distinct from onClose, which advances to the next). */
+  onFinishQueue?: () => void;
 }
 
 /**
@@ -24,20 +29,30 @@ interface Props {
  * On save it revalidates the book list AND the profile-status query — the latter is
  * what makes the global "re-profile" banner appear once a change is made.
  */
-export default function BookEditModal({ book, listKey, onClose }: Props) {
+export default function BookEditModal({
+  book,
+  listKey,
+  onClose,
+  queuePosition,
+  onFinishQueue,
+}: Props) {
   // The effective rating is the starting point the user sees and edits.
   const initialRating = book.effective_rating ?? 0;
   const initialReview = book.app_review ?? "";
+  const initialDate = book.date_read ?? ""; // "YYYY-MM-DD" or ""
 
   const [rating, setRating] = useState(initialRating);
   const [hover, setHover] = useState(0);
   const [review, setReview] = useState(initialReview);
+  const [dateRead, setDateRead] = useState(initialDate);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const ratingChanged = rating !== initialRating;
   const reviewChanged = review.trim() !== initialReview.trim();
-  const dirty = ratingChanged || reviewChanged;
+  // Only a newly-entered date counts; blanking a date isn't supported (rare).
+  const dateChanged = dateRead !== "" && dateRead !== initialDate;
+  const dirty = ratingChanged || reviewChanged || dateChanged;
 
   async function handleSave() {
     if (!dirty) {
@@ -53,6 +68,7 @@ export default function BookEditModal({ book, listKey, onClose }: Props) {
       if (review.trim() === "") req.clear_review = true;
       else req.review = review.trim();
     }
+    if (dateChanged) req.date_read = dateRead;
 
     try {
       await api.setBookFeedback(book.id, req);
@@ -77,6 +93,11 @@ export default function BookEditModal({ book, listKey, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4">
+          {queuePosition && (
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-blue-400">
+              Missing reviews · {queuePosition.index + 1} of {queuePosition.total}
+            </p>
+          )}
           <h2 className="text-lg font-bold leading-tight text-white">{book.title}</h2>
           <p className="text-sm text-slate-400">
             {book.author ?? "Unknown"}
@@ -140,30 +161,59 @@ export default function BookEditModal({ book, listKey, onClose }: Props) {
           />
         </div>
 
+        {/* Date read (optional) */}
+        <div className="mb-5">
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Date read <span className="font-normal normal-case text-slate-500">· optional, if you remember</span>
+          </label>
+          <input
+            type="date"
+            value={dateRead}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setDateRead(e.target.value)}
+            className="rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 focus:border-blue-600 focus:outline-none [color-scheme:dark]"
+          />
+        </div>
+
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !dirty}
-            className={[
-              "rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all",
-              saving || !dirty
-                ? "cursor-not-allowed bg-blue-700 opacity-60"
-                : "bg-blue-600 hover:bg-blue-500 active:scale-95",
-            ].join(" ")}
-          >
-            {saving ? "Saving…" : "Save"}
-          </button>
+        <div className="flex items-center justify-between gap-2">
+          {queuePosition ? (
+            <button
+              type="button"
+              onClick={onFinishQueue}
+              disabled={saving}
+              className="text-sm font-medium text-slate-500 transition hover:text-slate-300 disabled:opacity-50"
+            >
+              Finish later
+            </button>
+          ) : (
+            <span />
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50"
+            >
+              {queuePosition ? "Skip" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !dirty}
+              className={[
+                "rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all",
+                saving || !dirty
+                  ? "cursor-not-allowed bg-blue-700 opacity-60"
+                  : "bg-blue-600 hover:bg-blue-500 active:scale-95",
+              ].join(" ")}
+            >
+              {saving ? "Saving…" : queuePosition ? "Save & next" : "Save"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

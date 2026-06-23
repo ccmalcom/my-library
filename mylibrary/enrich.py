@@ -19,12 +19,11 @@ caches every raw response to disk, so re-runs hit cache, not the network.
 from __future__ import annotations
 
 import re
-from datetime import datetime
 from difflib import SequenceMatcher
 from typing import Callable
 
 from . import catalog
-from .db import Book, Enrichment, init_db, session_scope
+from .db import Book, Enrichment, init_db, session_scope, utcnow
 
 # Confidence bands
 _CONF = {"HIGH": 0.95, "MEDIUM": 0.70, "LOW": 0.30, "NONE": 0.0}
@@ -108,7 +107,7 @@ def _apply(enr: Enrichment, cand: dict, label: str, method: str) -> None:
     enr.resolution_confidence = _CONF[label]
     enr.match_method = method
     enr.raw_response = cand.get("raw")
-    enr.resolved_at = datetime.utcnow()
+    enr.resolved_at = utcnow()
 
 
 def _resolve_one(book: Book) -> tuple[dict | None, str, str]:
@@ -215,7 +214,7 @@ def enrich_library(
                 enr.confidence_label = "LOW"
                 enr.resolution_confidence = _CONF["NONE"]
                 enr.match_method = method
-                enr.resolved_at = datetime.utcnow()
+                enr.resolved_at = utcnow()
                 summary["unresolved"] += 1
                 label = "unresolved"
             else:

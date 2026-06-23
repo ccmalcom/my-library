@@ -12,9 +12,9 @@ Claude call. The efficient re-profile itself lives in `profile.update_taste_prof
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date
 
-from .db import Book, init_db, session_scope
+from .db import Book, init_db, session_scope, utcnow
 from .profile import books_changed_since, get_profile_meta
 
 
@@ -36,6 +36,7 @@ def _book_summary(book: Book) -> dict:
         "goodreads_rating": book.goodreads_rating,
         "effective_rating": book.effective_rating,
         "app_review": book.app_review,
+        "date_read": book.date_read,
         "feedback_updated_at": book.feedback_updated_at,
     }
 
@@ -46,21 +47,24 @@ def set_book_feedback(
     rating: int | None = None,
     review: str | None = None,
     clear_review: bool = False,
+    date_read: date | None = None,
 ) -> dict:
-    """Set the in-app rating and/or review for a book; stamp it as changed.
+    """Set the in-app rating, review, and/or date-read for a book; stamp it as changed.
 
     - `rating`: 1-5 to set, or 0 to clear the in-app rating (revert to the Goodreads
       seed). `None` leaves the rating untouched.
     - `review`: text to store. `None` leaves the review untouched; pass `clear_review`
       to remove an existing review.
+    - `date_read`: the date the reader finished the book (optional — "if remembered").
+      `None` leaves it untouched. Feeds the profile's temporal weighting (`read_year`).
 
-    Touching either field bumps `feedback_updated_at`, which is what later makes the
-    taste profile show as dirty. Never re-profiles — that's an explicit user action.
+    Touching any field bumps `feedback_updated_at`, which is what later makes the taste
+    profile show as dirty. Never re-profiles — that's an explicit user action.
     """
     if rating is not None and rating != 0 and not (1 <= rating <= 5):
         raise ValueError("rating must be between 1 and 5 (or 0 to clear).")
-    if rating is None and review is None and not clear_review:
-        raise ValueError("Nothing to update: pass a rating and/or a review.")
+    if rating is None and review is None and not clear_review and date_read is None:
+        raise ValueError("Nothing to update: pass a rating, review, and/or date read.")
 
     init_db()
     with session_scope() as session:
@@ -75,8 +79,10 @@ def set_book_feedback(
             book.app_review = None
         elif review is not None:
             book.app_review = review.strip() or None
+        if date_read is not None:
+            book.date_read = date_read
 
-        book.feedback_updated_at = datetime.utcnow()
+        book.feedback_updated_at = utcnow()
         return _book_summary(book)
 
 

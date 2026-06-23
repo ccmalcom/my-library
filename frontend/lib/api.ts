@@ -94,6 +94,8 @@ export interface BookFeedbackRequest {
   review?: string;
   /** Remove an existing review. */
   clear_review?: boolean;
+  /** ISO date (YYYY-MM-DD) the book was read; omit to leave unchanged. */
+  date_read?: string;
 }
 
 export type Shelf = "to-read" | "currently-reading" | "read" | "did-not-finish";
@@ -108,6 +110,7 @@ export interface BookFeedbackResult {
   goodreads_rating: number;
   effective_rating: number | null;
   app_review: string | null;
+  date_read: string | null;
   feedback_updated_at: string | null;
 }
 

@@ -22,6 +22,9 @@ export default function LibraryPage() {
   const [filterStar, setFilterStar] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Book | null>(null);
+  // Step-through queue for read books that still need a rating/review.
+  const [queue, setQueue] = useState<Book[] | null>(null);
+  const [qIndex, setQIndex] = useState(0);
 
   const { data: books, isLoading, error } = useSWR<Book[]>(
     LIBRARY_KEY,
@@ -53,6 +56,27 @@ export default function LibraryPage() {
     (b) => b.exclusive_shelf === "read" && b.effective_rating !== null
   );
 
+  // Read books with no rating yet (e.g. landed via "already read" on the swipe screen).
+  const unrated = (books ?? []).filter(
+    (b) => b.exclusive_shelf === "read" && b.effective_rating === null
+  );
+
+  function startReviewQueue() {
+    if (unrated.length === 0) return;
+    setQIndex(0);
+    setQueue(unrated);
+  }
+
+  function advanceQueue() {
+    setQueue((q) => {
+      if (!q) return null;
+      const next = qIndex + 1;
+      if (next >= q.length) return null; // done
+      setQIndex(next);
+      return q;
+    });
+  }
+
   const filtered = rated
     .filter((b) => (filterStar !== null ? b.effective_rating === filterStar : true))
     .filter((b) => {
@@ -72,6 +96,15 @@ export default function LibraryPage() {
         <p className="mt-1 text-slate-400">
           {rated.length} rated book{rated.length !== 1 ? "s" : ""}
         </p>
+        {unrated.length > 0 && (
+          <button
+            type="button"
+            onClick={startReviewQueue}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-blue-700 bg-blue-900/30 px-3.5 py-1.5 text-sm font-semibold text-blue-200 transition hover:bg-blue-900/60 active:scale-95"
+          >
+            ✎ {unrated.length} book{unrated.length !== 1 ? "s" : ""} missing reviews
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -142,6 +175,17 @@ export default function LibraryPage() {
           book={editing}
           listKey={LIBRARY_KEY}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {queue && queue[qIndex] && (
+        <BookEditModal
+          key={queue[qIndex].id}
+          book={queue[qIndex]}
+          listKey={LIBRARY_KEY}
+          queuePosition={{ index: qIndex, total: queue.length }}
+          onClose={advanceQueue}
+          onFinishQueue={() => setQueue(null)}
         />
       )}
     </div>

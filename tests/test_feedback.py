@@ -97,6 +97,58 @@ def test_accept_is_idempotent():
         assert count == 1
 
 
+def test_already_read_creates_read_book_and_returns_it():
+    """'already read' must land the book on the read shelf (so it's never recommended
+    again) and return it so the UI can prompt a review."""
+    rec_id = _make_rec()
+    with TestClient(app) as client:
+        resp = client.patch(
+            f"/recommendations/{rec_id}/feedback", json={"status": "already_read"}
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "already_read"
+    assert data["book"] is not None
+    assert data["book"]["exclusive_shelf"] == "read"
+    assert data["book"]["app_rating"] is None  # unrated until the user reviews it
+
+    with session_scope() as session:
+        book = session.query(Book).filter(Book.title == "The Left Hand of Darkness").one()
+        assert book.exclusive_shelf == "read"
+        assert book.source == "recommendation"
+
+
+def test_already_read_excludes_book_from_future_recommend_dedup():
+    from mylibrary.recommend import _build_signal, _dedup_key
+
+    rec_id = _make_rec()
+    with TestClient(app) as client:
+        client.patch(f"/recommendations/{rec_id}/feedback", json={"status": "already_read"})
+
+    with session_scope() as session:
+        signal = _build_signal(session)
+
+    key = _dedup_key("The Left Hand of Darkness", "Ursula K. Le Guin")
+    assert key in signal["library_keys"]
+
+
+def test_already_read_is_idempotent():
+    rec_id = _make_rec()
+    with TestClient(app) as client:
+        client.patch(f"/recommendations/{rec_id}/feedback", json={"status": "already_read"})
+        resp = client.patch(
+            f"/recommendations/{rec_id}/feedback", json={"status": "already_read"}
+        )
+    assert resp.status_code == 200
+    with session_scope() as session:
+        count = (
+            session.query(Book)
+            .filter(Book.title == "The Left Hand of Darkness")
+            .count()
+        )
+        assert count == 1
+
+
 def test_reject_updates_status_no_book_created():
     rec_id = _make_rec()
     with TestClient(app) as client:

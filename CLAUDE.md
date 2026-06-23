@@ -82,10 +82,13 @@ It is a pure HTTP client of the FastAPI engine — no DB access, no migrations.
   `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`). Types here mirror the Pydantic
   schemas. `PROFILE_STATUS_KEY` is the shared SWR key for `/profile/status` so a mutation
   anywhere can revalidate the re-profile banner.
-- `app/` — routes: `/` (dashboard + run recommend), `/swipe` (rec swiping), `/to-read`,
-  `/library` (rated books; click a row to re-rate/review). `layout.tsx` mounts `NavBar`
-  + `ReprofileBanner` above all pages.
-- `components/` — `BookEditModal` (re-rate + review; diff-based save), `ReprofileBanner`
+- `app/` — routes: `/` (dashboard + run recommend), `/swipe` (rec swiping; `already_read`
+  lands the book on the read shelf then prompts a review), `/to-read` (per-book: start
+  reading / mark finished → review / remove), `/library` (rated books; click a row to
+  re-rate/review; a "N books missing reviews" button steps through unrated read books).
+  `layout.tsx` mounts `NavBar` + `ReprofileBanner` above all pages.
+- `components/` — `BookEditModal` (re-rate + review; diff-based save; optional
+  `queuePosition`/`onFinishQueue` for the step-through review queue), `ReprofileBanner`
   (app-wide; shows only when `/profile/status` reports `dirty`, runs `/profile/update`),
   `SwipeCard`, `NavBar`.
 
@@ -112,6 +115,11 @@ when to spend the Claude call.
   author surname, reusing `enrich._normalize_title` / `_surname`). The `recommendations`
   table is disposable until the feedback phase — `init_db` drops+recreates it if its shape
   is stale, same as `taste_traits`.
+- **Swipe decisions land books in the library** (`PATCH /recommendations/{id}/feedback`,
+  shared `_ensure_library_book` helper): `accepted` → to-read shelf, `already_read` → read
+  shelf (so neither is recommended again), `rejected` → no book but excluded from dedup.
+  `already_read` returns the created/matched book so the UI can prompt a review; the create
+  is idempotent on the same title+author.
 - **`books` is never dropped.** It holds the only irreplaceable data (ratings, reviews).
   New columns are added in place via `ALTER TABLE ... ADD COLUMN` in `init_db` (that's how
   `app_review` / `feedback_updated_at` were added). Only the disposable tables

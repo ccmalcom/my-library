@@ -7,7 +7,7 @@ library (the whole point of the incremental path).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 
@@ -58,6 +58,23 @@ def test_review_set_and_clear():
     assert out["app_review"] == "Loved the pacing."
     out = set_book_feedback(bid, clear_review=True)
     assert out["app_review"] is None
+
+
+def test_set_date_read():
+    ingest_csv(SAMPLE_CSV)
+    bid = _book_id("Recursion")
+    out = set_book_feedback(bid, rating=4, date_read=date(2024, 5, 1))
+    assert out["date_read"] == date(2024, 5, 1)
+    with session_scope() as session:
+        assert session.get(Book, bid).date_read == date(2024, 5, 1)
+
+
+def test_date_read_alone_counts_as_an_update():
+    ingest_csv(SAMPLE_CSV)
+    bid = _book_id("Recursion")
+    out = set_book_feedback(bid, date_read=date(2023, 1, 2))
+    assert out["date_read"] == date(2023, 1, 2)
+    assert out["feedback_updated_at"] is not None
 
 
 def test_invalid_rating_and_empty_update_raise():

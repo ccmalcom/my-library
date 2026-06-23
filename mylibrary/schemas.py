@@ -50,11 +50,13 @@ class BookFeedbackRequest(BaseModel):
 
     rating: 1-5 to set, 0 to clear the in-app rating, None to leave unchanged.
     review: text to set, None to leave unchanged; clear_review removes it.
+    date_read: ISO date the book was read (optional), None to leave unchanged.
     """
 
     rating: int | None = None
     review: str | None = None
     clear_review: bool = False
+    date_read: date | None = None
 
 
 class ShelfRequest(BaseModel):
