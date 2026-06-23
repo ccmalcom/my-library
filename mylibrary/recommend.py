@@ -298,7 +298,6 @@ def _claude_seed_queries(signal: dict, *, n_queries: int) -> list[str]:
                 {"type": "text", "text": task_prompt},
             ],
         }],
-        extra_headers={"anthropic-beta": "prompt-caching-2024-07-31,extended-cache-ttl-2025-04-11"},
     )
     for block in message.content:
         if getattr(block, "type", None) == "tool_use":
@@ -446,7 +445,6 @@ def _claude_rerank(candidates: list[dict], signal: dict, *, n: int) -> list[dict
                 {"type": "text", "text": task_prompt},
             ],
         }],
-        extra_headers={"anthropic-beta": "prompt-caching-2024-07-31,extended-cache-ttl-2025-04-11"},
     )
     ranked = []
     for block in message.content:
