@@ -33,6 +33,8 @@ from .config import get_settings
 from .db import Book, Recommendation, TasteTrait, init_db, session_scope
 from .enrich import _normalize_title, _surname
 
+_REJECTED_STATUS = "rejected"
+
 # --- tuning knobs (kept here so CLI/API stay thin) -------------------------
 _TOP_SUBJECTS = 8
 _TOP_AUTHORS = 6
@@ -190,6 +192,17 @@ def _build_signal(session) -> dict:
         library_keys.add(_dedup_key(b.title, b.author))
         if b.isbn13:
             library_isbns.add(b.isbn13)
+
+    # Also exclude explicitly rejected recommendations so they never resurface.
+    rejected = (
+        session.query(Recommendation)
+        .filter(Recommendation.status == _REJECTED_STATUS)
+        .all()
+    )
+    for r in rejected:
+        library_keys.add(_dedup_key(r.title, r.author))
+        if r.isbn13:
+            library_isbns.add(r.isbn13)
         r = b.effective_rating
         if r is None or r < _LOVED_MIN:
             continue

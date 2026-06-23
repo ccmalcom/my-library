@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0f1117;
+  --card: #1a1f2e;
+  --elevated: #242938;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --border: #2d3748;
+}
+
+html,
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+/* Card drag cursor */
+.drag-card {
+  cursor: grab;
+}
+.drag-card:active {
+  cursor: grabbing;
+}
+
+/* Smooth fade for page transitions */
+@layer utilities {
+  .fade-in {
+    animation: fadeIn 0.25s ease-in-out;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

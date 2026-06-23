@@ -27,6 +27,11 @@ class RecommendRequest(BaseModel):
     use_claude_seeds: bool = True
 
 
+class FeedbackRequest(BaseModel):
+    status: str  # "accepted" | "rejected"
+    user_note: str | None = None
+
+
 class BookOut(BaseModel):
     id: int
     title: str
@@ -39,6 +44,8 @@ class BookOut(BaseModel):
     year_published: int | None
     page_count: int | None
     date_read: date | None
+    date_added: date | None = None
+    cover_url: str | None = None
     confidence_label: str | None = None
     resolution_confidence: float | None = None
 
@@ -80,6 +87,7 @@ class RecommendationOut(BaseModel):
     grounded_trait_ids: list[int] | None
     grounded_book_ids: list[int] | None
     status: str
+    user_note: str | None
     created_at: datetime
 
     class Config:

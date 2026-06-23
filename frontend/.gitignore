@@ -1,0 +1,10 @@
+# Next.js
+.next/
+out/
+node_modules/
+
+# Local env (contains API URL, nothing secret but still)
+.env.local
+
+# Build output
+dist/
