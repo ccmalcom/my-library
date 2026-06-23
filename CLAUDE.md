@@ -147,6 +147,16 @@ when to spend the Claude call.
   grouped by star tier. Used by the My Profile genre breakdown. Subject counts normalise
   capitalisation and cap per-book contribution at 8 subjects to avoid one over-tagged
   book dominating the chart.
+- **First-run redirect / SWR cache**: the dashboard (`app/(main)/page.tsx`) redirects to
+  `/setup` when `stats.total === 0`, and it gates render behind a spinner until `stats` is
+  known so the dashboard never flashes before the redirect. The setup wizard (ingest +
+  enrich) is a required two-step flow — there's **no "skip enrichment"** option. Gotcha:
+  after the wizard runs, refresh the shared `"stats"` SWR key by passing fresh data —
+  `await mutate("stats", api.stats(), { revalidate: false })` — **not** a bare
+  `mutate("stats")`. A bare call only *revalidates*, and SWR won't refetch a key that no
+  mounted component subscribes to (the dashboard is unmounted while on `/setup`), so the
+  cache keeps the stale `total: 0` and bounces the user back to `/setup` in a loop. Same
+  pattern applies any time a non-subscribed page needs to update another page's SWR key.
 - Currently developed on **Python 3.14** — first suspect for any odd runtime behavior.
 
 ## Commands

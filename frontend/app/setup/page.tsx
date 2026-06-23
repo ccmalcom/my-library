@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { mutate } from "swr";
 import { api } from "@/lib/api";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -99,6 +100,12 @@ function UploadStep({
     setError(null);
     try {
       const result = await api.ingestUpload(file);
+      // Write fresh stats straight into the SWR cache so the dashboard sees the
+      // imported count. We pass the data explicitly (rather than a bare
+      // mutate("stats") revalidate) because no component is subscribed to the
+      // "stats" key on this page, so a revalidate-only call wouldn't refetch and
+      // the cache would stay at the stale total: 0 — which bounces us back here.
+      await mutate("stats", api.stats(), { revalidate: false });
       onDone(result as unknown as IngestResult);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed.");
@@ -182,11 +189,9 @@ function UploadStep({
 function EnrichStep({
   ingestResult,
   onDone,
-  onSkip,
 }: {
   ingestResult: IngestResult;
   onDone: () => void;
-  onSkip: () => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -196,6 +201,7 @@ function EnrichStep({
     setError(null);
     try {
       await api.runEnrich();
+      await mutate("stats", api.stats(), { revalidate: false });
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Enrichment failed.");
@@ -214,7 +220,7 @@ function EnrichStep({
           )}
           . Enrichment fetches covers, page counts, and genres from Open Library and Google
           Books. It takes <strong className="text-slate-300">1–3 minutes</strong> for a typical
-          library — safe to run now or later.
+          library and is required before recommendations can run.
         </p>
       </div>
 
@@ -236,34 +242,25 @@ function EnrichStep({
 
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
-      <div className="flex gap-3">
-        <button
-          onClick={handleEnrich}
-          disabled={loading}
-          className={[
-            "flex-1 rounded-lg py-3 font-semibold text-white transition-all flex items-center justify-center gap-2",
-            loading
-              ? "cursor-not-allowed bg-blue-700 opacity-60"
-              : "bg-blue-600 hover:bg-blue-500 active:scale-[0.99]",
-          ].join(" ")}
-        >
-          {loading ? (
-            <>
-              <Spinner />
-              Enriching…
-            </>
-          ) : (
-            "Enrich Now"
-          )}
-        </button>
-        <button
-          onClick={onSkip}
-          disabled={loading}
-          className="rounded-lg px-5 py-3 text-slate-400 hover:text-white transition-colors disabled:opacity-40"
-        >
-          Skip for now
-        </button>
-      </div>
+      <button
+        onClick={handleEnrich}
+        disabled={loading}
+        className={[
+          "w-full rounded-lg py-3 font-semibold text-white transition-all flex items-center justify-center gap-2",
+          loading
+            ? "cursor-not-allowed bg-blue-700 opacity-60"
+            : "bg-blue-600 hover:bg-blue-500 active:scale-[0.99]",
+        ].join(" ")}
+      >
+        {loading ? (
+          <>
+            <Spinner />
+            Enriching…
+          </>
+        ) : (
+          "Enrich Now"
+        )}
+      </button>
     </div>
   );
 }
@@ -336,7 +333,6 @@ export default function SetupPage() {
                 setEnriched(true);
                 setStep("done");
               }}
-              onSkip={() => setStep("done")}
             />
           )}
           {step === "done" && <DoneStep enriched={enriched} />}

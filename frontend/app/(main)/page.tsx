@@ -22,11 +22,22 @@ export default function HomePage() {
   const { data: stats, isLoading } = useSWR<Stats>("stats", () => api.stats());
 
   // First-run detection: redirect to setup if no books have been imported yet.
+  const needsSetup = !isLoading && stats != null && stats.total === 0;
   useEffect(() => {
-    if (!isLoading && stats && stats.total === 0) {
+    if (needsSetup) {
       router.replace("/setup");
     }
-  }, [isLoading, stats, router]);
+  }, [needsSetup, router]);
+
+  // Don't render the dashboard until we know setup is complete — otherwise the
+  // home page flashes for a moment before the redirect to /setup fires.
+  if (isLoading || !stats || needsSetup) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   async function handleRun() {
     setRunning(true);
