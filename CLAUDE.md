@@ -106,6 +106,13 @@ when to spend the Claude call.
 
 ## Conventions / gotchas
 
+- **Never run git state-mutating commands** (`git stash`, `git checkout`, `git reset`,
+  `git commit`, etc.) as part of inspecting or verifying code — the user owns git. The
+  sandbox mount is flaky and can interrupt these mid-operation, leaving a stale
+  `.git/index.lock` that **blocks the user's own commits**, and the sandbox can't delete it
+  (`rm` fails with "Operation not permitted"), so the user has to clean it up by hand. To
+  read history use read-only commands only (`git log`, `git diff`, `git show`). To check
+  whether an edit is valid, read the file back with the file tools rather than stashing.
 - **Run via `python -m`** (`python -m mylibrary.cli ...`, `python -m pytest`). The console
   scripts (pytest.exe, uvicorn.exe) may not be on PATH.
 - **Windows PowerShell**: no `&&`. Chain with `;` + `if ($?) { ... }`, or run commands
