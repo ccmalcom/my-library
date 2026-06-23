@@ -7,12 +7,13 @@ import useSWR, { mutate } from "swr";
 import { api, type Book, type Recommendation, type Shelf } from "@/lib/api";
 import BookEditModal from "@/components/BookEditModal";
 
-const READ_KEY    = "books-read";
-const TO_READ_KEY = "books-to-read";
-const REJECTED_KEY = "recs-rejected";
+const READ_KEY              = "books-read";
+const TO_READ_KEY           = "books-to-read";
+const CURRENTLY_READING_KEY = "books-currently-reading";
+const REJECTED_KEY          = "recs-rejected";
 
 const STARS = [5, 4, 3, 2, 1] as const;
-type Tab = "read" | "to-read" | "rejected";
+type Tab = "read" | "to-read" | "currently-reading" | "rejected";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -267,7 +268,7 @@ function ToReadTab({ books }: { books: Book[] }) {
     setActionError(null);
     try {
       await api.setBookShelf(book.id, shelf);
-      await Promise.all([mutate(TO_READ_KEY), mutate(READ_KEY)]);
+      await Promise.all([mutate(TO_READ_KEY), mutate(READ_KEY), mutate(CURRENTLY_READING_KEY)]);
       if (thenReview) setReviewing(book);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Failed to move book.");
@@ -376,6 +377,142 @@ function ToReadTab({ books }: { books: Book[] }) {
   );
 }
 
+// ── Currently Reading tab ─────────────────────────────────────────────────────
+
+type CurrentlyReadingSort = "date-desc" | "date-asc" | "title-asc";
+
+const CURRENTLY_READING_SORT_OPTIONS: { value: CurrentlyReadingSort; label: string }[] = [
+  { value: "date-desc", label: "Date added ↓" },
+  { value: "date-asc",  label: "Date added ↑" },
+  { value: "title-asc", label: "Title A–Z" },
+];
+
+function CurrentlyReadingTab({ books }: { books: Book[] }) {
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<CurrentlyReadingSort>("date-desc");
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState<Book | null>(null);
+
+  const filtered = books
+    .filter((b) => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return b.title?.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q);
+    })
+    .slice()
+    .sort((a, b) => {
+      switch (sort) {
+        case "date-desc": {
+          if (a.date_added && b.date_added) return b.date_added.localeCompare(a.date_added);
+          if (a.date_added) return -1;
+          if (b.date_added) return 1;
+          return (a.title ?? "").localeCompare(b.title ?? "");
+        }
+        case "date-asc": {
+          if (a.date_added && b.date_added) return a.date_added.localeCompare(b.date_added);
+          if (a.date_added) return 1;
+          if (b.date_added) return -1;
+          return (a.title ?? "").localeCompare(b.title ?? "");
+        }
+        case "title-asc": return (a.title ?? "").localeCompare(b.title ?? "");
+      }
+    });
+
+  async function moveTo(book: Book, shelf: Shelf, thenReview = false) {
+    setBusyId(book.id);
+    setActionError(null);
+    try {
+      await api.setBookShelf(book.id, shelf);
+      await Promise.all([mutate(CURRENTLY_READING_KEY), mutate(TO_READ_KEY), mutate(READ_KEY)]);
+      if (thenReview) setReviewing(book);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to move book.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (books.length === 0) {
+    return (
+      <div className="py-16 text-center text-slate-500">
+        Nothing in progress. Hit &ldquo;Start reading&rdquo; on a to-read book to track it here.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <SearchInput value={search} onChange={setSearch} />
+        <SortSelect value={sort} onChange={setSort} options={CURRENTLY_READING_SORT_OPTIONS} />
+      </div>
+
+      {actionError && <p className="text-sm text-red-400">{actionError}</p>}
+
+      {filtered.length === 0 ? (
+        <p className="py-12 text-center text-slate-500">No books match your search.</p>
+      ) : (
+        <ul className="space-y-3">
+          {filtered.map((book) => {
+            const busy = busyId === book.id;
+            return (
+              <li
+                key={book.id}
+                className="flex gap-4 rounded-xl border border-blue-900/50 bg-[#1a1f2e] p-4"
+              >
+                <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-md bg-slate-800">
+                  {book.cover_url ? (
+                    <Image src={book.cover_url} alt={`Cover of ${book.title}`} fill className="object-cover" unoptimized />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-2xl text-slate-600">📖</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-white">{book.title}</p>
+                  <p className="text-sm text-slate-400">{book.author ?? "Unknown author"}</p>
+                  {book.year_published && (
+                    <p className="text-xs text-slate-500">{book.year_published}</p>
+                  )}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => moveTo(book, "read", true)}
+                      className="rounded-md border border-green-700 bg-green-900/30 px-2.5 py-1 text-xs font-medium text-green-300 transition hover:bg-green-900/60 disabled:opacity-50"
+                    >
+                      Mark finished
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => moveTo(book, "to-read")}
+                      className="rounded-md border border-slate-600 px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:border-slate-400 hover:text-white disabled:opacity-50"
+                    >
+                      Put back
+                    </button>
+                  </div>
+                </div>
+                <span className="shrink-0 self-start rounded-full border border-blue-800 bg-blue-900/30 px-2 py-0.5 text-xs text-blue-400">
+                  reading
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {reviewing && (
+        <BookEditModal
+          book={reviewing}
+          listKey={READ_KEY}
+          onClose={() => { setReviewing(null); void Promise.all([mutate(CURRENTLY_READING_KEY), mutate(READ_KEY)]); }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Rejected tab ──────────────────────────────────────────────────────────────
 
 type RejectedSort = "date-desc" | "title-asc";
@@ -462,7 +599,7 @@ function LibraryInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const rawTab = searchParams.get("tab") ?? "read";
-  const activeTab: Tab = (["read", "to-read", "rejected"] as const).includes(rawTab as Tab)
+  const activeTab: Tab = (["read", "to-read", "currently-reading", "rejected"] as const).includes(rawTab as Tab)
     ? (rawTab as Tab)
     : "read";
 
@@ -480,6 +617,10 @@ function LibraryInner() {
     TO_READ_KEY,
     () => api.books({ shelf: "to-read", limit: 500 })
   );
+  const { data: currentlyReadingBooks = [], isLoading: currentlyReadingLoading } = useSWR<Book[]>(
+    CURRENTLY_READING_KEY,
+    () => api.books({ shelf: "currently-reading", limit: 500 })
+  );
 
   const { data: rejectedRecs = [], isLoading: recsLoading } = useSWR<Recommendation[]>(
     REJECTED_KEY,
@@ -488,12 +629,13 @@ function LibraryInner() {
 
 
   const tabs: { id: Tab; label: string; count: number }[] = [
-    { id: "read",     label: "Read",     count: readBooks.length },
-    { id: "to-read",  label: "To Read",  count: toReadBooks.length },
-    { id: "rejected", label: "Rejected", count: rejectedRecs.length },
+    { id: "read",              label: "Read",             count: readBooks.length },
+    { id: "currently-reading", label: "Currently Reading", count: currentlyReadingBooks.length },
+    { id: "to-read",           label: "To Read",           count: toReadBooks.length },
+    { id: "rejected",          label: "Rejected",          count: rejectedRecs.length },
   ];
 
-  const isLoading = readLoading || toReadLoading || (activeTab === "rejected" && recsLoading);
+  const isLoading = readLoading || toReadLoading || currentlyReadingLoading || (activeTab === "rejected" && recsLoading);
 
   return (
     <div className="fade-in space-y-6 py-6">
@@ -537,9 +679,10 @@ function LibraryInner() {
         </div>
       ) : (
         <>
-          {activeTab === "read"     && <ReadTab     books={readBooks} />}
-          {activeTab === "to-read"  && <ToReadTab   books={toReadBooks} />}
-          {activeTab === "rejected" && <RejectedTab recs={rejectedRecs} />}
+          {activeTab === "read"              && <ReadTab              books={readBooks} />}
+          {activeTab === "currently-reading" && <CurrentlyReadingTab books={currentlyReadingBooks} />}
+          {activeTab === "to-read"           && <ToReadTab           books={toReadBooks} />}
+          {activeTab === "rejected"          && <RejectedTab         recs={rejectedRecs} />}
         </>
       )}
     </div>
