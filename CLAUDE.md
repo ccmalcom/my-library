@@ -11,24 +11,28 @@ labeling, and evaluation of a problem with no clean ground truth.
 
 Working name is "MyLibrary" (the original "BetterReads" is taken).
 
-Current state is the **offline pipeline + recommender**: `ingest -> enrich -> taste
-profile -> recommend`. MVP1 (ingest/enrich/profile) is done, and Phase 5 — the two-stage
-recommender (`recommend.py`) — has landed. No web UI yet. NL discovery, the feedback
-surface, and the eval harness are the remaining phases.
+Current state is the **offline pipeline + recommender + a web UI**: `ingest -> enrich ->
+taste profile -> recommend`. MVP1 (ingest/enrich/profile) is done, Phase 5 — the two-stage
+recommender (`recommend.py`) — has landed, and a **Next.js frontend** (`frontend/`) now
+calls the API. In-app **re-rating + reviewing** and an **incremental re-profile** have
+landed (`library.py`, `profile.update_taste_profile`). NL discovery, the full feedback/
+labeling surface, and the eval harness are the remaining phases.
 
 ## Locked decisions (do not relitigate)
 
 1. **Goodreads API is dead.** CSV export is the only ingest path. Never scrape Goodreads
    or call its API.
 2. **Goodreads is import-once.** The CSV is a cold-start seed; MyLibrary owns ratings and
-   feedback going forward. Import must never clobber in-app `app_rating`.
+   feedback going forward. Import must never clobber in-app `app_rating` or `app_review`.
 3. **The recommender is two-stage** (retrieval of real catalog candidates, then Claude
    reranks/explains). The LLM is NOT the recommender. Landed in `recommend.py`: stage-1
    retrieval is hybrid (deterministic metadata expansion + Claude-seeded _search queries_,
    all resolved against the live catalog so no invented titles survive); stage 2 is the
    Claude rerank/explain, grounded in trait ids + book ids. Keep it this way.
-4. **Taste profile is metadata-driven, not review-text-driven** — the library has ~no
-   written reviews, so signal comes from ratings + enriched metadata grouped by tier.
+4. **Taste profile is metadata-driven** — the imported library has ~no written reviews, so
+   the cold-start signal comes from ratings + enriched metadata grouped by tier. Once the
+   user writes in-app reviews (`app_review`), those ARE fed in as direct signal and weighted
+   above metadata inference; the metadata-first default just covers the common no-review case.
 5. **Enrichment is the foundation.** Every book gets a `resolution_confidence`
    (HIGH/MEDIUM/LOW); ambiguous matches are scored LOW on purpose so a later feedback
    step surfaces them.
@@ -38,9 +42,9 @@ surface, and the eval harness are the remaining phases.
 
 - Python engine, exposed as a **FastAPI service** (`mylibrary/api.py`) with a matching
   **Typer CLI** (`mylibrary/cli.py`). Same core functions back both.
-- The intended frontend is a separate **TypeScript / Next.js** app that calls this engine
-  over HTTP (Pattern B). The Python side owns the SQLite schema; the frontend reads it /
-  calls the API. Keep that seam clean — don't have two languages run migrations.
+- The frontend is a separate **TypeScript / Next.js** app in `frontend/` that calls this
+  engine over HTTP (Pattern B). The Python side owns the SQLite schema; the frontend only
+  reads it / calls the API. Keep that seam clean — don't have two languages run migrations.
 - SQLite via SQLAlchemy 2.0 (`mylibrary/db.py`). DB and API cache live under `data/`
   (gitignored).
 
@@ -52,7 +56,15 @@ surface, and the eval harness are the remaining phases.
   throttles (configurable rate), retries with backoff, tracks per-host 429s.
 - `enrich.py` — resolves each rated book, scores confidence, commits per book (resumable).
 - `profile.py` — groups rated books by star tier, uses Claude tool-use to infer
-  tier-distinguishing, evidence-cited taste traits.
+  tier-distinguishing, evidence-cited taste traits. `extract_taste_profile` is the full
+  cold-start build; `update_taste_profile` is the **incremental re-profile** — it ships
+  Claude only the books changed since the last profile + the books the current traits cite
+  (not the whole library) and asks it to revise the trait set, so the payload scales with
+  the edit. Both stamp `ProfileMeta.last_profiled_at`. `books_changed_since` /
+  `get_profile_meta` / `mark_profiled` back the dirty-state tracking.
+- `library.py` — in-app library edits. `set_book_feedback` sets `app_rating` / `app_review`
+  and bumps `feedback_updated_at`; `profile_status` reports whether the profile is stale
+  (dirty) vs. those edits. Never auto-re-profiles — that's an explicit user action.
 - `recommend.py` — two-stage recommender. Stage 1 retrieval = metadata expansion
   (`catalog.openlibrary_subject` / `googlebooks_subject` / `googlebooks_author`) +
   Claude-seeded queries (`catalog.googlebooks_query`), merged + deduped against the
@@ -60,6 +72,26 @@ surface, and the eval harness are the remaining phases.
   (grouped by `run_id`). Anthropic key is checked at point of use, so the key only
   matters when a Claude stage actually runs.
 - `stats.py` — read-only dataset stats.
+
+### Frontend (`frontend/`)
+
+Next.js (App Router) + React + Tailwind + SWR (data fetching) + framer-motion (swipe).
+It is a pure HTTP client of the FastAPI engine — no DB access, no migrations.
+
+- `lib/api.ts` — the single typed fetch client. All calls go through it; `BASE` is
+  `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`). Types here mirror the Pydantic
+  schemas. `PROFILE_STATUS_KEY` is the shared SWR key for `/profile/status` so a mutation
+  anywhere can revalidate the re-profile banner.
+- `app/` — routes: `/` (dashboard + run recommend), `/swipe` (rec swiping), `/to-read`,
+  `/library` (rated books; click a row to re-rate/review). `layout.tsx` mounts `NavBar`
+  + `ReprofileBanner` above all pages.
+- `components/` — `BookEditModal` (re-rate + review; diff-based save), `ReprofileBanner`
+  (app-wide; shows only when `/profile/status` reports `dirty`, runs `/profile/update`),
+  `SwipeCard`, `NavBar`.
+
+Re-profiling is **never automatic** in the UI: editing a book marks the profile dirty
+(`feedback_updated_at` > `last_profiled_at`), the banner appears, and the user chooses
+when to spend the Claude call.
 
 ## Conventions / gotchas
 
@@ -80,6 +112,17 @@ surface, and the eval harness are the remaining phases.
   author surname, reusing `enrich._normalize_title` / `_surname`). The `recommendations`
   table is disposable until the feedback phase — `init_db` drops+recreates it if its shape
   is stale, same as `taste_traits`.
+- **`books` is never dropped.** It holds the only irreplaceable data (ratings, reviews).
+  New columns are added in place via `ALTER TABLE ... ADD COLUMN` in `init_db` (that's how
+  `app_review` / `feedback_updated_at` were added). Only the disposable tables
+  (`taste_traits`, `recommendations`) get dropped+recreated.
+- **Profile dirty-state**: `set_book_feedback` bumps `Book.feedback_updated_at`; the
+  profile is "dirty" when any rated book changed after `ProfileMeta.last_profiled_at`.
+  `profile_status()` / `GET /profile/status` expose this; the frontend banner keys off it.
+- **Incremental vs. full re-profile**: prefer `update_taste_profile` (`reprofile` /
+  `POST /profile/update`) after edits — it's cheap. `extract_taste_profile` (`profile` /
+  `reprofile --full` / `POST /profile`) is the full rebuild. Update falls back to a full
+  build when there's no prior profile.
 - Currently developed on **Python 3.14** — first suspect for any odd runtime behavior.
 
 ## Commands
@@ -88,13 +131,25 @@ surface, and the eval harness are the remaining phases.
 pip install -r requirements.txt
 python -m mylibrary.cli ingest          # data/goodreads_library_export.csv
 python -m mylibrary.cli enrich          # --rps N, --limit N, --force, --retry-unresolved
-python -m mylibrary.cli profile         # needs ANTHROPIC_API_KEY
+python -m mylibrary.cli profile         # full taste profile build; needs ANTHROPIC_API_KEY
 python -m mylibrary.cli traits          # print the saved taste profile + evidence
+python -m mylibrary.cli rate ID 1-5     # re-rate a book in-app (0 clears the override)
+python -m mylibrary.cli review ID "..."  # write/clear (--clear) an in-app review
+python -m mylibrary.cli profile-status  # is the profile stale vs. recent edits?
+python -m mylibrary.cli reprofile       # incremental re-profile (--full to rebuild)
 python -m mylibrary.cli recommend       # --n N; two-stage recs, needs ANTHROPIC_API_KEY
 python -m mylibrary.cli recs            # reprint the latest recommend run
 python -m mylibrary.cli stats
 python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
-python -m pytest                        # ingest + matching + catalog + recommender
+python -m pytest                        # ingest + matching + catalog + recommender + feedback
+```
+
+Frontend (from `frontend/`):
+
+```bash
+npm install
+npm run dev        # Next.js dev server (expects the API at NEXT_PUBLIC_API_URL)
+npx tsc --noEmit   # typecheck
 ```
 
 ## Working agreements

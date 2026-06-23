@@ -19,7 +19,11 @@ from .profile import books_changed_since, get_profile_meta
 
 
 class BookNotFoundError(Exception):
-    """Raised when a feedback edit targets a book id that doesn't exist."""
+    """Raised when an edit targets a book id that doesn't exist."""
+
+
+# The shelves a book can live on (mirrors Goodreads' Exclusive Shelf values).
+VALID_SHELVES = {"to-read", "currently-reading", "read", "did-not-finish"}
 
 
 def _book_summary(book: Book) -> dict:
@@ -27,6 +31,7 @@ def _book_summary(book: Book) -> dict:
         "id": book.id,
         "title": book.title,
         "author": book.author,
+        "exclusive_shelf": book.exclusive_shelf,
         "app_rating": book.app_rating,
         "goodreads_rating": book.goodreads_rating,
         "effective_rating": book.effective_rating,
@@ -73,6 +78,40 @@ def set_book_feedback(
 
         book.feedback_updated_at = datetime.utcnow()
         return _book_summary(book)
+
+
+def set_book_shelf(book_id: int, shelf: str) -> dict:
+    """Move a book to a different shelf (e.g. to-read -> currently-reading / read).
+
+    A shelf move is not a taste signal on its own, so it does NOT bump
+    `feedback_updated_at` or dirty the profile — rating/review the book (separately) does.
+    """
+    if shelf not in VALID_SHELVES:
+        raise ValueError(f"shelf must be one of {sorted(VALID_SHELVES)}.")
+
+    init_db()
+    with session_scope() as session:
+        book = session.get(Book, book_id)
+        if book is None:
+            raise BookNotFoundError(f"Book {book_id} not found.")
+        book.exclusive_shelf = shelf
+        return _book_summary(book)
+
+
+def remove_book(book_id: int) -> dict:
+    """Permanently delete a book (and its enrichment) from the library.
+
+    Used to drop a title off the to-read shelf. `books` the *table* is never dropped,
+    but individual rows can be removed; the Enrichment relationship cascades.
+    """
+    init_db()
+    with session_scope() as session:
+        book = session.get(Book, book_id)
+        if book is None:
+            raise BookNotFoundError(f"Book {book_id} not found.")
+        title = book.title
+        session.delete(book)
+        return {"id": book_id, "title": title, "removed": True}
 
 
 def profile_status() -> dict:

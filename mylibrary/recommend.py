@@ -193,18 +193,8 @@ def _build_signal(session) -> dict:
         if b.isbn13:
             library_isbns.add(b.isbn13)
 
-    # Also exclude explicitly rejected recommendations so they never resurface.
-    rejected = (
-        session.query(Recommendation)
-        .filter(Recommendation.status == _REJECTED_STATUS)
-        .all()
-    )
-    for r in rejected:
-        library_keys.add(_dedup_key(r.title, r.author))
-        if r.isbn13:
-            library_isbns.add(r.isbn13)
-        r = b.effective_rating
-        if r is None or r < _LOVED_MIN:
+        rating = b.effective_rating
+        if rating is None or rating < _LOVED_MIN:
             continue
         enr = b.enrichment
         subjects = (enr.subjects or []) if enr else []
@@ -218,12 +208,23 @@ def _build_signal(session) -> dict:
                 "id": b.id,
                 "title": b.title,
                 "author": b.author,
-                "rating": r,
+                "rating": rating,
                 "year": b.year_published,
                 "subjects": subjects[:8],
                 "read_year": read_date.year if read_date else None,
             }
         )
+
+    # Also exclude explicitly rejected recommendations so they never resurface.
+    rejected = (
+        session.query(Recommendation)
+        .filter(Recommendation.status == _REJECTED_STATUS)
+        .all()
+    )
+    for r in rejected:
+        library_keys.add(_dedup_key(r.title, r.author))
+        if r.isbn13:
+            library_isbns.add(r.isbn13)
 
     loved.sort(key=lambda d: (d["rating"], d["read_year"] or 0), reverse=True)
     traits = (

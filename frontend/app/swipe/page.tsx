@@ -3,12 +3,15 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { api, type Recommendation, type Trait } from "@/lib/api";
+import { api, type Book, type Recommendation, type Trait } from "@/lib/api";
 import SwipeCard from "@/components/SwipeCard";
+import BookEditModal from "@/components/BookEditModal";
 
 export default function SwipePage() {
   const router = useRouter();
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
+  // Book to prompt a review for after "already read" lands it in the library.
+  const [reviewing, setReviewing] = useState<Book | null>(null);
 
   const { data: recs, isLoading: recsLoading, error: recsError } =
     useSWR<Recommendation[]>("recommendations", () => api.recommendations());
@@ -22,7 +25,11 @@ export default function SwipePage() {
       setDismissed((prev) => new Set([...prev, recId]));
 
       try {
-        await api.feedback(recId, { status });
+        const result = await api.feedback(recId, { status });
+        // "Already read" lands the book in the library (read shelf) — prompt a review.
+        if (status === "already_read" && result.book) {
+          setReviewing(result.book);
+        }
       } catch (e) {
         console.error("Feedback failed:", e);
         // Re-add to stack on failure

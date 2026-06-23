@@ -145,9 +145,9 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
                   key={t.id}
                   className={[
                     "rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                    t.polarity === "positive"
+                    t.polarity === "reward"
                       ? "border-blue-700 bg-blue-900/40 text-blue-300"
-                      : "border-slate-600 bg-slate-800 text-slate-400",
+                      : "border-amber-700 bg-amber-900/40 text-amber-300",
                   ].join(" ")}
                   title={t.claim}
                 >

@@ -32,6 +32,19 @@ class FeedbackRequest(BaseModel):
     user_note: str | None = None
 
 
+class RecFeedbackResult(BaseModel):
+    """Result of a swipe decision (PATCH /recommendations/{id}/feedback).
+
+    `book` is the library book the decision created or matched: the to-read book for
+    `accepted`, the read book for `already_read` (so the UI can prompt a review), and
+    None for `rejected`.
+    """
+
+    status: str
+    user_note: str | None = None
+    book: "BookOut | None" = None
+
+
 class BookFeedbackRequest(BaseModel):
     """In-app re-rate / review for a library book (PATCH /books/{id}).
 
@@ -42,6 +55,12 @@ class BookFeedbackRequest(BaseModel):
     rating: int | None = None
     review: str | None = None
     clear_review: bool = False
+
+
+class ShelfRequest(BaseModel):
+    """Move a book to a different shelf (PATCH /books/{id}/shelf)."""
+
+    shelf: str  # to-read | currently-reading | read | did-not-finish
 
 
 class ProfileStatusOut(BaseModel):
@@ -113,3 +132,7 @@ class RecommendationOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# RecFeedbackResult forward-references BookOut (defined above); resolve it now.
+RecFeedbackResult.model_rebuild()

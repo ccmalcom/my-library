@@ -75,6 +75,17 @@ export interface FeedbackRequest {
   user_note?: string;
 }
 
+/**
+ * Result of a swipe decision. `book` is the library book the decision created/matched:
+ * the to-read book for `accepted`, the read book for `already_read` (so the UI can
+ * prompt a review), and null for `rejected`.
+ */
+export interface RecFeedbackResult {
+  status: string;
+  user_note: string | null;
+  book: Book | null;
+}
+
 /** In-app re-rate / review of a library book (PATCH /books/{id}/feedback). */
 export interface BookFeedbackRequest {
   /** 1-5 to set, 0 to clear the in-app rating, omit to leave unchanged. */
@@ -85,11 +96,14 @@ export interface BookFeedbackRequest {
   clear_review?: boolean;
 }
 
-/** Summary returned by PATCH /books/{id}/feedback (not a full Book). */
+export type Shelf = "to-read" | "currently-reading" | "read" | "did-not-finish";
+
+/** Summary returned by the book mutation endpoints (not a full Book). */
 export interface BookFeedbackResult {
   id: number;
   title: string;
   author: string | null;
+  exclusive_shelf: string | null;
   app_rating: number | null;
   goodreads_rating: number;
   effective_rating: number | null;
@@ -146,6 +160,15 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: "DELETE" });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`DELETE ${path} → ${res.status}: ${detail}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 // ─── API calls ──────────────────────────────────────────────────────────────
 
 export const api = {
@@ -169,11 +192,19 @@ export const api = {
   runRecommend: (n = 10) => post<Record<string, unknown>>("/recommend", { n }),
 
   feedback: (recId: number, req: FeedbackRequest) =>
-    patch<Recommendation>(`/recommendations/${recId}/feedback`, req),
+    patch<RecFeedbackResult>(`/recommendations/${recId}/feedback`, req),
 
   /** Re-rate and/or review a library book. */
   setBookFeedback: (bookId: number, req: BookFeedbackRequest) =>
     patch<BookFeedbackResult>(`/books/${bookId}/feedback`, req),
+
+  /** Move a book to another shelf (e.g. to-read -> currently-reading / read). */
+  setBookShelf: (bookId: number, shelf: Shelf) =>
+    patch<BookFeedbackResult>(`/books/${bookId}/shelf`, { shelf }),
+
+  /** Permanently remove a book from the library. */
+  removeBook: (bookId: number) =>
+    del<{ id: number; title: string; removed: boolean }>(`/books/${bookId}`),
 
   /** Is the taste profile stale relative to recent rating/review edits? */
   profileStatus: () => get<ProfileStatus>("/profile/status"),

@@ -11,9 +11,15 @@ from datetime import datetime
 
 import pytest
 
-from mylibrary.db import Book, TasteTrait, session_scope
+from mylibrary.db import Book, Enrichment, TasteTrait, session_scope
 from mylibrary.ingest import ingest_csv
-from mylibrary.library import BookNotFoundError, profile_status, set_book_feedback
+from mylibrary.library import (
+    BookNotFoundError,
+    profile_status,
+    remove_book,
+    set_book_feedback,
+    set_book_shelf,
+)
 from mylibrary.profile import books_changed_since, get_profile_meta, mark_profiled
 
 from .conftest import SAMPLE_CSV
@@ -80,6 +86,43 @@ def test_review_never_touched_by_reimport():
         assert dune.app_review == "A desert classic."
 
 
+# --- shelf moves / removal --------------------------------------------------
+
+
+def test_set_shelf_moves_book_without_dirtying_profile():
+    ingest_csv(SAMPLE_CSV)
+    bid = _book_id("Project Hail Mary")  # starts on to-read
+    out = set_book_shelf(bid, "currently-reading")
+    assert out["exclusive_shelf"] == "currently-reading"
+    # A shelf move is not a taste signal -> profile stays clean.
+    assert out["feedback_updated_at"] is None
+    assert profile_status()["dirty"] is False
+
+
+def test_set_shelf_rejects_unknown_shelf():
+    ingest_csv(SAMPLE_CSV)
+    with pytest.raises(ValueError):
+        set_book_shelf(_book_id("Dune"), "wishlist")
+
+
+def test_remove_book_deletes_row_and_enrichment():
+    ingest_csv(SAMPLE_CSV)
+    bid = _book_id("Project Hail Mary")
+    with session_scope() as session:
+        session.add(Enrichment(book_id=bid, resolution_confidence=1.0))
+    out = remove_book(bid)
+    assert out["removed"] is True
+    with session_scope() as session:
+        assert session.get(Book, bid) is None
+        assert session.query(Enrichment).filter(Enrichment.book_id == bid).count() == 0
+
+
+def test_remove_missing_book_raises():
+    ingest_csv(SAMPLE_CSV)
+    with pytest.raises(BookNotFoundError):
+        remove_book(999999)
+
+
 # --- profile status / dirty tracking ---------------------------------------
 
 
@@ -114,6 +157,37 @@ def test_books_changed_since_excludes_unrated():
     with session_scope() as session:
         changed = books_changed_since(session, None)
     assert all(b.title != "Project Hail Mary" for b in changed)
+
+
+# --- recommender signal (regression) ---------------------------------------
+
+
+def test_build_signal_collects_loved_books_without_any_rejections():
+    """Regression: loved-book collection must run in the main book loop, not under the
+    rejected-recommendations loop. With no rejected recs, loved must still be populated."""
+    from mylibrary.recommend import _build_signal
+
+    ingest_csv(SAMPLE_CSV)
+    with session_scope() as session:
+        signal = _build_signal(session)
+
+    # Sample CSV has three books rated >= 4: Dune (5), Three-Body (4), Name of the Wind (5).
+    titles = {b["title"] for b in signal["loved"]}
+    assert titles == {"Dune", "The Three-Body Problem", "The Name of the Wind"}
+    assert all(b["rating"] >= 4 for b in signal["loved"])
+
+
+def test_build_signal_respects_app_rating_override():
+    """A loved Goodreads book re-rated below 4 in-app drops out of the loved set."""
+    from mylibrary.recommend import _build_signal
+
+    ingest_csv(SAMPLE_CSV)
+    set_book_feedback(_book_id("Dune"), rating=2)  # was 5★ from Goodreads
+    with session_scope() as session:
+        signal = _build_signal(session)
+
+    titles = {b["title"] for b in signal["loved"]}
+    assert "Dune" not in titles
 
 
 # --- incremental re-profile -------------------------------------------------
