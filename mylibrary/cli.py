@@ -161,6 +161,44 @@ def rate(
     typer.echo("\nProfile may now be stale — run `profile-status` / `reprofile`.")
 
 
+@app.command(name="add")
+def add_book_cmd(
+    title: str = typer.Argument(..., help="Book title."),
+    author: str = typer.Option(None, help="Author (improves the catalog match)."),
+    rating: int = typer.Option(None, help="Optional 1-5 rating (feeds the taste profile)."),
+    shelf: str = typer.Option("read", help="read | to-read | currently-reading | did-not-finish."),
+    no_resolve: bool = typer.Option(
+        False, help="Skip the catalog lookup (no cover/subjects/year backfill)."
+    ),
+) -> None:
+    """Manually add a book to the library (resolves cover/metadata from the catalog)."""
+    from . import catalog
+    from .library import BookExistsError, add_book
+
+    cover = subjects = year = isbn = src = cid = None
+    if not no_resolve:
+        query = f"{title} {author}".strip() if author else title
+        hits = catalog.search_books(query, max_results=1)
+        if hits:
+            h = hits[0]
+            cover, subjects = h.get("cover_url"), h.get("subjects")
+            year, isbn = h.get("year"), h.get("isbn13")
+            src, cid = h.get("source"), h.get("resolved_id")
+
+    try:
+        book_id = add_book(
+            title=title, author=author, year=year, isbn13=isbn, shelf=shelf,
+            rating=rating, cover_url=cover, subjects=subjects,
+            catalog_source=src, catalog_id=cid,
+        )
+    except (BookExistsError, ValueError) as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    typer.secho(f"Added book {book_id}: {title}", fg=typer.colors.GREEN)
+    if rating:
+        typer.echo("Rated — profile may now be stale; run `reprofile`.")
+
+
 @app.command()
 def review(
     book_id: int = typer.Argument(..., help="The library book id."),

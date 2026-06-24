@@ -115,6 +115,33 @@ export interface BookFeedbackRequest {
 
 export type Shelf = "to-read" | "currently-reading" | "read" | "did-not-finish";
 
+/** One hit from the manual add-a-book search (GET /catalog/search). */
+export interface CatalogResult {
+  source: string;
+  catalog_id: string | null;
+  title: string;
+  author: string | null;
+  year: number | null;
+  isbn13: string | null;
+  cover_url: string | null;
+  subjects: string[] | null;
+}
+
+/** Manually add a book to the library (POST /books). */
+export interface AddBookRequest {
+  title: string;
+  author?: string | null;
+  year?: number | null;
+  isbn13?: string | null;
+  shelf?: Shelf;
+  /** 1-5 to rate on add (feeds the taste profile); omit for unrated. */
+  rating?: number | null;
+  cover_url?: string | null;
+  subjects?: string[] | null;
+  catalog_source?: string | null;
+  catalog_id?: string | null;
+}
+
 /** Summary returned by the book mutation endpoints (not a full Book). */
 export interface BookFeedbackResult {
   id: number;
@@ -224,6 +251,13 @@ export const api = {
   /** Move a book to another shelf (e.g. to-read -> currently-reading / read). */
   setBookShelf: (bookId: number, shelf: Shelf) =>
     patch<BookFeedbackResult>(`/books/${bookId}/shelf`, { shelf }),
+
+  /** Search Open Library + Google Books for the manual add-a-book picker. */
+  catalogSearch: (q: string, limit = 8) =>
+    get<CatalogResult[]>(`/catalog/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+
+  /** Manually add a book to the library (from a picked catalog result). */
+  addBook: (req: AddBookRequest) => post<Book>("/books", req),
 
   /** Permanently remove a book from the library. */
   removeBook: (bookId: number) =>

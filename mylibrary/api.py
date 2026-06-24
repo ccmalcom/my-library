@@ -19,12 +19,15 @@ import tempfile
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import catalog
 from .config import get_settings
 from .db import Book, Enrichment, Recommendation, init_db, session_scope
 from .enrich import _normalize_title, _surname, enrich_library
 from .ingest import ingest_csv
 from .library import (
+    BookExistsError,
     BookNotFoundError,
+    add_book,
     profile_status,
     remove_book,
     set_book_feedback,
@@ -33,8 +36,10 @@ from .library import (
 from .profile import extract_taste_profile, update_taste_profile
 from .recommend import latest_recommendations, recommend
 from .schemas import (
+    AddBookRequest,
     BookFeedbackRequest,
     BookOut,
+    CatalogResult,
     EnrichRequest,
     FeedbackRequest,
     IngestRequest,
@@ -227,6 +232,58 @@ def list_books(
                 continue
             out.append(_book_out(book))
         return out
+
+
+@app.get("/catalog/search", response_model=list[CatalogResult])
+def search_catalog(
+    q: str = Query(..., min_length=1, description="Free-text title/author/ISBN query."),
+    limit: int = Query(8, ge=1, le=20),
+) -> list[CatalogResult]:
+    """Search Open Library + Google Books for the manual add-a-book picker."""
+    hits = catalog.search_books(q, max_results=limit)
+    return [
+        CatalogResult(
+            source=h.get("source", "unknown"),
+            catalog_id=h.get("resolved_id"),
+            title=h.get("title") or "",
+            author=h.get("author"),
+            year=h.get("year"),
+            isbn13=h.get("isbn13"),
+            cover_url=h.get("cover_url"),
+            subjects=h.get("subjects"),
+        )
+        for h in hits
+        if h.get("title")
+    ]
+
+
+@app.post("/books", response_model=BookOut, status_code=201)
+def create_book(req: AddBookRequest) -> BookOut:
+    """Manually add a book to the library (from a picked catalog result).
+
+    Returns the created book. A rated add marks the taste profile dirty (the client
+    revalidates /profile/status so the re-profile banner appears).
+    """
+    try:
+        book_id = add_book(
+            title=req.title,
+            author=req.author,
+            year=req.year,
+            isbn13=req.isbn13,
+            shelf=req.shelf,
+            rating=req.rating,
+            cover_url=req.cover_url,
+            subjects=req.subjects,
+            catalog_source=req.catalog_source,
+            catalog_id=req.catalog_id,
+        )
+    except BookExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    with session_scope() as session:
+        return _book_out(session.get(Book, book_id))
 
 
 @app.patch("/books/{book_id}/feedback")

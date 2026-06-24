@@ -65,6 +65,42 @@ class ShelfRequest(BaseModel):
     shelf: str  # to-read | currently-reading | read | did-not-finish
 
 
+class CatalogResult(BaseModel):
+    """One hit from the manual add-a-book search (GET /catalog/search).
+
+    A real catalog candidate the user can pick; its fields are passed straight back into
+    POST /books so the added book carries the cover/subjects/isbn from the chosen result.
+    """
+
+    source: str  # openlibrary | googlebooks
+    catalog_id: str | None = None
+    title: str
+    author: str | None = None
+    year: int | None = None
+    isbn13: str | None = None
+    cover_url: str | None = None
+    subjects: list[str] | None = None
+
+
+class AddBookRequest(BaseModel):
+    """Manually add a book to the library (POST /books).
+
+    title is required; the rest typically come from the picked CatalogResult. rating is
+    1-5 (or omitted/0 for unrated); shelf defaults to the read shelf.
+    """
+
+    title: str
+    author: str | None = None
+    year: int | None = None
+    isbn13: str | None = None
+    shelf: str = "read"
+    rating: int | None = None
+    cover_url: str | None = None
+    subjects: list[str] | None = None
+    catalog_source: str | None = None
+    catalog_id: str | None = None
+
+
 class TraitUpdateRequest(BaseModel):
     """Update a taste trait's claim text and/or user note (PATCH /profile/traits/{id})."""
 

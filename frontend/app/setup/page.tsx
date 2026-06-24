@@ -1,13 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
-import { api } from "@/lib/api";
+import { api, type Book } from "@/lib/api";
+import AddBookModal from "@/components/AddBookModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Step = "upload" | "enrich" | "done";
+type Step = "upload" | "enrich" | "manual" | "done";
 
 interface IngestResult {
   inserted: number;
@@ -15,15 +17,27 @@ interface IngestResult {
   total: number;
 }
 
+// The two onboarding paths show different step rails.
+const CSV_STEPS: { key: Step; label: string }[] = [
+  { key: "upload", label: "Upload" },
+  { key: "enrich", label: "Enrich" },
+  { key: "done", label: "Done" },
+];
+const MANUAL_STEPS: { key: Step; label: string }[] = [
+  { key: "manual", label: "Add books" },
+  { key: "done", label: "Done" },
+];
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function StepIndicator({ current }: { current: Step }) {
-  const steps: { key: Step; label: string }[] = [
-    { key: "upload", label: "Upload" },
-    { key: "enrich", label: "Enrich" },
-    { key: "done", label: "Done" },
-  ];
-  const order: Step[] = ["upload", "enrich", "done"];
+function StepIndicator({
+  current,
+  steps,
+}: {
+  current: Step;
+  steps: { key: Step; label: string }[];
+}) {
+  const order = steps.map((s) => s.key);
   const currentIdx = order.indexOf(current);
 
   return (
@@ -76,8 +90,10 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
 
 function UploadStep({
   onDone,
+  onManual,
 }: {
   onDone: (result: IngestResult) => void;
+  onManual: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -180,6 +196,118 @@ function UploadStep({
           "Import Library"
         )}
       </button>
+
+      <div className="flex items-center gap-3 text-xs text-slate-600">
+        <div className="h-px flex-1 bg-slate-700" />
+        or
+        <div className="h-px flex-1 bg-slate-700" />
+      </div>
+
+      <button
+        type="button"
+        onClick={onManual}
+        className="w-full rounded-lg border border-slate-700 py-3 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:text-white"
+      >
+        I don&apos;t have a Goodreads export — add books manually
+      </button>
+    </div>
+  );
+}
+
+// ── Manual setup (no CSV) ──────────────────────────────────────────────────────
+
+function ManualStep({ onDone }: { onDone: () => void }) {
+  const [books, setBooks] = useState<Book[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+
+  async function handleFinish() {
+    setFinishing(true);
+    // Seed fresh stats into the SWR cache (data passed explicitly, not a bare
+    // revalidate) so the dashboard sees total > 0 and doesn't bounce back to /setup.
+    await mutate("stats", api.stats(), { revalidate: false });
+    onDone();
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="mb-1 text-xl font-semibold text-white">Build your starter library</h2>
+        <p className="text-sm text-slate-400">
+          Add a few books you&apos;ve read and rate them. Even five or six rated favorites give
+          the taste profile enough to work with — you can always add more later.
+        </p>
+      </div>
+
+      {books.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-600 bg-slate-800/40 p-8 text-center">
+          <div className="mb-2 text-4xl">📚</div>
+          <p className="text-sm text-slate-400">No books yet. Add your first one to get started.</p>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {books.map((b) => (
+            <li
+              key={b.id}
+              className="flex items-center gap-3 rounded-lg border border-slate-700 bg-[#0f1117] p-2.5"
+            >
+              <div className="relative h-12 w-9 shrink-0 overflow-hidden rounded bg-slate-800">
+                {b.cover_url ? (
+                  <Image src={b.cover_url} alt="" fill className="object-cover" unoptimized />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-600">📚</div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-200">{b.title}</p>
+                <p className="truncate text-xs text-slate-500">{b.author ?? "Unknown author"}</p>
+              </div>
+              {b.effective_rating ? (
+                <span className="shrink-0 text-sm text-amber-400">
+                  {"★".repeat(b.effective_rating)}
+                </span>
+              ) : (
+                <span className="shrink-0 text-xs text-slate-600">unrated</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setAdding(true)}
+        className="w-full rounded-lg border border-blue-700 bg-blue-900/30 py-2.5 text-sm font-semibold text-blue-200 transition hover:bg-blue-900/60"
+      >
+        + Add a book
+      </button>
+
+      <button
+        type="button"
+        onClick={handleFinish}
+        disabled={books.length === 0 || finishing}
+        className={[
+          "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-semibold text-white transition-all",
+          books.length === 0 || finishing
+            ? "cursor-not-allowed bg-blue-700 opacity-50"
+            : "bg-blue-600 hover:bg-blue-500 active:scale-[0.99]",
+        ].join(" ")}
+      >
+        {finishing ? <Spinner /> : null}
+        {books.length === 0
+          ? "Add at least one book to continue"
+          : `Finish with ${books.length} book${books.length !== 1 ? "s" : ""}`}
+      </button>
+
+      {adding && (
+        <AddBookModal
+          onClose={() => setAdding(false)}
+          onAdded={(book) => {
+            setBooks((prev) => [...prev, book]);
+            setAdding(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -302,8 +430,11 @@ function DoneStep({ enriched }: { enriched: boolean }) {
 
 export default function SetupPage() {
   const [step, setStep] = useState<Step>("upload");
+  const [path, setPath] = useState<"csv" | "manual">("csv");
   const [ingestResult, setIngestResult] = useState<IngestResult | null>(null);
   const [enriched, setEnriched] = useState(false);
+
+  const rail = path === "manual" ? MANUAL_STEPS : CSV_STEPS;
 
   return (
     <div className="fade-in min-h-[60vh] flex flex-col items-center justify-center py-12">
@@ -311,10 +442,14 @@ export default function SetupPage() {
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-white">Welcome to MyLibrary</h1>
-          <p className="mt-1 text-slate-400">Let's get your reading history imported.</p>
+          <p className="mt-1 text-slate-400">
+            {path === "manual"
+              ? "Let's build your starter library."
+              : "Let's get your reading history imported."}
+          </p>
         </div>
 
-        <StepIndicator current={step} />
+        <StepIndicator current={step} steps={rail} />
 
         {/* Card */}
         <div className="rounded-2xl border border-slate-700 bg-[#1a1f2e] p-6">
@@ -324,6 +459,10 @@ export default function SetupPage() {
                 setIngestResult(result);
                 setStep("enrich");
               }}
+              onManual={() => {
+                setPath("manual");
+                setStep("manual");
+              }}
             />
           )}
           {step === "enrich" && ingestResult && (
@@ -331,6 +470,14 @@ export default function SetupPage() {
               ingestResult={ingestResult}
               onDone={() => {
                 setEnriched(true);
+                setStep("done");
+              }}
+            />
+          )}
+          {step === "manual" && (
+            <ManualStep
+              onDone={() => {
+                setEnriched(true); // manual adds carry catalog metadata — no enrich step needed
                 setStep("done");
               }}
             />

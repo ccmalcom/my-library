@@ -190,6 +190,52 @@ def _ol_description(record: dict) -> str | None:
     return desc if isinstance(desc, str) else None
 
 
+def openlibrary_query(query: str, *, max_results: int = 8) -> list[dict]:
+    """Free-text Open Library search (the `q=` param), for user-facing add-a-book search.
+
+    Unlike `openlibrary_search` (which keys on a title field for enrichment), this passes
+    the raw query straight through, so "dune herbert" or an ISBN both work. Requests a
+    trimmed `fields` set so the payload stays small, and surfaces an ISBN-13 when present.
+    """
+    query = (query or "").strip()
+    if not query:
+        return []
+    params = httpx.QueryParams(
+        {
+            "q": query,
+            "limit": str(max_results),
+            "fields": "key,title,author_name,first_publish_year,cover_i,isbn,subject",
+        }
+    )
+    url = f"https://openlibrary.org/search.json?{params}"
+    data = _get_json(url)
+    if not data:
+        return []
+    candidates = []
+    for doc in data.get("docs", [])[:max_results]:
+        cover_id = doc.get("cover_i")
+        isbns = doc.get("isbn") or []
+        isbn13 = next((i for i in isbns if len(i) == 13 and i.isdigit()), None)
+        candidates.append(
+            {
+                "source": "openlibrary",
+                "resolved_id": doc.get("key"),
+                "title": doc.get("title"),
+                "author": (doc.get("author_name") or [None])[0],
+                "subjects": (doc.get("subject") or [])[:25],
+                "cover_url": (
+                    f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg"
+                    if cover_id
+                    else None
+                ),
+                "year": doc.get("first_publish_year"),
+                "isbn13": isbn13,
+                "raw": doc,
+            }
+        )
+    return candidates
+
+
 def openlibrary_search(title: str, author: str | None) -> list[dict]:
     """Return up to 5 candidate docs for a title (+ optional author)."""
     params = httpx.QueryParams({"title": title, "limit": "5"})
@@ -262,6 +308,15 @@ def _year_from_google(published: str | None) -> int | None:
         return None
 
 
+def _isbn13_from_google_item(item: dict) -> str | None:
+    """Pull the ISBN-13 out of a Google Books volume's industryIdentifiers, if any."""
+    info = (item or {}).get("volumeInfo", {})
+    for ident in info.get("industryIdentifiers", []) or []:
+        if ident.get("type") == "ISBN_13" and ident.get("identifier"):
+            return ident["identifier"]
+    return None
+
+
 def googlebooks_by_isbn(isbn: str) -> dict | None:
     candidates = _google_books_query(f"isbn:{isbn}")
     return candidates[0] if candidates else None
@@ -298,6 +353,54 @@ def _ol_subject_slug(subject: str) -> str:
     """Open Library's subjects API keys on lowercase, underscore-joined slugs."""
     slug = re.sub(r"[^a-z0-9]+", "_", subject.lower()).strip("_")
     return slug
+
+
+def _dedup_key(title: str | None, author: str | None) -> tuple[str, str]:
+    """Light normalize for de-duplicating search hits across sources.
+
+    Kept inline (rather than importing enrich._normalize_title) to avoid a circular
+    import — enrich imports catalog. Good enough for collapsing "Dune" from Google and
+    Open Library into one row.
+    """
+    def norm(s: str | None) -> str:
+        return re.sub(r"[^a-z0-9 ]", " ", (s or "").lower()).strip()
+
+    surname = norm(author).split(" ")[-1] if author else ""
+    return norm(title).split(":")[0].strip(), surname
+
+
+def search_books(query: str, *, max_results: int = 8) -> list[dict]:
+    """User-facing book search for the manual add-a-book flow.
+
+    Queries Google Books and Open Library with the same free-text string, normalizes both
+    to the shared candidate shape (with an `isbn13`), de-duplicates across sources, and
+    prefers hits that have a cover so the picker looks right. Network responses are cached
+    by `_get_json`, so repeat searches are cheap.
+    """
+    query = (query or "").strip()
+    if not query:
+        return []
+
+    results: list[dict] = []
+    for cand in _google_books_query(query, max_results=max_results):
+        cand["isbn13"] = _isbn13_from_google_item(cand.get("raw") or {})
+        results.append(cand)
+    results.extend(openlibrary_query(query, max_results=max_results))
+
+    seen: set[tuple[str, str]] = set()
+    deduped: list[dict] = []
+    for cand in results:
+        if not cand.get("title"):
+            continue
+        key = _dedup_key(cand.get("title"), cand.get("author"))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cand)
+
+    # Stable-sort cover-bearing hits to the front without otherwise reordering.
+    deduped.sort(key=lambda c: c.get("cover_url") is None)
+    return deduped[:max_results]
 
 
 def openlibrary_subject(subject: str, *, max_results: int = 10) -> list[dict]:

@@ -4,8 +4,9 @@ import { useState, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
-import { api, type Book, type Recommendation, type Shelf } from "@/lib/api";
+import { api, PROFILE_STATUS_KEY, type Book, type Recommendation, type Shelf } from "@/lib/api";
 import BookEditModal from "@/components/BookEditModal";
+import AddBookModal from "@/components/AddBookModal";
 
 const READ_KEY              = "books-read";
 const TO_READ_KEY           = "books-to-read";
@@ -603,10 +604,26 @@ function LibraryInner() {
     ? (rawTab as Tab)
     : "read";
 
+  const [adding, setAdding] = useState(false);
+
   function setTab(tab: Tab) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
     router.replace(`/library?${params.toString()}`);
+  }
+
+  // After a manual add, refresh every shelf list (the book may land on any of them),
+  // the dashboard stats, and the profile-status banner (a rated add dirties the profile).
+  async function handleAdded(book: Book) {
+    setAdding(false);
+    setTab((book.exclusive_shelf as Tab) ?? "read");
+    await Promise.all([
+      mutate(READ_KEY),
+      mutate(TO_READ_KEY),
+      mutate(CURRENTLY_READING_KEY),
+      mutate(PROFILE_STATUS_KEY),
+      mutate("stats", api.stats(), { revalidate: false }),
+    ]);
   }
 
   const { data: readBooks = [], isLoading: readLoading } = useSWR<Book[]>(
@@ -639,7 +656,20 @@ function LibraryInner() {
 
   return (
     <div className="fade-in space-y-6 py-6">
-      <h1 className="text-3xl font-bold text-white">My Library</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold text-white">My Library</h1>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="shrink-0 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 active:scale-95"
+        >
+          + Add book
+        </button>
+      </div>
+
+      {adding && (
+        <AddBookModal onAdded={handleAdded} onClose={() => setAdding(false)} />
+      )}
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-xl border border-slate-800 bg-[#1a1f2e] p-1">
