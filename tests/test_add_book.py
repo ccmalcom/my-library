@@ -41,17 +41,27 @@ def test_add_book_with_rating_sets_app_rating_and_dirties_profile():
     assert profile_status()["dirty"] is True
 
 
-def test_add_book_with_review_sets_app_review_and_dirties_profile():
-    book_id = add_book(title="Dune", author="Frank Herbert", review="  A desert epic.  ")
+def test_add_book_with_rating_and_review_sets_both_and_dirties_profile():
+    book_id = add_book(
+        title="Dune", author="Frank Herbert", rating=5, review="  A desert epic.  "
+    )
     with session_scope() as session:
         b = session.get(Book, book_id)
         assert b.app_review == "A desert epic."  # stripped
+        assert b.app_rating == 5
         assert b.feedback_updated_at is not None  # a review is a direct taste signal
-    # A reviewed (even if unrated) add should report the profile as dirty.
+    # A rated + reviewed add should report the profile as dirty.
     assert profile_status()["dirty"] is True
 
 
+def test_add_book_review_without_rating_is_rejected():
+    # A review is a rated signal — you can't save one on an unrated book.
+    with pytest.raises(ValueError):
+        add_book(title="Dune", author="Frank Herbert", review="A desert epic.")
+
+
 def test_add_book_blank_review_is_ignored():
+    # Blank review strips to nothing, so the no-rating rule isn't triggered.
     book_id = add_book(title="Dune", author="Frank Herbert", review="   ")
     with session_scope() as session:
         b = session.get(Book, book_id)

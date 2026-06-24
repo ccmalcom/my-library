@@ -169,11 +169,26 @@ def test_status_clean_after_profiling_then_dirty_again_on_edit():
 
 def test_books_changed_since_excludes_unrated():
     ingest_csv(SAMPLE_CSV)
-    # Project Hail Mary is unrated (to-read); a review alone shouldn't make it count.
-    set_book_feedback(_book_id("Project Hail Mary"), review="excited to read")
+    # Project Hail Mary is unrated (to-read). Touching only its date-read bumps feedback
+    # but leaves it unrated, so it must not count as a changed (taste) signal. (A review
+    # can't be used here — reviewing an unrated book is rejected; see the test below.)
+    set_book_feedback(_book_id("Project Hail Mary"), date_read=date(2024, 1, 1))
     with session_scope() as session:
         changed = books_changed_since(session, None)
     assert all(b.title != "Project Hail Mary" for b in changed)
+
+
+def test_review_requires_rating():
+    ingest_csv(SAMPLE_CSV)
+    # Project Hail Mary is unrated — a review alone must be rejected.
+    with pytest.raises(ValueError):
+        set_book_feedback(_book_id("Project Hail Mary"), review="excited to read")
+    # Supplying a rating in the same call is allowed.
+    out = set_book_feedback(
+        _book_id("Project Hail Mary"), rating=5, review="Loved it."
+    )
+    assert out["app_rating"] == 5
+    assert out["app_review"] == "Loved it."
 
 
 # --- recommender signal (regression) ---------------------------------------

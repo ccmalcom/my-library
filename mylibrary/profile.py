@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
-from .config import get_settings
+from .config import LOCAL_USER_ID, get_settings
 from .db import Book, ProfileMeta, TasteTrait, init_db, session_scope, utcnow
 
 _TOOL = {
@@ -131,10 +131,10 @@ def _book_payload(book: Book) -> dict:
     return payload
 
 
-def build_tiers(session) -> dict[str, list[dict]]:
-    """Return rated books grouped into rating tiers, with enriched metadata."""
+def build_tiers(session, user_id: str = LOCAL_USER_ID) -> dict[str, list[dict]]:
+    """Return `user_id`'s rated books grouped into rating tiers, with enriched metadata."""
     tiers: dict[str, list[dict]] = {"5": [], "4": [], "3": [], "<=2": []}
-    for book in session.query(Book).all():
+    for book in session.query(Book).filter(Book.user_id == user_id).all():
         r = book.effective_rating
         if r is None:
             continue
@@ -142,30 +142,39 @@ def build_tiers(session) -> dict[str, list[dict]]:
     return tiers
 
 
-def get_profile_meta(session) -> ProfileMeta:
-    """Return the single ProfileMeta row, creating it (id=1) on first use."""
-    meta = session.get(ProfileMeta, 1)
+def get_profile_meta(session, user_id: str = LOCAL_USER_ID) -> ProfileMeta:
+    """Return this user's ProfileMeta row, creating it on first use.
+
+    Was a singleton (id=1); now keyed by user_id (one row per user).
+    """
+    meta = (
+        session.query(ProfileMeta).filter(ProfileMeta.user_id == user_id).one_or_none()
+    )
     if meta is None:
-        meta = ProfileMeta(id=1)
+        meta = ProfileMeta(user_id=user_id)
         session.add(meta)
         session.flush()
     return meta
 
 
-def mark_profiled(session, kind: str) -> None:
-    """Stamp the profile as freshly built — clears the 'dirty' state."""
-    meta = get_profile_meta(session)
+def mark_profiled(session, kind: str, user_id: str = LOCAL_USER_ID) -> None:
+    """Stamp the user's profile as freshly built — clears the 'dirty' state."""
+    meta = get_profile_meta(session, user_id)
     meta.last_profiled_at = utcnow()
     meta.last_profile_kind = kind
 
 
-def books_changed_since(session, since: datetime | None) -> list[Book]:
-    """Rated books whose in-app rating/review changed after `since`.
+def books_changed_since(
+    session, since: datetime | None, user_id: str = LOCAL_USER_ID
+) -> list[Book]:
+    """Rated books (of `user_id`) whose in-app rating/review changed after `since`.
 
     `since=None` (never profiled) means every book carrying feedback is 'changed'.
     Unrated books are excluded — they don't participate in taste analysis.
     """
-    q = session.query(Book).filter(Book.feedback_updated_at.isnot(None))
+    q = session.query(Book).filter(
+        Book.user_id == user_id, Book.feedback_updated_at.isnot(None)
+    )
     if since is not None:
         q = q.filter(Book.feedback_updated_at > since)
     return [b for b in q.all() if b.effective_rating is not None]
@@ -222,8 +231,8 @@ def _build_prompt(tiers: dict[str, list[dict]]) -> str:
     )
 
 
-def extract_taste_profile(*, max_tokens: int = 3000) -> dict:
-    """Run the extractor and persist proposed traits. Returns a summary dict.
+def extract_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID) -> dict:
+    """Run the extractor and persist proposed traits for `user_id`. Returns a summary dict.
 
     Replaces any existing 'proposed' traits (a fresh run supersedes the last);
     user-confirmed/edited traits would be preserved in a later phase.
@@ -237,7 +246,7 @@ def extract_taste_profile(*, max_tokens: int = 3000) -> dict:
 
     init_db()
     with session_scope() as session:
-        tiers = build_tiers(session)
+        tiers = build_tiers(session, user_id)
         total_rated = sum(len(v) for v in tiers.values())
         if total_rated == 0:
             raise RuntimeError(
@@ -267,8 +276,10 @@ def extract_taste_profile(*, max_tokens: int = 3000) -> dict:
 
         valid_ids = {b["id"] for tier in tiers.values() for b in tier}
 
-        # Replace prior proposed traits.
-        session.query(TasteTrait).filter(TasteTrait.status == "proposed").delete()
+        # Replace prior proposed traits (this user's only).
+        session.query(TasteTrait).filter(
+            TasteTrait.user_id == user_id, TasteTrait.status == "proposed"
+        ).delete()
 
         saved = 0
         for t in traits:
@@ -276,6 +287,7 @@ def extract_taste_profile(*, max_tokens: int = 3000) -> dict:
             contrasts = [i for i in t.get("contrasts", []) if i in valid_ids]
             session.add(
                 TasteTrait(
+                    user_id=user_id,
                     claim=t.get("claim", "").strip(),
                     polarity=t.get("polarity", "reward"),
                     exhibits=exhibits,
@@ -286,7 +298,7 @@ def extract_taste_profile(*, max_tokens: int = 3000) -> dict:
             )
             saved += 1
 
-        mark_profiled(session, "full")
+        mark_profiled(session, "full", user_id)
 
     return {
         "mode": "full",
@@ -360,8 +372,8 @@ def _build_update_prompt(
     )
 
 
-def update_taste_profile(*, max_tokens: int = 3000) -> dict:
-    """Incrementally revise the taste profile from recent edits only.
+def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID) -> dict:
+    """Incrementally revise `user_id`'s taste profile from recent edits only.
 
     Sends just the changed books + the books the current traits cite (not the whole
     library) and asks Claude to revise the trait set. Falls back to a full
@@ -379,18 +391,18 @@ def update_taste_profile(*, max_tokens: int = 3000) -> dict:
     with session_scope() as session:
         existing = (
             session.query(TasteTrait)
-            .filter(TasteTrait.status == "proposed")
+            .filter(TasteTrait.user_id == user_id, TasteTrait.status == "proposed")
             .all()
         )
-        meta = get_profile_meta(session)
+        meta = get_profile_meta(session, user_id)
         since = meta.last_profiled_at
 
     # No prior profile to revise -> a full build is both correct and necessary.
     if not existing or since is None:
-        return extract_taste_profile(max_tokens=max_tokens)
+        return extract_taste_profile(max_tokens=max_tokens, user_id=user_id)
 
     with session_scope() as session:
-        changed = books_changed_since(session, since)
+        changed = books_changed_since(session, since, user_id)
         if not changed:
             return {
                 "mode": "update",
@@ -404,7 +416,7 @@ def update_taste_profile(*, max_tokens: int = 3000) -> dict:
         # Serialize the current traits and gather the books they cite.
         current_rows = (
             session.query(TasteTrait)
-            .filter(TasteTrait.status == "proposed")
+            .filter(TasteTrait.user_id == user_id, TasteTrait.status == "proposed")
             .all()
         )
         current_traits = [
@@ -428,7 +440,9 @@ def update_taste_profile(*, max_tokens: int = 3000) -> dict:
 
         books = {
             b.id: b
-            for b in session.query(Book).filter(Book.id.in_(wanted_ids)).all()
+            for b in session.query(Book)
+            .filter(Book.user_id == user_id, Book.id.in_(wanted_ids))
+            .all()
         }
         books_meta: dict[int, dict] = {}
         for bid, b in books.items():
@@ -458,7 +472,9 @@ def update_taste_profile(*, max_tokens: int = 3000) -> dict:
 
         valid_ids = set(books_meta.keys())
 
-        session.query(TasteTrait).filter(TasteTrait.status == "proposed").delete()
+        session.query(TasteTrait).filter(
+            TasteTrait.user_id == user_id, TasteTrait.status == "proposed"
+        ).delete()
 
         saved = 0
         for t in traits:
@@ -466,6 +482,7 @@ def update_taste_profile(*, max_tokens: int = 3000) -> dict:
             contrasts = [i for i in t.get("contrasts", []) if i in valid_ids]
             session.add(
                 TasteTrait(
+                    user_id=user_id,
                     claim=t.get("claim", "").strip(),
                     polarity=t.get("polarity", "reward"),
                     exhibits=exhibits,
@@ -476,7 +493,7 @@ def update_taste_profile(*, max_tokens: int = 3000) -> dict:
             )
             saved += 1
 
-        mark_profiled(session, "update")
+        mark_profiled(session, "update", user_id)
 
     return {
         "mode": "update",

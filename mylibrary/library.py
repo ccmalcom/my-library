@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from .config import LOCAL_USER_ID
 from .db import Book, Enrichment, init_db, session_scope, utcnow
 from .enrich import _normalize_title, _surname
 from .profile import books_changed_since, get_profile_meta
@@ -59,8 +60,9 @@ def add_book(
     subjects: list[str] | None = None,
     catalog_source: str | None = None,
     catalog_id: str | None = None,
+    user_id: str = LOCAL_USER_ID,
 ) -> int:
-    """Manually add a book to the library; return the new book id.
+    """Manually add a book to `user_id`'s library; return the new book id.
 
     The first-class path is the in-app "add a book" flow: the user picks a real catalog
     hit (search-and-pick), so the cover/subjects/year/isbn come from that pick and are
@@ -71,11 +73,11 @@ def add_book(
     Dedup mirrors the recommender: normalized title + author surname. A duplicate raises
     `BookExistsError` rather than silently creating a second row.
 
-    A `rating` (1-5) and/or a `review` set `app_rating` / `app_review` and bump
-    `feedback_updated_at`, so a rated or reviewed manual add immediately makes the taste
+    A `rating` (1-5) sets `app_rating` and bumps `feedback_updated_at`, making the taste
     profile show as dirty — the same ownership model as in-app re-rating/reviewing (locked
-    decision #2; a written review is an especially strong, direct signal). `shelf` defaults
-    to "read".
+    decision #2). A `review` is a rated signal: it may only accompany a rating, so adding a
+    review without one raises `ValueError` (a written review is an especially strong, direct
+    signal, but the model still tiers it by its rating). `shelf` defaults to "read".
     """
     title = (title or "").strip()
     if not title:
@@ -89,15 +91,26 @@ def add_book(
     isbn13 = (isbn13 or "").strip() or None
     review = (review or "").strip() or None
 
+    # A review is a rated signal — there's no such thing as a review without a rating.
+    # Reject a review on an unrated add (rating omitted or 0) rather than storing a
+    # dangling review the taste model can't tier.
+    if review and rating in (None, 0):
+        raise ValueError("A review requires a rating (1-5). Rate the book, or omit the review.")
+
     init_db()
     with session_scope() as session:
         norm_title = _normalize_title(title)
         norm_surname = _surname(author)
-        for b in session.query(Book).filter(Book.title.isnot(None)).all():
+        # Dedup is scoped to this user — one user's add never scans another's books.
+        dupe_q = session.query(Book).filter(
+            Book.user_id == user_id, Book.title.isnot(None)
+        )
+        for b in dupe_q.all():
             if _normalize_title(b.title) == norm_title and _surname(b.author) == norm_surname:
                 raise BookExistsError(f'"{title}" is already in your library.')
 
         book = Book(
+            user_id=user_id,
             title=title,
             author=author,
             isbn13=isbn13,
@@ -142,13 +155,15 @@ def set_book_feedback(
     review: str | None = None,
     clear_review: bool = False,
     date_read: date | None = None,
+    user_id: str = LOCAL_USER_ID,
 ) -> dict:
     """Set the in-app rating, review, and/or date-read for a book; stamp it as changed.
 
     - `rating`: 1-5 to set, or 0 to clear the in-app rating (revert to the Goodreads
       seed). `None` leaves the rating untouched.
     - `review`: text to store. `None` leaves the review untouched; pass `clear_review`
-      to remove an existing review.
+      to remove an existing review. A review requires the book to be rated (set a rating
+      in the same call or beforehand) — reviewing an unrated book raises `ValueError`.
     - `date_read`: the date the reader finished the book (optional — "if remembered").
       `None` leaves it untouched. Feeds the profile's temporal weighting (`read_year`).
 
@@ -163,7 +178,7 @@ def set_book_feedback(
     init_db()
     with session_scope() as session:
         book = session.get(Book, book_id)
-        if book is None:
+        if book is None or book.user_id != user_id:
             raise BookNotFoundError(f"Book {book_id} not found.")
 
         if rating is not None:
@@ -176,11 +191,20 @@ def set_book_feedback(
         if date_read is not None:
             book.date_read = date_read
 
+        # A review can't exist without a rating. After applying the rating change above,
+        # if the book carries a review but has no effective rating, reject — the rating can
+        # be supplied in the same call. Clearing a review or date-only edits are unaffected.
+        if book.app_review and book.effective_rating is None:
+            raise ValueError(
+                "A review requires a rating. Rate the book 1-5 (same update is fine) "
+                "before saving a review."
+            )
+
         book.feedback_updated_at = utcnow()
         return _book_summary(book)
 
 
-def set_book_shelf(book_id: int, shelf: str) -> dict:
+def set_book_shelf(book_id: int, shelf: str, *, user_id: str = LOCAL_USER_ID) -> dict:
     """Move a book to a different shelf (e.g. to-read -> currently-reading / read).
 
     A shelf move is not a taste signal on its own, so it does NOT bump
@@ -192,13 +216,13 @@ def set_book_shelf(book_id: int, shelf: str) -> dict:
     init_db()
     with session_scope() as session:
         book = session.get(Book, book_id)
-        if book is None:
+        if book is None or book.user_id != user_id:
             raise BookNotFoundError(f"Book {book_id} not found.")
         book.exclusive_shelf = shelf
         return _book_summary(book)
 
 
-def remove_book(book_id: int) -> dict:
+def remove_book(book_id: int, *, user_id: str = LOCAL_USER_ID) -> dict:
     """Permanently delete a book (and its enrichment) from the library.
 
     Used to drop a title off the to-read shelf. `books` the *table* is never dropped,
@@ -207,15 +231,15 @@ def remove_book(book_id: int) -> dict:
     init_db()
     with session_scope() as session:
         book = session.get(Book, book_id)
-        if book is None:
+        if book is None or book.user_id != user_id:
             raise BookNotFoundError(f"Book {book_id} not found.")
         title = book.title
         session.delete(book)
         return {"id": book_id, "title": title, "removed": True}
 
 
-def profile_status() -> dict:
-    """Report whether the taste profile is stale relative to in-app edits.
+def profile_status(*, user_id: str = LOCAL_USER_ID) -> dict:
+    """Report whether `user_id`'s taste profile is stale relative to in-app edits.
 
     `dirty` is True when ratings/reviews have changed since the profile was last built
     (or when feedback exists but no profile has ever been built). This backs the UI's
@@ -223,9 +247,9 @@ def profile_status() -> dict:
     """
     init_db()
     with session_scope() as session:
-        meta = get_profile_meta(session)
+        meta = get_profile_meta(session, user_id)
         since = meta.last_profiled_at
-        changed = books_changed_since(session, since)
+        changed = books_changed_since(session, since, user_id)
         return {
             "dirty": bool(changed),
             "changed_books": len(changed),

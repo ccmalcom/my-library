@@ -9,6 +9,26 @@ using their own Anthropic API key.
 The core pipeline (`ingest → enrich → profile → recommend`) is solid and stays intact.
 This plan is almost entirely backend infrastructure + auth — not new product features.
 
+## Locked decisions (this transition)
+
+These resolve the "open questions" at the bottom and supersede any conflicting wording below:
+
+1. **Auth + DB = Supabase.** Supabase Auth issues the JWT and Supabase Postgres is the
+   database — one service for both. (Earlier drafts mentioned Clerk; that is dropped to
+   avoid running two vendors.) DB access stays through SQLAlchemy, not the Supabase JS
+   client, so **no RLS** — scope every query by `user_id` server-side instead.
+2. **Launch = invite-only, free.** Signups are gated behind an invite/allowlist initially to
+   control scale and cost. No billing, no Stripe, no paid tier in this phase.
+3. **Anthropic key = bring-your-own, always.** Each user supplies their own key (encrypted
+   at rest, decrypted only at call time). Never bundle one.
+4. **Google Books key = bundle Chase's shared key.** It's optional and low-quota-risk;
+   bundling removes first-run friction. Revisit only if quota becomes a problem.
+
+Status: **Phase 2 landed.** Plan resolved; config/deps/auth/crypto skeleton in place;
+multi-tenancy (user_id on all tables + scoped queries + Alembic baseline + per-request
+`user_id` dependency) is done and tested in local mode. Remaining: provision Supabase
+(set `SUPABASE_JWT_SECRET` / `DATABASE_URL`), then Phases 3–6.
+
 ---
 
 ## Context (read CLAUDE.md first)
@@ -39,19 +59,30 @@ All locked decisions from CLAUDE.md apply. Additionally:
 ## Phase 1 — Auth
 
 **Use Supabase Auth.** Chase has prior Supabase experience and it consolidates auth + DB
-into one service (vs. Clerk + Neon separately). Supabase Auth gives you `user_id` out of
-the box and handles email/password + OAuth. Rolling your own is not worth it.
+into one service. Supabase Auth gives you `user_id` (the `sub` claim) out of the box and
+handles email/password + OAuth. Rolling your own is not worth it. The backend verifies the
+Supabase-issued JWT on every request (HS256 against `SUPABASE_JWT_SECRET`, or the project
+JWKS) — it does not call Supabase per request.
 
 **Tasks:**
-- Add auth provider (Clerk recommended)
-- Protect all API routes — every request must carry a valid JWT / session token
-- Extract `user_id` from the token server-side on every request
-- Add a `/me` endpoint that returns the current user's profile state
-- Gate the frontend behind auth (redirect unauthenticated users to sign-in)
+- Verify the Supabase JWT in a FastAPI dependency; reject requests without a valid token
+- Extract `user_id` (the JWT `sub`) server-side and inject it into every handler
+- Protect all data routes with that dependency (health/docs stay public)
+- Gate signups behind an invite allowlist (Supabase allowlist or an `invites` table check)
+- Add a `/me` endpoint that returns the current user's profile/onboarding state
+- Gate the frontend behind auth (Supabase client; redirect unauthenticated users to sign-in)
+- Forward the access token as `Authorization: Bearer` from the Next.js `lib/api.ts` client
 
 ---
 
-## Phase 2 — Database migration (SQLite → Postgres, multi-tenant)
+## Phase 2 — Database migration (SQLite → Postgres, multi-tenant) ✅ DONE
+
+Landed: `user_id` on `books` / `taste_traits` / `recommendations` / `profile_meta`;
+`ProfileMeta` de-singletonized (per-user); per-user uniqueness on `goodreads_book_id`;
+every core function + every API route scopes by `user_id` (incl. the dedup walks);
+Alembic baseline (`0001_initial_multitenant_schema`) created and `init_db` retired in
+hosted mode. Postgres engine activates automatically when `DATABASE_URL` is set. Local
+SQLite mode is unchanged and still self-migrates. Original task list kept below for record.
 
 This is the biggest change. Every table that holds user data needs a `user_id` column and
 all queries need to be scoped to it.
@@ -102,8 +133,8 @@ decrypted server-side only when a Claude call is made. It is never returned to t
 - Add API key settings UI in the frontend (entry form + confirmation that it's saved)
 - Gate `profile`, `reprofile`, and `recommend` endpoints — return a clear error if no key
   is configured, with a link to settings
-- Decide on Google Books key: either bundle a shared key with a generous quota, or require
-  users to supply their own (recommend bundling for now to reduce friction)
+- Google Books key: **bundle Chase's shared key** (locked decision #4) — it stays a single
+  deployment env var, not a per-user setting. Users only ever enter their Anthropic key.
 
 ---
 
@@ -211,12 +242,11 @@ Phases 3 and 4 can be worked in parallel once Phase 2 is done.
 
 ---
 
-## Open questions (decide before starting)
+## Open questions — RESOLVED
 
-1. **Google Books key** — bundle a shared key or require users to supply one?
-2. **Free tier / pricing** — is this free for all users, or do you plan to charge? (Affects
-   infra cost planning)
-3. **Invite-only launch?** — consider restricting signups initially to control scale and
-   get feedback before fully opening up
-4. **Rate limiting** — without it, one user can hammer Open Library / Google Books and get
-   the shared IP blocked; add per-user rate limiting on enrich endpoints
+1. **Google Books key** — ✅ Bundle Chase's shared key (decision #4).
+2. **Free tier / pricing** — ✅ Free, no billing this phase (decision #2).
+3. **Invite-only launch?** — ✅ Yes, invite-only at launch (decision #2).
+4. **Rate limiting** — ✅ Still required. Per-user rate limiting on `enrich` and
+   `/catalog/search` (shared-IP protection for Open Library / Google Books). Implement in
+   Phase 4 alongside the job queue (e.g. SlowAPI or a Redis token bucket keyed on `user_id`).

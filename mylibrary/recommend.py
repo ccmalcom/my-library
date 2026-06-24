@@ -29,7 +29,7 @@ import json
 import uuid
 from collections import Counter
 
-from .config import get_settings
+from .config import LOCAL_USER_ID, get_settings
 from .db import Book, Recommendation, TasteTrait, init_db, session_scope
 from .enrich import _normalize_title, _surname
 
@@ -178,10 +178,10 @@ def _dedup_key(title: str | None, author: str | None) -> tuple[str, str]:
     return (_normalize_title(title), _surname(author))
 
 
-def _build_signal(session) -> dict:
+def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     """Summarize the library: loved books, their top subjects/authors, and the dedup
     keys/ISBNs of everything already on a shelf (so we never re-recommend them)."""
-    books = session.query(Book).all()
+    books = session.query(Book).filter(Book.user_id == user_id).all()
     library_keys: set[tuple[str, str]] = set()
     library_isbns: set[str] = set()
     loved: list[dict] = []
@@ -218,7 +218,10 @@ def _build_signal(session) -> dict:
     # Also exclude explicitly rejected recommendations so they never resurface.
     rejected = (
         session.query(Recommendation)
-        .filter(Recommendation.status == _REJECTED_STATUS)
+        .filter(
+            Recommendation.user_id == user_id,
+            Recommendation.status == _REJECTED_STATUS,
+        )
         .all()
     )
     for r in rejected:
@@ -229,6 +232,7 @@ def _build_signal(session) -> dict:
     loved.sort(key=lambda d: (d["rating"], d["read_year"] or 0), reverse=True)
     traits = (
         session.query(TasteTrait)
+        .filter(TasteTrait.user_id == user_id)
         .order_by(TasteTrait.inference_confidence.desc())
         .all()
     )
@@ -483,8 +487,9 @@ def recommend(
     use_metadata: bool = True,
     use_claude_seeds: bool = True,
     requests_per_second: float | None = None,
+    user_id: str = LOCAL_USER_ID,
 ) -> dict:
-    """Run the two-stage recommender and persist the served set. Returns a summary."""
+    """Run the two-stage recommender for `user_id` and persist the served set."""
     init_db()
     if requests_per_second is not None:
         from . import catalog
@@ -492,7 +497,7 @@ def recommend(
         catalog.set_rate(requests_per_second)
 
     with session_scope() as session:
-        signal = _build_signal(session)
+        signal = _build_signal(session, user_id)
         if not signal["loved"]:
             raise RuntimeError(
                 "No loved books found (need books rated >= 4). Run ingest + enrich "
@@ -526,6 +531,7 @@ def recommend(
         for rank, c in enumerate(ranked, 1):
             session.add(
                 Recommendation(
+                    user_id=user_id,
                     run_id=run_id,
                     rank=rank,
                     title=c["title"],
@@ -572,10 +578,13 @@ def recommend(
     }
 
 
-def latest_recommendations(session) -> list[Recommendation]:
-    """Rows of the most recent run, in rank order (helper for API/CLI readers)."""
+def latest_recommendations(
+    session, user_id: str = LOCAL_USER_ID
+) -> list[Recommendation]:
+    """Rows of `user_id`'s most recent run, in rank order (helper for API/CLI readers)."""
     last = (
         session.query(Recommendation)
+        .filter(Recommendation.user_id == user_id)
         .order_by(Recommendation.created_at.desc(), Recommendation.id.desc())
         .first()
     )
@@ -583,7 +592,10 @@ def latest_recommendations(session) -> list[Recommendation]:
         return []
     return (
         session.query(Recommendation)
-        .filter(Recommendation.run_id == last.run_id)
+        .filter(
+            Recommendation.user_id == user_id,
+            Recommendation.run_id == last.run_id,
+        )
         .order_by(Recommendation.rank)
         .all()
     )

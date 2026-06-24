@@ -20,6 +20,45 @@ against the live catalog → `library.add_book`) has landed too, with a no-CSV b
 setup wizard so users without a Goodreads export can build a starter library. NL discovery,
 the full feedback/labeling surface, and the eval harness are the remaining phases.
 
+## Web distribution (in progress)
+
+Transition from local single-user tool to a hosted multi-tenant web app is underway. Full
+plan + locked decisions: **`mylibrary-web-distribution-plan.md`**. Key decisions: **Supabase**
+for auth + Postgres, **invite-only / free** launch, **bring-your-own Anthropic key** (encrypted
+at rest), **bundled Google Books key**. Scaffolding has landed (not yet wired):
+- `config.Settings` now reads `DATABASE_URL` / `SUPABASE_JWT_SECRET` / `ENCRYPTION_KEY`.
+  All optional — unset == **local SQLite single-user mode, unchanged**. `db_url` returns
+  Postgres only when `DATABASE_URL` is set; `is_multi_tenant` reports the mode.
+- `auth.py` — Supabase JWT verify → `user_id`; returns `LOCAL_USER_ID` ("local") when no
+  secret is set. Not yet a route dependency.
+- `crypto.py` — AES-256-GCM encrypt/decrypt for per-user Anthropic keys (Phase 3 seam).
+- `.env.example` documents every var. Deps for Postgres/Alembic/JWT/crypto are in
+  `requirements.txt` but only exercised in hosted mode.
+
+**Phase 2 (multi-tenancy) has landed:**
+- Every user-owned table (`books`, `taste_traits`, `recommendations`, `profile_meta`) now
+  has a `user_id` column (default `LOCAL_USER_ID`, canonical constant in `config.py`).
+  `ProfileMeta` is no longer a singleton — one row per user, looked up by `user_id`.
+  `books` uniqueness on `goodreads_book_id` is now **per-user** (`uq_book_user_goodreads`);
+  `Enrichment` has no `user_id` (scoped via its `book_id` FK to `Book`).
+- Every core function takes a trailing `user_id: str = LOCAL_USER_ID` and scopes all its
+  queries by it (ingest/enrich/profile/recommend/library/stats). The default keeps the CLI,
+  tests, and unconfigured API working unchanged in local mode. The in-Python dedup walks
+  (`library.add_book`, `recommend._build_signal`, `api._ensure_library_book`) are now
+  user-scoped so one user never scans another's rows.
+- `api.py` has a `current_user` FastAPI dependency (`UserId` alias) on every data route. It
+  returns `LOCAL_USER_ID` until `SUPABASE_JWT_SECRET` is set, then verifies the JWT and
+  scopes per-user — so wiring real auth is just setting the env var. `session.get()` reads
+  are guarded with a `user_id` ownership check (cross-tenant id access → 404).
+- **Alembic** owns the hosted schema: `alembic.ini` + `alembic/env.py` (pulls `settings.db_url`)
+  + `alembic/versions/0001_initial_multitenant_schema.py` (baseline from `Base.metadata`).
+  Run `alembic upgrade head` on deploy. `init_db()` now **returns early in multi-tenant mode**
+  (Alembic is the source of truth there); locally it still self-migrates SQLite and now
+  backfills `user_id` (DEFAULT `'local'`) onto pre-existing tables, so an old single-user DB
+  upgrades transparently.
+Next: Phase 3 (per-user Anthropic key storage — `crypto.py` seam is ready) and Phase 4
+(background jobs + per-user rate limiting).
+
 ## Locked decisions (do not relitigate)
 
 1. **Goodreads API is dead.** CSV export is the only ingest path. Never scrape Goodreads
@@ -71,6 +110,10 @@ the full feedback/labeling surface, and the eval harness are the remaining phase
 - `library.py` — in-app library edits. `set_book_feedback` sets `app_rating` / `app_review`
   and bumps `feedback_updated_at`; `profile_status` reports whether the profile is stale
   (dirty) vs. those edits. Never auto-re-profiles — that's an explicit user action.
+  **Invariant: a review requires a rating.** Both `set_book_feedback` and `add_book` reject
+  a review on an unrated book (`ValueError` → 422), so a reviewed book is always rated and
+  `books_changed_since`'s `effective_rating is not None` filter never drops a reviewed book.
+  A rating may be supplied in the same call as the review.
   `add_book` is the **manual add** write path: it creates a `source="manual"` book (dedup by
   normalized title + author surname → `BookExistsError`) with an optional shelf, 1-5 rating,
   and free-text review, and stores the picked catalog result's cover/subjects/isbn as a

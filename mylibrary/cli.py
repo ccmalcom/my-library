@@ -265,19 +265,24 @@ def reprofile(
 @app.command()
 def traits() -> None:
     """Print the saved taste profile: each trait with its supporting books."""
+    from .config import LOCAL_USER_ID
     from .db import Book, TasteTrait, session_scope
 
     init_db()  # also migrates the taste_traits table shape if it's out of date
     with session_scope() as session:
         rows = (
             session.query(TasteTrait)
+            .filter(TasteTrait.user_id == LOCAL_USER_ID)
             .order_by(TasteTrait.polarity, TasteTrait.inference_confidence.desc())
             .all()
         )
         if not rows:
             typer.echo("No taste traits yet — run `profile` first.")
             return
-        books = {b.id: b for b in session.query(Book).all()}
+        books = {
+            b.id: b
+            for b in session.query(Book).filter(Book.user_id == LOCAL_USER_ID).all()
+        }
 
         def _line(bid: int) -> str | None:
             b = books.get(bid)

@@ -16,6 +16,7 @@ import csv
 from datetime import date, datetime
 from pathlib import Path
 
+from .config import LOCAL_USER_ID
 from .db import Book, init_db, session_scope
 
 
@@ -56,8 +57,8 @@ def _parse_date(raw: str | None) -> date | None:
     return None
 
 
-def ingest_csv(csv_path: str | Path) -> dict:
-    """Parse a Goodreads export and upsert into the books table.
+def ingest_csv(csv_path: str | Path, *, user_id: str = LOCAL_USER_ID) -> dict:
+    """Parse a Goodreads export and upsert into the books table for `user_id`.
 
     Returns a summary dict: {total_rows, inserted, updated, rated, skipped}.
     """
@@ -107,12 +108,12 @@ def ingest_csv(csv_path: str | Path) -> dict:
             if gr_id is not None:
                 existing = (
                     session.query(Book)
-                    .filter(Book.goodreads_book_id == gr_id)
+                    .filter(Book.user_id == user_id, Book.goodreads_book_id == gr_id)
                     .one_or_none()
                 )
 
             if existing is None:
-                session.add(Book(goodreads_book_id=gr_id, **values))
+                session.add(Book(user_id=user_id, goodreads_book_id=gr_id, **values))
                 inserted += 1
             else:
                 # Update import-owned fields only; never clobber app_rating.

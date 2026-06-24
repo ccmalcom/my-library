@@ -16,6 +16,11 @@ from dotenv import load_dotenv
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
+# Owner id for all data in local single-user mode (no Supabase auth configured). In hosted
+# multi-tenant mode this is replaced per-request by the JWT `sub`. Canonical definition lives
+# here (the root of the import graph) so db.py and auth.py share it without an import cycle.
+LOCAL_USER_ID = "local"
+
 DEFAULT_MODEL = "claude-sonnet-4-6"
 # Default catalog request rate. ~3/s was very gentle; 8/s is faster and, in practice,
 # does not provoke 429s from Open Library / Google Books. Tune via MYLIBRARY_REQ_PER_SEC
@@ -35,9 +40,24 @@ class Settings:
     model: str
     requests_per_second: float
 
+    # --- web distribution (multi-tenant hosting) ---------------------------
+    # All optional: unset == local single-user SQLite mode, exactly as before.
+    # Set in the deployment environment (Supabase/Railway), never committed.
+    database_url: str | None  # full Postgres URL; when set, overrides the SQLite default
+    supabase_jwt_secret: str | None  # HS256 secret used to verify Supabase access tokens
+    encryption_key: str | None  # base64 32-byte key for AES-256-GCM of per-user API keys
+
     @property
     def db_url(self) -> str:
+        # Hosted Postgres when DATABASE_URL is provided; otherwise the local SQLite file.
+        if self.database_url:
+            return self.database_url
         return f"sqlite:///{self.db_path}"
+
+    @property
+    def is_multi_tenant(self) -> bool:
+        """True when running against a hosted Postgres DB (web-distribution mode)."""
+        return bool(self.database_url)
 
 
 def _resolve_data_dir() -> Path:
@@ -65,4 +85,7 @@ def get_settings() -> Settings:
         requests_per_second=float(
             os.getenv("MYLIBRARY_REQ_PER_SEC", DEFAULT_REQ_PER_SEC)
         ),
+        database_url=os.getenv("DATABASE_URL"),
+        supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
+        encryption_key=os.getenv("ENCRYPTION_KEY"),
     )

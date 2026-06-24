@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from collections import Counter
 
+from .config import LOCAL_USER_ID
 from .db import Book, Enrichment, TasteTrait, init_db, session_scope
 
 
-def dataset_stats() -> dict:
+def dataset_stats(*, user_id: str = LOCAL_USER_ID) -> dict:
     init_db()
     with session_scope() as session:
-        books = session.query(Book).all()
+        books = session.query(Book).filter(Book.user_id == user_id).all()
         total = len(books)
         rated = [b for b in books if b.effective_rating is not None]
 
@@ -22,12 +23,18 @@ def dataset_stats() -> dict:
         shelf_dist = Counter(b.exclusive_shelf or "unknown" for b in books)
         has_isbn = sum(1 for b in books if b.isbn13)
 
-        enr_rows = session.query(Enrichment).all()
+        # Enrichment has no user_id of its own — scope it via its book (FK) to this user.
+        enr_rows = (
+            session.query(Enrichment)
+            .join(Book, Enrichment.book_id == Book.id)
+            .filter(Book.user_id == user_id)
+            .all()
+        )
         conf_dist = Counter(e.confidence_label or "NONE" for e in enr_rows)
         rated_ids = {b.id for b in rated}
         rated_enriched = sum(1 for e in enr_rows if e.book_id in rated_ids)
 
-        traits = session.query(TasteTrait).all()
+        traits = session.query(TasteTrait).filter(TasteTrait.user_id == user_id).all()
         trait_polarity = Counter(t.polarity for t in traits)
 
         n_rated = len(rated)

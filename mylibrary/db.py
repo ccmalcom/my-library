@@ -37,7 +37,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.types import JSON
 
-from .config import get_settings
+from .config import LOCAL_USER_ID, get_settings
 
 
 def utcnow() -> datetime:
@@ -58,8 +58,15 @@ class Book(Base):
     __tablename__ = "books"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    # Stable Goodreads key; unique so re-import upserts instead of duplicating.
-    goodreads_book_id: Mapped[str | None] = mapped_column(String, unique=True, index=True)
+    # Owner. Defaults to LOCAL_USER_ID so local single-user mode and existing rows (backfilled
+    # via server_default on ADD COLUMN) "just work"; hosted mode sets it to the JWT sub.
+    user_id: Mapped[str] = mapped_column(
+        String, index=True, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
+    # Stable Goodreads key. Uniqueness is now PER USER (see __table_args__) — two different
+    # users can each import the same Goodreads book id; re-import within one user still upserts.
+    goodreads_book_id: Mapped[str | None] = mapped_column(String, index=True)
 
     title: Mapped[str] = mapped_column(String, nullable=False)
     author: Mapped[str | None] = mapped_column(String)
@@ -88,6 +95,12 @@ class Book(Base):
 
     enrichment: Mapped["Enrichment | None"] = relationship(
         back_populates="book", uselist=False, cascade="all, delete-orphan"
+    )
+
+    # Goodreads id is unique within a user, not globally (multi-tenant). NULLs (manual adds)
+    # are treated as distinct by both SQLite and Postgres, so manual books don't collide.
+    __table_args__ = (
+        UniqueConstraint("user_id", "goodreads_book_id", name="uq_book_user_goodreads"),
     )
 
     @property
@@ -129,6 +142,10 @@ class TasteTrait(Base):
     __tablename__ = "taste_traits"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String, index=True, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
     claim: Mapped[str] = mapped_column(Text, nullable=False)
     polarity: Mapped[str] = mapped_column(String)  # reward | aversion
     # Books that EXHIBIT the trait (a reward's high-rated examples, an aversion's
@@ -157,6 +174,10 @@ class Recommendation(Base):
     __tablename__ = "recommendations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String, index=True, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
     # Groups the books served by a single recommend() run, so the latest run is one query.
     run_id: Mapped[str] = mapped_column(String, index=True, nullable=False)
     rank: Mapped[int] = mapped_column(Integer)  # 1-based position within the run
@@ -186,16 +207,20 @@ class Recommendation(Base):
 
 
 class ProfileMeta(Base):
-    """Single-row bookkeeping for the taste profile.
+    """Per-user bookkeeping for the taste profile.
 
-    Records when the profile was last (re)built so the app can tell whether in-app
-    rating/review edits since then have left it stale. A row with id=1 is the only one;
-    `get_profile_meta` upserts it.
+    Records when a user's profile was last (re)built so the app can tell whether in-app
+    rating/review edits since then have left it stale. Previously a singleton (id=1); now
+    one row per user, looked up by `user_id` (unique). `get_profile_meta` upserts it.
     """
 
     __tablename__ = "profile_meta"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String, unique=True, index=True, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
     last_profiled_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_profile_kind: Mapped[str | None] = mapped_column(String)  # full | update
 
@@ -215,11 +240,50 @@ def _ensure_engine():
     return _engine, _SessionLocal
 
 
+def _ensure_user_id_column(engine, table_name: str) -> None:
+    """Add a `user_id` column to a pre-existing local table and backfill it to LOCAL_USER_ID.
+
+    Local-SQLite convenience only (hosted Postgres uses Alembic). `DEFAULT '<local>'` means
+    existing rows are backfilled to the local user automatically and new inserts that don't
+    specify a user still land under the local tenant — so an old single-user DB keeps working.
+    """
+    from sqlalchemy import inspect as sa_inspect, text as sa_text
+
+    insp = sa_inspect(engine)
+    if table_name not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns(table_name)}
+    if "user_id" not in cols:
+        with engine.begin() as conn:
+            conn.execute(
+                sa_text(
+                    f"ALTER TABLE {table_name} ADD COLUMN user_id VARCHAR "
+                    f"NOT NULL DEFAULT '{LOCAL_USER_ID}'"
+                )
+            )
+
+
 def init_db() -> None:
-    """Create tables if they don't exist (and migrate taste_traits if its shape changed)."""
+    """Ensure the local schema is current. No-op against hosted Postgres (Alembic owns that).
+
+    In local SQLite mode this keeps the lightweight self-migration it always had, plus it
+    now backfills a `user_id` column onto pre-existing tables so an old single-user DB is
+    transparently upgraded to the multi-tenant shape under the LOCAL_USER_ID tenant.
+    """
     from sqlalchemy import inspect as sa_inspect, text as sa_text
 
     engine, _ = _ensure_engine()
+
+    # Hosted multi-tenant mode: Alembic migrations are the single source of truth for the
+    # schema. Never run the drop+recreate / ADD COLUMN heuristics below against prod data.
+    if get_settings().is_multi_tenant:
+        return
+
+    # Backfill user_id onto any pre-existing tables BEFORE inspecting columns below, so the
+    # rest of this function (and the recommendations missing-column loop) sees it present.
+    for _tbl in ("books", "taste_traits", "recommendations", "profile_meta"):
+        _ensure_user_id_column(engine, _tbl)
+
     insp = sa_inspect(engine)
 
     # Lightweight migration: books holds the only irreplaceable data (ratings, reviews),

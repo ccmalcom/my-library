@@ -23,6 +23,7 @@ from difflib import SequenceMatcher
 from typing import Callable
 
 from . import catalog
+from .config import LOCAL_USER_ID
 from .db import Book, Enrichment, init_db, session_scope, utcnow
 
 # Confidence bands
@@ -147,6 +148,7 @@ def enrich_library(
     retry_unresolved: bool = False,
     requests_per_second: float | None = None,
     progress: Callable[[int, int, str, str], None] | None = None,
+    user_id: str = LOCAL_USER_ID,
 ) -> dict:
     """Enrich rated books (or all, if include_unrated). Returns a summary dict.
 
@@ -176,7 +178,7 @@ def enrich_library(
     }
 
     with session_scope() as session:
-        books = session.query(Book).all()
+        books = session.query(Book).filter(Book.user_id == user_id).all()
         candidates = [
             b for b in books if include_unrated or b.effective_rating is not None
         ]
