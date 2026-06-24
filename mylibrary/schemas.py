@@ -86,7 +86,8 @@ class AddBookRequest(BaseModel):
     """Manually add a book to the library (POST /books).
 
     title is required; the rest typically come from the picked CatalogResult. rating is
-    1-5 (or omitted/0 for unrated); shelf defaults to the read shelf.
+    1-5 (or omitted/0 for unrated); review is optional free text; shelf defaults to the
+    read shelf.
     """
 
     title: str
@@ -95,6 +96,7 @@ class AddBookRequest(BaseModel):
     isbn13: str | None = None
     shelf: str = "read"
     rating: int | None = None
+    review: str | None = None
     cover_url: str | None = None
     subjects: list[str] | None = None
     catalog_source: str | None = None

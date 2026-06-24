@@ -54,6 +54,7 @@ def add_book(
     isbn13: str | None = None,
     shelf: str = "read",
     rating: int | None = None,
+    review: str | None = None,
     cover_url: str | None = None,
     subjects: list[str] | None = None,
     catalog_source: str | None = None,
@@ -70,9 +71,11 @@ def add_book(
     Dedup mirrors the recommender: normalized title + author surname. A duplicate raises
     `BookExistsError` rather than silently creating a second row.
 
-    A `rating` (1-5) sets `app_rating` and bumps `feedback_updated_at`, so a rated manual
-    add immediately makes the taste profile show as dirty — the same ownership model as
-    in-app re-rating (locked decision #2). `shelf` defaults to "read".
+    A `rating` (1-5) and/or a `review` set `app_rating` / `app_review` and bump
+    `feedback_updated_at`, so a rated or reviewed manual add immediately makes the taste
+    profile show as dirty — the same ownership model as in-app re-rating/reviewing (locked
+    decision #2; a written review is an especially strong, direct signal). `shelf` defaults
+    to "read".
     """
     title = (title or "").strip()
     if not title:
@@ -84,6 +87,7 @@ def add_book(
 
     author = (author or "").strip() or None
     isbn13 = (isbn13 or "").strip() or None
+    review = (review or "").strip() or None
 
     init_db()
     with session_scope() as session:
@@ -105,6 +109,10 @@ def add_book(
         )
         if rating not in (None, 0):
             book.app_rating = rating
+        if review:
+            book.app_review = review
+        # Any direct taste signal (rating or review) dirties the profile.
+        if rating not in (None, 0) or review:
             book.feedback_updated_at = utcnow()
         session.add(book)
         session.flush()  # assign book.id

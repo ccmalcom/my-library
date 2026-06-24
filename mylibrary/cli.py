@@ -166,6 +166,7 @@ def add_book_cmd(
     title: str = typer.Argument(..., help="Book title."),
     author: str = typer.Option(None, help="Author (improves the catalog match)."),
     rating: int = typer.Option(None, help="Optional 1-5 rating (feeds the taste profile)."),
+    review: str = typer.Option(None, help="Optional review text (a strong taste signal)."),
     shelf: str = typer.Option("read", help="read | to-read | currently-reading | did-not-finish."),
     no_resolve: bool = typer.Option(
         False, help="Skip the catalog lookup (no cover/subjects/year backfill)."
@@ -188,15 +189,15 @@ def add_book_cmd(
     try:
         book_id = add_book(
             title=title, author=author, year=year, isbn13=isbn, shelf=shelf,
-            rating=rating, cover_url=cover, subjects=subjects,
+            rating=rating, review=review, cover_url=cover, subjects=subjects,
             catalog_source=src, catalog_id=cid,
         )
     except (BookExistsError, ValueError) as e:
         typer.secho(str(e), fg=typer.colors.RED)
         raise typer.Exit(code=1)
     typer.secho(f"Added book {book_id}: {title}", fg=typer.colors.GREEN)
-    if rating:
-        typer.echo("Rated — profile may now be stale; run `reprofile`.")
+    if rating or review:
+        typer.echo("Rated/reviewed — profile may now be stale; run `reprofile`.")
 
 
 @app.command()

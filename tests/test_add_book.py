@@ -41,6 +41,24 @@ def test_add_book_with_rating_sets_app_rating_and_dirties_profile():
     assert profile_status()["dirty"] is True
 
 
+def test_add_book_with_review_sets_app_review_and_dirties_profile():
+    book_id = add_book(title="Dune", author="Frank Herbert", review="  A desert epic.  ")
+    with session_scope() as session:
+        b = session.get(Book, book_id)
+        assert b.app_review == "A desert epic."  # stripped
+        assert b.feedback_updated_at is not None  # a review is a direct taste signal
+    # A reviewed (even if unrated) add should report the profile as dirty.
+    assert profile_status()["dirty"] is True
+
+
+def test_add_book_blank_review_is_ignored():
+    book_id = add_book(title="Dune", author="Frank Herbert", review="   ")
+    with session_scope() as session:
+        b = session.get(Book, book_id)
+        assert b.app_review is None
+        assert b.feedback_updated_at is None
+
+
 def test_add_book_stores_catalog_pick_as_stub_enrichment():
     book_id = add_book(
         title="Dune",

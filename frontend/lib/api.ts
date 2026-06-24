@@ -136,6 +136,8 @@ export interface AddBookRequest {
   shelf?: Shelf;
   /** 1-5 to rate on add (feeds the taste profile); omit for unrated. */
   rating?: number | null;
+  /** Optional review text — a strong, direct taste signal. */
+  review?: string | null;
   cover_url?: string | null;
   subjects?: string[] | null;
   catalog_source?: string | null;

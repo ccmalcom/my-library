@@ -27,7 +27,10 @@ This plan is almost entirely backend infrastructure + auth — not new product f
 
 All locked decisions from CLAUDE.md apply. Additionally:
 - Users must supply their own Anthropic API key — never bundle one
-- Goodreads CSV is still the only ingest path (API is dead)
+- Goodreads CSV is still the only *Goodreads* ingest path (the API is dead, no scraping).
+  Note this is no longer the only way to populate a library: **manual add** (search-and-pick
+  against Open Library / Google Books → `library.add_book`) lets users without a Goodreads
+  account build a library, and the setup wizard offers it as an alternate first-run path.
 - No scraping Goodreads
 - Import must never clobber `app_rating` / `app_review`
 
@@ -70,6 +73,12 @@ all queries need to be scoped to it.
 - Update `init_db` to run migrations rather than recreate tables
 - `books` is never dropped — migration must be additive only
 - Test that Chase's existing local data can be seeded into the new schema
+- **`library.add_book` dedup must become a scoped query.** It currently walks every `books`
+  row in Python (`session.query(Book).all()` → normalize title/surname) to reject
+  duplicates — fine for one user on SQLite, but under multi-tenancy it must filter by
+  `user_id` (and ideally push the normalized-key match into the query / a stored normalized
+  column) so one user's add doesn't scan the whole table. Same applies to the title+surname
+  walks in `enrich._normalize_title` callers and `api._ensure_library_book`.
 
 **Hosting the DB:**
 - Supabase Postgres (same project as auth — one less service to manage)
@@ -152,12 +161,22 @@ place, review the full first-run flow end to end:
 5. Profile build (user-initiated)
 6. First recommendations
 
+There are now **two** first-run paths to test end to end: the CSV import flow above, and the
+**manual "I don't have a Goodreads export" path** (`ManualStep` → search-and-pick →
+`add_book`), which lands a usable rated starter library without enrichment (manual adds carry
+catalog metadata already). Both must leave the dashboard non-empty without bouncing back to
+`/setup`.
+
 **Tasks:**
 - Add a "where to find your Goodreads CSV" tooltip/link in the setup wizard
   (Goodreads → Account → Settings → Import/Export)
-- Make the API key entry the first step of setup, before CSV upload
+- Make the API key entry the first step of setup, before CSV upload **or** manual add
 - Ensure the enrichment progress bar reflects real background job progress
 - Test the full flow with a fresh account and a real Goodreads export
+- Test the manual-add first-run path with a fresh account (add a few rated books → finish →
+  profile build → first recommendations) — it must not require the enrichment step
+- Rate-limit `/catalog/search` per user (it hits Open Library + Google Books on each
+  keystroke-debounced query) for the same shared-IP reason as the enrich endpoints
 
 ---
 

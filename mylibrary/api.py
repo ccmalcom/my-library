@@ -272,6 +272,7 @@ def create_book(req: AddBookRequest) -> BookOut:
             isbn13=req.isbn13,
             shelf=req.shelf,
             rating=req.rating,
+            review=req.review,
             cover_url=req.cover_url,
             subjects=req.subjects,
             catalog_source=req.catalog_source,

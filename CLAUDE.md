@@ -15,8 +15,10 @@ Current state is the **offline pipeline + recommender + a web UI**: `ingest -> e
 taste profile -> recommend`. MVP1 (ingest/enrich/profile) is done, Phase 5 — the two-stage
 recommender (`recommend.py`) — has landed, and a **Next.js frontend** (`frontend/`) now
 calls the API. In-app **re-rating + reviewing** and an **incremental re-profile** have
-landed (`library.py`, `profile.update_taste_profile`). NL discovery, the full feedback/
-labeling surface, and the eval harness are the remaining phases.
+landed (`library.py`, `profile.update_taste_profile`). **Manual add-a-book** (search-and-pick
+against the live catalog → `library.add_book`) has landed too, with a no-CSV branch in the
+setup wizard so users without a Goodreads export can build a starter library. NL discovery,
+the full feedback/labeling surface, and the eval harness are the remaining phases.
 
 ## Locked decisions (do not relitigate)
 
@@ -53,7 +55,11 @@ labeling surface, and the eval harness are the remaining phases.
 - `ingest.py` — Goodreads CSV -> `books`, idempotent on `Book Id`. Handles Excel-escaped
   `="..."` ISBNs, `My Rating == 0` = unrated, `Exclusive Shelf`.
 - `catalog.py` — Open Library + Google Books clients. Disk-caches every raw response,
-  throttles (configurable rate), retries with backoff, tracks per-host 429s.
+  throttles (configurable rate), retries with backoff, tracks per-host 429s. `search_books`
+  (free-text title/author/ISBN) backs the user-facing manual add-a-book picker: it queries
+  both sources, normalizes to the shared candidate shape (incl. `isbn13`), de-dups across
+  them, and floats cover-bearing hits to the front. Dedup uses an inline normalizer (not
+  `enrich._normalize_title`) to avoid the enrich→catalog import cycle.
 - `enrich.py` — resolves each rated book, scores confidence, commits per book (resumable).
 - `profile.py` — groups rated books by star tier, uses Claude tool-use to infer
   tier-distinguishing, evidence-cited taste traits. `extract_taste_profile` is the full
@@ -65,6 +71,14 @@ labeling surface, and the eval harness are the remaining phases.
 - `library.py` — in-app library edits. `set_book_feedback` sets `app_rating` / `app_review`
   and bumps `feedback_updated_at`; `profile_status` reports whether the profile is stale
   (dirty) vs. those edits. Never auto-re-profiles — that's an explicit user action.
+  `add_book` is the **manual add** write path: it creates a `source="manual"` book (dedup by
+  normalized title + author surname → `BookExistsError`) with an optional shelf, 1-5 rating,
+  and free-text review, and stores the picked catalog result's cover/subjects/isbn as a
+  `confidence_label="MANUAL"` stub Enrichment (mirrors `api._ensure_library_book`), so covers
+  render immediately and the recommender treats the book as already enriched. A rated *or*
+  reviewed add bumps `feedback_updated_at`, dirtying the profile just like an in-app
+  re-rate/review (a written review is an especially strong signal). No network call happens in
+  `add_book` — the search already resolved the book — so adding is fast and offline.
 - `recommend.py` — two-stage recommender. Stage 1 retrieval = metadata expansion
   (`catalog.openlibrary_subject` / `googlebooks_subject` / `googlebooks_author`) +
   Claude-seeded queries (`catalog.googlebooks_query`), merged + deduped against the
@@ -92,13 +106,19 @@ It is a pure HTTP client of the FastAPI engine — no DB access, no migrations.
 - `app/` — routes: `/` (dashboard + run recommend), `/swipe` (rec swiping; `already_read`
   lands the book on the read shelf then prompts a review), `/to-read` (per-book: start
   reading / mark finished → review / remove), `/library` (rated books; click a row to
-  re-rate/review; a "N books missing reviews" button steps through unrated read books),
-  `/profile` (taste traits with inline editing, rating distribution, genre breakdown).
-  `layout.tsx` mounts `NavBar` + `ReprofileBanner` above all pages.
+  re-rate/review; a "N books missing reviews" button steps through unrated read books; a
+  **+ Add book** button opens `AddBookModal`), `/profile` (taste traits with inline editing,
+  rating distribution, genre breakdown), `/setup` (CSV import wizard **plus** a no-CSV
+  "add books manually" branch — `ManualStep`). `layout.tsx` mounts `NavBar` +
+  `ReprofileBanner` above all pages; the root `app/layout.tsx` `<body>` carries
+  `suppressHydrationWarning` (browser extensions like ColorZilla mutate `<body>` pre-hydration
+  — this silences that benign attribute mismatch only, not real ones inside the app).
 - `components/` — `BookEditModal` (re-rate + review; diff-based save; optional
-  `queuePosition`/`onFinishQueue` for the step-through review queue), `ReprofileBanner`
-  (app-wide; shows only when `/profile/status` reports `dirty`, runs `/profile/update`),
-  `SwipeCard`, `NavBar`.
+  `queuePosition`/`onFinishQueue` for the step-through review queue), `AddBookModal`
+  (manual add: debounced `/catalog/search` → pick a real result → optional shelf + star
+  rating + review text → `POST /books`; used by both the Library page and the setup wizard's
+  manual branch), `ReprofileBanner` (app-wide; shows only when `/profile/status` reports `dirty`,
+  runs `/profile/update`), `SwipeCard`, `NavBar`.
 
 Re-profiling is **never automatic** in the UI: editing a book marks the profile dirty
 (`feedback_updated_at` > `last_profiled_at`), the banner appears, and the user chooses
@@ -156,14 +176,24 @@ when to spend the Claude call.
   book dominating the chart.
 - **First-run redirect / SWR cache**: the dashboard (`app/(main)/page.tsx`) redirects to
   `/setup` when `stats.total === 0`, and it gates render behind a spinner until `stats` is
-  known so the dashboard never flashes before the redirect. The setup wizard (ingest +
-  enrich) is a required two-step flow — there's **no "skip enrichment"** option. Gotcha:
-  after the wizard runs, refresh the shared `"stats"` SWR key by passing fresh data —
+  known so the dashboard never flashes before the redirect. The setup wizard's **CSV path**
+  (ingest + enrich) is a required two-step flow — there's **no "skip enrichment"** option.
+  The **manual path** (`ManualStep`, reached via "I don't have a Goodreads export") skips the
+  enrich step entirely: manual adds already carry catalog metadata, so the library is
+  recommend-ready without a separate enrich pass. Gotcha (applies to **both** paths): after
+  finishing, refresh the shared `"stats"` SWR key by passing fresh data —
   `await mutate("stats", api.stats(), { revalidate: false })` — **not** a bare
   `mutate("stats")`. A bare call only *revalidates*, and SWR won't refetch a key that no
   mounted component subscribes to (the dashboard is unmounted while on `/setup`), so the
   cache keeps the stale `total: 0` and bounces the user back to `/setup` in a loop. Same
   pattern applies any time a non-subscribed page needs to update another page's SWR key.
+- **Manual add (`add_book` / `POST /books` / `AddBookModal`)**: search-and-pick only — the
+  book stored is always a real catalog hit, never free-typed, consistent with the "no
+  invented titles" rule. Dedup is by normalized title + author surname (shared with the
+  recommender); a duplicate returns **409** (`BookExistsError`), which `AddBookModal` shows
+  as "already in your library". `/catalog/search` hits Open Library + Google Books live on
+  each debounced keystroke (cached by `catalog._get_json`) — under multi-user it needs
+  per-user rate limiting (see the web-distribution plan).
 - Currently developed on **Python 3.14** — first suspect for any odd runtime behavior.
 
 ## Commands
@@ -174,6 +204,7 @@ python -m mylibrary.cli ingest          # data/goodreads_library_export.csv
 python -m mylibrary.cli enrich          # --rps N, --limit N, --force, --retry-unresolved
 python -m mylibrary.cli profile         # full taste profile build; needs ANTHROPIC_API_KEY
 python -m mylibrary.cli traits          # print the saved taste profile + evidence
+python -m mylibrary.cli add "Title"      # manually add a book (--author, --rating, --review, --shelf)
 python -m mylibrary.cli rate ID 1-5     # re-rate a book in-app (0 clears the override)
 python -m mylibrary.cli review ID "..."  # write/clear (--clear) an in-app review
 python -m mylibrary.cli profile-status  # is the profile stale vs. recent edits?

@@ -34,6 +34,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
   const [shelf, setShelf] = useState<Shelf>(defaultShelf);
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
+  const [review, setReview] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -79,6 +80,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
         isbn13: selected.isbn13,
         shelf,
         rating: rating > 0 ? rating : undefined,
+        review: review.trim() || undefined,
         cover_url: selected.cover_url,
         subjects: selected.subjects,
         catalog_source: selected.source,
@@ -198,6 +200,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
                 onClick={() => {
                   setSelected(null);
                   setRating(0);
+                  setReview("");
                 }}
                 className="shrink-0 text-xs text-slate-500 hover:text-slate-300"
               >
@@ -259,6 +262,20 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Optional review */}
+            <div className="mt-5">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Review <span className="font-normal normal-case text-slate-500">· optional</span>
+              </label>
+              <textarea
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                rows={3}
+                placeholder="What did you think? Your words feed the taste profile…"
+                className="w-full resize-y rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-600 focus:outline-none"
+              />
             </div>
 
             {saveError && <p className="mt-4 text-sm text-red-400">{saveError}</p>}
