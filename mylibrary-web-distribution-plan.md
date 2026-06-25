@@ -56,7 +56,17 @@ All locked decisions from CLAUDE.md apply. Additionally:
 
 ---
 
-## Phase 1 — Auth
+## Phase 1 — Auth ✅ DONE (pending Supabase project verification)
+
+Landed: backend ES256/JWKS token verification (`auth.py`); per-request `current_user`
+dependency on every route. **Frontend wired** (email + password): `utils/supabase/client.ts`
+(browser client, auth-only), `lib/api.ts` forwards the session token as `Authorization:
+Bearer`, `middleware.ts` refreshes sessions + redirects unauthenticated users to `/login`,
+`app/login` sign-in page, NavBar sign-out. All of it no-ops in local mode (no Supabase env),
+so dev stays unauthenticated. Remaining: confirm a real token verifies end to end against
+the live Supabase project, and invite the first users (signups are dashboard-invite only).
+
+Original notes:
 
 **Use Supabase Auth.** Chase has prior Supabase experience and it consolidates auth + DB
 into one service. Supabase Auth gives you `user_id` (the `sub` claim) out of the box and

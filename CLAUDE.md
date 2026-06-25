@@ -162,6 +162,16 @@ Supabase to flip on real auth + the Postgres cutover.
 Next.js (App Router) + React + Tailwind + SWR (data fetching) + framer-motion (swipe).
 It is a pure HTTP client of the FastAPI engine — no DB access, no migrations.
 
+**Auth (Supabase, auth-only).** Supabase is used purely to get a session — never to query
+tables (the FastAPI backend owns data). `utils/supabase/client.ts` is the singleton browser
+client; `authEnabled` is false when the `NEXT_PUBLIC_SUPABASE_*` env vars are absent, so
+**local dev runs unauthenticated exactly as before**. `lib/api.ts` `authHeaders()` attaches
+the session's `access_token` as `Authorization: Bearer` on every request (the backend
+verifies it via JWKS). `middleware.ts` refreshes the session and redirects unauthenticated
+users to `/login` (no-op in local mode); `app/login` is the email+password sign-in (invite-
+only, no sign-up form); NavBar has a sign-out button. Supabase publishable key env var is
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (the new name for the anon key).
+
 - `lib/api.ts` — the single typed fetch client. All calls go through it; `BASE` is
   `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`). Types here mirror the Pydantic
   schemas. `PROFILE_STATUS_KEY` is the shared SWR key for `/profile/status` so a mutation

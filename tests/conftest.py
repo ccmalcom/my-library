@@ -15,6 +15,19 @@ def isolated_db(tmp_path, monkeypatch):
     # Point the engine at a temp data dir BEFORE it's created.
     monkeypatch.setenv("MYLIBRARY_DATA_DIR", str(tmp_path))
 
+    # Force LOCAL single-user mode regardless of the developer's .env, so the suite is
+    # hermetic: never run against hosted Postgres, never require an auth token. (Without
+    # this, a .env with DATABASE_URL would point tests at production, and SUPABASE_URL
+    # would make every TestClient request 401.) Tests that need these set them themselves.
+    for _var in (
+        "DATABASE_URL",
+        "SUPABASE_URL",
+        "SUPABASE_JWKS_URL",
+        "SUPABASE_JWT_SECRET",
+        "ENCRYPTION_KEY",
+    ):
+        monkeypatch.delenv(_var, raising=False)
+
     import mylibrary.db as db
 
     # Reset cached engine/session so they rebuild against the temp dir.
