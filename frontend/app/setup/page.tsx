@@ -4,12 +4,12 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
-import { api, type Book } from "@/lib/api";
+import { api, PROFILE_STATUS_KEY, type Book } from "@/lib/api";
 import AddBookModal from "@/components/AddBookModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Step = "upload" | "enrich" | "manual" | "done";
+type Step = "upload" | "enrich" | "manual" | "profile" | "done";
 
 interface IngestResult {
   inserted: number;
@@ -21,10 +21,12 @@ interface IngestResult {
 const CSV_STEPS: { key: Step; label: string }[] = [
   { key: "upload", label: "Upload" },
   { key: "enrich", label: "Enrich" },
+  { key: "profile", label: "Profile" },
   { key: "done", label: "Done" },
 ];
 const MANUAL_STEPS: { key: Step; label: string }[] = [
   { key: "manual", label: "Add books" },
+  { key: "profile", label: "Profile" },
   { key: "done", label: "Done" },
 ];
 
@@ -393,9 +395,79 @@ function EnrichStep({
   );
 }
 
-// ── Step 3: Done ───────────────────────────────────────────────────────────────
+// ── Step 3: Profile ────────────────────────────────────────────────────────────
 
-function DoneStep({ enriched }: { enriched: boolean }) {
+function ProfileStep({ onDone }: { onDone: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleProfile() {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.runProfile();
+      await Promise.all([
+        mutate("profile", api.profile(), { revalidate: false }),
+        mutate(PROFILE_STATUS_KEY, api.profileStatus(), { revalidate: false }),
+      ]);
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Profile build failed.");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="mb-1 text-xl font-semibold text-white">Build your taste profile</h2>
+        <p className="text-sm text-slate-400">
+          This analyzes your rated books to create the taste traits that power
+          recommendations. It usually takes around 30–60 seconds.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-slate-700 bg-slate-800/40 p-4 text-sm text-slate-400 space-y-2">
+        <p>✅ Creates your initial taste traits from your library</p>
+        <p>✅ Required before running recommendations</p>
+        <p>⏱ Uses your configured Anthropic API key</p>
+      </div>
+
+      {loading && (
+        <div className="rounded-xl border border-blue-700/40 bg-blue-900/20 p-4 text-sm text-blue-300 flex items-start gap-3">
+          <Spinner className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>Analyzing your ratings and building your profile…</span>
+        </div>
+      )}
+
+      {error && <p className="text-red-400 text-sm">{error}</p>}
+
+      <button
+        onClick={handleProfile}
+        disabled={loading}
+        className={[
+          "w-full rounded-lg py-3 font-semibold text-white transition-all flex items-center justify-center gap-2",
+          loading
+            ? "cursor-not-allowed bg-blue-700 opacity-60"
+            : "bg-blue-600 hover:bg-blue-500 active:scale-[0.99]",
+        ].join(" ")}
+      >
+        {loading ? (
+          <>
+            <Spinner />
+            Building profile…
+          </>
+        ) : (
+          "Build Profile"
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ── Step 4: Done ───────────────────────────────────────────────────────────────
+
+function DoneStep({ profiled }: { profiled: boolean }) {
   const router = useRouter();
 
   return (
@@ -404,15 +476,15 @@ function DoneStep({ enriched }: { enriched: boolean }) {
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">You're all set!</h2>
         <p className="text-slate-400 text-sm">
-          {enriched
-            ? "Your library is imported and enriched. Head to the dashboard to run your first AI recommendations."
-            : "Your library is imported. Run enrichment later from the dashboard before requesting recommendations."}
+          {profiled
+            ? "Your library is ready and your taste profile is built. Head to the dashboard to run your first AI recommendations."
+            : "Your library is ready. Build your taste profile before requesting recommendations."}
         </p>
       </div>
 
-      {!enriched && (
+      {!profiled && (
         <div className="rounded-xl border border-amber-700/40 bg-amber-900/10 p-4 text-sm text-amber-300 text-left">
-          ⚠️ Recommendations need enrichment first. Run it via the CLI (<code className="text-amber-200">python -m mylibrary.cli enrich</code>) or come back here.
+          ⚠️ Recommendations need a taste profile first. Build it via the CLI (<code className="text-amber-200">python -m mylibrary.cli profile</code>) or come back here.
         </div>
       )}
 
@@ -432,7 +504,7 @@ export default function SetupPage() {
   const [step, setStep] = useState<Step>("upload");
   const [path, setPath] = useState<"csv" | "manual">("csv");
   const [ingestResult, setIngestResult] = useState<IngestResult | null>(null);
-  const [enriched, setEnriched] = useState(false);
+  const [profiled, setProfiled] = useState(false);
 
   const rail = path === "manual" ? MANUAL_STEPS : CSV_STEPS;
 
@@ -469,20 +541,26 @@ export default function SetupPage() {
             <EnrichStep
               ingestResult={ingestResult}
               onDone={() => {
-                setEnriched(true);
-                setStep("done");
+                setStep("profile");
               }}
             />
           )}
           {step === "manual" && (
             <ManualStep
               onDone={() => {
-                setEnriched(true); // manual adds carry catalog metadata — no enrich step needed
+                setStep("profile");
+              }}
+            />
+          )}
+          {step === "profile" && (
+            <ProfileStep
+              onDone={() => {
+                setProfiled(true);
                 setStep("done");
               }}
             />
           )}
-          {step === "done" && <DoneStep enriched={enriched} />}
+          {step === "done" && <DoneStep profiled={profiled} />}
         </div>
       </div>
     </div>
