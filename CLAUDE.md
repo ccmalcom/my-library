@@ -25,7 +25,11 @@ the full feedback/labeling surface, and the eval harness are the remaining phase
 Transition from local single-user tool to a hosted multi-tenant web app is underway. Full
 plan + locked decisions: **`mylibrary-web-distribution-plan.md`**. Key decisions: **Supabase**
 for auth + Postgres, **invite-only / free** launch, **bring-your-own Anthropic key** (encrypted
-at rest), **bundled Google Books key**. Scaffolding has landed (not yet wired):
+at rest), **bundled Google Books key**. The Postgres cutover + auth are now **live** (running
+against Chase's Supabase project in dev): `DATABASE_URL` points at the Supabase session pooler,
+`alembic upgrade head` has built the schema, `SUPABASE_URL` + `ENCRYPTION_KEY` are set, and the
+app serves multi-tenant. Local SQLite single-user mode is still the default when those env vars
+are unset. The pieces:
 - `config.Settings` now reads `DATABASE_URL` / `SUPABASE_URL` / `SUPABASE_JWKS_URL` /
   `SUPABASE_JWT_SECRET` / `ENCRYPTION_KEY`. All optional — unset == **local SQLite
   single-user mode, unchanged**. `db_url` returns Postgres only when `DATABASE_URL` is set
@@ -86,8 +90,17 @@ at rest), **bundled Google Books key**. Scaffolding has landed (not yet wired):
 - **`ENCRYPTION_KEY`** (base64 32 bytes) must be set wherever keys are stored/read. Generate:
   `python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`. Not needed
   in local mode unless a per-user key is actually stored (env fallback skips crypto).
-Next: Phase 4 (background jobs for enrichment + per-user rate limiting) and standing up
-Supabase to flip on real auth + the Postgres cutover.
+**Cutover done (this round):** `DATABASE_URL` → Supabase session pooler + `alembic upgrade head`
+(step-by-step in `mylibrary-postgres-cutover-runbook.md`); auth flipped on via `SUPABASE_URL`.
+Supabase tables are locked down with **RLS enabled + no policies** — the backend's `postgres`
+role bypasses RLS so queries work, while the public anon/publishable key can't reach the data
+API (PostgREST). **No data migration was done by design:** the old `local`-tenant library is left
+behind; each Supabase user builds a fresh library on the web. Also landed: full **data-removal**
+surface (single book / library / profile / account — see `purge.py`) so a user can be reset to
+first-setup without minting a new account.
+
+Next: Phase 4 (background jobs for enrichment + per-user rate limiting), then Phase 5 hosting
+(Railway API + worker, Vercel frontend, Supabase) and Phase 6 first-run UX polish.
 
 ## Locked decisions (do not relitigate)
 
@@ -295,9 +308,12 @@ when to spend the Claude call.
   ingests books mid-flow (`total` goes 0 → N after upload), so a reactive gate would swap the
   wizard out before enrich/profile; instead the wizard calls `onComplete` at its final step to
   advance deliberately. The standalone `/setup` route still works (thin wrapper around
-  `SetupWizard`). The wizard's **CSV path** (ingest + enrich) is a required two-step flow —
-  there's **no "skip enrichment"** option. The **manual path** (`ManualStep`, "I don't have a
-  Goodreads export") skips enrich: manual adds already carry catalog metadata. Gotcha (both
+  `SetupWizard`). The wizard's **first step is always `ApiKeyStep`** — it auto-advances if a
+  key is already configured (one `apiKeyStatus` fetch on mount), otherwise blocks and offers an
+  inline key-entry form so the user never has to leave the wizard. The **CSV path** (ingest +
+  enrich) is a required two-step flow — there's **no "skip enrichment"** option. The **manual
+  path** (`ManualStep`, "I don't have a Goodreads export") skips enrich: manual adds already
+  carry catalog metadata. Gotcha (both
   paths): after each step, refresh the shared `"stats"` SWR key by passing fresh data —
   `await mutate("stats", api.stats(), { revalidate: false })` — **not** a bare `mutate("stats")`.
   A bare call only *revalidates*, and SWR won't refetch a key no mounted component subscribes to,

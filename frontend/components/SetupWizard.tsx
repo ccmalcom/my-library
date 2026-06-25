@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
-import { api, PROFILE_STATUS_KEY, type Book } from "@/lib/api";
+import { api, API_KEY_STATUS_KEY, PROFILE_STATUS_KEY, type Book } from "@/lib/api";
 import AddBookModal from "@/components/AddBookModal";
 
 // The onboarding wizard. Rendered both at the standalone /setup route and INLINE by
@@ -14,7 +14,7 @@ import AddBookModal from "@/components/AddBookModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Step = "upload" | "enrich" | "manual" | "profile" | "done";
+type Step = "api-key" | "upload" | "enrich" | "manual" | "profile" | "done";
 
 interface IngestResult {
   inserted: number;
@@ -24,12 +24,14 @@ interface IngestResult {
 
 // The two onboarding paths show different step rails.
 const CSV_STEPS: { key: Step; label: string }[] = [
+  { key: "api-key", label: "API Key" },
   { key: "upload", label: "Upload" },
   { key: "enrich", label: "Enrich" },
   { key: "profile", label: "Profile" },
   { key: "done", label: "Done" },
 ];
 const MANUAL_STEPS: { key: Step; label: string }[] = [
+  { key: "api-key", label: "API Key" },
   { key: "manual", label: "Add books" },
   { key: "profile", label: "Profile" },
   { key: "done", label: "Done" },
@@ -90,6 +92,114 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
+  );
+}
+
+// ── Step 0: API Key ────────────────────────────────────────────────────────────
+
+function ApiKeyStep({ onDone }: { onDone: () => void }) {
+  const [checking, setChecking] = useState(true);
+  const [key, setKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // On mount: if a key is already configured, skip this step immediately.
+  useEffect(() => {
+    api.apiKeyStatus().then((status) => {
+      if (status.configured) {
+        onDone();
+      } else {
+        setChecking(false);
+      }
+    }).catch(() => setChecking(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSave() {
+    if (!key.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.setApiKey(key.trim());
+      await mutate(API_KEY_STATUS_KEY);
+      setKey("");
+      setSaved(true);
+      setTimeout(onDone, 700);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save key.");
+      setSaving(false);
+    }
+  }
+
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner className="h-6 w-6 text-slate-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-white mb-1">Add your Anthropic API key</h2>
+        <p className="text-slate-400 text-sm">
+          MyLibrary uses Claude to build your taste profile and generate recommendations.
+          An API key is required before you can complete setup.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-amber-700/40 bg-amber-900/10 p-4 text-sm text-amber-300 space-y-1">
+        <p>⚠️ Profile and recommendations won&apos;t work without a key.</p>
+        <p>
+          Get one free at{" "}
+          <a
+            href="https://console.anthropic.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="text-blue-400 hover:underline"
+          >
+            console.anthropic.com
+          </a>
+          .
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
+          API key
+        </label>
+        <input
+          type="password"
+          value={key}
+          onChange={(e) => { setKey(e.target.value); setSaved(false); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+          placeholder="sk-ant-…"
+          autoComplete="off"
+          className="w-full rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 font-mono text-sm text-slate-200 placeholder-slate-600 focus:border-blue-600 focus:outline-none"
+        />
+        <p className="text-xs text-slate-500">
+          Stored encrypted on the server and never shown again. You can manage it later in Settings.
+        </p>
+      </div>
+
+      {error && <p className="text-red-400 text-sm">{error}</p>}
+      {saved && <p className="text-emerald-400 text-sm">✓ Key saved — continuing…</p>}
+
+      <button
+        onClick={handleSave}
+        disabled={saving || !key.trim() || saved}
+        className={[
+          "w-full rounded-lg py-3 font-semibold text-white transition-all flex items-center justify-center gap-2",
+          saving || !key.trim() || saved
+            ? "cursor-not-allowed bg-blue-700 opacity-50"
+            : "bg-blue-600 hover:bg-blue-500 active:scale-[0.99]",
+        ].join(" ")}
+      >
+        {saving ? <><Spinner />Saving…</> : "Save key & continue"}
+      </button>
+    </div>
   );
 }
 
@@ -513,7 +623,7 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
 // ── Wizard ───────────────────────────────────────────────────────────────────────
 
 export default function SetupWizard({ onComplete }: { onComplete?: () => void }) {
-  const [step, setStep] = useState<Step>("upload");
+  const [step, setStep] = useState<Step>("api-key");
   const [path, setPath] = useState<"csv" | "manual">("csv");
   const [ingestResult, setIngestResult] = useState<IngestResult | null>(null);
   const [profiled, setProfiled] = useState(false);
@@ -527,7 +637,9 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-white">Welcome to MyLibrary</h1>
           <p className="mt-1 text-slate-400">
-            {path === "manual"
+            {step === "api-key"
+              ? "A few quick steps to get you started."
+              : path === "manual"
               ? "Let's build your starter library."
               : "Let's get your reading history imported."}
           </p>
@@ -537,6 +649,11 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
 
         {/* Card */}
         <div className="rounded-2xl border border-slate-700 bg-[#1a1f2e] p-6">
+          {step === "api-key" && (
+            <ApiKeyStep
+              onDone={() => setStep("upload")}
+            />
+          )}
           {step === "upload" && (
             <UploadStep
               onDone={(result) => {
