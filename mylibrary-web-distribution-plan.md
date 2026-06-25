@@ -24,10 +24,16 @@ These resolve the "open questions" at the bottom and supersede any conflicting w
 4. **Google Books key = bundle Chase's shared key.** It's optional and low-quota-risk;
    bundling removes first-run friction. Revisit only if quota becomes a problem.
 
-Status: **Phase 2 landed.** Plan resolved; config/deps/auth/crypto skeleton in place;
-multi-tenancy (user_id on all tables + scoped queries + Alembic baseline + per-request
-`user_id` dependency) is done and tested in local mode. Remaining: provision Supabase
-(set `SUPABASE_JWT_SECRET` / `DATABASE_URL`), then Phases 3–6.
+Status: **Phases 2 & 3 landed; Postgres cutover tooling ready.** Multi-tenancy (user_id on all
+tables + scoped queries + Alembic baseline + per-request `user_id` dependency) and per-user
+Anthropic key storage are done and tested in local mode. The Alembic baseline was verified
+against a real Postgres (builds clean, zero autogenerate drift), and `config.db_url` now pins a
+raw Supabase connection string onto the psycopg v3 driver. **Cutover is now an operator step**,
+not a code task — follow `mylibrary-postgres-cutover-runbook.md` (set `DATABASE_URL` to the
+Supabase session pooler → `alembic upgrade head` → smoke-test). Decision: **no data migration** —
+the local `user_id="local"` library is left behind; the web flow is tested fresh under a real
+Supabase account. Remaining: run the cutover, flip on auth (`SUPABASE_URL` + `ENCRYPTION_KEY`),
+then Phases 4–6.
 
 ---
 

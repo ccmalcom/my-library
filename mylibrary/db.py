@@ -157,8 +157,9 @@ class TasteTrait(Base):
     status: Mapped[str] = mapped_column(String, default="proposed")  # proposed|confirmed|rejected|edited
     user_note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-
-    __table_args__ = (UniqueConstraint("id", name="uq_taste_trait_id"),)
+    # NB: no explicit UniqueConstraint on `id` — it's already the primary key (unique by
+    # definition). A redundant UNIQUE on the PK made `alembic revision --autogenerate` emit a
+    # spurious create_unique_constraint into every migration, so it was removed.
 
 
 class Recommendation(Base):

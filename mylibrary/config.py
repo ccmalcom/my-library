@@ -57,7 +57,7 @@ class Settings:
     def db_url(self) -> str:
         # Hosted Postgres when DATABASE_URL is provided; otherwise the local SQLite file.
         if self.database_url:
-            return self.database_url
+            return _normalize_pg_url(self.database_url)
         return f"sqlite:///{self.db_path}"
 
     @property
@@ -78,6 +78,24 @@ class Settings:
     def auth_enabled(self) -> bool:
         """True when any Supabase auth verification is configured (JWKS or HS256 secret)."""
         return bool(self.jwks_url or self.supabase_jwt_secret)
+
+
+def _normalize_pg_url(url: str) -> str:
+    """Force a Postgres URL onto the installed psycopg (v3) driver.
+
+    Supabase hands out connection strings as ``postgresql://...`` (and the legacy
+    ``postgres://...``). SQLAlchemy maps a *bare* ``postgresql://`` to **psycopg2**, which this
+    project does NOT install — only ``psycopg[binary]`` (v3) is in requirements. Without the
+    explicit ``+psycopg`` driver the Postgres cutover fails at connect time with
+    ``ModuleNotFoundError: psycopg2``. Normalising here means ``DATABASE_URL`` can be pasted
+    straight from the Supabase dashboard. URLs that already name a driver (``postgresql+psycopg``,
+    ``postgresql+asyncpg``) or aren't Postgres (``sqlite``) pass through untouched.
+    """
+    if url.startswith("postgres://"):  # legacy scheme → canonical
+        url = "postgresql://" + url[len("postgres://") :]
+    if url.startswith("postgresql://"):  # bare → pin to psycopg v3
+        return "postgresql+psycopg://" + url[len("postgresql://") :]
+    return url
 
 
 def _resolve_data_dir() -> Path:
