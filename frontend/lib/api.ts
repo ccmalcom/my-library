@@ -287,6 +287,9 @@ export const api = {
 
   runRecommend: (n = 10) => post<Record<string, unknown>>("/recommend", { n }),
 
+  /** Build the initial taste profile (required before first recommendations). */
+  runProfile: () => post<Record<string, unknown>>("/profile"),
+
   feedback: (recId: number, req: FeedbackRequest) =>
     patch<RecFeedbackResult>(`/recommendations/${recId}/feedback`, req),
 
