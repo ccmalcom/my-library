@@ -60,9 +60,11 @@ All locked decisions from CLAUDE.md apply. Additionally:
 
 **Use Supabase Auth.** Chase has prior Supabase experience and it consolidates auth + DB
 into one service. Supabase Auth gives you `user_id` (the `sub` claim) out of the box and
-handles email/password + OAuth. Rolling your own is not worth it. The backend verifies the
-Supabase-issued JWT on every request (HS256 against `SUPABASE_JWT_SECRET`, or the project
-JWKS) — it does not call Supabase per request.
+handles email/password + OAuth. Rolling your own is not worth it. This project's Supabase
+signs access tokens with **ES256** (asymmetric), so the backend verifies each request's token
+against the project's PUBLIC key from the JWKS endpoint (`auth.py`, cached via `PyJWKClient`)
+— no shared secret, and it does not call Supabase per request. Set `SUPABASE_URL`; a legacy
+HS256 `SUPABASE_JWT_SECRET` path remains as a fallback.
 
 **Tasks:**
 - Verify the Supabase JWT in a FastAPI dependency; reject requests without a valid token
@@ -119,7 +121,13 @@ all queries need to be scoped to it.
 
 ---
 
-## Phase 3 — Per-user Anthropic key storage
+## Phase 3 — Per-user Anthropic key storage ✅ DONE
+
+Landed: `user_settings` table (encrypted key + timestamps); `user_settings.py`
+(`set_anthropic_key` / `clear_anthropic_key` / `anthropic_key_status` /
+`resolve_anthropic_key`); `profile`/`recommend` resolve the per-user key (env fallback in
+local mode); `PUT`/`GET`/`DELETE /settings/api-key`; `/settings` page + NavBar link.
+Requires `ENCRYPTION_KEY` (base64 32 bytes) in the deployment env. Original task list below.
 
 Users enter their Anthropic API key in app settings. It is stored encrypted in the DB and
 decrypted server-side only when a Claude call is made. It is never returned to the frontend.

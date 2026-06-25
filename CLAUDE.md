@@ -26,11 +26,15 @@ Transition from local single-user tool to a hosted multi-tenant web app is under
 plan + locked decisions: **`mylibrary-web-distribution-plan.md`**. Key decisions: **Supabase**
 for auth + Postgres, **invite-only / free** launch, **bring-your-own Anthropic key** (encrypted
 at rest), **bundled Google Books key**. Scaffolding has landed (not yet wired):
-- `config.Settings` now reads `DATABASE_URL` / `SUPABASE_JWT_SECRET` / `ENCRYPTION_KEY`.
-  All optional — unset == **local SQLite single-user mode, unchanged**. `db_url` returns
-  Postgres only when `DATABASE_URL` is set; `is_multi_tenant` reports the mode.
-- `auth.py` — Supabase JWT verify → `user_id`; returns `LOCAL_USER_ID` ("local") when no
-  secret is set. Not yet a route dependency.
+- `config.Settings` now reads `DATABASE_URL` / `SUPABASE_URL` / `SUPABASE_JWKS_URL` /
+  `SUPABASE_JWT_SECRET` / `ENCRYPTION_KEY`. All optional — unset == **local SQLite
+  single-user mode, unchanged**. `db_url` returns Postgres only when `DATABASE_URL` is set;
+  `is_multi_tenant` reports the mode; `jwks_url`/`auth_enabled` report auth config.
+- `auth.py` — verifies Supabase access tokens and returns the `sub` as `user_id`. Supabase
+  signs with **ES256** (asymmetric), so the backend verifies against the project's PUBLIC
+  key fetched from JWKS (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`, cached via
+  `PyJWKClient`); a legacy **HS256** path (`SUPABASE_JWT_SECRET`) is the fallback. Returns
+  `LOCAL_USER_ID` ("local") when no Supabase auth is configured.
 - `crypto.py` — AES-256-GCM encrypt/decrypt for per-user Anthropic keys (Phase 3 seam).
 - `.env.example` documents every var. Deps for Postgres/Alembic/JWT/crypto are in
   `requirements.txt` but only exercised in hosted mode.
@@ -47,17 +51,33 @@ at rest), **bundled Google Books key**. Scaffolding has landed (not yet wired):
   (`library.add_book`, `recommend._build_signal`, `api._ensure_library_book`) are now
   user-scoped so one user never scans another's rows.
 - `api.py` has a `current_user` FastAPI dependency (`UserId` alias) on every data route. It
-  returns `LOCAL_USER_ID` until `SUPABASE_JWT_SECRET` is set, then verifies the JWT and
-  scopes per-user — so wiring real auth is just setting the env var. `session.get()` reads
-  are guarded with a `user_id` ownership check (cross-tenant id access → 404).
+  returns `LOCAL_USER_ID` until Supabase auth is configured (`SUPABASE_URL`), then verifies
+  the access token (ES256/JWKS) and scopes per-user — so turning on real auth is just setting
+  the env var(s). `session.get()` reads are guarded with a `user_id` ownership check
+  (cross-tenant id access → 404).
 - **Alembic** owns the hosted schema: `alembic.ini` + `alembic/env.py` (pulls `settings.db_url`)
   + `alembic/versions/0001_initial_multitenant_schema.py` (baseline from `Base.metadata`).
   Run `alembic upgrade head` on deploy. `init_db()` now **returns early in multi-tenant mode**
   (Alembic is the source of truth there); locally it still self-migrates SQLite and now
   backfills `user_id` (DEFAULT `'local'`) onto pre-existing tables, so an old single-user DB
   upgrades transparently.
-Next: Phase 3 (per-user Anthropic key storage — `crypto.py` seam is ready) and Phase 4
-(background jobs + per-user rate limiting).
+**Phase 3 (per-user Anthropic key) has landed:**
+- `UserSettings` table (`user_settings`): one row per user, `anthropic_api_key_encrypted`
+  (AES-256-GCM via `crypto.py`), timestamps. Created by the Alembic baseline / local `init_db`.
+- `user_settings.py` is the key write/read path: `set_anthropic_key` (encrypt+upsert),
+  `clear_anthropic_key`, `anthropic_key_status`, and **`resolve_anthropic_key(user_id)`** —
+  the single place profile/recommend ask "which key for this user?". It returns the user's
+  decrypted stored key, else falls back to the `ANTHROPIC_API_KEY` env var (so the CLI and
+  local mode are unchanged). `profile.py` / `recommend.py` now call it instead of reading
+  the env key directly; the key is still checked at point of use (patched tests need no key).
+- Endpoints: `PUT /settings/api-key` (store), `GET /settings/api-key/status` (`{configured}`,
+  never the key), `DELETE /settings/api-key` (clear). Frontend: `/settings` page
+  (`app/(main)/settings`) + NavBar link; `api.ts` `setApiKey`/`apiKeyStatus`/`clearApiKey`.
+- **`ENCRYPTION_KEY`** (base64 32 bytes) must be set wherever keys are stored/read. Generate:
+  `python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`. Not needed
+  in local mode unless a per-user key is actually stored (env fallback skips crypto).
+Next: Phase 4 (background jobs for enrichment + per-user rate limiting) and standing up
+Supabase to flip on real auth + the Postgres cutover.
 
 ## Locked decisions (do not relitigate)
 

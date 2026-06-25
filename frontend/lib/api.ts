@@ -167,6 +167,11 @@ export interface ProfileStatus {
   last_profile_kind: string | null;
 }
 
+export interface ApiKeyStatus {
+  /** True when a usable Anthropic key exists (stored per-user or env fallback). */
+  configured: boolean;
+}
+
 /**
  * Shared SWR key for the profile-status query, so any mutation (a re-rate/review)
  * can revalidate the re-profile banner via `mutate(PROFILE_STATUS_KEY)`.
@@ -203,6 +208,19 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) {
     const detail = await res.text();
     throw new Error(`PATCH ${path} → ${res.status}: ${detail}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`PUT ${path} → ${res.status}: ${detail}`);
   }
   return res.json() as Promise<T>;
 }
@@ -289,4 +307,17 @@ export const api = {
   /** Kick off library enrichment (Open Library + Google Books). Slow — can take minutes. */
   runEnrich: (opts?: { limit?: number }) =>
     post<Record<string, unknown>>("/enrich", { limit: opts?.limit ?? null }),
+
+  /** Whether a usable Anthropic key is configured (stored or env fallback). Never the key. */
+  apiKeyStatus: () => get<ApiKeyStatus>("/settings/api-key/status"),
+
+  /** Store the user's Anthropic key (encrypted server-side). */
+  setApiKey: (apiKey: string) =>
+    put<ApiKeyStatus>("/settings/api-key", { api_key: apiKey }),
+
+  /** Remove the user's stored key (reverts to env fallback / unconfigured). */
+  clearApiKey: () => del<ApiKeyStatus>("/settings/api-key"),
 };
+
+/** Shared SWR key for the API-key status (settings page + any gating UI). */
+export const API_KEY_STATUS_KEY = "api-key-status";

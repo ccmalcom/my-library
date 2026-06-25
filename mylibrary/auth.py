@@ -1,16 +1,18 @@
 """Auth — verify Supabase-issued JWTs and extract the per-request user_id.
 
-Web-distribution scaffold (Phase 1). This is the seam every protected route will
-depend on once multi-tenancy lands. It is intentionally self-contained:
+Supabase (this project) signs access tokens with **ES256** (ECDSA P-256, asymmetric): a
+private key signs, and the matching PUBLIC key — published at the project's JWKS endpoint —
+verifies. The backend therefore holds no shared secret; it fetches the public key from JWKS
+(cached, auto-refreshed when Supabase rotates keys) and verifies the signature.
 
-- **Local single-user mode** (no `SUPABASE_JWT_SECRET` configured) → auth is disabled and
-  `current_user_id` returns the synthetic `LOCAL_USER_ID`. This keeps the existing CLI/API
-  and the test suite working unchanged while the rest of the migration is built out.
-- **Hosted mode** (secret configured) → every request must carry a valid
-  `Authorization: Bearer <supabase access token>`; the `sub` claim becomes `user_id`.
+Modes:
+- **Local single-user** (no Supabase auth configured) → auth is disabled and `resolve_user_id`
+  returns `LOCAL_USER_ID`, so the CLI, tests, and an unconfigured API keep working unchanged.
+- **Hosted** (SUPABASE_URL / SUPABASE_JWKS_URL set) → every request must carry a valid
+  `Authorization: Bearer <access token>`; the verified `sub` claim becomes `user_id`.
 
-NOT YET WIRED: routes in `api.py` don't depend on this yet, and the DB tables don't have a
-`user_id` column yet (Phase 2). Wiring is the next step — see mylibrary-web-distribution-plan.md.
+A legacy **HS256** path (shared `SUPABASE_JWT_SECRET`) is kept as a fallback for older
+projects, used only when no JWKS URL is configured.
 """
 
 from __future__ import annotations
@@ -23,29 +25,62 @@ from .config import LOCAL_USER_ID, get_settings
 # LOCAL_USER_ID` imports keep working. Sentinel owner for all rows in local (no-auth) mode.
 __all__ = ["LOCAL_USER_ID", "AuthError", "resolve_user_id", "current_user_id"]
 
+_SUPABASE_AUDIENCE = "authenticated"
+
+# One PyJWKClient per JWKS URL (it caches the fetched keys + refreshes on rotation).
+_jwks_clients: dict = {}
+
 
 class AuthError(Exception):
     """Raised when a token is missing or fails verification (hosted mode)."""
 
 
-def _verify_supabase_jwt(token: str, secret: str) -> str:
-    """Verify a Supabase access token (HS256) and return its `sub` (the user_id).
+def _jwks_client(jwks_url: str):
+    client = _jwks_clients.get(jwks_url)
+    if client is None:
+        from jwt import PyJWKClient  # pyjwt[crypto]; imported lazily for local mode
 
-    Supabase signs access tokens with the project JWT secret using HS256 and sets
-    `aud="authenticated"`. Raises AuthError on any problem.
-    """
-    import jwt  # pyjwt — imported lazily so local mode needs no crypto deps installed
+        client = PyJWKClient(jwks_url)
+        _jwks_clients[jwks_url] = client
+    return client
+
+
+def _verify_es256(token: str, jwks_url: str) -> str:
+    """Verify an ES256 Supabase token against the project JWKS; return its `sub`."""
+    import jwt
+
+    try:
+        signing_key = _jwks_client(jwks_url).get_signing_key_from_jwt(token)
+        claims = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["ES256"],
+            audience=_SUPABASE_AUDIENCE,
+            leeway=10,  # small clock-skew tolerance
+        )
+    except jwt.PyJWTError as exc:  # expired, bad signature, wrong audience, no matching kid…
+        raise AuthError(f"invalid token: {exc}") from exc
+    return _require_sub(claims)
+
+
+def _verify_hs256(token: str, secret: str) -> str:
+    """Legacy fallback: verify an HS256 Supabase token with the shared secret."""
+    import jwt
 
     try:
         claims = jwt.decode(
             token,
             secret,
             algorithms=["HS256"],
-            audience="authenticated",
+            audience=_SUPABASE_AUDIENCE,
+            leeway=10,
         )
-    except jwt.PyJWTError as exc:  # expired, bad signature, wrong audience, etc.
+    except jwt.PyJWTError as exc:
         raise AuthError(f"invalid token: {exc}") from exc
+    return _require_sub(claims)
 
+
+def _require_sub(claims: dict) -> str:
     sub = claims.get("sub")
     if not sub:
         raise AuthError("token has no sub claim")
@@ -55,37 +90,33 @@ def _verify_supabase_jwt(token: str, secret: str) -> str:
 def resolve_user_id(authorization_header: str | None) -> str:
     """Core resolver, framework-agnostic so it's unit-testable without a request.
 
-    Returns the user_id. In local mode (no secret configured) this is always
-    LOCAL_USER_ID and the header is ignored.
+    Returns the user_id. In local mode (no Supabase auth configured) this is always
+    LOCAL_USER_ID and the header is ignored. Otherwise it verifies the bearer token
+    (ES256 via JWKS, or HS256 if only a legacy secret is set).
     """
     settings = get_settings()
-    secret = settings.supabase_jwt_secret
-    if not secret:
+    if not settings.auth_enabled:
         return LOCAL_USER_ID
 
     if not authorization_header or not authorization_header.lower().startswith("bearer "):
         raise AuthError("missing bearer token")
     token = authorization_header.split(" ", 1)[1].strip()
-    return _verify_supabase_jwt(token, secret)
+
+    jwks_url = settings.jwks_url
+    if jwks_url:
+        return _verify_es256(token, jwks_url)
+    return _verify_hs256(token, settings.supabase_jwt_secret)
 
 
 # --- FastAPI dependency ----------------------------------------------------
-# Kept import-light: FastAPI is only imported here, so non-web callers (CLI, tests)
-# can import resolve_user_id without pulling in the web stack.
+# `api.py` defines its own `current_user` dependency (using Header) wired onto every route;
+# this convenience mirror is kept for non-route callers and tests.
 
 
 def current_user_id(authorization: Annotated[str | None, "Authorization header"] = None) -> str:
-    """FastAPI dependency. Use as: `user_id: str = Depends(current_user_id)`.
+    """Resolve the user_id from an Authorization header, raising HTTP 401 on failure."""
+    from fastapi import HTTPException
 
-    TODO(phase-1): replace the bare annotation with `fastapi.Header(None)` and map
-    AuthError → HTTPException(401) once routes start depending on this.
-    """
-    from fastapi import Header, HTTPException  # local import keeps module web-optional
-
-    # NOTE: when wired, the signature becomes
-    #   authorization: str | None = Header(default=None)
-    # This stub keeps the logic; the Depends wiring is added during route protection.
-    _ = Header  # referenced to document intended usage
     try:
         return resolve_user_id(authorization)
     except AuthError as exc:

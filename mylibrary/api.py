@@ -41,6 +41,8 @@ from .profile import extract_taste_profile, update_taste_profile
 from .recommend import latest_recommendations, recommend
 from .schemas import (
     AddBookRequest,
+    ApiKeyRequest,
+    ApiKeyStatus,
     BookFeedbackRequest,
     BookOut,
     CatalogResult,
@@ -56,6 +58,11 @@ from .schemas import (
     TraitUpdateRequest,
 )
 from .stats import dataset_stats
+from .user_settings import (
+    anthropic_key_status,
+    clear_anthropic_key,
+    set_anthropic_key,
+)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -106,13 +113,36 @@ def health(user_id: UserId) -> dict:
         "db": settings.db_path.name,
         "books": book_count,
         "model": settings.model,
-        "anthropic_key_set": bool(settings.anthropic_api_key),
+        "anthropic_key_set": anthropic_key_status(user_id=user_id)["configured"],
     }
 
 
 @app.get("/stats")
 def stats(user_id: UserId) -> dict:
     return dataset_stats(user_id=user_id)
+
+
+@app.put("/settings/api-key", response_model=ApiKeyStatus)
+def put_api_key(req: ApiKeyRequest, user_id: UserId) -> ApiKeyStatus:
+    """Store the caller's Anthropic API key (encrypted at rest). Never returns the key."""
+    try:
+        set_anthropic_key(req.api_key, user_id=user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return ApiKeyStatus(configured=True)
+
+
+@app.get("/settings/api-key/status", response_model=ApiKeyStatus)
+def get_api_key_status(user_id: UserId) -> ApiKeyStatus:
+    """Whether a usable Anthropic key is configured (stored or env fallback). Not the key."""
+    return ApiKeyStatus(**anthropic_key_status(user_id=user_id))
+
+
+@app.delete("/settings/api-key", response_model=ApiKeyStatus)
+def delete_api_key(user_id: UserId) -> ApiKeyStatus:
+    """Remove the caller's stored key. `configured` may still be true if an env key exists."""
+    clear_anthropic_key(user_id=user_id)
+    return ApiKeyStatus(**anthropic_key_status(user_id=user_id))
 
 
 def _book_out(book: Book) -> BookOut:

@@ -178,5 +178,18 @@ class RecommendationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ApiKeyRequest(BaseModel):
+    """Body for setting the per-user Anthropic key. The key is encrypted at rest and
+    never read back — there is no field that returns it."""
+
+    api_key: str
+
+
+class ApiKeyStatus(BaseModel):
+    """Whether the user has a usable Anthropic key (stored or env fallback). Never the key."""
+
+    configured: bool
+
+
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.
 RecFeedbackResult.model_rebuild()

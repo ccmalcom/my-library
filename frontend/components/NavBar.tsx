@@ -8,6 +8,7 @@ const links = [
   { href: "/swipe", label: "Swipe" },
   { href: "/library", label: "My Library" },
   { href: "/profile", label: "My Profile" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export default function NavBar() {

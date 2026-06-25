@@ -20,6 +20,7 @@ from datetime import datetime
 
 from .config import LOCAL_USER_ID, get_settings
 from .db import Book, ProfileMeta, TasteTrait, init_db, session_scope, utcnow
+from .user_settings import resolve_anthropic_key
 
 _TOOL = {
     "name": "record_taste_traits",
@@ -237,14 +238,14 @@ def extract_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_I
     Replaces any existing 'proposed' traits (a fresh run supersedes the last);
     user-confirmed/edited traits would be preserved in a later phase.
     """
-    settings = get_settings()
-    if not settings.anthropic_api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Copy .env.example to .env and add your key "
-            "(https://console.anthropic.com/) before running the taste-profile step."
-        )
-
     init_db()
+    settings = get_settings()
+    api_key = resolve_anthropic_key(user_id)
+    if not api_key:
+        raise RuntimeError(
+            "No Anthropic API key configured. Add your key in Settings (or set "
+            "ANTHROPIC_API_KEY) before running the taste-profile step."
+        )
     with session_scope() as session:
         tiers = build_tiers(session, user_id)
         total_rated = sum(len(v) for v in tiers.values())
@@ -258,7 +259,7 @@ def extract_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_I
         # Imported lazily so ingest/enrich work without the anthropic package present.
         from anthropic import Anthropic
 
-        client = Anthropic(api_key=settings.anthropic_api_key)
+        client = Anthropic(api_key=api_key)
         message = client.messages.create(
             model=settings.model,
             max_tokens=max_tokens,
@@ -380,14 +381,14 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
     `extract_taste_profile` when there is no prior profile to build on. Marks the profile
     fresh on success (clearing the 'dirty' state). Returns a summary dict.
     """
-    settings = get_settings()
-    if not settings.anthropic_api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Copy .env.example to .env and add your key "
-            "(https://console.anthropic.com/) before running the taste-profile step."
-        )
-
     init_db()
+    settings = get_settings()
+    api_key = resolve_anthropic_key(user_id)
+    if not api_key:
+        raise RuntimeError(
+            "No Anthropic API key configured. Add your key in Settings (or set "
+            "ANTHROPIC_API_KEY) before running the taste-profile step."
+        )
     with session_scope() as session:
         existing = (
             session.query(TasteTrait)
@@ -454,7 +455,7 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
 
         from anthropic import Anthropic
 
-        client = Anthropic(api_key=settings.anthropic_api_key)
+        client = Anthropic(api_key=api_key)
         message = client.messages.create(
             model=settings.model,
             max_tokens=max_tokens,

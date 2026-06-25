@@ -44,7 +44,13 @@ class Settings:
     # All optional: unset == local single-user SQLite mode, exactly as before.
     # Set in the deployment environment (Supabase/Railway), never committed.
     database_url: str | None  # full Postgres URL; when set, overrides the SQLite default
-    supabase_jwt_secret: str | None  # HS256 secret used to verify Supabase access tokens
+    # Supabase auth. New projects sign access tokens with ES256 (asymmetric) and publish the
+    # PUBLIC key at a JWKS endpoint — the backend verifies against that, no shared secret.
+    # `supabase_url` is the project URL (JWKS URL derived from it); `supabase_jwks_url`
+    # overrides; `supabase_jwt_secret` is the legacy HS256 fallback.
+    supabase_url: str | None
+    supabase_jwks_url: str | None
+    supabase_jwt_secret: str | None  # legacy HS256 fallback (older Supabase projects)
     encryption_key: str | None  # base64 32-byte key for AES-256-GCM of per-user API keys
 
     @property
@@ -58,6 +64,20 @@ class Settings:
     def is_multi_tenant(self) -> bool:
         """True when running against a hosted Postgres DB (web-distribution mode)."""
         return bool(self.database_url)
+
+    @property
+    def jwks_url(self) -> str | None:
+        """JWKS endpoint for verifying ES256 access tokens (derived from supabase_url)."""
+        if self.supabase_jwks_url:
+            return self.supabase_jwks_url
+        if self.supabase_url:
+            return self.supabase_url.rstrip("/") + "/auth/v1/.well-known/jwks.json"
+        return None
+
+    @property
+    def auth_enabled(self) -> bool:
+        """True when any Supabase auth verification is configured (JWKS or HS256 secret)."""
+        return bool(self.jwks_url or self.supabase_jwt_secret)
 
 
 def _resolve_data_dir() -> Path:
@@ -86,6 +106,8 @@ def get_settings() -> Settings:
             os.getenv("MYLIBRARY_REQ_PER_SEC", DEFAULT_REQ_PER_SEC)
         ),
         database_url=os.getenv("DATABASE_URL"),
+        supabase_url=os.getenv("SUPABASE_URL"),
+        supabase_jwks_url=os.getenv("SUPABASE_JWKS_URL"),
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
         encryption_key=os.getenv("ENCRYPTION_KEY"),
     )

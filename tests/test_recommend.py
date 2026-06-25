@@ -178,7 +178,9 @@ def test_rerank_drops_bad_indices_and_ungrounded_ids(monkeypatch):
              "grounded_trait_ids": [], "grounded_book_ids": []},  # bad index -> dropped
         ]
     }
-    monkeypatch.setattr(recommend, "_client", lambda: (_FakeClient(payload), get_settings()))
+    monkeypatch.setattr(
+        recommend, "_client", lambda *a, **k: (_FakeClient(payload), get_settings())
+    )
     out = recommend._claude_rerank(candidates, signal, n=10)
     assert len(out) == 1
     assert out[0]["title"] == "Hyperion"
@@ -210,7 +212,7 @@ def test_recommend_persists_ranked_run(monkeypatch):
         recommend, "_claude_seed_queries", lambda signal, **k: ["space opera"]
     )
 
-    def fake_rerank(candidates, signal, *, n):
+    def fake_rerank(candidates, signal, *, n, **_kw):
         out = []
         for i, c in enumerate(candidates):
             c = dict(c)

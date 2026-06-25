@@ -32,6 +32,7 @@ from collections import Counter
 from .config import LOCAL_USER_ID, get_settings
 from .db import Book, Recommendation, TasteTrait, init_db, session_scope
 from .enrich import _normalize_title, _surname
+from .user_settings import resolve_anthropic_key
 
 _REJECTED_STATUS = "rejected"
 
@@ -157,18 +158,24 @@ _RANK_SYSTEM = (
 )
 
 
-def _client():
+def _client(api_key: str | None = None):
     """Anthropic client, with the key checked at point of use (so callers that don't
-    reach a Claude stage — or tests that patch these helpers — don't need a key)."""
+    reach a Claude stage — or tests that patch these helpers — don't need a key).
+
+    `api_key` is the per-user key resolved by the caller; when None it falls back to the
+    env key (local/CLI). Raises if neither is available.
+    """
     settings = get_settings()
-    if not settings.anthropic_api_key:
+    if api_key is None:
+        api_key = settings.anthropic_api_key
+    if not api_key:
         raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Add it to .env before running recommend "
-            "(the rerank/explain stage and Claude-seeded discovery both need it)."
+            "No Anthropic API key configured. Add your key in Settings (or set "
+            "ANTHROPIC_API_KEY) before running recommend."
         )
     from anthropic import Anthropic
 
-    return Anthropic(api_key=settings.anthropic_api_key), settings
+    return Anthropic(api_key=api_key), settings
 
 
 # --- library signal --------------------------------------------------------
@@ -273,9 +280,11 @@ def _metadata_pool(signal: dict, *, per_query: int) -> list[tuple[dict, str]]:
     return pool
 
 
-def _claude_seed_queries(signal: dict, *, n_queries: int) -> list[str]:
+def _claude_seed_queries(
+    signal: dict, *, n_queries: int, api_key: str | None = None
+) -> list[str]:
     """Ask Claude for catalog search terms (stage 1b). Returns query strings only."""
-    client, _settings = _client()
+    client, _settings = _client(api_key)
     profile_context = (
         "TASTE TRAITS (JSON):\n"
         + json.dumps(signal["traits"], ensure_ascii=False)
@@ -310,10 +319,12 @@ def _claude_seed_queries(signal: dict, *, n_queries: int) -> list[str]:
     return []
 
 
-def _seed_pool(signal: dict, *, n_queries: int, per_query: int) -> tuple[list[tuple[dict, str]], list[str]]:
+def _seed_pool(
+    signal: dict, *, n_queries: int, per_query: int, api_key: str | None = None
+) -> tuple[list[tuple[dict, str]], list[str]]:
     from . import catalog
 
-    queries = _claude_seed_queries(signal, n_queries=n_queries)
+    queries = _claude_seed_queries(signal, n_queries=n_queries, api_key=api_key)
     pool: list[tuple[dict, str]] = []
     for q in queries:
         for cand in catalog.googlebooks_query(q, max_results=per_query):
@@ -407,8 +418,10 @@ def _cap_pool(candidates: list[dict], *, cap: int) -> list[dict]:
 # --- stage 2: rerank -------------------------------------------------------
 
 
-def _claude_rerank(candidates: list[dict], signal: dict, *, n: int) -> list[dict]:
-    client, settings = _client()
+def _claude_rerank(
+    candidates: list[dict], signal: dict, *, n: int, api_key: str | None = None
+) -> list[dict]:
+    client, settings = _client(api_key)
     indexed = [
         {
             "idx": i,
@@ -496,6 +509,10 @@ def recommend(
 
         catalog.set_rate(requests_per_second)
 
+    # Resolve the per-user Anthropic key once; the Claude stages receive it. Not raised
+    # here — the key is checked at point of use (so patched tests need no key).
+    api_key = resolve_anthropic_key(user_id)
+
     with session_scope() as session:
         signal = _build_signal(session, user_id)
         if not signal["loved"]:
@@ -511,7 +528,7 @@ def recommend(
         seed_pool: list[tuple[dict, str]] = []
         if use_claude_seeds:
             seed_pool, seed_queries = _seed_pool(
-                signal, n_queries=_SEED_QUERIES, per_query=_PER_QUERY
+                signal, n_queries=_SEED_QUERIES, per_query=_PER_QUERY, api_key=api_key
             )
 
         candidates = _assemble(metadata_pool, seed_pool, signal, cap=_MAX_CANDIDATES)
@@ -524,7 +541,7 @@ def recommend(
                 "recommendations": [],
             }
 
-        ranked = _claude_rerank(candidates, signal, n=n)
+        ranked = _claude_rerank(candidates, signal, n=n, api_key=api_key)
 
         run_id = uuid.uuid4().hex[:12]
         recs_out = []

@@ -225,6 +225,27 @@ class ProfileMeta(Base):
     last_profile_kind: Mapped[str | None] = mapped_column(String)  # full | update
 
 
+class UserSettings(Base):
+    """Per-user settings — currently just the bring-your-own Anthropic API key.
+
+    The key is stored ENCRYPTED (AES-256-GCM via `crypto.py`) and decrypted only
+    server-side at Claude-call time; it is never returned to the client. One row per user.
+    In local single-user mode this table is usually empty and the engine falls back to the
+    `ANTHROPIC_API_KEY` env var (see `user_settings.resolve_anthropic_key`).
+    """
+
+    __tablename__ = "user_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String, unique=True, index=True, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
+    anthropic_api_key_encrypted: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=utcnow)
+
+
 # --- engine / session plumbing ---------------------------------------------
 
 _engine = None
