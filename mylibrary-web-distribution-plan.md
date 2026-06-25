@@ -162,26 +162,25 @@ decrypted server-side only when a Claude call is made. It is never returned to t
 
 ---
 
-## Phase 4 — Background job queue for enrichment
+## Phase 4 — Background job queue for enrichment ✅ DONE
 
-Enrichment can run 10+ minutes. Cloud HTTP requests time out (typically 30–60s). Enrichment
-must move to a background worker.
+Landed: `EnrichJob` table (`enrich_jobs`) tracks `(job_id, user_id, status, progress, total,
+started_at, finished_at, error)`; Alembic migration `0003_add_enrich_jobs` (revision
+`0003_enrich_jobs`, chains after the pre-existing `0002` display_name migration); `worker.py`
+(`enrich_books` arq task + `run_enrich_job` blocking core + `WorkerSettings`); new endpoints
+`POST /enrich/start` (rate-limited 5/min, enqueues arq or falls back to BackgroundTask) and
+`GET /enrich/status/{job_id}`; old `POST /enrich` kept for CLI/local tooling only. SlowAPI
+rate limiting added: `/enrich/start` at 5/min, `/catalog/search` at 30/min, both keyed on
+`user_id` (stashed on `request.state` by the `current_user` dependency). `REDIS_URL` env var
+activates the arq pool at startup; when unset, enrichment runs via FastAPI BackgroundTasks
+(no Redis needed for local dev). Setup wizard `EnrichStep` now polls with a real progress bar
+instead of spinning blindly. arq worker started with:
+    python -m arq mylibrary.worker.WorkerSettings
 
-**Tasks:**
-- Add a job queue. `arq` (async, Redis-backed, lightweight) is recommended over Celery for
-  this stack. Alternative: FastAPI `BackgroundTasks` for very short jobs, but enrichment is
-  too long.
-- Add Redis (Railway Redis or Upstash) for the queue backend
-- Move `enrich.py` execution into an `arq` worker task
-- Add job state table or use arq's built-in state: `(user_id, job_id, status, progress,
-  started_at, finished_at, error)`
-- Add endpoints:
-  - `POST /enrich/start` — enqueues the job, returns `job_id`
-  - `GET /enrich/status/{job_id}` — returns job status + progress
-- Update the setup wizard frontend to poll `/enrich/status` instead of waiting on the HTTP
-  response
-- Similarly move `profile` and `recommend` if they become slow at scale (for now they're
-  fast enough to keep synchronous, but flag this)
+Per-user rate limiting on `/catalog/search` (30/min) done here as locked by the plan.
+
+Note: `profile` and `recommend` are still synchronous — they run in 30-60s and are well
+within cloud timeout limits. Revisit if they become bottlenecks at scale.
 
 ---
 

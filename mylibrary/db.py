@@ -207,6 +207,35 @@ class Recommendation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class EnrichJob(Base):
+    """Background enrichment job, one row per queued run.
+
+    Tracks the lifecycle of a `POST /enrich/start` request so the frontend can poll
+    `GET /enrich/status/{job_id}` for real-time progress. The `progress` and `total`
+    fields mirror the `(done, total)` values the `enrich_library` progress callback
+    emits per-book — the status endpoint simply reads them.
+
+    status values: pending -> running -> done | error
+    """
+
+    __tablename__ = "enrich_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Stable UUID returned to the client at enqueue time.
+    job_id: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(
+        String, index=True, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
+    status: Mapped[str] = mapped_column(String, default="pending")  # pending|running|done|error
+    progress: Mapped[int] = mapped_column(Integer, default=0)   # books processed so far
+    total: Mapped[int] = mapped_column(Integer, default=0)      # total books in this run
+    started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class ProfileMeta(Base):
     """Per-user bookkeeping for the taste profile.
 
@@ -304,7 +333,7 @@ def init_db() -> None:
 
     # Backfill user_id onto any pre-existing tables BEFORE inspecting columns below, so the
     # rest of this function (and the recommendations missing-column loop) sees it present.
-    for _tbl in ("books", "taste_traits", "recommendations", "profile_meta"):
+    for _tbl in ("books", "taste_traits", "recommendations", "profile_meta", "enrich_jobs"):
         _ensure_user_id_column(engine, _tbl)
 
     insp = sa_inspect(engine)
@@ -370,7 +399,7 @@ def get_session() -> Session:
 
 @contextmanager
 def session_scope() -> Iterator[Session]:
-    """`with session_scope() as s:` \u2014 commit on success, rollback on error."""
+    """`with session_scope() as s:` -- commit on success, rollback on error."""
     session = get_session()
     try:
         yield session

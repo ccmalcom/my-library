@@ -346,6 +346,19 @@ export const api = {
   runEnrich: (opts?: { limit?: number }) =>
     post<Record<string, unknown>>("/enrich", { limit: opts?.limit ?? null }),
 
+  /**
+   * Start a background enrichment job. Returns immediately with a job_id.
+   * Poll enrichStatus(job_id) until status is 'done' or 'error'.
+   */
+  enrichStart: (opts?: { force?: boolean; limit?: number }) =>
+    post<EnrichJobOut>("/enrich/start", {
+      force: opts?.force ?? false,
+      limit: opts?.limit ?? null,
+    }),
+
+  /** Poll the status and progress of an enrichment job by job_id. */
+  enrichStatus: (jobId: string) => get<EnrichJobOut>(`/enrich/status/${jobId}`),
+
   /** Whether a usable Anthropic key is configured (stored or env fallback). Never the key. */
   apiKeyStatus: () => get<ApiKeyStatus>("/settings/api-key/status"),
 
@@ -376,6 +389,21 @@ export const api = {
 
 /** Shared SWR key for the API-key status (settings page + any gating UI). */
 export const API_KEY_STATUS_KEY = "api-key-status";
+
+// ─── Enrich job types ────────────────────────────────────────────────────────
+
+export interface EnrichJobOut {
+  job_id: string;
+  /** pending | running | done | error */
+  status: string;
+  /** Books resolved so far in this run. */
+  progress: number;
+  /** Total books scheduled for this run (0 until the job starts). */
+  total: number;
+  error: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+}
 
 /** Shared SWR key for the user's display name / profile settings. */
 export const USER_PROFILE_KEY = "user-profile";

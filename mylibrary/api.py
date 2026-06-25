@@ -19,13 +19,15 @@ import tempfile
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from . import catalog
 from .auth import AuthError, resolve_user_id
 from .config import get_settings
-from .db import Book, Enrichment, Recommendation, init_db, session_scope
+from .db import Book, EnrichJob, Enrichment, Recommendation, init_db, session_scope
 from .enrich import _normalize_title, _surname, enrich_library
 from .ingest import ingest_csv
 from .library import (
@@ -47,7 +49,9 @@ from .schemas import (
     BookFeedbackRequest,
     BookOut,
     CatalogResult,
+    EnrichJobOut,
     EnrichRequest,
+    EnrichStartRequest,
     FeedbackRequest,
     IngestRequest,
     ProfileStatusOut,
@@ -68,12 +72,37 @@ from .user_settings import (
     set_anthropic_key,
     set_display_name,
 )
+from .worker import create_enrich_job, run_enrich_job
+
+def _rate_limit_key(request: Request) -> str:
+    """Rate-limit key: the authenticated user_id (stashed on request.state by
+    current_user) so limits are per-user, not per-IP. Falls back to client IP
+    for unauthenticated requests (health checks, etc.)."""
+    return getattr(request.state, "user_id", request.client.host if request.client else "unknown")
+
+
+limiter = Limiter(key_func=_rate_limit_key)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """App startup: ensure the local schema is current (no-op in hosted/Alembic mode)."""
+    """App startup: ensure the local schema is current (no-op in hosted/Alembic mode).
+    Also initialise the arq Redis pool when REDIS_URL is configured.
+    """
     init_db()
+
+    # Initialise the arq connection pool so routes can enqueue jobs.
+    settings = get_settings()
+    if settings.redis_url:
+        from arq.connections import RedisSettings as ArqRedisSettings, create_pool
+        _app.state.arq_pool = await create_pool(ArqRedisSettings.from_dsn(settings.redis_url))
+    else:
+        _app.state.arq_pool = None
+
     yield
+
+    if _app.state.arq_pool is not None:
+        await _app.state.arq_pool.close()
 
 
 app = FastAPI(
@@ -83,6 +112,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -91,13 +123,21 @@ app.add_middleware(
 )
 
 
-def current_user(authorization: Annotated[str | None, Header()] = None) -> str:
+def current_user(
+    request: Request,
+    authorization: Annotated[str | None, Header()] = None,
+) -> str:
     """Per-request user id. Verifies the Supabase JWT when configured; otherwise returns
     LOCAL_USER_ID (local single-user mode). Every data route depends on this so all queries
     are scoped to the caller. Until SUPABASE_JWT_SECRET is set this is transparently 'local'.
+
+    Also stashes the resolved user_id on request.state so the SlowAPI rate-limiter key
+    function can read it without re-running auth logic.
     """
     try:
-        return resolve_user_id(authorization)
+        user_id = resolve_user_id(authorization)
+        request.state.user_id = user_id
+        return user_id
     except AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
@@ -279,8 +319,72 @@ async def ingest_upload(user_id: UserId, file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/enrich/start", response_model=EnrichJobOut)
+@limiter.limit("5/minute")
+async def enrich_start(
+    req: EnrichStartRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user_id: UserId,
+) -> EnrichJobOut:
+    """Enqueue a library enrichment job and return its job_id for polling.
+
+    When REDIS_URL is configured the job runs in the arq worker process. Otherwise it
+    runs in a FastAPI BackgroundTask (fine for local single-user dev without Redis).
+    Poll GET /enrich/status/{job_id} until status is 'done' or 'error'.
+    """
+    job_id = create_enrich_job(user_id)
+
+    arq_pool = request.app.state.arq_pool
+    if arq_pool is not None:
+        # Hosted mode: hand off to the arq worker
+        await arq_pool.enqueue_job(
+            "enrich_books",
+            job_id=job_id,
+            user_id=user_id,
+            force=req.force,
+            limit=req.limit,
+        )
+    else:
+        # Local dev fallback: run in a BackgroundTask (same blocking function, no Redis)
+        background_tasks.add_task(
+            run_enrich_job,
+            job_id=job_id,
+            user_id=user_id,
+            force=req.force,
+            limit=req.limit,
+        )
+
+    with session_scope() as session:
+        job = session.query(EnrichJob).filter(EnrichJob.job_id == job_id).first()
+        return EnrichJobOut.model_validate(job)
+
+
+@app.get("/enrich/status/{job_id}", response_model=EnrichJobOut)
+def enrich_status(job_id: str, user_id: UserId) -> EnrichJobOut:
+    """Poll the status and progress of an enrichment job.
+
+    Returns 404 if job_id is unknown or belongs to a different user.
+    """
+    with session_scope() as session:
+        job = (
+            session.query(EnrichJob)
+            .filter(EnrichJob.job_id == job_id, EnrichJob.user_id == user_id)
+            .first()
+        )
+        if job is None:
+            raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+        return EnrichJobOut.model_validate(job)
+
+
 @app.post("/enrich")
 def enrich(req: EnrichRequest, user_id: UserId) -> dict:
+    """Synchronous enrichment — kept for CLI / local tooling compatibility.
+
+    The web frontend uses POST /enrich/start + GET /enrich/status/{job_id} instead
+    (background job that survives cloud HTTP timeouts). This endpoint blocks until
+    enrichment finishes; it is NOT rate-limited and is NOT exposed in the hosted UI.
+    """
     return enrich_library(
         force=req.force,
         limit=req.limit,
@@ -319,7 +423,9 @@ def list_books(
 
 
 @app.get("/catalog/search", response_model=list[CatalogResult])
+@limiter.limit("30/minute")
 def search_catalog(
+    request: Request,
     q: str = Query(..., min_length=1, description="Free-text title/author/ISBN query."),
     limit: int = Query(8, ge=1, le=20),
 ) -> list[CatalogResult]:

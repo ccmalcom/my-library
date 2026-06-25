@@ -518,6 +518,8 @@ function ManualStep({ onDone }: { onDone: () => void }) {
 
 // ── Step 2: Enrich ─────────────────────────────────────────────────────────────
 
+const ENRICH_POLL_MS = 2000; // poll interval while job is running
+
 function EnrichStep({
   ingestResult,
   onDone,
@@ -525,21 +527,58 @@ function EnrichStep({
   ingestResult: IngestResult;
   onDone: () => void;
 }) {
-  const [loading, setLoading] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('idle'); // idle | pending | running | done | error
+  const [progress, setProgress] = useState(0);
+  const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function handleEnrich() {
-    setLoading(true);
-    setError(null);
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
+  }, []);
+
+  async function pollStatus(id: string) {
     try {
-      await api.runEnrich();
-      await mutate("stats", api.stats(), { revalidate: false });
-      onDone();
+      const job = await api.enrichStatus(id);
+      setStatus(job.status);
+      setProgress(job.progress);
+      setTotal(job.total);
+
+      if (job.status === 'done') {
+        await mutate('stats', api.stats(), { revalidate: false });
+        onDone();
+      } else if (job.status === 'error') {
+        setError(job.error ?? 'Enrichment failed.');
+      } else {
+        // still running — schedule next poll
+        pollRef.current = setTimeout(() => void pollStatus(id), ENRICH_POLL_MS);
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Enrichment failed.");
-      setLoading(false);
+      setError(e instanceof Error ? e.message : 'Failed to check job status.');
     }
   }
+
+  async function handleEnrich() {
+    setError(null);
+    setProgress(0);
+    setTotal(0);
+    try {
+      const job = await api.enrichStart();
+      setJobId(job.job_id);
+      setStatus(job.status);
+      pollRef.current = setTimeout(() => void pollStatus(job.job_id), ENRICH_POLL_MS);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start enrichment.');
+    }
+  }
+
+  const running = status === 'pending' || status === 'running';
+  const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
+  const progressLabel = total > 0 ? `${progress} / ${total} books (${pct}%)` : 'Starting...';
 
   return (
     <div className="space-y-6">
@@ -551,48 +590,63 @@ function EnrichStep({
             <span> ({ingestResult.skipped} already existed)</span>
           )}
           . Enrichment fetches covers, page counts, and genres from Open Library and Google
-          Books. It takes <strong className="text-slate-300">1–3 minutes</strong> for a typical
+          Books. It takes <strong className="text-slate-300">1-3 minutes</strong> for a typical
           library and is required before recommendations can run.
         </p>
       </div>
 
       <div className="rounded-xl border border-slate-700 bg-slate-800/40 p-4 text-sm text-slate-400 space-y-2">
-        <p>✅ Finds book covers and metadata from public catalogs</p>
-        <p>✅ Required before running AI recommendations</p>
-        <p>⏱ Resumable — if interrupted, re-runs pick up where they left off</p>
+        <p>&#x2705; Finds book covers and metadata from public catalogs</p>
+        <p>&#x2705; Required before running AI recommendations</p>
+        <p>&#x23F1; Resumable - if interrupted, re-runs pick up where they left off</p>
       </div>
 
-      {loading && (
-        <div className="rounded-xl border border-blue-700/40 bg-blue-900/20 p-4 text-sm text-blue-300 flex items-start gap-3">
-          <Spinner className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>
-            Fetching metadata from Open Library and Google Books… this can take a couple
-            minutes. Hang tight.
-          </span>
+      {running && (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-blue-700/40 bg-blue-900/20 p-4 text-sm text-blue-300 flex items-start gap-3">
+            <Spinner className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>
+              {status === 'pending'
+                ? 'Job queued - starting shortly...'
+                : 'Fetching metadata from Open Library and Google Books...'}
+            </span>
+          </div>
+          {total > 0 && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>{progressLabel}</span>
+                <span>{pct}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-700">
+                <div
+                  className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
-      <button
-        onClick={handleEnrich}
-        disabled={loading}
-        className={[
-          "w-full rounded-lg py-3 font-semibold text-white transition-all flex items-center justify-center gap-2",
-          loading
-            ? "cursor-not-allowed bg-blue-700 opacity-60"
-            : "bg-blue-600 hover:bg-blue-500 active:scale-[0.99]",
-        ].join(" ")}
-      >
-        {loading ? (
-          <>
-            <Spinner />
-            Enriching…
-          </>
-        ) : (
-          "Enrich Now"
-        )}
-      </button>
+      {!running && !jobId && (
+        <button
+          onClick={() => void handleEnrich()}
+          className="w-full rounded-lg py-3 font-semibold text-white transition-all flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 active:scale-[0.99]"
+        >
+          Enrich Now
+        </button>
+      )}
+
+      {error && jobId && (
+        <button
+          onClick={() => { setJobId(null); setStatus('idle'); setError(null); void handleEnrich(); }}
+          className="w-full rounded-lg py-3 font-semibold text-white transition-all bg-blue-600 hover:bg-blue-500 active:scale-[0.99]"
+        >
+          Retry Enrichment
+        </button>
+      )}
     </div>
   );
 }

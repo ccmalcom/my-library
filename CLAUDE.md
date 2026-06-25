@@ -31,7 +31,7 @@ against Chase's Supabase project in dev): `DATABASE_URL` points at the Supabase 
 app serves multi-tenant. Local SQLite single-user mode is still the default when those env vars
 are unset. The pieces:
 - `config.Settings` now reads `DATABASE_URL` / `SUPABASE_URL` / `SUPABASE_JWKS_URL` /
-  `SUPABASE_JWT_SECRET` / `ENCRYPTION_KEY`. All optional — unset == **local SQLite
+  `SUPABASE_JWT_SECRET` / `ENCRYPTION_KEY` / `REDIS_URL`. All optional — unset == **local SQLite
   single-user mode, unchanged**. `db_url` returns Postgres only when `DATABASE_URL` is set
   (and normalizes a bare `postgresql://` / legacy `postgres://` to `postgresql+psycopg://` via
   `_normalize_pg_url` — only psycopg v3 is installed, so a raw Supabase string "just works");
@@ -99,8 +99,31 @@ behind; each Supabase user builds a fresh library on the web. Also landed: full 
 surface (single book / library / profile / account — see `purge.py`) so a user can be reset to
 first-setup without minting a new account.
 
-Next: Phase 4 (background jobs for enrichment + per-user rate limiting), then Phase 5 hosting
-(Railway API + worker, Vercel frontend, Supabase) and Phase 6 first-run UX polish.
+**Phase 4 (background jobs + rate limiting) has landed:**
+- `EnrichJob` table (`enrich_jobs`): tracks `(job_id, user_id, status, progress, total,
+  started_at, finished_at, error)` — one row per `POST /enrich/start` call. Status moves
+  `pending → running → done | error`; `progress`/`total` are updated every 5 books from the
+  `enrich_library` progress callback so the frontend can poll for real-time progress.
+  Alembic migration: `0003_add_enrich_jobs` (revision `0003_enrich_jobs`, chains after `0002`
+  display_name migration). Local `init_db` self-migrates SQLite as usual.
+- `worker.py` — `enrich_books` (arq async task), `run_enrich_job` (blocking core, shared by
+  arq and the BackgroundTask fallback), `_build_redis_settings` (called at class-definition
+  time to set `WorkerSettings.redis_settings` as a plain attribute — arq requires this, not a
+  property/classmethod), `WorkerSettings` (reads `REDIS_URL`). Start the worker alongside the
+  API: `python -m arq mylibrary.worker.WorkerSettings`.
+- `POST /enrich/start` — creates an `EnrichJob` row, enqueues via arq when `REDIS_URL` is set,
+  falls back to FastAPI `BackgroundTasks` otherwise (local dev needs no Redis). Rate-limited
+  5/minute per user (SlowAPI). Returns `{job_id, status, ...}` immediately.
+- `GET /enrich/status/{job_id}` — returns live `EnrichJobOut` (status + progress + total).
+  Frontend polls at 2s intervals until `status == 'done' | 'error'`.
+- `POST /enrich` kept for CLI / local tooling (synchronous, no rate limit).
+- **SlowAPI** rate limiting keyed on `user_id` (stashed on `request.state` by `current_user`):
+  `/enrich/start` → 5/min; `/catalog/search` → 30/min. `REDIS_URL` is not needed for SlowAPI.
+- `REDIS_URL` env var (Upstash or local Redis) activates the arq pool at startup. Unset =
+  BackgroundTask fallback, no Redis needed. Upstash recommended for Railway deployment.
+- Setup wizard `EnrichStep` now polls with a progress bar (0/N → done) instead of blocking.
+
+Next: Phase 5 hosting (Railway API + worker, Vercel frontend, Supabase) and Phase 6 first-run UX polish.
 
 ## Locked decisions (do not relitigate)
 
@@ -189,6 +212,11 @@ Next: Phase 4 (background jobs for enrichment + per-user rate limiting), then Ph
   `unrated`, `mean_rating`, `by_star`, `shelves` — matching the TypeScript `Stats`
   interface. Do not rename these back to the old `books_total` / `rating_distribution`
   style; the frontend depends on the current names.
+- `worker.py` — Phase 4 background job engine. Contains `enrich_books` (arq async task),
+  `run_enrich_job` (blocking core shared by arq and BackgroundTask fallback), `create_enrich_job`
+  (creates an `EnrichJob` row, returns `job_id`), and `WorkerSettings` (arq entry point).
+  Start with `python -m arq mylibrary.worker.WorkerSettings`. When `REDIS_URL` is unset the
+  API falls back to FastAPI BackgroundTasks so local dev works without Redis.
 
 ### Frontend (`frontend/`)
 

@@ -17,3 +17,7 @@ psycopg[binary]>=3.1        # Postgres driver (sync SQLAlchemy)
 alembic>=1.13               # schema migrations (replaces init_db drop+recreate in prod)
 pyjwt[crypto]>=2.8          # verify Supabase-issued JWTs
 cryptography>=42.0          # AES-256-GCM encryption of per-user Anthropic keys
+
+# --- phase 4: background jobs + rate limiting ---
+arq>=0.26                   # async Redis-backed job queue for long-running enrichment
+slowapi>=0.1.9              # per-user rate limiting on enrichment + catalog search endpoints

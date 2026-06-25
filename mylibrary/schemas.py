@@ -21,6 +21,32 @@ class EnrichRequest(BaseModel):
     include_unrated: bool = False
 
 
+class EnrichStartRequest(BaseModel):
+    """Body for POST /enrich/start — enqueues an enrichment background job."""
+
+    force: bool = False
+    limit: int | None = None
+
+
+class EnrichJobOut(BaseModel):
+    """Status of a background enrichment job (GET /enrich/status/{job_id}).
+
+    status: pending -> running -> done | error
+    progress: books resolved so far in this run (0 while pending).
+    total: books scheduled for this run (0 until the job starts and announces it).
+    """
+
+    job_id: str
+    status: str
+    progress: int
+    total: int
+    error: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class RecommendRequest(BaseModel):
     n: int = 10
     use_metadata: bool = True

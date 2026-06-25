@@ -52,6 +52,7 @@ class Settings:
     supabase_jwks_url: str | None
     supabase_jwt_secret: str | None  # legacy HS256 fallback (older Supabase projects)
     encryption_key: str | None  # base64 32-byte key for AES-256-GCM of per-user API keys
+    redis_url: str | None       # Redis URL for arq job queue; unset = local BackgroundTask fallback
 
     @property
     def db_url(self) -> str:
@@ -128,4 +129,5 @@ def get_settings() -> Settings:
         supabase_jwks_url=os.getenv("SUPABASE_JWKS_URL"),
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
         encryption_key=os.getenv("ENCRYPTION_KEY"),
+        redis_url=os.getenv("REDIS_URL"),
     )
