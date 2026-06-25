@@ -402,6 +402,62 @@ def stats() -> None:
     _echo(dataset_stats())
 
 
+@app.command(name="remove-book")
+def remove_book_cmd(
+    book_id: int = typer.Argument(..., help="The library book id to permanently delete."),
+) -> None:
+    """Permanently remove a single book (and its enrichment) from the library."""
+    from .library import BookNotFoundError, remove_book
+
+    try:
+        _echo(remove_book(book_id))
+    except BookNotFoundError as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+
+@app.command(name="clear-library")
+def clear_library_cmd(
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+) -> None:
+    """Delete the ENTIRE library (books + enrichments) and the derived taste profile/recs."""
+    from .purge import clear_library
+
+    if not yes:
+        typer.confirm(
+            "Permanently delete ALL books and the taste profile for the local user?",
+            abort=True,
+        )
+    _echo(clear_library())
+
+
+@app.command(name="clear-profile")
+def clear_profile_cmd(
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+) -> None:
+    """Reset the taste profile (traits + recommendations); keep the library intact."""
+    from .purge import clear_profile
+
+    if not yes:
+        typer.confirm("Delete the taste profile and recommendations (books stay)?", abort=True)
+    _echo(clear_profile())
+
+
+@app.command(name="delete-account")
+def delete_account_cmd(
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+) -> None:
+    """Delete ALL app data for the local user (library, profile, recs, stored API key)."""
+    from .purge import delete_account
+
+    if not yes:
+        typer.confirm(
+            "Permanently delete ALL data for the local user (this cannot be undone)?",
+            abort=True,
+        )
+    _echo(delete_account())
+
+
 @app.command()
 def serve(
     host: str = "127.0.0.1",

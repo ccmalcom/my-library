@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
-import { api, API_KEY_STATUS_KEY, type ApiKeyStatus } from "@/lib/api";
+import { api, API_KEY_STATUS_KEY, PROFILE_STATUS_KEY, type ApiKeyStatus } from "@/lib/api";
 
 /**
  * Settings — bring-your-own Anthropic API key.
@@ -10,6 +10,79 @@ import { api, API_KEY_STATUS_KEY, type ApiKeyStatus } from "@/lib/api";
  * The key is sent once to the backend, encrypted at rest, and never read back (the status
  * endpoint only reports whether one is configured). Profile + recommend calls use it.
  */
+/**
+ * A two-step destructive action: the first click arms it (Cancel / Confirm), the second runs
+ * `onRun`. Keeps the irreversible operations from firing on a single stray click.
+ */
+function DangerAction({
+  title,
+  description,
+  buttonLabel,
+  onRun,
+}: {
+  title: string;
+  description: string;
+  buttonLabel: string;
+  onRun: () => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setRunning(true);
+    setError(null);
+    try {
+      await onRun();
+      setConfirming(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-red-900/40 bg-red-950/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-slate-200">{title}</p>
+        <p className="text-xs text-slate-500">{description}</p>
+        {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {confirming ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              disabled={running}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-400 transition hover:text-slate-200 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={running}
+              className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-60"
+            >
+              {running ? "Working…" : "Yes, do it"}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="rounded-lg border border-red-800 px-3 py-2 text-sm font-medium text-red-300 transition hover:bg-red-900/30"
+          >
+            {buttonLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { data: status, isLoading } = useSWR<ApiKeyStatus>(
     API_KEY_STATUS_KEY,
@@ -132,6 +205,52 @@ export default function SettingsPage() {
               Remove key
             </button>
           )}
+        </div>
+      </section>
+
+      {/* Danger zone — destructive, irreversible data removal. */}
+      <section className="mt-8 rounded-2xl border border-red-900/50 bg-[#1a1f2e] p-6">
+        <h2 className="text-lg font-semibold text-red-300">Danger zone</h2>
+        <p className="mb-4 mt-1 text-sm text-slate-400">
+          These permanently delete your data and can&apos;t be undone.
+        </p>
+
+        <div className="space-y-3">
+          <DangerAction
+            title="Reset taste profile"
+            description="Deletes your taste traits and recommendations. Your books stay — rebuild the profile anytime."
+            buttonLabel="Reset profile"
+            onRun={async () => {
+              await api.clearProfile();
+              await Promise.all([
+                mutate("profile", [], { revalidate: false }),
+                mutate(PROFILE_STATUS_KEY),
+                mutate("recommendations", [], { revalidate: false }),
+              ]);
+            }}
+          />
+
+          <DangerAction
+            title="Clear library"
+            description="Deletes every book, its enrichment, and your taste profile — back to a clean first-setup state."
+            buttonLabel="Clear library"
+            onRun={async () => {
+              await api.clearLibrary();
+              // Full reload: LibraryGate remounts, re-reads stats (now 0) → shows first-setup.
+              // Avoids the stale latched-gate state that a client-side nav would leave behind.
+              window.location.assign("/");
+            }}
+          />
+
+          <DangerAction
+            title="Delete account data"
+            description="Deletes ALL your data: library, profile, recommendations, and your stored Anthropic key."
+            buttonLabel="Delete everything"
+            onRun={async () => {
+              await api.deleteAccount();
+              window.location.assign("/");
+            }}
+          />
         </div>
       </section>
     </div>

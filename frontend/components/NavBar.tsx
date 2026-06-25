@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { authEnabled, getSupabaseClient } from "@/utils/supabase/client";
 
 const links = [
@@ -14,13 +14,13 @@ const links = [
 
 export default function NavBar() {
   const pathname = usePathname();
-  const router = useRouter();
 
   async function handleSignOut() {
     const supabase = getSupabaseClient();
     if (supabase) await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
+    // Full document load so the signed-out user's SWR cache + component state is discarded
+    // (prevents the next user who signs in from briefly seeing stale cached data).
+    window.location.assign("/login");
   }
 
   return (

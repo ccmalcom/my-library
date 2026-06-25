@@ -350,6 +350,16 @@ export const api = {
 
   /** Remove the user's stored key (reverts to env fallback / unconfigured). */
   clearApiKey: () => del<ApiKeyStatus>("/settings/api-key"),
+
+  // ── Destructive data removal ──────────────────────────────────────────────
+  /** Drop the entire library (books + enrichments) and the derived taste profile/recs. */
+  clearLibrary: () => del<Record<string, number | boolean>>("/library"),
+
+  /** Reset the taste profile (traits + recommendations); keeps the library. */
+  clearProfile: () => del<Record<string, number | boolean>>("/profile"),
+
+  /** Delete ALL of the current user's app data (library, profile, recs, stored key). */
+  deleteAccount: () => del<Record<string, number | boolean>>("/account"),
 };
 
 /** Shared SWR key for the API-key status (settings page + any gating UI). */

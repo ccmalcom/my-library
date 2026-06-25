@@ -205,6 +205,7 @@ function ReadTab({ books }: { books: Book[] }) {
         <BookEditModal
           book={editing}
           listKey={READ_KEY}
+          allowRemove
           onClose={() => { setEditing(null); void mutate(READ_KEY); }}
         />
       )}

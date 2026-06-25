@@ -19,6 +19,8 @@ interface Props {
   queuePosition?: { index: number; total: number };
   /** Abort the whole queue (distinct from onClose, which advances to the next). */
   onFinishQueue?: () => void;
+  /** Show a "Remove from library" control (opt-in; e.g. on the Library row editor). */
+  allowRemove?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export default function BookEditModal({
   onClose,
   queuePosition,
   onFinishQueue,
+  allowRemove,
 }: Props) {
   // The effective rating is the starting point the user sees and edits.
   const initialRating = book.effective_rating ?? 0;
@@ -47,6 +50,9 @@ export default function BookEditModal({
   const [dateRead, setDateRead] = useState(initialDate);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Two-step remove: first click arms, second deletes. Guards an irreversible action.
+  const [removeArmed, setRemoveArmed] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const ratingChanged = rating !== initialRating;
   const reviewChanged = review.trim() !== initialReview.trim();
@@ -84,7 +90,23 @@ export default function BookEditModal({
     }
   }
 
+  async function handleRemove() {
+    setRemoving(true);
+    setError(null);
+    try {
+      await api.removeBook(book.id);
+      // Refresh the list, the dashboard counts, and the profile-stale flag.
+      await Promise.all([mutate(listKey), mutate("stats"), mutate(PROFILE_STATUS_KEY)]);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to remove.");
+      setRemoving(false);
+      setRemoveArmed(false);
+    }
+  }
+
   const shown = hover || rating;
+  const busy = saving || removing;
 
   return (
     <div
@@ -190,11 +212,31 @@ export default function BookEditModal({
             <button
               type="button"
               onClick={onFinishQueue}
-              disabled={saving}
+              disabled={busy}
               className="text-sm font-medium text-slate-500 transition hover:text-slate-300 disabled:opacity-50"
             >
               Finish later
             </button>
+          ) : allowRemove ? (
+            removeArmed ? (
+              <button
+                type="button"
+                onClick={handleRemove}
+                disabled={busy}
+                className="text-sm font-semibold text-red-400 transition hover:text-red-300 disabled:opacity-50"
+              >
+                {removing ? "Removing…" : "Confirm remove"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setRemoveArmed(true)}
+                disabled={busy}
+                className="text-sm font-medium text-slate-500 transition hover:text-red-300 disabled:opacity-50"
+              >
+                Remove
+              </button>
+            )
           ) : (
             <span />
           )}
@@ -203,7 +245,7 @@ export default function BookEditModal({
             <button
               type="button"
               onClick={onClose}
-              disabled={saving}
+              disabled={busy}
               className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50"
             >
               {queuePosition ? "Skip" : "Cancel"}
@@ -211,10 +253,10 @@ export default function BookEditModal({
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving || !canSave}
+              disabled={busy || !canSave}
               className={[
                 "rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all",
-                saving || !canSave
+                busy || !canSave
                   ? "cursor-not-allowed bg-blue-700 opacity-60"
                   : "bg-blue-600 hover:bg-blue-500 active:scale-95",
               ].join(" ")}

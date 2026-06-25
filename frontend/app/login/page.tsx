@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/utils/supabase/client";
 
 /**
@@ -10,7 +9,6 @@ import { getSupabaseClient } from "@/utils/supabase/client";
  * through to the app.
  */
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +29,9 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    router.replace("/");
-    router.refresh();
+    // Full document load (not client-side nav) so the app boots fresh for THIS user — no
+    // SWR cache or component state (e.g. LibraryGate's latch) leaks in from a prior session.
+    window.location.assign("/");
   }
 
   return (

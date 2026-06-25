@@ -78,7 +78,11 @@ at rest), **bundled Google Books key**. Scaffolding has landed (not yet wired):
   the env key directly; the key is still checked at point of use (patched tests need no key).
 - Endpoints: `PUT /settings/api-key` (store), `GET /settings/api-key/status` (`{configured}`,
   never the key), `DELETE /settings/api-key` (clear). Frontend: `/settings` page
-  (`app/(main)/settings`) + NavBar link; `api.ts` `setApiKey`/`apiKeyStatus`/`clearApiKey`.
+  (`app/(main)/settings`) + NavBar link; `api.ts` `setApiKey`/`apiKeyStatus`/`clearApiKey`. The
+  settings page also hosts the **Danger Zone** (`DangerAction` two-step confirm): reset profile /
+  clear library / delete account → `api.clearProfile`/`clearLibrary`/`deleteAccount` (see
+  `purge.py`); clearing the library or deleting the account routes back to `/` so `LibraryGate`
+  shows first-setup.
 - **`ENCRYPTION_KEY`** (base64 32 bytes) must be set wherever keys are stored/read. Generate:
   `python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`. Not needed
   in local mode unless a per-user key is actually stored (env fallback skips crypto).
@@ -148,6 +152,16 @@ Supabase to flip on real auth + the Postgres cutover.
   reviewed add bumps `feedback_updated_at`, dirtying the profile just like an in-app
   re-rate/review (a written review is an especially strong signal). No network call happens in
   `add_book` — the search already resolved the book — so adding is fast and offline.
+  `remove_book` permanently deletes a single book (+ its enrichment, cascaded) — the granular
+  end of the removal surface.
+- `purge.py` — **bulk, user-scoped data removal** (the supported way to reset a user, e.g. to
+  re-test onboarding without minting a new account). `clear_profile` drops traits + recs +
+  profile_meta but keeps books; `clear_library` drops books + enrichments and **cascades** to
+  clear the profile (→ a clean first-setup state, `stats.total == 0`, no orphaned taste data);
+  `delete_account` drops everything incl. `user_settings` (the stored Anthropic key) — app-data
+  only, it does **not** delete the Supabase auth user. Enrichments are deleted before books for
+  FK safety; `recommendations` (no FK) are dropped by `user_id`. Backs `DELETE /library` /
+  `/profile` / `/account` and the CLI `clear-library` / `clear-profile` / `delete-account`.
 - `recommend.py` — two-stage recommender. Stage 1 retrieval = metadata expansion
   (`catalog.openlibrary_subject` / `googlebooks_subject` / `googlebooks_author`) +
   Claude-seeded queries (`catalog.googlebooks_query`), merged + deduped against the
@@ -177,6 +191,13 @@ verifies it via JWKS). `middleware.ts` refreshes the session and redirects unaut
 users to `/login` (no-op in local mode); `app/login` is the email+password sign-in (invite-
 only, no sign-up form); NavBar has a sign-out button. Supabase publishable key env var is
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (the new name for the anon key).
+**Auth boundaries do a FULL document load, not client-side nav** (`window.location.assign`):
+sign-in (`app/login`), sign-out (`NavBar`), and the destructive **clear-library / delete-account**
+actions all hard-reload. The SWR cache + component state (notably `LibraryGate`'s latch) are
+in-memory and global to the app instance, so a client-side `router.push` after one of these
+leaks the previous user's / pre-wipe state into the next render (e.g. user B briefly seeing
+A's cached `stats`, or a cleared library still showing the dashboard) until a manual refresh.
+A hard reload rebuilds everything cleanly. Don't revert these to `router.push`/`replace`.
 
 - `lib/api.ts` — the single typed fetch client. All calls go through it; `BASE` is
   `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`). Types here mirror the Pydantic
@@ -195,7 +216,8 @@ only, no sign-up form); NavBar has a sign-out button. Supabase publishable key e
   extensions like ColorZilla mutate `<body>` pre-hydration — this silences that benign attribute
   mismatch only, not real ones inside the app).
 - `components/` — `BookEditModal` (re-rate + review; diff-based save; optional
-  `queuePosition`/`onFinishQueue` for the step-through review queue), `AddBookModal`
+  `queuePosition`/`onFinishQueue` for the step-through review queue; opt-in `allowRemove` shows a
+  two-step "Remove" → `DELETE /books/{id}`, passed only by the Library row editor), `AddBookModal`
   (manual add: debounced `/catalog/search` → pick a real result → optional shelf + star
   rating + review text → `POST /books`; used by both the Library page and the setup wizard's
   manual branch), `ReprofileBanner` (app-wide; shows only when `/profile/status` reports `dirty`,
@@ -302,6 +324,10 @@ python -m mylibrary.cli traits          # print the saved taste profile + eviden
 python -m mylibrary.cli add "Title"      # manually add a book (--author, --rating, --review, --shelf)
 python -m mylibrary.cli rate ID 1-5     # re-rate a book in-app (0 clears the override)
 python -m mylibrary.cli review ID "..."  # write/clear (--clear) an in-app review
+python -m mylibrary.cli remove-book ID   # permanently delete a single book
+python -m mylibrary.cli clear-profile    # drop traits + recs; keep books (-y to skip confirm)
+python -m mylibrary.cli clear-library    # drop books + enrichments + profile (clean reset)
+python -m mylibrary.cli delete-account   # drop ALL data incl. stored API key
 python -m mylibrary.cli profile-status  # is the profile stale vs. recent edits?
 python -m mylibrary.cli reprofile       # incremental re-profile (--full to rebuild)
 python -m mylibrary.cli recommend       # --n N; two-stage recs, needs ANTHROPIC_API_KEY
