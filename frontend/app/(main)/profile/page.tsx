@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import useSWR, { mutate } from "swr";
-import { api, type Trait, type Stats, type SubjectBreakdown, type Book, type ProfileStatus, PROFILE_STATUS_KEY } from "@/lib/api";
+import { api, type Trait, type Stats, type SubjectBreakdown, type Book, type ProfileStatus, type UserProfile, PROFILE_STATUS_KEY, USER_PROFILE_KEY } from "@/lib/api";
 
 // ─── SWR keys ────────────────────────────────────────────────────────────────
 
@@ -497,6 +497,11 @@ export default function ProfilePage() {
     () => api.books({ limit: 500 })
   );
 
+  const { data: userProfile } = useSWR<UserProfile>(
+    USER_PROFILE_KEY,
+    () => api.getProfile()
+  );
+
   const bookMap = new Map(allBooks.map((b) => [b.id, b.title]));
 
   const isLoading = traitsLoading || statsLoading || subjectsLoading;
@@ -513,7 +518,9 @@ export default function ProfilePage() {
   return (
     <div className="fade-in space-y-10 py-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">My Profile</h1>
+        <h1 className="text-3xl font-bold text-white">
+          {userProfile?.display_name ? `Hey, ${userProfile.display_name}` : "My Profile"}
+        </h1>
         <p className="mt-1 text-slate-400">
           What the recommender knows about your taste — and how you can correct it.
         </p>

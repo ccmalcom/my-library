@@ -58,6 +58,38 @@ def anthropic_key_status(*, user_id: str = LOCAL_USER_ID) -> dict:
     return {"configured": resolve_anthropic_key(user_id) is not None}
 
 
+def get_display_name(*, user_id: str = LOCAL_USER_ID) -> str | None:
+    """Return the display name stored for this user, or None if unset."""
+    init_db()
+    with session_scope() as session:
+        row = (
+            session.query(UserSettings)
+            .filter(UserSettings.user_id == user_id)
+            .one_or_none()
+        )
+        return row.display_name if row is not None else None
+
+
+def set_display_name(name: str, *, user_id: str = LOCAL_USER_ID) -> None:
+    """Upsert the display name for this user. Empty/blank input is rejected."""
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Display name must not be empty.")
+
+    init_db()
+    with session_scope() as session:
+        row = (
+            session.query(UserSettings)
+            .filter(UserSettings.user_id == user_id)
+            .one_or_none()
+        )
+        if row is None:
+            session.add(UserSettings(user_id=user_id, display_name=name))
+        else:
+            row.display_name = name
+            row.updated_at = utcnow()
+
+
 def resolve_anthropic_key(user_id: str = LOCAL_USER_ID) -> str | None:
     """The Anthropic key to use for `user_id`: their stored key, else the env fallback.
 

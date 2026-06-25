@@ -175,6 +175,11 @@ export interface ApiKeyStatus {
   configured: boolean;
 }
 
+export interface UserProfile {
+  /** The user's chosen display name, or null if not yet set. */
+  display_name: string | null;
+}
+
 /**
  * Shared SWR key for the profile-status query, so any mutation (a re-rate/review)
  * can revalidate the re-profile banner via `mutate(PROFILE_STATUS_KEY)`.
@@ -351,6 +356,13 @@ export const api = {
   /** Remove the user's stored key (reverts to env fallback / unconfigured). */
   clearApiKey: () => del<ApiKeyStatus>("/settings/api-key"),
 
+  /** Get the user's display name. */
+  getProfile: () => get<UserProfile>("/settings/profile"),
+
+  /** Set / update the user's display name. */
+  setProfile: (display_name: string) =>
+    put<UserProfile>("/settings/profile", { display_name }),
+
   // ── Destructive data removal ──────────────────────────────────────────────
   /** Drop the entire library (books + enrichments) and the derived taste profile/recs. */
   clearLibrary: () => del<Record<string, number | boolean>>("/library"),
@@ -364,3 +376,6 @@ export const api = {
 
 /** Shared SWR key for the API-key status (settings page + any gating UI). */
 export const API_KEY_STATUS_KEY = "api-key-status";
+
+/** Shared SWR key for the user's display name / profile settings. */
+export const USER_PROFILE_KEY = "user-profile";

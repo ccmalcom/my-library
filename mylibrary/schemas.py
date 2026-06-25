@@ -191,5 +191,17 @@ class ApiKeyStatus(BaseModel):
     configured: bool
 
 
+class UserProfileRequest(BaseModel):
+    """Body for updating the user's display name."""
+
+    display_name: str
+
+
+class UserProfileOut(BaseModel):
+    """User profile info returned to the client."""
+
+    display_name: str | None
+
+
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.
 RecFeedbackResult.model_rebuild()

@@ -57,12 +57,16 @@ from .schemas import (
     ShelfRequest,
     TraitOut,
     TraitUpdateRequest,
+    UserProfileOut,
+    UserProfileRequest,
 )
 from .stats import dataset_stats
 from .user_settings import (
     anthropic_key_status,
     clear_anthropic_key,
+    get_display_name,
     set_anthropic_key,
+    set_display_name,
 )
 
 @asynccontextmanager
@@ -144,6 +148,22 @@ def delete_api_key(user_id: UserId) -> ApiKeyStatus:
     """Remove the caller's stored key. `configured` may still be true if an env key exists."""
     clear_anthropic_key(user_id=user_id)
     return ApiKeyStatus(**anthropic_key_status(user_id=user_id))
+
+
+@app.get("/settings/profile", response_model=UserProfileOut)
+def get_profile_settings(user_id: UserId) -> UserProfileOut:
+    """Return the user's display name (or null if not yet set)."""
+    return UserProfileOut(display_name=get_display_name(user_id=user_id))
+
+
+@app.put("/settings/profile", response_model=UserProfileOut)
+def put_profile_settings(req: UserProfileRequest, user_id: UserId) -> UserProfileOut:
+    """Set / update the user's display name."""
+    try:
+        set_display_name(req.display_name, user_id=user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return UserProfileOut(display_name=get_display_name(user_id=user_id))
 
 
 def _book_out(book: Book) -> BookOut:

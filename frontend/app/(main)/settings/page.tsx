@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
-import { api, API_KEY_STATUS_KEY, PROFILE_STATUS_KEY, type ApiKeyStatus } from "@/lib/api";
+import { api, API_KEY_STATUS_KEY, PROFILE_STATUS_KEY, USER_PROFILE_KEY, type ApiKeyStatus, type UserProfile } from "@/lib/api";
 
 /**
  * Settings — bring-your-own Anthropic API key.
@@ -89,10 +89,39 @@ export default function SettingsPage() {
     () => api.apiKeyStatus()
   );
 
+  const { data: userProfile } = useSWR<UserProfile>(
+    USER_PROFILE_KEY,
+    () => api.getProfile()
+  );
+
   const [key, setKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  // Display name state
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameSaved, setNameSaved] = useState(false);
+
+  async function handleSaveName() {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    setNameSaving(true);
+    setNameError(null);
+    setNameSaved(false);
+    try {
+      await api.setProfile(trimmed);
+      setNameInput("");
+      setNameSaved(true);
+      await mutate(USER_PROFILE_KEY);
+    } catch (e) {
+      setNameError(e instanceof Error ? e.message : "Failed to save name.");
+    } finally {
+      setNameSaving(false);
+    }
+  }
 
   const configured = status?.configured ?? false;
 
@@ -133,6 +162,48 @@ export default function SettingsPage() {
       <p className="mb-6 text-sm text-slate-400">
         MyLibrary uses your own Anthropic API key for the taste profile and recommendations.
       </p>
+
+      {/* Display name */}
+      <section className="mb-6 rounded-2xl border border-slate-700 bg-[#1a1f2e] p-6">
+        <h2 className="mb-4 text-lg font-semibold text-white">Display name</h2>
+
+        {userProfile?.display_name && (
+          <p className="mb-3 text-sm text-slate-400">
+            Currently: <span className="font-medium text-slate-200">{userProfile.display_name}</span>
+          </p>
+        )}
+
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+          {userProfile?.display_name ? "Update name" : "Set your name"}
+        </label>
+        <input
+          type="text"
+          value={nameInput}
+          onChange={(e) => { setNameInput(e.target.value); setNameSaved(false); }}
+          onKeyDown={(e) => { if (e.key === "Enter") void handleSaveName(); }}
+          placeholder={userProfile?.display_name ?? "e.g. Alex"}
+          className="w-full rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-600 focus:outline-none"
+        />
+
+        {nameError && <p className="mt-2 text-sm text-red-400">{nameError}</p>}
+        {nameSaved && <p className="mt-2 text-sm text-emerald-400">Saved.</p>}
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => void handleSaveName()}
+            disabled={nameSaving || !nameInput.trim()}
+            className={[
+              "rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all",
+              nameSaving || !nameInput.trim()
+                ? "cursor-not-allowed bg-blue-700 opacity-60"
+                : "bg-blue-600 hover:bg-blue-500 active:scale-95",
+            ].join(" ")}
+          >
+            {nameSaving ? "Saving..." : "Save name"}
+          </button>
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-slate-700 bg-[#1a1f2e] p-6">
         <div className="mb-4 flex items-center justify-between">

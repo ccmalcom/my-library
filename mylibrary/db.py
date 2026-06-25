@@ -227,7 +227,7 @@ class ProfileMeta(Base):
 
 
 class UserSettings(Base):
-    """Per-user settings — currently just the bring-your-own Anthropic API key.
+    """Per-user settings — Anthropic API key and display name.
 
     The key is stored ENCRYPTED (AES-256-GCM via `crypto.py`) and decrypted only
     server-side at Claude-call time; it is never returned to the client. One row per user.
@@ -243,6 +243,7 @@ class UserSettings(Base):
         default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
     )
     anthropic_api_key_encrypted: Mapped[str | None] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=utcnow)
 
@@ -352,6 +353,13 @@ def init_db() -> None:
                                 f"ALTER TABLE recommendations ADD COLUMN {col_name} {type_str}"
                             )
                         )
+    # Lightweight migration: user_settings gets new columns added in place.
+    if "user_settings" in insp.get_table_names():
+        us_cols = {c["name"] for c in insp.get_columns("user_settings")}
+        with engine.begin() as conn:
+            if "display_name" not in us_cols:
+                conn.execute(sa_text("ALTER TABLE user_settings ADD COLUMN display_name VARCHAR"))
+
     Base.metadata.create_all(engine)
 
 
@@ -362,7 +370,7 @@ def get_session() -> Session:
 
 @contextmanager
 def session_scope() -> Iterator[Session]:
-    """`with session_scope() as s:` — commit on success, rollback on error."""
+    """`with session_scope() as s:` \u2014 commit on success, rollback on error."""
     session = get_session()
     try:
         yield session

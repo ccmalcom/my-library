@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
-import { api, API_KEY_STATUS_KEY, PROFILE_STATUS_KEY, type Book } from "@/lib/api";
+import { api, API_KEY_STATUS_KEY, PROFILE_STATUS_KEY, USER_PROFILE_KEY, type Book } from "@/lib/api";
 import AddBookModal from "@/components/AddBookModal";
 
 // The onboarding wizard. Rendered both at the standalone /setup route and INLINE by
@@ -14,7 +14,7 @@ import AddBookModal from "@/components/AddBookModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Step = "api-key" | "upload" | "enrich" | "manual" | "profile" | "done";
+type Step = "name" | "api-key" | "upload" | "enrich" | "manual" | "profile" | "done";
 
 interface IngestResult {
   inserted: number;
@@ -24,6 +24,7 @@ interface IngestResult {
 
 // The two onboarding paths show different step rails.
 const CSV_STEPS: { key: Step; label: string }[] = [
+  { key: "name", label: "Your name" },
   { key: "api-key", label: "API Key" },
   { key: "upload", label: "Upload" },
   { key: "enrich", label: "Enrich" },
@@ -31,6 +32,7 @@ const CSV_STEPS: { key: Step; label: string }[] = [
   { key: "done", label: "Done" },
 ];
 const MANUAL_STEPS: { key: Step; label: string }[] = [
+  { key: "name", label: "Your name" },
   { key: "api-key", label: "API Key" },
   { key: "manual", label: "Add books" },
   { key: "profile", label: "Profile" },
@@ -92,6 +94,91 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
+  );
+}
+
+// ── Step 0: Name ───────────────────────────────────────────────────────────────
+
+function NameStep({ onDone }: { onDone: () => void }) {
+  const [checking, setChecking] = useState(true);
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Auto-skip if a name is already stored.
+  useEffect(() => {
+    api.getProfile().then((profile) => {
+      if (profile.display_name) {
+        onDone();
+      } else {
+        setChecking(false);
+      }
+    }).catch(() => setChecking(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSave() {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.setProfile(trimmed);
+      await mutate(USER_PROFILE_KEY);
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save.');
+      setSaving(false);
+    }
+  }
+
+  if (checking) {
+    return (
+      <div className="flex justify-center py-8">
+        <Spinner className="h-6 w-6 text-slate-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="mb-1 text-xl font-semibold text-white">What should we call you?</h2>
+        <p className="text-sm text-slate-400">
+          Your name is used to personalize the app. You can change it anytime in Settings.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Your name
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => { setName(e.target.value); setError(null); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') void handleSave(); }}
+          placeholder="e.g. Alex"
+          autoFocus
+          className="w-full rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-600 focus:outline-none"
+        />
+        {error && <p className="text-xs text-red-400">{error}</p>}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => void handleSave()}
+        disabled={saving || !name.trim()}
+        className={[
+          'w-full rounded-lg py-3 font-semibold text-white transition-all',
+          saving || !name.trim()
+            ? 'cursor-not-allowed bg-blue-700 opacity-60'
+            : 'bg-blue-600 hover:bg-blue-500 active:scale-[0.99]',
+        ].join(' ')}
+      >
+        {saving ? 'Saving...' : 'Continue'}
+      </button>
+    </div>
   );
 }
 
@@ -623,7 +710,7 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
 // ── Wizard ───────────────────────────────────────────────────────────────────────
 
 export default function SetupWizard({ onComplete }: { onComplete?: () => void }) {
-  const [step, setStep] = useState<Step>("api-key");
+  const [step, setStep] = useState<Step>("name");
   const [path, setPath] = useState<"csv" | "manual">("csv");
   const [ingestResult, setIngestResult] = useState<IngestResult | null>(null);
   const [profiled, setProfiled] = useState(false);
@@ -637,7 +724,9 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-white">Welcome to MyLibrary</h1>
           <p className="mt-1 text-slate-400">
-            {step === "api-key"
+            {step === "name"
+              ? "A few quick steps to get you started."
+              : step === "api-key"
               ? "A few quick steps to get you started."
               : path === "manual"
               ? "Let's build your starter library."
@@ -649,6 +738,9 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
 
         {/* Card */}
         <div className="rounded-2xl border border-slate-700 bg-[#1a1f2e] p-6">
+          {step === "name" && (
+            <NameStep onDone={() => setStep("api-key")} />
+          )}
           {step === "api-key" && (
             <ApiKeyStep
               onDone={() => setStep("upload")}
