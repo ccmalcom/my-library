@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class IngestRequest(BaseModel):
@@ -136,8 +136,7 @@ class BookOut(BaseModel):
     confidence_label: str | None = None
     resolution_confidence: float | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TraitOut(BaseModel):
@@ -151,8 +150,7 @@ class TraitOut(BaseModel):
     user_note: str | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecommendationOut(BaseModel):
@@ -177,8 +175,7 @@ class RecommendationOut(BaseModel):
     user_note: str | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.

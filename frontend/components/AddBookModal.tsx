@@ -98,6 +98,8 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
   }
 
   const shownStars = hover || rating;
+  // Invariant (mirrors the API, which 422s otherwise): a review requires a rating.
+  const reviewWithoutRating = review.trim() !== "" && rating === 0;
 
   return (
     <div
@@ -276,6 +278,11 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
                 placeholder="What did you think? Your words feed the taste profile…"
                 className="w-full resize-y rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-600 focus:outline-none"
               />
+              {reviewWithoutRating && (
+                <p className="mt-1 text-xs text-amber-400">
+                  Add a star rating above to save your review.
+                </p>
+              )}
             </div>
 
             {saveError && <p className="mt-4 text-sm text-red-400">{saveError}</p>}
@@ -292,10 +299,10 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
               <button
                 type="button"
                 onClick={handleAdd}
-                disabled={saving}
+                disabled={saving || reviewWithoutRating}
                 className={[
                   "rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all",
-                  saving
+                  saving || reviewWithoutRating
                     ? "cursor-not-allowed bg-blue-700 opacity-60"
                     : "bg-blue-600 hover:bg-blue-500 active:scale-95",
                 ].join(" ")}

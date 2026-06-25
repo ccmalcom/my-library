@@ -53,6 +53,9 @@ export default function BookEditModal({
   // Only a newly-entered date counts; blanking a date isn't supported (rare).
   const dateChanged = dateRead !== "" && dateRead !== initialDate;
   const dirty = ratingChanged || reviewChanged || dateChanged;
+  // Invariant (mirrors the API, which 422s otherwise): a review requires a rating.
+  const reviewWithoutRating = review.trim() !== "" && rating === 0;
+  const canSave = dirty && !reviewWithoutRating;
 
   async function handleSave() {
     if (!dirty) {
@@ -159,6 +162,11 @@ export default function BookEditModal({
             placeholder="What did you think? Your words feed the taste profile…"
             className="w-full resize-y rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-600 focus:outline-none"
           />
+          {reviewWithoutRating && (
+            <p className="mt-1 text-xs text-amber-400">
+              Add a star rating above to save your review.
+            </p>
+          )}
         </div>
 
         {/* Date read (optional) */}
@@ -203,10 +211,10 @@ export default function BookEditModal({
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving || !dirty}
+              disabled={saving || !canSave}
               className={[
                 "rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all",
-                saving || !dirty
+                saving || !canSave
                   ? "cursor-not-allowed bg-blue-700 opacity-60"
                   : "bg-blue-600 hover:bg-blue-500 active:scale-95",
               ].join(" ")}

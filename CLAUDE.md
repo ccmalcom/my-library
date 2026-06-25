@@ -162,6 +162,10 @@ It is a pure HTTP client of the FastAPI engine — no DB access, no migrations.
   rating + review text → `POST /books`; used by both the Library page and the setup wizard's
   manual branch), `ReprofileBanner` (app-wide; shows only when `/profile/status` reports `dirty`,
   runs `/profile/update`), `SwipeCard`, `NavBar`.
+  Both `BookEditModal` and `AddBookModal` enforce the **review-requires-rating** invariant
+  client-side (save/add disabled + amber hint when review text is entered with a 0 rating),
+  mirroring the API's 422 so the UI never round-trips a doomed request. The swipe
+  `already_read` review prompt reuses `BookEditModal`, so it's covered too.
 
 Re-profiling is **never automatic** in the UI: editing a book marks the profile dirty
 (`feedback_updated_at` > `last_profiled_at`), the banner appears, and the user chooses

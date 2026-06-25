@@ -16,6 +16,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
@@ -56,10 +57,18 @@ from .schemas import (
 )
 from .stats import dataset_stats
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """App startup: ensure the local schema is current (no-op in hosted/Alembic mode)."""
+    init_db()
+    yield
+
+
 app = FastAPI(
     title="MyLibrary engine",
     version="0.1.0",
     description="Offline book-analysis pipeline: ingest -> enrich -> taste profile.",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -83,11 +92,6 @@ def current_user(authorization: Annotated[str | None, Header()] = None) -> str:
 
 # Annotated dependency alias — add `user_id: UserId` to a route to receive the scoped id.
 UserId = Annotated[str, Depends(current_user)]
-
-
-@app.on_event("startup")
-def _startup() -> None:
-    init_db()
 
 
 @app.get("/health")
