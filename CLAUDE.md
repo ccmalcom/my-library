@@ -251,6 +251,35 @@ when to spend the Claude call.
 
 ## Conventions / gotchas
 
+- **No non-ASCII characters inside JS string literals in `.tsx` files.** Turbopack's
+  JSX parser rejects them with "Expected '</', got 'ident'". Em dashes (`—`), curly
+  quotes (`"` `"`), ellipses (`…`), etc. are fine in JSX *text nodes* (between tags)
+  but must not appear inside `"..."` or `'...'` JS string values. Use plain ASCII
+  equivalents (` - `, `...`) or unicode escapes (`—`) in string literals.
+
+- **No IIFEs inside JSX in `.tsx` files.** Turbopack rejects `{(() => { ... })()}`
+  expressions inside JSX with the same "Expected '</', got 'ident'" parse error.
+  Compute derived values (conditionals, message strings, class names) as plain
+  variables at the top of the component function, then reference them directly in
+  the `return` JSX.
+
+- **The edit tool injects curly/smart quotes into `.tsx` string literals.** When AI
+  edit tools write double-quoted JS strings like `"some text"`, they may emit
+  U+201C/U+201D curly quotes instead of straight `"`. Turbopack rejects these with
+  the same parse error. After editing any `.tsx` file that contains string literals
+  in className arrays or ternaries, verify and fix with:
+  ```bash
+  python3 -c "
+  path = 'frontend/app/.../page.tsx'
+  with open(path, 'rb') as f: c = f.read()
+  c = c.replace(b'\xe2\x80\x9c', b'\"').replace(b'\xe2\x80\x9d', b'\"')
+  with open(path, 'wb') as f: f.write(c)
+  "
+  ```
+  Prefer **single-quoted strings** (`'...'`) in `.tsx` className arrays to sidestep
+  this — single curly quotes (`\xe2\x80\x98`/`\xe2\x80\x99`) are less likely to be
+  injected but apply the same fix if they appear.
+
 - **Never run git state-mutating commands** (`git stash`, `git checkout`, `git reset`,
   `git commit`, etc.) as part of inspecting or verifying code — the user owns git. The
   sandbox mount is flaky and can interrupt these mid-operation, leaving a stale
@@ -271,6 +300,11 @@ when to spend the Claude call.
   redoes the whole library). Open Library is flaky; transient timeouts are common.
 - **Secrets** live in `.env` (gitignored): `ANTHROPIC_API_KEY` required for `profile` and
   `recommend`; `GOOGLE_BOOKS_API_KEY` optional.
+- **`recommend` requires a clean, up-to-date profile** — it raises `RuntimeError` (→ HTTP
+  400) if `last_profiled_at` is `None` (no profile ever built) or if any rated/reviewed book
+  has changed since the last build (dirty). The frontend also blocks the button in both
+  states, showing a prompt to go build/update the profile. Build the profile first, then
+  run recommendations.
 - **`recommend` never re-recommends a library book** (dedup is by normalized title +
   author surname, reusing `enrich._normalize_title` / `_surname`). The `recommendations`
   table is disposable until the feedback phase — `init_db` drops+recreates it if its shape

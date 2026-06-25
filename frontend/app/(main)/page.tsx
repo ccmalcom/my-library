@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { api, type Stats } from "@/lib/api";
+import { api, type Stats, type ProfileStatus, PROFILE_STATUS_KEY } from "@/lib/api";
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -20,6 +20,18 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   const { data: stats, isLoading } = useSWR<Stats>("stats", () => api.stats());
+  const { data: profileStatus } = useSWR<ProfileStatus>(PROFILE_STATUS_KEY, () =>
+    api.profileStatus()
+  );
+
+  const noProfile = profileStatus != null && profileStatus.last_profiled_at === null;
+  const isDirty = profileStatus?.dirty ?? false;
+  const recBlocked = noProfile || isDirty;
+  const recBlockMsg = noProfile
+    ? "No taste profile yet - go to My Profile to build one."
+    : isDirty
+    ? "Your library has changed since the last profile build - go to My Profile to update it."
+    : null;
 
   // First-run gating now lives in <LibraryGate> (app/(main)/layout.tsx): when the user has no
   // library it renders the setup wizard inline in place of this page, so there's no redirect
@@ -112,29 +124,32 @@ export default function HomePage() {
         <h2 className="mb-1 text-lg font-semibold text-white">Ready for new picks?</h2>
         <p className="mb-5 text-sm text-slate-400">
           Claude will analyze your taste profile and find 10 books matched to you.
-          This takes 30–60 seconds.
+          This takes 30-60 seconds.
         </p>
 
         <button
           onClick={handleRun}
-          disabled={running}
+          disabled={running || recBlocked}
           className={[
             "inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white transition-all",
-            running
-              ? "cursor-not-allowed bg-blue-700 opacity-70"
+            running || recBlocked
+              ? "cursor-not-allowed bg-blue-700 opacity-50"
               : "bg-blue-600 hover:bg-blue-500 active:scale-95",
           ].join(" ")}
         >
           {running ? (
             <>
               <Spinner />
-              Running recommendations…
+              Running recommendations...
             </>
           ) : (
             "Run Recommendations"
           )}
         </button>
 
+        {recBlockMsg && (
+          <p className="mt-4 text-sm text-amber-400">{recBlockMsg}</p>
+        )}
         {error && (
           <p className="mt-4 text-sm text-red-400">{error}</p>
         )}

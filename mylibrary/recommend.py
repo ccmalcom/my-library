@@ -32,6 +32,7 @@ from collections import Counter
 from .config import LOCAL_USER_ID, get_settings
 from .db import Book, Recommendation, TasteTrait, init_db, session_scope
 from .enrich import _normalize_title, _surname
+from .profile import books_changed_since, get_profile_meta
 from .user_settings import resolve_anthropic_key
 
 _REJECTED_STATUS = "rejected"
@@ -519,6 +520,23 @@ def recommend(
             raise RuntimeError(
                 "No loved books found (need books rated >= 4). Run ingest + enrich "
                 "(and ideally profile) first."
+            )
+
+        # Block recommendations when the taste profile is missing or stale.
+        # A profile is missing when last_profiled_at is None; it's stale (dirty)
+        # when rated/reviewed books have changed since the last build.
+        meta = get_profile_meta(session, user_id)
+        changed = books_changed_since(session, meta.last_profiled_at, user_id)
+        if meta.last_profiled_at is None:
+            raise RuntimeError(
+                "No taste profile found. Run 'profile' (or POST /profile) before "
+                "generating recommendations."
+            )
+        if changed:
+            raise RuntimeError(
+                f"{len(changed)} book(s) have been rated/reviewed since the last profile "
+                "build. Re-profile first (POST /profile/update) so recommendations "
+                "reflect your current taste."
             )
 
         metadata_pool = (
