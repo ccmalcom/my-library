@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { api, type Stats } from "@/lib/api";
@@ -21,17 +21,10 @@ export default function HomePage() {
 
   const { data: stats, isLoading } = useSWR<Stats>("stats", () => api.stats());
 
-  // First-run detection: redirect to setup if no books have been imported yet.
-  const needsSetup = !isLoading && stats != null && stats.total === 0;
-  useEffect(() => {
-    if (needsSetup) {
-      router.replace("/setup");
-    }
-  }, [needsSetup, router]);
-
-  // Don't render the dashboard until we know setup is complete — otherwise the
-  // home page flashes for a moment before the redirect to /setup fires.
-  if (isLoading || !stats || needsSetup) {
+  // First-run gating now lives in <LibraryGate> (app/(main)/layout.tsx): when the user has no
+  // library it renders the setup wizard inline in place of this page, so there's no redirect
+  // here. We only wait for stats to load before drawing the dashboard.
+  if (isLoading || !stats) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Spinner />

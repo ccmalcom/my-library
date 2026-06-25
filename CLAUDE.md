@@ -188,16 +188,23 @@ only, no sign-up form); NavBar has a sign-out button. Supabase publishable key e
   re-rate/review; a "N books missing reviews" button steps through unrated read books; a
   **+ Add book** button opens `AddBookModal`), `/profile` (taste traits with inline editing,
   rating distribution, genre breakdown), `/setup` (CSV import wizard **plus** a no-CSV
-  "add books manually" branch — `ManualStep`). `layout.tsx` mounts `NavBar` +
-  `ReprofileBanner` above all pages; the root `app/layout.tsx` `<body>` carries
-  `suppressHydrationWarning` (browser extensions like ColorZilla mutate `<body>` pre-hydration
-  — this silences that benign attribute mismatch only, not real ones inside the app).
+  "add books manually" branch — `ManualStep`, extracted into `components/SetupWizard.tsx` so it
+  can also render inline; the `/setup` route is now a thin wrapper around it). `layout.tsx`
+  mounts `NavBar` + `ReprofileBanner` above all pages and wraps `children` in **`LibraryGate`**
+  (see below); the root `app/layout.tsx` `<body>` carries `suppressHydrationWarning` (browser
+  extensions like ColorZilla mutate `<body>` pre-hydration — this silences that benign attribute
+  mismatch only, not real ones inside the app).
 - `components/` — `BookEditModal` (re-rate + review; diff-based save; optional
   `queuePosition`/`onFinishQueue` for the step-through review queue), `AddBookModal`
   (manual add: debounced `/catalog/search` → pick a real result → optional shelf + star
   rating + review text → `POST /books`; used by both the Library page and the setup wizard's
   manual branch), `ReprofileBanner` (app-wide; shows only when `/profile/status` reports `dirty`,
-  runs `/profile/update`), `SwipeCard`, `NavBar`.
+  runs `/profile/update`), `SwipeCard`, `NavBar`, `SetupWizard` (the onboarding flow; takes an
+  optional `onComplete` so it can be used both at `/setup` and inline by the gate), and
+  `LibraryGate` (gates `/`, `/swipe`, `/library` behind having a library — renders `SetupWizard`
+  inline when `stats.total === 0`, otherwise the page; the decision is **latched** so ingesting
+  books mid-wizard doesn't swap it out, and `SetupWizard`'s final step calls `onComplete` to
+  advance to the page).
   Both `BookEditModal` and `AddBookModal` enforce the **review-requires-rating** invariant
   client-side (save/add disabled + amber hint when review text is entered with a 0 rating),
   mirroring the API's 422 so the UI never round-trips a doomed request. The swipe
@@ -257,19 +264,24 @@ when to spend the Claude call.
   grouped by star tier. Used by the My Profile genre breakdown. Subject counts normalise
   capitalisation and cap per-book contribution at 8 subjects to avoid one over-tagged
   book dominating the chart.
-- **First-run redirect / SWR cache**: the dashboard (`app/(main)/page.tsx`) redirects to
-  `/setup` when `stats.total === 0`, and it gates render behind a spinner until `stats` is
-  known so the dashboard never flashes before the redirect. The setup wizard's **CSV path**
-  (ingest + enrich) is a required two-step flow — there's **no "skip enrichment"** option.
-  The **manual path** (`ManualStep`, reached via "I don't have a Goodreads export") skips the
-  enrich step entirely: manual adds already carry catalog metadata, so the library is
-  recommend-ready without a separate enrich pass. Gotcha (applies to **both** paths): after
-  finishing, refresh the shared `"stats"` SWR key by passing fresh data —
-  `await mutate("stats", api.stats(), { revalidate: false })` — **not** a bare
-  `mutate("stats")`. A bare call only *revalidates*, and SWR won't refetch a key that no
-  mounted component subscribes to (the dashboard is unmounted while on `/setup`), so the
-  cache keeps the stale `total: 0` and bounces the user back to `/setup` in a loop. Same
-  pattern applies any time a non-subscribed page needs to update another page's SWR key.
+- **First-run gating (`LibraryGate`) / SWR cache**: a user with no library no longer gets
+  *redirected* to `/setup`. Instead `LibraryGate` (mounted in `app/(main)/layout.tsx`) renders
+  `SetupWizard` **inline** on `/`, `/swipe`, and `/library` when `stats.total === 0`, keeping the
+  navbar shell and the URL. Other routes (`/profile`, `/to-read`, `/settings`) are never gated —
+  `/settings` especially must stay reachable so a user can add their Anthropic key before
+  profiling. The gate **latches** its setup-vs-ready decision on first stats load: the wizard
+  ingests books mid-flow (`total` goes 0 → N after upload), so a reactive gate would swap the
+  wizard out before enrich/profile; instead the wizard calls `onComplete` at its final step to
+  advance deliberately. The standalone `/setup` route still works (thin wrapper around
+  `SetupWizard`). The wizard's **CSV path** (ingest + enrich) is a required two-step flow —
+  there's **no "skip enrichment"** option. The **manual path** (`ManualStep`, "I don't have a
+  Goodreads export") skips enrich: manual adds already carry catalog metadata. Gotcha (both
+  paths): after each step, refresh the shared `"stats"` SWR key by passing fresh data —
+  `await mutate("stats", api.stats(), { revalidate: false })` — **not** a bare `mutate("stats")`.
+  A bare call only *revalidates*, and SWR won't refetch a key no mounted component subscribes to,
+  so the cache keeps the stale `total: 0`. (With the inline gate, `LibraryGate` itself subscribes
+  to `"stats"`, but keep passing data explicitly — it's what advances the latch correctly and the
+  pattern still applies any time a non-subscribed page updates another page's SWR key.)
 - **Manual add (`add_book` / `POST /books` / `AddBookModal`)**: search-and-pick only — the
   book stored is always a real catalog hit, never free-typed, consistent with the "no
   invented titles" rule. Dedup is by normalized title + author surname (shared with the

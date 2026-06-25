@@ -38,6 +38,7 @@ from .library import (
     set_book_shelf,
 )
 from .profile import extract_taste_profile, update_taste_profile
+from .purge import clear_library, clear_profile, delete_account
 from .recommend import latest_recommendations, recommend
 from .schemas import (
     AddBookRequest,
@@ -391,6 +392,29 @@ def delete_book(book_id: int, user_id: UserId) -> dict:
         return remove_book(book_id, user_id=user_id)
     except BookNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# --- Bulk data removal (scoped to the authenticated user) ------------------
+# Each route deletes only the current user's rows. clear_library cascades to the profile;
+# delete_account additionally drops the stored Anthropic key. See mylibrary/purge.py.
+
+
+@app.delete("/library")
+def delete_library(user_id: UserId) -> dict:
+    """Drop the whole library (books + enrichments) and the derived taste profile/recs."""
+    return clear_library(user_id=user_id)
+
+
+@app.delete("/profile")
+def delete_profile(user_id: UserId) -> dict:
+    """Reset the taste profile (traits + recommendations + profile bookkeeping); keep books."""
+    return clear_profile(user_id=user_id)
+
+
+@app.delete("/account")
+def delete_account_route(user_id: UserId) -> dict:
+    """Delete all of the current user's app data (library, profile, recs, stored key)."""
+    return delete_account(user_id=user_id)
 
 
 @app.get("/profile/status", response_model=ProfileStatusOut)
