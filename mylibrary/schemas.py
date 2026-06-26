@@ -231,5 +231,27 @@ class UserProfileOut(BaseModel):
     display_name: str | None
 
 
+class ArchetypeAxisOut(BaseModel):
+    """One axis score for the reader archetype (lens / engine / range / resonance)."""
+
+    score: float
+    letter: str          # winning pole letter, e.g. "I" or "R"
+    rationale: str | None
+
+
+class ArchetypeOut(BaseModel):
+    """Reader archetype result returned by GET/POST /profile/archetype."""
+
+    code: str            # e.g. "IPBH"
+    name: str            # e.g. "The Wandering Escapist"
+    tagline: str
+    lens: ArchetypeAxisOut
+    engine: ArchetypeAxisOut
+    range: ArchetypeAxisOut
+    resonance: ArchetypeAxisOut
+    derived_at: datetime
+    is_stale: bool       # True when derived_at < ProfileMeta.last_profiled_at
+
+
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.
 RecFeedbackResult.model_rebuild()

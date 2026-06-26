@@ -438,7 +438,6 @@ export default function ProfilePage() {
 
   return (
     <div className='fade-in space-y-8 py-6'>
-      {/* Condensed TasteHero as the profile page header */}
       <TasteHero compact />
 
       {isLoading ? (

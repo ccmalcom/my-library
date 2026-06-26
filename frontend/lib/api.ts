@@ -177,6 +177,28 @@ export interface ApiKeyStatus {
   configured: boolean;
 }
 
+/** One axis score from the reader archetype (lens / engine / range / resonance). */
+export interface ArchetypeAxisOut {
+  score: number;
+  /** Winning pole letter, e.g. 'I' or 'R'. */
+  letter: string;
+  rationale: string | null;
+}
+
+/** Reader archetype returned by GET/POST /profile/archetype. */
+export interface ArchetypeOut {
+  code: string;
+  name: string;
+  tagline: string;
+  lens: ArchetypeAxisOut;
+  engine: ArchetypeAxisOut;
+  range: ArchetypeAxisOut;
+  resonance: ArchetypeAxisOut;
+  derived_at: string;
+  /** True when the archetype was derived before the most recent profile build. */
+  is_stale: boolean;
+}
+
 export interface UserProfile {
   /** The user's chosen display name, or null if not yet set. */
   display_name: string | null;
@@ -187,6 +209,9 @@ export interface UserProfile {
  * can revalidate the re-profile banner via `mutate(PROFILE_STATUS_KEY)`.
  */
 export const PROFILE_STATUS_KEY = "profile-status";
+
+/** Shared SWR key for the reader archetype (GET /profile/archetype). */
+export const ARCHETYPE_KEY = "archetype";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 
@@ -377,6 +402,23 @@ export const api = {
   /** Set / update the user's display name. */
   setProfile: (display_name: string) =>
     put<UserProfile>("/settings/profile", { display_name }),
+
+  // ── Reader archetype ──────────────────────────────────────────────────────
+  /** Derive (or re-derive) the reader archetype from the current taste profile. */
+  deriveArchetype: () => post<ArchetypeOut>('/profile/archetype'),
+
+  /**
+   * Return the stored reader archetype. Returns null when none has been derived yet
+   * (the API returns 404, which this helper converts to null).
+   */
+  getArchetype: async (): Promise<ArchetypeOut | null> => {
+    try {
+      return await get<ArchetypeOut>('/profile/archetype');
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('404')) return null;
+      throw e;
+    }
+  },
 
   // ── Destructive data removal ──────────────────────────────────────────────
   /** Drop the entire library (books + enrichments) and the derived taste profile/recs. */

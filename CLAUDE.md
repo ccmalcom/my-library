@@ -406,7 +406,11 @@ when to spend the Claude call.
   read history use read-only commands only (`git log`, `git diff`, `git show`). To check
   whether an edit is valid, read the file back with the file tools rather than stashing.
 - **Run via `python -m`** (`python -m mylibrary.cli ...`, `python -m pytest`). The console
-  scripts (pytest.exe, uvicorn.exe) may not be on PATH.
+  scripts (pytest.exe, uvicorn.exe) may not be on PATH. On Windows use `.venv/Scripts/python -m pytest`
+  — bare `python` may lack packages (e.g. `slowapi`) installed only in the venv.
+- **`session_scope()` is the DB context manager; `get_session()` is not.** `get_session()`
+  returns a bare `Session` (no `__exit__`). All core functions use `with session_scope() as session:`.
+  Don't write `with get_session() as session:` — it will fail.
 - **Windows PowerShell**: no `&&`. Chain with `;` + `if ($?) { ... }`, or run commands
   separately. Use a venv (`.venv`) and install deps into it.
 - **Enrichment commits per book** so Ctrl+C is safe and re-runs resume (already-enriched

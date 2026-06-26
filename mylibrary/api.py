@@ -24,10 +24,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from . import archetype as archetype_module
 from . import catalog
 from .auth import AuthError, resolve_user_id
 from .config import get_settings
-from .db import Book, EnrichJob, Enrichment, Recommendation, init_db, session_scope
+from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
 from .enrich import _normalize_title, _surname, enrich_library
 from .ingest import ingest_csv
 from .library import (
@@ -46,6 +47,8 @@ from .schemas import (
     AddBookRequest,
     ApiKeyRequest,
     ApiKeyStatus,
+    ArchetypeAxisOut,
+    ArchetypeOut,
     BookFeedbackRequest,
     BookOut,
     CatalogResult,
@@ -724,3 +727,75 @@ def get_profile_subjects(user_id: UserId) -> dict:
                 for tier, counter in sorted(by_tier.items(), key=lambda x: int(x[0]), reverse=True)
             },
         }
+
+
+def _archetype_out(row: ReaderArchetype, last_profiled_at) -> ArchetypeOut:
+    """Map a ReaderArchetype DB row to ArchetypeOut (computes letters + is_stale)."""
+    def _axis(axis_key: str, score: float, rationale: str | None) -> ArchetypeAxisOut:
+        letter = archetype_module._score_to_letter(axis_key, score)
+        return ArchetypeAxisOut(score=score, letter=letter, rationale=rationale or None)
+
+    is_stale = (
+        last_profiled_at is not None and row.derived_at < last_profiled_at
+    )
+    return ArchetypeOut(
+        code=row.code,
+        name=row.archetype_name,
+        tagline=row.archetype_tagline,
+        lens=_axis("lens", row.axis_lens, row.lens_rationale),
+        engine=_axis("engine", row.axis_engine, row.engine_rationale),
+        range=_axis("range", row.axis_range, row.range_rationale),
+        resonance=_axis("resonance", row.axis_resonance, row.resonance_rationale),
+        derived_at=row.derived_at,
+        is_stale=is_stale,
+    )
+
+
+def _get_last_profiled_at(session, user_id: str):
+    """Return the user's ProfileMeta.last_profiled_at (or None if no profile)."""
+    from .db import ProfileMeta
+    meta = session.query(ProfileMeta).filter(ProfileMeta.user_id == user_id).one_or_none()
+    return meta.last_profiled_at if meta else None
+
+
+@app.post("/profile/archetype", response_model=ArchetypeOut)
+def post_archetype(user_id: UserId) -> ArchetypeOut:
+    """Derive (or re-derive) the reader archetype from the current taste profile.
+
+    Calls Claude Haiku to score 4 axes; upserts the result; returns ArchetypeOut.
+    Requires a taste profile and a usable Anthropic API key.
+    """
+    try:
+        result = archetype_module.derive_archetype(user_id=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    with session_scope() as session:
+        row = (
+            session.query(ReaderArchetype)
+            .filter(ReaderArchetype.user_id == user_id)
+            .one_or_none()
+        )
+        if row is None:
+            raise HTTPException(status_code=500, detail="Archetype upsert failed")
+        last_profiled_at = _get_last_profiled_at(session, user_id)
+        return _archetype_out(row, last_profiled_at)
+
+
+@app.get("/profile/archetype", response_model=ArchetypeOut)
+def get_archetype(user_id: UserId) -> ArchetypeOut:
+    """Return the stored reader archetype for the current user.
+
+    Returns 404 if no archetype has been derived yet.
+    Cross-tenant access returns 404 (the query filters by user_id).
+    """
+    with session_scope() as session:
+        row = (
+            session.query(ReaderArchetype)
+            .filter(ReaderArchetype.user_id == user_id)
+            .one_or_none()
+        )
+        if row is None:
+            raise HTTPException(status_code=404, detail="No archetype derived yet")
+        last_profiled_at = _get_last_profiled_at(session, user_id)
+        return _archetype_out(row, last_profiled_at)

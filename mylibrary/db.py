@@ -278,6 +278,38 @@ class UserSettings(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=utcnow)
 
 
+class ReaderArchetype(Base):
+    """Per-user reader personality archetype -- 4-axis code derived from taste traits.
+
+    One row per user (unique on user_id -- upsert pattern same as ProfileMeta).
+    Derived by Claude Haiku scoring the user's TasteTrait rows; re-derive any time.
+    """
+
+    __tablename__ = "reader_archetypes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
+    code: Mapped[str] = mapped_column(String, nullable=False)  # e.g. "IPBH"
+    archetype_name: Mapped[str] = mapped_column(String, nullable=False)
+    archetype_tagline: Mapped[str] = mapped_column(Text, nullable=False)
+    axis_lens: Mapped[float] = mapped_column(Float, nullable=False)
+    axis_engine: Mapped[float] = mapped_column(Float, nullable=False)
+    axis_range: Mapped[float] = mapped_column(Float, nullable=False)
+    axis_resonance: Mapped[float] = mapped_column(Float, nullable=False)
+    lens_rationale: Mapped[str | None] = mapped_column(Text)
+    engine_rationale: Mapped[str | None] = mapped_column(Text)
+    range_rationale: Mapped[str | None] = mapped_column(Text)
+    resonance_rationale: Mapped[str | None] = mapped_column(Text)
+    derived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_reader_archetype_user"),
+    )
+
+
 # --- engine / session plumbing ---------------------------------------------
 
 _engine = None
