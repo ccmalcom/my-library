@@ -195,15 +195,18 @@ def enrich_library(
             return False
 
         work = [b for b in candidates if _needs_work(b)]
-        summary["skipped_existing"] = len(candidates) - len(work)
+        skipped = len(candidates) - len(work)
+        summary["skipped_existing"] = skipped
         if limit is not None:
             work = work[:limit]
-        total = len(work)
-        summary["total"] = total
-        # Announce the total up front so the UI shows "0/total" immediately rather than
-        # "0/?" while the first (possibly slow) lookup runs — otherwise it looks frozen.
+        # Use the full candidate count as the denominator so "10/50" is shown rather
+        # than "10/44" when some books were already enriched — less confusing on re-runs.
+        full_total = skipped + len(work)
+        summary["total"] = full_total
+        # Announce the total up front so the UI shows "skipped/total" immediately rather
+        # than "0/?" while the first (possibly slow) lookup runs — otherwise it looks frozen.
         if progress is not None:
-            progress(0, total, "", "starting")
+            progress(skipped, full_total, "", "starting")
 
         for i, book in enumerate(work, 1):
             cand, label, method = _resolve_one(book)
@@ -228,7 +231,7 @@ def enrich_library(
             # and a re-run resumes from where it stopped instead of redoing everything.
             session.commit()
             if progress is not None:
-                progress(i, total, book.title, label)
+                progress(skipped + i, full_total, book.title, label)
 
     summary["http"] = catalog.get_stats()
     return summary

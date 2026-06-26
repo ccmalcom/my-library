@@ -74,8 +74,8 @@ def run_enrich_job(
             if job is not None:
                 job.status = "done"
                 job.finished_at = utcnow()
-                job.progress = summary["processed"]
-                job.total = summary["total"] + summary.get("skipped_existing", 0)
+                job.progress = summary["skipped_existing"] + summary["processed"]
+                job.total = summary["total"]
     except Exception as exc:
         with session_scope() as session:
             job = session.query(EnrichJob).filter(EnrichJob.job_id == job_id).first()
