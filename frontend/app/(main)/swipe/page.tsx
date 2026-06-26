@@ -117,7 +117,7 @@ export default function SwipePage() {
         </p>
 
         {/* Card stack */}
-        <div className='relative h-[560px] w-full max-w-sm'>
+        <div className='relative h-[440px] sm:h-[560px] w-full max-w-sm'>
           {visibleStack
             .slice()
             .reverse()

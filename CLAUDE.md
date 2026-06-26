@@ -186,6 +186,21 @@ slash.
 Next: merge `frontend-redesign` → `main`, redeploy Vercel + Railway, then test both first-run
 paths (CSV import and manual add) end-to-end on the live deployment.
 
+**Mobile / tablet optimization has landed** (`optimize-for-mobile` branch):
+- **`BottomNav`** (`components/BottomNav.tsx`) — fixed bottom nav for mobile (`sm:hidden`);
+  5 items with lucide icons + short labels (Home/Swipe/Library/Profile/Settings); accent color
+  on active route. Replaces the top nav links on mobile.
+- **`NavBar`** on mobile shows only the logo + a `LogOut` icon button (when `authEnabled`);
+  full link row is `hidden sm:flex`. `(main)/layout.tsx` renders `<BottomNav />` and bumps
+  bottom padding to `pb-24 sm:pb-16` to clear the fixed bar.
+- **Stats strip** (`/` dashboard) uses `grid-cols-2 sm:grid-cols-4` on mobile with `gap-y-4`;
+  `divide-x`/`-mx-1` confined to `sm:` to avoid broken borders in the 2-column layout.
+- **Swipe card stack** height `h-[440px] sm:h-[560px]` to fit typical mobile viewports.
+- **Library search input** `min-w-40` removed (`min-w-0`) so it shrinks and wraps on narrow screens.
+- **Genre breakdown labels** (`profile/page.tsx`) `w-40` → `w-24 sm:w-40`; genre filter row
+  gets `flex-wrap` so star-tier buttons wrap on small screens.
+- **SetupWizard** drop zone padding `p-10` → `p-6 sm:p-10`; outer wrapper `py-12` → `py-6 sm:py-12`.
+
 ## Locked decisions (do not relitigate)
 
 1. **Goodreads API is dead.** CSV export is the only ingest path. Never scrape Goodreads
@@ -325,7 +340,7 @@ A hard reload rebuilds everything cleanly. Don't revert these to `router.push`/`
   rating distribution, genre breakdown), `/setup` (CSV import wizard **plus** a no-CSV
   "add books manually" branch — `ManualStep`, extracted into `components/SetupWizard.tsx` so it
   can also render inline; the `/setup` route is now a thin wrapper around it). `layout.tsx`
-  mounts `NavBar` + `ReprofileBanner` above all pages and wraps `children` in **`LibraryGate`**
+  mounts `NavBar` + `ReprofileBanner` + `BottomNav` above/below all pages and wraps `children` in **`LibraryGate`**
   (see below); the root `app/layout.tsx` `<body>` carries `suppressHydrationWarning` (browser
   extensions like ColorZilla mutate `<body>` pre-hydration — this silences that benign attribute
   mismatch only, not real ones inside the app).

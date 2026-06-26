@@ -73,7 +73,7 @@ function SearchInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={[
-        'flex-1 min-w-40 rounded-lg border border-border bg-elevated px-3 py-2',
+        'flex-1 min-w-0 rounded-lg border border-border bg-elevated px-3 py-2',
         'text-sm text-text placeholder-faint',
         'focus:border-accent focus:outline-none focus-visible:ring-1 focus-visible:ring-accent',
       ].join(' ')}

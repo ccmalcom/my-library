@@ -326,7 +326,7 @@ function UploadStep({
           handleFile(e.dataTransfer.files[0]);
         }}
         className={[
-          'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors',
+          'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 sm:p-10 text-center transition-colors',
           file
             ? 'border-success bg-success/5'
             : 'border-border hover:border-muted bg-elevated/40',
@@ -717,7 +717,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
   const rail = path === 'manual' ? MANUAL_STEPS : CSV_STEPS;
 
   return (
-    <div className='fade-in flex min-h-[60vh] flex-col items-center justify-center py-12'>
+    <div className='fade-in flex min-h-[60vh] flex-col items-center justify-center py-6 sm:py-12'>
       <div className='w-full max-w-lg'>
         <div className='mb-8 text-center'>
           <h1 className='font-display text-3xl font-bold tracking-tight text-text'>

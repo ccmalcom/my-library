@@ -335,14 +335,14 @@ function GenreSection({ subjects }: { subjects: SubjectBreakdown }) {
 
   return (
     <section className='space-y-4'>
-      <div className='flex items-center justify-between'>
+      <div className='flex flex-wrap items-start justify-between gap-3'>
         <div>
           <h2 className='font-display text-lg font-semibold text-text'>Genre Breakdown</h2>
           <p className='mt-0.5 text-xs text-faint'>
             Subjects from enriched catalog data across your rated books.
           </p>
         </div>
-        <div className='flex gap-1 rounded-lg border border-border bg-elevated p-1'>
+        <div className='flex flex-wrap gap-1 rounded-lg border border-border bg-elevated p-1'>
           <button onClick={() => setTier('all')} className={filterBtnClass(tier === 'all')}>
             All
           </button>
@@ -366,7 +366,7 @@ function GenreSection({ subjects }: { subjects: SubjectBreakdown }) {
               return (
                 <div key={subject} className='flex items-center gap-3'>
                   <span
-                    className='w-40 shrink-0 truncate text-sm text-muted'
+                    className='w-24 sm:w-40 shrink-0 truncate text-sm text-muted'
                     title={subject}
                   >
                     {subject}
