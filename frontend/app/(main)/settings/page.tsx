@@ -11,6 +11,7 @@ import {
   type UserProfile,
 } from '@/lib/api';
 import { Button, Card, useToast } from '@/components/ui';
+import { getSupabaseClient, authEnabled } from '@/utils/supabase/client';
 
 function DangerAction({
   title,
@@ -111,6 +112,17 @@ export default function SettingsPage() {
   const [nameInput, setNameInput] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
 
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
   async function handleSaveName(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = nameInput.trim();
@@ -143,6 +155,61 @@ export default function SettingsPage() {
       toast.error(e instanceof Error ? e.message : 'Failed to save key.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleChangeEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailError(null);
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    setEmailSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error('Could not get current user.');
+      if (signInError) {
+        setEmailError(signInError.message || 'Failed to verify password.');
+        return;
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ email: newEmail.trim() });
+      if (updateError) throw updateError;
+      setEmailCurrentPassword('');
+      setNewEmail('');
+      toast.success('Check your new inbox to confirm the change.');
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : 'Failed to update email.');
+    } finally {
+      setEmailSaving(false);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordError(null);
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords don't match.");
+      return;
+    }
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    setPasswordSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error('Could not get current user.');
+      if (signInError) {
+        setPasswordError(signInError.message || 'Failed to verify password.');
+        return;
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      toast.success('Password updated.');
+    } catch (e) {
+      setPasswordError(e instanceof Error ? e.message : 'Failed to update password.');
+    } finally {
+      setPasswordSaving(false);
     }
   }
 
@@ -200,6 +267,106 @@ export default function SettingsPage() {
           </form>
         </Card>
       </section>
+
+      {/* Change email */}
+      {authEnabled && (
+        <section className='mb-6'>
+          <Card>
+            <h2 className='mb-4 font-display text-lg font-semibold text-text'>Change email</h2>
+            <form onSubmit={handleChangeEmail} className='space-y-3'>
+              <div>
+                <label className={labelClass}>Current password</label>
+                <input
+                  type='password'
+                  value={emailCurrentPassword}
+                  onChange={(e) => { setEmailCurrentPassword(e.target.value); setEmailError(null); }}
+                  autoComplete='current-password'
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>New email</label>
+                <input
+                  type='email'
+                  value={newEmail}
+                  onChange={(e) => { setNewEmail(e.target.value); setEmailError(null); }}
+                  placeholder='new@example.com'
+                  className={inputClass}
+                />
+              </div>
+              {emailError && <p className='text-xs text-danger'>{emailError}</p>}
+              <p className='text-xs text-faint'>
+                A confirmation link will be sent to your new address.
+              </p>
+              <Button
+                type='submit'
+                loading={emailSaving}
+                disabled={emailSaving || !emailCurrentPassword || !newEmail.trim()}
+              >
+                {emailSaving ? 'Saving...' : 'Update email'}
+              </Button>
+            </form>
+          </Card>
+        </section>
+      )}
+
+      {/* Change password */}
+      {authEnabled && (
+        <section className='mb-6'>
+          <Card>
+            <h2 className='mb-4 font-display text-lg font-semibold text-text'>Change password</h2>
+            <form onSubmit={handleChangePassword} className='space-y-3'>
+              <div>
+                <label className={labelClass}>Current password</label>
+                <input
+                  type='password'
+                  value={currentPassword}
+                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(null); }}
+                  autoComplete='current-password'
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>New password</label>
+                <input
+                  type='password'
+                  value={newPassword}
+                  onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
+                  autoComplete='new-password'
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Confirm new password</label>
+                <input
+                  type='password'
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
+                  autoComplete='new-password'
+                  className={inputClass}
+                />
+                {confirmPassword && newPassword !== confirmPassword && (
+                  <p className='mt-1 text-xs text-danger'>Passwords don&apos;t match.</p>
+                )}
+              </div>
+              {passwordError && <p className='text-xs text-danger'>{passwordError}</p>}
+              <Button
+                type='submit'
+                loading={passwordSaving}
+                disabled={
+                  passwordSaving ||
+                  !currentPassword ||
+                  !newPassword ||
+                  !confirmPassword ||
+                  newPassword !== confirmPassword
+                }
+              >
+                {passwordSaving ? 'Saving...' : 'Update password'}
+              </Button>
+            </form>
+          </Card>
+        </section>
+      )}
 
       {/* API key */}
       <section className='mb-6'>
