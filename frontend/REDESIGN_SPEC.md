@@ -144,6 +144,11 @@ These are hard rules for editing `.tsx` files in this repo. Violating them break
   with read-only commands only; verify edits by re-reading files. The owner controls git.
 - **Windows PowerShell**: no `&&`. Chain with `;` + `if ($?) { ... }`.
 - Frontend commands run from `frontend/`: `npm run dev`, `npm run build`, `npm run lint`.
+- **Manual check at end of each session:** for phases that produce new components not yet wired
+  into any real route, create a temporary `app/ui-test/page.tsx` that renders every variant,
+  verify visually + keyboard, then delete it. For phases that restyle existing routes, run
+  `npm run dev` and navigate to each changed page. This is always the last step before calling
+  a session done.
 
 ---
 
@@ -165,7 +170,7 @@ patch correct code.** Reproduce first.
    - Only if a genuine wiring issue is found, fix minimally.
 
 **Acceptance:** Enter submits the login form (or a written note explaining it was already correct
-/ environmental, with the console evidence).
+/ environmental, with the console evidence). No test page needed — this is investigation only.
 
 ---
 
@@ -193,7 +198,9 @@ Files: `app/layout.tsx`, `app/globals.css`, `tailwind.config.ts`.
 
 **Acceptance:** app boots with Bricolage/Inter/JetBrains loaded (verify in devtools -> no system
 fallback), warm-dark background, no references to `--font-geist-sans` remain, `npm run build`
-passes.
+passes. **Manual check:** `npm run dev` -> open any page -> confirm warm charcoal background
+(not cool slate), check devtools computed font-family on a heading (should show Bricolage
+Grotesque) and on body text (Inter). No test page needed — the real app is the surface.
 
 ---
 
@@ -230,6 +237,9 @@ accessibility baseline lives, so later phases inherit it for free.
 
 **Acceptance:** primitives compile and are visually consistent; every interactive primitive shows
 a visible focus-visible ring on keyboard focus; StarRating is fully operable by keyboard.
+**Manual check:** create `app/ui-test/page.tsx` rendering all variants (see Build conventions
+pattern); verify colors, focus rings, loading state, Field error wiring, StarRating keyboard
+nav; delete `app/ui-test/` when done.
 
 ---
 
@@ -260,7 +270,10 @@ Files: new `components/TasteHero.tsx`, new `lib/tasteAccent.ts`, rewrite
 
 **Acceptance:** the dashboard opens with a bold, personal, per-user statement; two different
 users (or two trait sets) produce visibly different accent washes; stats are present but
-secondary.
+secondary. **Manual check:** `npm run dev` -> navigate to `/` -> confirm TasteHero renders
+above stats; inspect the per-user accent color in devtools (`--user-accent` on the wrapper
+element); verify the empty-state CTA when no profile exists. The real dashboard is the
+surface — no separate test page needed.
 
 ---
 
@@ -298,7 +311,10 @@ Per file:
 
 **Acceptance:** grep shows no remaining `bg-[#0f1117]`/`bg-[#1a1f2e]`/`#242938` literals or
 `text-slate-`/`bg-blue-`/`bg-green-`-as-primary in components; no emoji used as UI icons;
-`npm run build` passes.
+`npm run build` passes. **Manual check:** `npm run dev` -> walk each restyled route
+(`/`, `/swipe`, `/library`, `/profile`, `/settings`, `/login`, `/setup`) and confirm warm
+tokens, icon buttons, and no hardcoded legacy colors are visible. Each restyled surface IS
+the test — no separate test page needed.
 
 ---
 
@@ -332,6 +348,9 @@ Some of this is already handled by Phase 2 primitives; this phase closes the res
 **Acceptance:** keyboard-only walkthrough of login -> setup -> dashboard -> a modal works end to
 end (Tab/Shift-Tab/Enter/Escape/Arrows); macOS/Windows reduced-motion setting visibly calms the
 UI; an automated check (axe DevTools or Lighthouse a11y) shows no critical violations.
+**Manual check:** `npm run dev` -> full keyboard walkthrough as described; toggle OS
+reduced-motion and reload to confirm animations calm; run axe DevTools or Lighthouse a11y audit
+on at least the dashboard and one modal. The real UI is the test surface.
 
 ---
 
@@ -353,7 +372,10 @@ UI; an automated check (axe DevTools or Lighthouse a11y) shows no critical viola
    no-filter-match messaging).
 
 **Acceptance:** no `window.confirm`/`alert` remain; every async action surfaces success and
-failure; errors are visible regardless of scroll position.
+failure; errors are visible regardless of scroll position. **Manual check:** `npm run dev` ->
+trigger a save success (re-rate a book), a forced failure (submit with bad API key), and
+the remove-book flow; confirm toasts appear and the old `window.confirm` is gone. The real
+UI is the test surface.
 
 ---
 

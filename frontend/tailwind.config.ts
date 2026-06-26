@@ -23,9 +23,9 @@ const config: Config = {
           hover:   "var(--accent-hover)",
           quiet:   "var(--accent-quiet)",
         },
-        success: "var(--success)",
-        danger:  "var(--danger)",
-        warning: "var(--warning)",
+        success: { DEFAULT: "var(--success)", quiet: "var(--success-quiet)" },
+        danger:  { DEFAULT: "var(--danger)",  quiet: "var(--danger-quiet)"  },
+        warning: { DEFAULT: "var(--warning)", quiet: "var(--warning-quiet)" },
         user:    "var(--user-accent)",
       },
       fontFamily: {

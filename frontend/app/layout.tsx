@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       className={`dark ${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
-    >
+    ><link rel="icon" href="/favicon.ico" sizes="any" />
       {/* Browser extensions (e.g. ColorZilla adds cz-shortcut-listen) mutate <body>
           before React hydrates, causing a benign attribute-mismatch warning. Suppress
           it on this element only — it does not hide real mismatches inside the app. */}

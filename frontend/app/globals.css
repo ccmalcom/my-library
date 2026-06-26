@@ -23,6 +23,11 @@
   --danger:        #E0524B;
   --warning:       #F5B82E;
 
+  /* semantic quiet backgrounds (opacity-adjusted; opacity modifier needs channel triplets) */
+  --success-quiet: rgba(91, 191, 123, 0.12);
+  --danger-quiet:  rgba(224, 82, 75, 0.12);
+  --warning-quiet: rgba(245, 184, 46, 0.12);
+
   /* per-user accent (set at runtime; fallback = persimmon) */
   --user-accent: #FF5C3A;
 }
