@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 import { authEnabled, getSupabaseClient } from '@/utils/supabase/client';
 
 const links = [
@@ -30,7 +31,8 @@ export default function NavBar() {
         <span className='font-mono text-xs font-semibold uppercase tracking-widest text-muted'>
           MyLibrary
         </span>
-        <div className='flex gap-1'>
+        {/* Desktop nav links */}
+        <div className='hidden sm:flex gap-1'>
           {links.map(({ href, label }) => {
             const active = pathname === href;
             return (
@@ -64,6 +66,21 @@ export default function NavBar() {
             </button>
           )}
         </div>
+        {/* Mobile sign-out icon */}
+        {authEnabled && (
+          <button
+            type='button'
+            onClick={handleSignOut}
+            aria-label='Sign out'
+            className={[
+              'flex sm:hidden items-center justify-center rounded-md p-2 text-muted transition-colors',
+              'hover:bg-elevated hover:text-danger',
+              focusRing,
+            ].join(' ')}
+          >
+            <LogOut size={18} aria-hidden='true' />
+          </button>
+        )}
       </div>
     </nav>
   );

@@ -23,7 +23,7 @@ function StatsStrip({ stats }: { stats: Stats }) {
 
   return (
     <Card>
-      <div className="grid grid-cols-4 divide-x divide-border -mx-1">
+      <div className="grid grid-cols-2 gap-y-4 sm:gap-y-0 sm:grid-cols-4 sm:divide-x sm:divide-border sm:-mx-1">
         {items.map(({ label, value }) => (
           <div key={label} className="px-4 text-center">
             <p className="font-mono text-xl font-semibold text-text">{value}</p>
@@ -40,7 +40,7 @@ function StatsStrip({ stats }: { stats: Stats }) {
 function StatsStripSkeleton() {
   return (
     <Card>
-      <div className="grid grid-cols-4 divide-x divide-border -mx-1">
+      <div className="grid grid-cols-2 gap-y-4 sm:gap-y-0 sm:grid-cols-4 sm:divide-x sm:divide-border sm:-mx-1">
         {[1, 2, 3, 4].map(i => (
           <div key={i} className="px-4 text-center space-y-2">
             <div className="h-6 w-12 mx-auto rounded bg-elevated motion-safe:animate-pulse" />
