@@ -76,6 +76,12 @@ Both services build from the **same repo and Dockerfile**; only the start comman
    then uvicorn on `$PORT`) — leave the start command blank to use it.
 3. **Settings → Networking → Generate Domain** to get a public URL like
    `https://mylibrary-api-production.up.railway.app`. Save it — Vercel needs it.
+   - **Target port: use `8080`** (Railway's default). Railway injects its own `PORT` env var at
+     runtime (defaulting to **8080**), and that overrides the Dockerfile's `ENV PORT=8000`, so
+     uvicorn actually listens on 8080. The domain's target port MUST equal whatever `PORT` is in
+     the container, or you get "Application failed to respond". Either point the domain at 8080,
+     OR set a `PORT=8000` variable explicitly (then uvicorn binds 8000 and you target 8000). Do
+     not target 8000 while leaving Railway's injected `PORT` at 8080 — that's the mismatch.
 4. **Settings → Deploy → Healthcheck Path** → set to **`/healthz`** (the unauthenticated probe;
    do NOT use `/health`, which requires a token and would fail the check in hosted mode).
 
@@ -120,10 +126,15 @@ should show arq connecting to Redis and `0 jobs` waiting.
 3. Framework preset auto-detects **Next.js**; leave build/output defaults.
 4. **Environment Variables:**
    ```
-   NEXT_PUBLIC_API_URL                  = https://<railway-web-url>   # no trailing slash
+   NEXT_PUBLIC_API_URL                  = https://<railway-web-url>   # MUST include https://, no trailing slash
    NEXT_PUBLIC_SUPABASE_URL             = https://<ref>.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = <Supabase publishable/anon key>
    ```
+   **`NEXT_PUBLIC_API_URL` must include the `https://` scheme.** Without it the client treats the
+   value as a relative path and appends it to the Vercel origin — you'll see 404s like
+   `https://<vercel>/<railway-host>/stats`. **`NEXT_PUBLIC_*` vars are inlined at build time**, so
+   after adding/changing them you must **Redeploy** (Deployments → Redeploy); editing the value
+   alone does nothing to an already-built deployment.
 5. Deploy. Note the production domain Vercel assigns, e.g. `https://mylibrary.vercel.app`.
 
 ---
@@ -164,6 +175,7 @@ That exercises every Phase 5 service: Vercel (UI) → Railway web (API + auth ve
 | All API calls 401 after sign-in | `SUPABASE_URL` wrong/unset on Railway, or token is HS256 (set `SUPABASE_JWT_SECRET`). |
 | Railway healthcheck failing / deploy never goes live | Healthcheck path is `/health` (needs auth) instead of `/healthz`; or app crashed on `alembic upgrade` — check logs. |
 | Logs show `Context impl SQLiteImpl` / `sqlite3.OperationalError` during `alembic upgrade` | **`DATABASE_URL` is not set on the service** — the app fell back to an ephemeral in-container SQLite instead of Supabase Postgres. Set `DATABASE_URL` (session pooler, `+psycopg`) on the web AND worker services and redeploy. A correct deploy logs `Context impl PostgresqlImpl`. |
+| "Application failed to respond" on the domain | Port mismatch (or domain on the wrong service). Railway injects `PORT=8080` and uvicorn binds it (logs: `Uvicorn running on http://0.0.0.0:8080`), but the domain's target port is different. Set the domain target = the port in the log (8080 by default), or pin `PORT=8000` in Variables. Also confirm the domain is on the **web** (uvicorn) service, not the arq worker (which has no HTTP server). |
 | `ModuleNotFoundError: psycopg2` | `DATABASE_URL` lacks the `+psycopg` driver; `config.db_url` normalizes a bare `postgresql://`, but verify. |
 | Enrichment starts but never progresses | Worker service down, or `REDIS_URL` differs between web and worker, or wrong (`redis://` vs `rediss://`). |
 | "Anthropic key not configured" on profile/recommend | User hasn't saved a key in `/settings`, or `ENCRYPTION_KEY` differs from when it was saved (can't decrypt). |

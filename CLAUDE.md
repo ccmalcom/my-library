@@ -154,6 +154,13 @@ first-setup without minting a new account.
   → Upstash Redis**. Full operator steps (provision, env vars, invite users): step-by-step in
   **`mylibrary-phase5-deploy-runbook.md`**.
 
+**Phase 5 is LIVE (deployed 2026-06-26):** Vercel frontend → Railway web (uvicorn) + worker (arq)
+→ Supabase Postgres/auth → Upstash Redis, serving end-to-end. Deploy gotchas recorded in the
+runbook: Railway injects `PORT=8080` (overrides the Dockerfile `ENV PORT=8000`, so the domain
+target must match the injected port); `NEXT_PUBLIC_API_URL` must include `https://` and is inlined
+at build time (rebuild after changing); `CORS_ORIGINS` must be the exact Vercel origin, no trailing
+slash.
+
 Next: Phase 6 first-run UX polish (test both first-run paths end-to-end on the live deployment).
 
 ## Locked decisions (do not relitigate)

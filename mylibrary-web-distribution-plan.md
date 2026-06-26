@@ -184,11 +184,13 @@ within cloud timeout limits. Revisit if they become bottlenecks at scale.
 
 ---
 
-## Phase 5 — Hosting / deployment  ⏳ ARTIFACTS LANDED (operator deploy pending)
+## Phase 5 — Hosting / deployment  ✅ LIVE (deployed 2026-06-26)
 
-Code/config artifacts are in the repo; what remains is the operator deploy (provision Railway +
-Upstash + Vercel, set env vars, invite users) — fully scripted in
-**`mylibrary-phase5-deploy-runbook.md`**.
+The app is deployed and serving end-to-end: Vercel frontend → Railway web (uvicorn) + worker
+(arq) → Supabase Postgres/auth → Upstash Redis. Sign-in, stats, and the data routes all load
+against the hosted API. Deploy steps + the gotchas hit along the way (idempotent-migration
+baseline trap, Railway `PORT=8080` injection, `NEXT_PUBLIC_API_URL` needing the `https://` scheme
+and a rebuild) are captured in **`mylibrary-phase5-deploy-runbook.md`**.
 
 Landed in-repo: `Dockerfile` (one 3.12-slim image for both Railway services), `start.sh` (web
 entrypoint: `alembic upgrade head` → uvicorn on `$PORT`; worker overrides the start command to
