@@ -96,7 +96,7 @@ function SortSelect<T extends string>({
       onChange={(e) => onChange(e.target.value as T)}
       className={[
         'rounded-lg border border-border bg-elevated px-3 py-2',
-        'text-sm text-muted focus:border-accent focus:outline-none',
+        'text-sm text-muted focus:border-accent focus:outline-none focus-visible:ring-1 focus-visible:ring-accent',
       ].join(' ')}
     >
       {options.map((o) => (

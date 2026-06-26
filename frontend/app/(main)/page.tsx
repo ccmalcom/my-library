@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api, type Stats, type ProfileStatus, PROFILE_STATUS_KEY } from '@/lib/api';
 import { TasteHero } from '@/components/TasteHero';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, useToast } from '@/components/ui';
 
 // ── Stats strip ───────────────────────────────────────────────────────────────
 
@@ -91,8 +91,8 @@ function RatingsBreakdown({ stats }: { stats: Stats }) {
 
 export default function HomePage() {
   const router  = useRouter();
+  const toast   = useToast();
   const [running, setRunning] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
 
   const {
     data: stats,
@@ -117,12 +117,11 @@ export default function HomePage() {
 
   async function handleRun() {
     setRunning(true);
-    setRunError(null);
     try {
       await api.runRecommend(10);
       router.push('/swipe');
     } catch (e) {
-      setRunError(e instanceof Error ? e.message : 'Something went wrong.');
+      toast.error(e instanceof Error ? e.message : 'Something went wrong running recommendations.');
       setRunning(false);
     }
   }
@@ -166,9 +165,6 @@ export default function HomePage() {
 
           {recBlockMsg && (
             <p className="mt-4 text-sm text-warning">{recBlockMsg}</p>
-          )}
-          {runError && (
-            <p className="mt-4 text-sm text-danger">{runError}</p>
           )}
         </div>
       </Card>

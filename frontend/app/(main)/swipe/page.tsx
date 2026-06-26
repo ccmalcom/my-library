@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { Inbox, Sparkles } from 'lucide-react';
 import { api, type Book, type Recommendation, type Trait } from '@/lib/api';
-import { Button, Spinner } from '@/components/ui';
+import { Button, Spinner, useToast } from '@/components/ui';
 import SwipeCard from '@/components/SwipeCard';
 import BookEditModal from '@/components/BookEditModal';
 
 export default function SwipePage() {
   const router = useRouter();
+  const toast  = useToast();
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [reviewing, setReviewing] = useState<Book | null>(null);
 
@@ -29,7 +30,7 @@ export default function SwipePage() {
           setReviewing(result.book);
         }
       } catch (e) {
-        console.error('Feedback failed:', e);
+        toast.error(e instanceof Error ? e.message : 'Failed to save decision.');
         setDismissed((prev) => {
           const next = new Set(prev);
           next.delete(recId);
@@ -37,7 +38,7 @@ export default function SwipePage() {
         });
       }
     },
-    []
+    [toast]
   );
 
   if (recsLoading) {

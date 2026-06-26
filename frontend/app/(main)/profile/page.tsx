@@ -13,7 +13,7 @@ import {
   PROFILE_STATUS_KEY,
   USER_PROFILE_KEY,
 } from '@/lib/api';
-import { Button, Badge, Card } from '@/components/ui';
+import { Button, Badge, Card, useToast } from '@/components/ui';
 import { TasteHero } from '@/components/TasteHero';
 
 const TRAITS_KEY   = 'profile-traits';
@@ -30,11 +30,11 @@ function TraitCard({
   trait: Trait;
   bookMap: Map<number, string>;
 }) {
+  const toast = useToast();
   const isReward = trait.polarity === 'reward';
-  const [editing, setEditing]     = useState(false);
-  const [draft, setDraft]         = useState(trait.claim);
-  const [saving, setSaving]       = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(trait.claim);
+  const [saving, setSaving]   = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -57,13 +57,13 @@ function TraitCard({
       return;
     }
     setSaving(true);
-    setSaveError(null);
     try {
       await api.updateTrait(trait.id, { claim: trimmed });
       await mutate(TRAITS_KEY);
+      toast.success('Trait saved.');
       setEditing(false);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Save failed.');
+      toast.error(e instanceof Error ? e.message : 'Save failed.');
     } finally {
       setSaving(false);
     }
@@ -72,7 +72,6 @@ function TraitCard({
   function cancel() {
     setEditing(false);
     setDraft(trait.claim);
-    setSaveError(null);
   }
 
   const exhibitTitles  = (trait.exhibits  ?? []).map((id) => bookMap.get(id)).filter(Boolean) as string[];
@@ -102,7 +101,7 @@ function TraitCard({
               rows={1}
               className={[
                 'w-full resize-none rounded-lg border border-accent bg-elevated px-3 py-2',
-                'text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent',
+                'text-sm text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent',
               ].join(' ')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void save();
@@ -122,7 +121,6 @@ function TraitCard({
               </span>
             </button>
           )}
-          {saveError && <p className='mt-1 text-xs text-danger'>{saveError}</p>}
         </div>
 
         {/* Confidence + status */}

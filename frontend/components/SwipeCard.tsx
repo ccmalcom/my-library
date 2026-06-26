@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
 import { BookOpen } from 'lucide-react';
 import { Badge } from '@/components/ui';
@@ -18,8 +18,9 @@ interface Props {
 const DRAG_THRESHOLD = 120;
 
 export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: Props) {
+  const prefersReduced = useReducedMotion();
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-250, 250], [-18, 18]);
+  const rotate = useTransform(x, [-250, 250], prefersReduced ? [0, 0] : [-18, 18]);
   const acceptOpacity = useTransform(x, [0, DRAG_THRESHOLD], [0, 1]);
   const rejectOpacity = useTransform(x, [-DRAG_THRESHOLD, 0], [1, 0]);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -31,7 +32,9 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
 
   async function flyOff(direction: 'left' | 'right') {
     const target = direction === 'right' ? 600 : -600;
-    await animate(x, target, { duration: 0.35, ease: 'easeOut' });
+    if (!prefersReduced) {
+      await animate(x, target, { duration: 0.35, ease: 'easeOut' });
+    }
     onDecide(rec.id, direction === 'right' ? 'accepted' : 'rejected');
   }
 
@@ -41,8 +44,10 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
       void flyOff('right');
     } else if (val < -DRAG_THRESHOLD) {
       void flyOff('left');
-    } else {
+    } else if (!prefersReduced) {
       animate(x, 0, { type: 'spring', stiffness: 300, damping: 25 });
+    } else {
+      x.set(0);
     }
   }
 
