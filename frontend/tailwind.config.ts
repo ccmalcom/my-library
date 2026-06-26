@@ -10,24 +10,32 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Core palette — dark slate base
-        surface: {
-          DEFAULT: "#0f1117",
-          card: "#1a1f2e",
-          elevated: "#242938",
-        },
+        base:     "var(--bg)",
+        surface:  "var(--surface)",
+        elevated: "var(--elevated)",
+        border:   "var(--border)",
+        hairline: "var(--hairline)",
+        text:     "var(--text)",
+        muted:    "var(--muted)",
+        faint:    "var(--faint)",
         accent: {
-          green: "#22c55e",
-          red: "#ef4444",
-          blue: "#3b82f6",
-          amber: "#f59e0b",
+          DEFAULT: "var(--accent)",
+          hover:   "var(--accent-hover)",
+          quiet:   "var(--accent-quiet)",
         },
+        success: "var(--success)",
+        danger:  "var(--danger)",
+        warning: "var(--warning)",
+        user:    "var(--user-accent)",
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        sans:    ["var(--font-body)",    "system-ui", "sans-serif"],
+        mono:    ["var(--font-mono)",    "monospace"],
       },
     },
   },
   plugins: [],
 };
+
 export default config;

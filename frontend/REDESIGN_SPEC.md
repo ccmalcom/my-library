@@ -278,6 +278,7 @@ Per file:
 - `app/(main)/swipe/page.tsx` + `components/SwipeCard.tsx` — token styles; replace emoji action
   buttons with labeled icon `Button`s (accept = accent, reject = danger/neutral outline, skip =
   ghost) — keep `aria-label`s and add visible labels/tooltips; cover `alt={`Cover of ${title}`}`.
+  **Also land book-description display here (requires backend + frontend work — see below).**
 - `app/(main)/library/page.tsx` — token styles; convert action buttons to `Button`; ensure all
   cover `<img>` use `alt={`Cover of ${book.title}`}` (the Read tab currently has `alt=""`);
   align loading-skeleton column count with the real list layout.
@@ -372,6 +373,43 @@ Run from `frontend/`:
    - **Toasts:** trigger a save success and a forced failure; both announce.
    - **A11y check:** axe DevTools / Lighthouse a11y — no critical issues; covers have alt text.
 4. Optional: take before/after screenshots of dashboard, profile, swipe, login for the PR.
+
+---
+
+## Addendum — Book description on SwipeCard (land in Phase 4)
+
+**Problem:** The swipe page currently shows only Claude's `rationale` ("why this fits your taste")
+with no real book description. Users have no way to read what the book is actually about.
+
+**Root cause:** The `Recommendation` table has no `description` column. At recommendation time the
+catalog candidate data (which includes `description` from Google Books / Open Library) is in memory
+but is not persisted. `Enrichment.description` exists but recommendations are for books outside the
+library so there is no `Enrichment` row to JOIN back to.
+
+**Fix — two parts:**
+
+Backend (`mylibrary/`):
+1. Add `description: Mapped[str | None] = mapped_column(Text)` to `Recommendation` in `db.py`.
+2. Add a guarded Alembic migration (idempotent `add_column`, same pattern as 0002/0003).
+3. In `recommend.py`, carry `description` from the catalog candidate dict into the `Recommendation`
+   row when it is written (the field is already present on candidates returned by `catalog.py`).
+4. Add `description: str | None` to `RecommendationOut` in `schemas.py`.
+
+Frontend (`frontend/`):
+1. Add `description?: string` to the `Recommendation` interface in `lib/api.ts`.
+2. In `components/SwipeCard.tsx` (Phase 4 restyle), render `description` below the cover/title in a
+   collapsible or truncated block (e.g. 3-line clamp, "Show more" to expand). Keep `rationale`
+   visible — it answers a different question ("why for you") than the description ("what is it").
+   Order: cover + meta → description (what) → rationale (why for you).
+
+**Notes:**
+- The migration must be idempotent (inspect-and-skip if column already exists) because the 0001
+  baseline creates tables from `Base.metadata` and a fresh `upgrade head` must not double-add.
+- Candidates without a description (rare — Open Library sometimes omits it) render gracefully with
+  the description block absent.
+- This is the only item in the redesign that requires a backend change.
+
+---
 
 ## Out of scope
 - Any backend / FastAPI / DB / migration change (the frontend stays a pure HTTP client).
