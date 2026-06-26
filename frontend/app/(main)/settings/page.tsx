@@ -301,7 +301,7 @@ export default function SettingsPage() {
               <Button
                 type='submit'
                 loading={emailSaving}
-                disabled={emailSaving || !emailCurrentPassword || !newEmail}
+                disabled={emailSaving || !emailCurrentPassword || !newEmail.trim()}
               >
                 {emailSaving ? 'Saving...' : 'Update email'}
               </Button>
