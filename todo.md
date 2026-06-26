@@ -1,3 +1,3 @@
-don't forget!!
+# TODO
 
--settings should have ability to change email, password
+- Settings: allow changing email and password
