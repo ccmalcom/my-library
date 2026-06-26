@@ -163,6 +163,7 @@ That exercises every Phase 5 service: Vercel (UI) → Railway web (API + auth ve
 | Browser console: CORS / "blocked by policy" | `CORS_ORIGINS` missing the exact Vercel origin, or has a trailing slash. |
 | All API calls 401 after sign-in | `SUPABASE_URL` wrong/unset on Railway, or token is HS256 (set `SUPABASE_JWT_SECRET`). |
 | Railway healthcheck failing / deploy never goes live | Healthcheck path is `/health` (needs auth) instead of `/healthz`; or app crashed on `alembic upgrade` — check logs. |
+| Logs show `Context impl SQLiteImpl` / `sqlite3.OperationalError` during `alembic upgrade` | **`DATABASE_URL` is not set on the service** — the app fell back to an ephemeral in-container SQLite instead of Supabase Postgres. Set `DATABASE_URL` (session pooler, `+psycopg`) on the web AND worker services and redeploy. A correct deploy logs `Context impl PostgresqlImpl`. |
 | `ModuleNotFoundError: psycopg2` | `DATABASE_URL` lacks the `+psycopg` driver; `config.db_url` normalizes a bare `postgresql://`, but verify. |
 | Enrichment starts but never progresses | Worker service down, or `REDIS_URL` differs between web and worker, or wrong (`redis://` vs `rediss://`). |
 | "Anthropic key not configured" on profile/recommend | User hasn't saved a key in `/settings`, or `ENCRYPTION_KEY` differs from when it was saved (can't decrypt). |

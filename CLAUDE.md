@@ -71,6 +71,15 @@ are unset. The pieces:
   (Alembic is the source of truth there); locally it still self-migrates SQLite and now
   backfills `user_id` (DEFAULT `'local'`) onto pre-existing tables, so an old single-user DB
   upgrades transparently.
+  **Migration baseline gotcha (fixed):** `0001_initial` builds the schema via
+  `Base.metadata.create_all()` from the *live* models — so as the models gained `display_name`
+  (0002) and `enrich_jobs` (0003), the baseline started creating those too. On a FRESH DB,
+  `upgrade head` therefore ran 0001 (which already made them) then 0002/0003 tried to add them
+  again → `duplicate column name: display_name`. Fix: **0002 and 0003 are now idempotent** —
+  they inspect the bind (`inspect(op.get_bind())`) and skip the `add_column` / `create_table`
+  when it already exists. This keeps a fresh `upgrade head` clean while still upgrading an older
+  DB stamped at 0001 with the pre-change schema. Any future migration that adds something already
+  present in the models' `create_all` baseline must guard the same way (or freeze the baseline).
 **Phase 3 (per-user Anthropic key) has landed:**
 - `UserSettings` table (`user_settings`): one row per user, `anthropic_api_key_encrypted`
   (AES-256-GCM via `crypto.py`), timestamps. Created by the Alembic baseline / local `init_db`.

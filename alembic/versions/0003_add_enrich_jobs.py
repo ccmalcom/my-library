@@ -14,6 +14,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import inspect
 
 revision: str = "0003_enrich_jobs"
 down_revision: Union[str, None] = "0002"
@@ -21,7 +22,16 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _has_table(table: str) -> bool:
+    return table in inspect(op.get_bind()).get_table_names()
+
+
 def upgrade() -> None:
+    # Idempotent: the 0001 baseline create_all() (from live models) already builds
+    # enrich_jobs, so on a fresh DB the table exists by now. Only create it on an older
+    # DB stamped at 0002 before the model gained the table.
+    if _has_table("enrich_jobs"):
+        return
     op.create_table(
         "enrich_jobs",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -49,4 +59,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("enrich_jobs")
+    if _has_table("enrich_jobs"):
+        op.drop_table("enrich_jobs")
