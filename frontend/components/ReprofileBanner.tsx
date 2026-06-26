@@ -24,6 +24,7 @@ export default function ReprofileBanner() {
       await mutate();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Re-profile failed.');
+    } finally {
       setRunning(false);
     }
   }
