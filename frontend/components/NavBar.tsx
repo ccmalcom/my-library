@@ -1,16 +1,19 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { authEnabled, getSupabaseClient } from "@/utils/supabase/client";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { authEnabled, getSupabaseClient } from '@/utils/supabase/client';
 
 const links = [
-  { href: "/", label: "Home" },
-  { href: "/swipe", label: "Swipe" },
-  { href: "/library", label: "My Library" },
-  { href: "/profile", label: "My Profile" },
-  { href: "/settings", label: "Settings" },
+  { href: '/', label: 'Home' },
+  { href: '/swipe', label: 'Swipe' },
+  { href: '/library', label: 'My Library' },
+  { href: '/profile', label: 'My Profile' },
+  { href: '/settings', label: 'Settings' },
 ];
+
+const focusRing =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base';
 
 export default function NavBar() {
   const pathname = usePathname();
@@ -18,30 +21,30 @@ export default function NavBar() {
   async function handleSignOut() {
     const supabase = getSupabaseClient();
     if (supabase) await supabase.auth.signOut();
-    // Full document load so the signed-out user's SWR cache + component state is discarded
-    // (prevents the next user who signs in from briefly seeing stale cached data).
-    window.location.assign("/login");
+    window.location.assign('/login');
   }
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-800 bg-[#0f1117]/90 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-        <span className="text-sm font-semibold tracking-widest text-slate-400 uppercase">
+    <nav className='sticky top-0 z-50 border-b border-border bg-base/90 backdrop-blur-sm'>
+      <div className='mx-auto flex max-w-4xl items-center justify-between px-4 py-3'>
+        <span className='font-mono text-xs font-semibold uppercase tracking-widest text-muted'>
           MyLibrary
         </span>
-        <div className="flex gap-1">
+        <div className='flex gap-1'>
           {links.map(({ href, label }) => {
             const active = pathname === href;
             return (
               <Link
                 key={href}
                 href={href}
+                aria-current={active ? 'page' : undefined}
                 className={[
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  focusRing,
                   active
-                    ? "bg-slate-700 text-white"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200",
-                ].join(" ")}
+                    ? 'bg-elevated text-text'
+                    : 'text-muted hover:bg-elevated hover:text-text',
+                ].join(' ')}
               >
                 {label}
               </Link>
@@ -49,9 +52,13 @@ export default function NavBar() {
           })}
           {authEnabled && (
             <button
-              type="button"
+              type='button'
               onClick={handleSignOut}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-red-300"
+              className={[
+                'rounded-md px-3 py-1.5 text-sm font-medium text-muted transition-colors',
+                'hover:bg-elevated hover:text-danger',
+                focusRing,
+              ].join(' ')}
             >
               Sign out
             </button>

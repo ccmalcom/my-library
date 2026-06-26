@@ -1,38 +1,35 @@
-"use client";
+'use client';
 
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import useSWR from "swr";
-import { api, type Book, type Recommendation, type Trait } from "@/lib/api";
-import SwipeCard from "@/components/SwipeCard";
-import BookEditModal from "@/components/BookEditModal";
+import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
+import { Inbox, Sparkles } from 'lucide-react';
+import { api, type Book, type Recommendation, type Trait } from '@/lib/api';
+import { Button, Spinner } from '@/components/ui';
+import SwipeCard from '@/components/SwipeCard';
+import BookEditModal from '@/components/BookEditModal';
 
 export default function SwipePage() {
   const router = useRouter();
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
-  // Book to prompt a review for after "already read" lands it in the library.
   const [reviewing, setReviewing] = useState<Book | null>(null);
 
   const { data: recs, isLoading: recsLoading, error: recsError } =
-    useSWR<Recommendation[]>("recommendations", () => api.recommendations());
+    useSWR<Recommendation[]>('recommendations', () => api.recommendations());
 
   const { data: traits = [] } =
-    useSWR<Trait[]>("profile", () => api.profile());
+    useSWR<Trait[]>('profile', () => api.profile());
 
   const handleDecide = useCallback(
-    async (recId: number, status: "accepted" | "rejected" | "already_read") => {
-      // Optimistically remove from visible stack
+    async (recId: number, status: 'accepted' | 'rejected' | 'already_read') => {
       setDismissed((prev) => new Set([...prev, recId]));
-
       try {
         const result = await api.feedback(recId, { status });
-        // "Already read" lands the book in the library (read shelf) — prompt a review.
-        if (status === "already_read" && result.book) {
+        if (status === 'already_read' && result.book) {
           setReviewing(result.book);
         }
       } catch (e) {
-        console.error("Feedback failed:", e);
-        // Re-add to stack on failure
+        console.error('Feedback failed:', e);
         setDismissed((prev) => {
           const next = new Set(prev);
           next.delete(recId);
@@ -45,10 +42,10 @@ export default function SwipePage() {
 
   if (recsLoading) {
     return (
-      <div className="fade-in flex items-center justify-center py-24">
-        <div className="text-center space-y-3">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
-          <p className="text-slate-400">Loading recommendations…</p>
+      <div className='fade-in flex items-center justify-center py-24'>
+        <div className='text-center space-y-3'>
+          <Spinner size='lg' />
+          <p className='text-muted text-sm'>Loading recommendations...</p>
         </div>
       </div>
     );
@@ -56,35 +53,30 @@ export default function SwipePage() {
 
   if (recsError) {
     return (
-      <div className="fade-in py-12 text-center">
-        <p className="text-red-400">Failed to load recommendations.</p>
-        <p className="mt-1 text-sm text-slate-500">{String(recsError)}</p>
+      <div className='fade-in py-12 text-center'>
+        <p className='text-danger'>Failed to load recommendations.</p>
+        <p className='mt-1 text-sm text-faint'>{String(recsError)}</p>
       </div>
     );
   }
 
-  // Only show "served" recs that haven't been dismissed yet
   const pending = (recs ?? [])
-    .filter((r) => r.status === "served" && !dismissed.has(r.id))
+    .filter((r) => r.status === 'served' && !dismissed.has(r.id))
     .sort((a, b) => a.rank - b.rank);
 
-  // Include locally dismissed in the total to check completion
-  const total = (recs ?? []).filter((r) => r.status === "served" || dismissed.has(r.id));
+  const total = (recs ?? []).filter(
+    (r) => r.status === 'served' || dismissed.has(r.id)
+  );
 
   if ((recs ?? []).length === 0) {
     return (
-      <div className="fade-in py-20 text-center space-y-4">
-        <p className="text-2xl">📭</p>
-        <h2 className="text-xl font-semibold text-white">No recommendations yet</h2>
-        <p className="text-slate-400">
+      <div className='fade-in py-20 text-center space-y-4'>
+        <Inbox className='mx-auto h-12 w-12 text-faint' />
+        <h2 className='text-xl font-display font-semibold text-text'>No recommendations yet</h2>
+        <p className='text-muted'>
           Go to the home page and run a recommendation batch first.
         </p>
-        <button
-          onClick={() => router.push("/")}
-          className="mt-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
-        >
-          Back to Home
-        </button>
+        <Button onClick={() => router.push('/')}>Back to Home</Button>
       </div>
     );
   }
@@ -92,23 +84,20 @@ export default function SwipePage() {
   if (pending.length === 0) {
     return (
       <>
-        <div className="fade-in py-20 text-center space-y-4">
-          <p className="text-4xl">🎉</p>
-          <h2 className="text-xl font-semibold text-white">All done!</h2>
-          <p className="text-slate-400">
+        <div className='fade-in py-20 text-center space-y-4'>
+          <Sparkles className='mx-auto h-12 w-12 text-accent' />
+          <h2 className='text-xl font-display font-semibold text-text'>All done!</h2>
+          <p className='text-muted'>
             You reviewed all {total.length} recommendations.
           </p>
-          <button
-            onClick={() => router.push("/library?tab=to-read")}
-            className="mt-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-500"
-          >
+          <Button onClick={() => router.push('/library?tab=to-read')}>
             View To-Read Shelf
-          </button>
+          </Button>
         </div>
         {reviewing && (
           <BookEditModal
             book={reviewing}
-            listKey="recommendations"
+            listKey='recommendations'
             onClose={() => setReviewing(null)}
           />
         )}
@@ -116,82 +105,87 @@ export default function SwipePage() {
     );
   }
 
-  // Show up to 3 cards in the stack (top card + 2 behind)
   const visibleStack = pending.slice(0, 3);
 
   return (
     <>
-    <div className="fade-in flex flex-col items-center gap-6 py-6">
-      {/* Progress */}
-      <p className="text-sm text-slate-400">
-        {dismissed.size} / {(recs ?? []).filter((r) => r.status === "served" || dismissed.has(r.id)).length} reviewed
-      </p>
+      <div className='fade-in flex flex-col items-center gap-6 py-6'>
+        {/* Progress */}
+        <p className='font-mono text-xs uppercase tracking-widest text-faint'>
+          {dismissed.size} / {(recs ?? []).filter((r) => r.status === 'served' || dismissed.has(r.id)).length} reviewed
+        </p>
 
-      {/* Card stack */}
-      <div className="relative h-[520px] w-full max-w-sm">
-        {visibleStack
-          .slice()
-          .reverse()
-          .map((rec, idx) => {
-            const isTop = idx === visibleStack.length - 1;
-            return (
-              <SwipeCard
-                key={rec.id}
-                rec={rec}
-                traits={traits}
-                onDecide={handleDecide}
-                zIndex={idx + 1}
-                isTop={isTop}
-              />
-            );
-          })}
+        {/* Card stack */}
+        <div className='relative h-[560px] w-full max-w-sm'>
+          {visibleStack
+            .slice()
+            .reverse()
+            .map((rec, idx) => {
+              const isTop = idx === visibleStack.length - 1;
+              return (
+                <SwipeCard
+                  key={rec.id}
+                  rec={rec}
+                  traits={traits}
+                  onDecide={handleDecide}
+                  zIndex={idx + 1}
+                  isTop={isTop}
+                />
+              );
+            })}
+        </div>
+
+        {/* Button controls */}
+        <div className='flex gap-4 items-center'>
+          <button
+            onClick={() => { const top = pending[0]; if (top) void handleDecide(top.id, 'rejected'); }}
+            aria-label='Not interested'
+            className={[
+              'flex h-14 w-14 items-center justify-center rounded-full',
+              'border-2 border-danger bg-surface text-danger shadow',
+              'transition hover:bg-danger/10 active:scale-95',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 focus-visible:ring-offset-base',
+            ].join(' ')}
+          >
+            <span className='text-xl font-bold' aria-hidden='true'>X</span>
+          </button>
+          <button
+            onClick={() => { const top = pending[0]; if (top) void handleDecide(top.id, 'already_read'); }}
+            aria-label='Already read'
+            className={[
+              'flex h-12 w-12 items-center justify-center self-center rounded-full',
+              'border-2 border-warning bg-surface text-warning shadow',
+              'transition hover:bg-warning/10 active:scale-95',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2 focus-visible:ring-offset-base',
+            ].join(' ')}
+          >
+            <span className='text-base font-mono font-bold' aria-hidden='true'>R</span>
+          </button>
+          <button
+            onClick={() => { const top = pending[0]; if (top) void handleDecide(top.id, 'accepted'); }}
+            aria-label='Add to to-read list'
+            className={[
+              'flex h-14 w-14 items-center justify-center rounded-full',
+              'border-2 border-success bg-surface text-success shadow',
+              'transition hover:bg-success/10 active:scale-95',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-2 focus-visible:ring-offset-base',
+            ].join(' ')}
+          >
+            <span className='text-xl font-bold' aria-hidden='true'>+</span>
+          </button>
+        </div>
+
+        <p className='font-mono text-xs text-faint'>
+          Drag left/right or use the buttons
+        </p>
       </div>
-
-      {/* Button controls */}
-      <div className="flex gap-4">
-        <button
-          onClick={() => {
-            const top = pending[0];
-            if (top) void handleDecide(top.id, "rejected");
-          }}
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-red-500 bg-[#1a1f2e] text-2xl text-red-400 shadow transition hover:bg-red-900/30 active:scale-95"
-          title="Not interested"
-        >
-          ✕
-        </button>
-        <button
-          onClick={() => {
-            const top = pending[0];
-            if (top) void handleDecide(top.id, "already_read");
-          }}
-          className="flex h-12 w-12 items-center justify-center self-center rounded-full border-2 border-amber-500 bg-[#1a1f2e] text-xl text-amber-400 shadow transition hover:bg-amber-900/30 active:scale-95"
-          title="Already read"
-        >
-          📖
-        </button>
-        <button
-          onClick={() => {
-            const top = pending[0];
-            if (top) void handleDecide(top.id, "accepted");
-          }}
-          className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-green-500 bg-[#1a1f2e] text-2xl text-green-400 shadow transition hover:bg-green-900/30 active:scale-95"
-          title="Add to to-read"
-        >
-          ♥
-        </button>
-      </div>
-
-      <p className="text-xs text-slate-600">
-        Drag left/right or use the buttons
-      </p>
-    </div>
-    {reviewing && (
-      <BookEditModal
-        book={reviewing}
-        listKey="recommendations"
-        onClose={() => setReviewing(null)}
-      />
-    )}
+      {reviewing && (
+        <BookEditModal
+          book={reviewing}
+          listKey='recommendations'
+          onClose={() => setReviewing(null)}
+        />
+      )}
     </>
   );
 }

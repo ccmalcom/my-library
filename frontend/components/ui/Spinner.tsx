@@ -1,6 +1,7 @@
 interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg';
   label?: string;
+  className?: string;
 }
 
 const sizeClasses: Record<string, string> = {
@@ -9,9 +10,9 @@ const sizeClasses: Record<string, string> = {
   lg: 'h-8 w-8',
 };
 
-export function Spinner({ size = 'md', label = 'Loading' }: SpinnerProps) {
+export function Spinner({ size = 'md', label = 'Loading', className }: SpinnerProps) {
   return (
-    <span role="status" aria-label={label} className="inline-flex">
+    <span role="status" aria-label={label} className={['inline-flex', className].filter(Boolean).join(' ')}>
       <svg
         className={['motion-safe:animate-spin text-accent', sizeClasses[size]].join(' ')}
         xmlns="http://www.w3.org/2000/svg"

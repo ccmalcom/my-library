@@ -1,54 +1,48 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import { api, type Book, type CatalogResult, type Shelf } from "@/lib/api";
+import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
+import { BookOpen } from 'lucide-react';
+import { api, type Book, type CatalogResult, type Shelf } from '@/lib/api';
+import { Button } from '@/components/ui';
 
 interface Props {
-  /** Called after a successful add, with the created book. */
   onAdded: (book: Book) => void;
-  /** Close without adding (backdrop / cancel). */
   onClose: () => void;
-  /** Shelf the added book lands on. Defaults to "read". */
   defaultShelf?: Shelf;
 }
 
 const SHELF_OPTIONS: { value: Shelf; label: string }[] = [
-  { value: "read", label: "Read" },
-  { value: "currently-reading", label: "Reading" },
-  { value: "to-read", label: "To read" },
+  { value: 'read', label: 'Read' },
+  { value: 'currently-reading', label: 'Reading' },
+  { value: 'to-read', label: 'To read' },
 ];
 
-/**
- * Search-and-pick add-a-book flow. The user types a query, picks a real catalog hit
- * (so no invented titles), then optionally sets a shelf + star rating before adding.
- * The picked result's cover/subjects/isbn ride along into POST /books.
- */
-export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }: Props) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CatalogResult[]>([]);
-  const [searching, setSearching] = useState(false);
+const inputClass = [
+  'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
+  'placeholder-faint focus:border-accent focus:outline-none',
+  'focus-visible:ring-1 focus-visible:ring-accent',
+].join(' ');
+
+export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }: Props) {
+  const [query, setQuery]           = useState('');
+  const [results, setResults]       = useState<CatalogResult[]>([]);
+  const [searching, setSearching]   = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  const [selected, setSelected] = useState<CatalogResult | null>(null);
-  const [shelf, setShelf] = useState<Shelf>(defaultShelf);
-  const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
-  const [review, setReview] = useState("");
+  const [selected, setSelected]     = useState<CatalogResult | null>(null);
+  const [shelf, setShelf]           = useState<Shelf>(defaultShelf);
+  const [rating, setRating]         = useState(0);
+  const [hover, setHover]           = useState(0);
+  const [review, setReview]         = useState('');
+  const [saving, setSaving]         = useState(false);
+  const [saveError, setSaveError]   = useState<string | null>(null);
 
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
-  // Debounced catalog search. A request id guards against out-of-order responses.
   const reqId = useRef(0);
   useEffect(() => {
     const q = query.trim();
-    if (selected) return; // don't re-search once a pick is being configured
-    if (q.length < 2) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
+    if (selected) return;
+    if (q.length < 2) { setResults([]); setSearching(false); return; }
     setSearching(true);
     setSearchError(null);
     const id = ++reqId.current;
@@ -58,7 +52,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
         if (id === reqId.current) setResults(hits);
       } catch (e) {
         if (id === reqId.current) {
-          setSearchError(e instanceof Error ? e.message : "Search failed.");
+          setSearchError(e instanceof Error ? e.message : 'Search failed.');
           setResults([]);
         }
       } finally {
@@ -88,79 +82,84 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
       });
       onAdded(book);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to add book.";
-      // POST /books → 409 when the book is already in the library.
-      setSaveError(
-        msg.includes("409") ? "That book is already in your library." : msg
-      );
+      const msg = e instanceof Error ? e.message : 'Failed to add book.';
+      setSaveError(msg.includes('409') ? 'That book is already in your library.' : msg);
       setSaving(false);
     }
   }
 
   const shownStars = hover || rating;
-  // Invariant (mirrors the API, which 422s otherwise): a review requires a rating.
-  const reviewWithoutRating = review.trim() !== "" && rating === 0;
+  const reviewWithoutRating = review.trim() !== '' && rating === 0;
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+      className='fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4'
       onClick={onClose}
     >
       <div
-        className="fade-in flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-slate-700 bg-[#1a1f2e] p-6 shadow-2xl"
+        className='fade-in flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-border bg-surface p-6 shadow-2xl'
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-lg font-bold text-white">Add a book</h2>
+        <h2 className='mb-4 font-display text-lg font-bold text-text'>Add a book</h2>
 
         {!selected ? (
           <>
             <input
               autoFocus
-              type="search"
+              type='search'
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by title, author, or ISBN…"
-              className="w-full rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-600 focus:outline-none"
+              placeholder='Search by title, author, or ISBN...'
+              className={inputClass}
             />
 
-            <div className="mt-4 min-h-[120px] flex-1 overflow-y-auto">
+            <div className='mt-4 min-h-[120px] flex-1 overflow-y-auto'>
               {searching && (
-                <p className="py-8 text-center text-sm text-slate-500">Searching…</p>
+                <p className='py-8 text-center text-sm text-muted'>Searching...</p>
               )}
-              {searchError && <p className="py-4 text-sm text-red-400">{searchError}</p>}
+              {searchError && <p className='py-4 text-sm text-danger'>{searchError}</p>}
               {!searching && !searchError && query.trim().length >= 2 && results.length === 0 && (
-                <p className="py-8 text-center text-sm text-slate-500">
+                <p className='py-8 text-center text-sm text-muted'>
                   No matches. Try a different spelling.
                 </p>
               )}
               {!searching && query.trim().length < 2 && (
-                <p className="py-8 text-center text-sm text-slate-600">
+                <p className='py-8 text-center text-sm text-faint'>
                   Type at least 2 characters to search.
                 </p>
               )}
-              <ul className="space-y-1">
+              <ul className='space-y-1'>
                 {results.map((r, i) => (
                   <li key={`${r.source}-${r.catalog_id ?? i}`}>
                     <button
-                      type="button"
-                      onClick={() => {
-                        setSelected(r);
-                        setSaveError(null);
-                      }}
-                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-slate-800/60"
+                      type='button'
+                      onClick={() => { setSelected(r); setSaveError(null); }}
+                      className={[
+                        'flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition',
+                        'hover:bg-elevated',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface',
+                      ].join(' ')}
                     >
-                      <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded bg-slate-800">
+                      <div className='relative h-14 w-10 shrink-0 overflow-hidden rounded bg-elevated'>
                         {r.cover_url ? (
-                          <Image src={r.cover_url} alt="" fill className="object-cover" unoptimized />
+                          <Image
+                            src={r.cover_url}
+                            alt={`Cover of ${r.title}`}
+                            fill
+                            className='object-cover'
+                            unoptimized
+                          />
                         ) : (
-                          <div className="flex h-full items-center justify-center text-base text-slate-600">📚</div>
+                          <div className='flex h-full items-center justify-center text-faint'>
+                            <BookOpen className='h-4 w-4' />
+                          </div>
                         )}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-200">{r.title}</p>
-                        <p className="truncate text-xs text-slate-500">
-                          {r.author ?? "Unknown author"}
-                          {r.year ? ` · ${r.year}` : ""}
+                      <div className='min-w-0 flex-1'>
+                        <p className='truncate text-sm font-medium text-text'>{r.title}</p>
+                        <p className='truncate text-xs text-faint'>
+                          {r.author ?? 'Unknown author'}
+                          {r.year ? ` · ${r.year}` : ''}
                         </p>
                       </div>
                     </button>
@@ -169,64 +168,61 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
               </ul>
             </div>
 
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
-              >
-                Cancel
-              </button>
+            <div className='mt-4 flex justify-end'>
+              <Button variant='ghost' onClick={onClose}>Cancel</Button>
             </div>
           </>
         ) : (
           <>
             {/* Selected book */}
-            <div className="flex items-center gap-3 rounded-xl border border-slate-700 bg-[#0f1117] p-3">
-              <div className="relative h-16 w-11 shrink-0 overflow-hidden rounded bg-slate-800">
+            <div className='flex items-center gap-3 rounded-xl border border-border bg-elevated p-3'>
+              <div className='relative h-16 w-11 shrink-0 overflow-hidden rounded bg-surface'>
                 {selected.cover_url ? (
-                  <Image src={selected.cover_url} alt="" fill className="object-cover" unoptimized />
+                  <Image
+                    src={selected.cover_url}
+                    alt={`Cover of ${selected.title}`}
+                    fill
+                    className='object-cover'
+                    unoptimized
+                  />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-lg text-slate-600">📚</div>
+                  <div className='flex h-full items-center justify-center text-faint'>
+                    <BookOpen className='h-5 w-5' />
+                  </div>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-white">{selected.title}</p>
-                <p className="truncate text-sm text-slate-400">
-                  {selected.author ?? "Unknown author"}
-                  {selected.year ? ` · ${selected.year}` : ""}
+              <div className='min-w-0 flex-1'>
+                <p className='truncate font-semibold text-text'>{selected.title}</p>
+                <p className='truncate text-sm text-muted'>
+                  {selected.author ?? 'Unknown author'}
+                  {selected.year ? ` · ${selected.year}` : ''}
                 </p>
               </div>
               <button
-                type="button"
-                onClick={() => {
-                  setSelected(null);
-                  setRating(0);
-                  setReview("");
-                }}
-                className="shrink-0 text-xs text-slate-500 hover:text-slate-300"
+                type='button'
+                onClick={() => { setSelected(null); setRating(0); setReview(''); }}
+                className='shrink-0 text-xs text-faint hover:text-muted focus-visible:outline-none'
               >
                 Change
               </button>
             </div>
 
             {/* Shelf */}
-            <div className="mt-5">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <div className='mt-5'>
+              <span className='mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted'>
                 Shelf
               </span>
-              <div className="flex gap-1 rounded-lg border border-slate-700 bg-[#0f1117] p-1">
+              <div className='flex gap-1 rounded-lg border border-border bg-elevated p-1'>
                 {SHELF_OPTIONS.map((o) => (
                   <button
                     key={o.value}
-                    type="button"
+                    type='button'
                     onClick={() => setShelf(o.value)}
                     className={[
-                      "flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition",
-                      shelf === o.value
-                        ? "bg-slate-700 text-white"
-                        : "text-slate-400 hover:text-slate-200",
-                    ].join(" ")}
+                      'flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition',
+                      'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                      shelf === o.value ? 'bg-surface text-text shadow' : 'text-muted hover:text-text',
+                    ].join(' ')}
                   >
                     {o.label}
                   </button>
@@ -235,80 +231,73 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = "read" }
             </div>
 
             {/* Optional rating */}
-            <div className="mt-5">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Your rating <span className="font-normal normal-case text-slate-500">· optional</span>
+            <div className='mt-5'>
+              <div className='mb-2 flex items-center justify-between'>
+                <span className='font-mono text-xs font-semibold uppercase tracking-widest text-muted'>
+                  Your rating{' '}
+                  <span className='font-normal normal-case text-faint'>· optional</span>
                 </span>
                 {rating > 0 && (
                   <button
-                    type="button"
+                    type='button'
                     onClick={() => setRating(0)}
-                    className="text-xs text-slate-500 hover:text-slate-300"
+                    className='text-xs text-faint hover:text-muted focus-visible:outline-none'
                   >
                     Clear
                   </button>
                 )}
               </div>
-              <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
+              <div className='flex gap-1' onMouseLeave={() => setHover(0)}>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
-                    type="button"
+                    type='button'
                     onMouseEnter={() => setHover(n)}
                     onClick={() => setRating(n)}
-                    className="text-3xl leading-none transition-transform hover:scale-110"
-                    aria-label={`${n} star${n > 1 ? "s" : ""}`}
+                    className='text-3xl leading-none transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded'
+                    aria-label={`${n} star${n > 1 ? 's' : ''}`}
                   >
-                    <span className={n <= shownStars ? "text-amber-400" : "text-slate-600"}>★</span>
+                    <span className={n <= shownStars ? 'text-accent' : 'text-faint'} aria-hidden='true'>
+                      ★
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Optional review */}
-            <div className="mt-5">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Review <span className="font-normal normal-case text-slate-500">· optional</span>
+            <div className='mt-5'>
+              <label className='mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted'>
+                Review{' '}
+                <span className='font-normal normal-case text-faint'>· optional</span>
               </label>
               <textarea
                 value={review}
                 onChange={(e) => setReview(e.target.value)}
                 rows={3}
-                placeholder="What did you think? Your words feed the taste profile…"
-                className="w-full resize-y rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-600 focus:outline-none"
+                placeholder='What did you think? Your words feed the taste profile...'
+                className={[inputClass, 'resize-y'].join(' ')}
               />
               {reviewWithoutRating && (
-                <p className="mt-1 text-xs text-amber-400">
+                <p className='mt-1 text-xs text-warning'>
                   Add a star rating above to save your review.
                 </p>
               )}
             </div>
 
-            {saveError && <p className="mt-4 text-sm text-red-400">{saveError}</p>}
+            {saveError && <p className='mt-4 text-sm text-danger'>{saveError}</p>}
 
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={saving}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50"
-              >
+            <div className='mt-6 flex justify-end gap-2'>
+              <Button variant='ghost' onClick={onClose} disabled={saving}>
                 Cancel
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={handleAdd}
+                loading={saving}
                 disabled={saving || reviewWithoutRating}
-                className={[
-                  "rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all",
-                  saving || reviewWithoutRating
-                    ? "cursor-not-allowed bg-blue-700 opacity-60"
-                    : "bg-blue-600 hover:bg-blue-500 active:scale-95",
-                ].join(" ")}
               >
-                {saving ? "Adding…" : "Add to library"}
-              </button>
+                {saving ? 'Adding...' : 'Add to library'}
+              </Button>
             </div>
           </>
         )}

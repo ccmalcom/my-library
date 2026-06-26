@@ -575,6 +575,7 @@ def recommend(
                     isbn13=c.get("isbn13"),
                     cover_url=c.get("cover_url"),
                     subjects=c.get("subjects") or [],
+                    description=c.get("description"),
                     catalog_source=c.get("catalog_source"),
                     catalog_id=c.get("catalog_id"),
                     retrieval_pool=c.get("retrieval_pool"),

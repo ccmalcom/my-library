@@ -189,6 +189,7 @@ class Recommendation(Base):
     isbn13: Mapped[str | None] = mapped_column(String)
     cover_url: Mapped[str | None] = mapped_column(String)
     subjects: Mapped[list | None] = mapped_column(JSON)
+    description: Mapped[str | None] = mapped_column(Text)
 
     # Provenance: which catalog the candidate is real in, and how retrieval surfaced it.
     catalog_source: Mapped[str | None] = mapped_column(String)  # openlibrary | googlebooks

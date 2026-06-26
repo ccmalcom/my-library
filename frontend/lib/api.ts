@@ -34,6 +34,7 @@ export interface Book {
   date_read: string | null;
   date_added: string | null;
   cover_url: string | null;
+  description?: string | null;
   confidence_label: string | null;
   resolution_confidence: number | null;
 }
@@ -48,6 +49,7 @@ export interface Recommendation {
   isbn13: string | null;
   cover_url: string | null;
   subjects: string[] | null;
+  description?: string | null;
   catalog_source: string | null;
   catalog_id: string | null;
   retrieval_pool: string | null;
