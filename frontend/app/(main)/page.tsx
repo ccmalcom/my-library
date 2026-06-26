@@ -2,10 +2,19 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import useSWR from 'swr';
-import { api, type Stats, type ProfileStatus, PROFILE_STATUS_KEY } from '@/lib/api';
-import { TasteHero } from '@/components/TasteHero';
-import { Card, Button, useToast } from '@/components/ui';
+import {
+  api,
+  type Stats,
+  type ProfileStatus,
+  type ArchetypeOut,
+  type UserProfile,
+  PROFILE_STATUS_KEY,
+  ARCHETYPE_KEY,
+} from '@/lib/api';
+import { Card, Button, Badge, useToast } from '@/components/ui';
+import { tasteAccent } from '@/lib/tasteAccent';
 
 // ── Stats strip ───────────────────────────────────────────────────────────────
 
@@ -105,6 +114,9 @@ export default function HomePage() {
     () => api.profileStatus()
   );
 
+  const { data: userProfile } = useSWR<UserProfile>('user-profile', () => api.getProfile());
+  const { data: archetype }   = useSWR<ArchetypeOut | null>(ARCHETYPE_KEY, () => api.getArchetype());
+
   const noProfile  = profileStatus != null && profileStatus.last_profiled_at === null;
   const isDirty    = profileStatus?.dirty ?? false;
   const recBlocked = noProfile || isDirty;
@@ -114,6 +126,9 @@ export default function HomePage() {
     : isDirty
     ? 'Your library has changed since the last profile build - head to My Profile to update it.'
     : null;
+
+  const displayName = userProfile?.display_name ?? null;
+  const accentHsl   = tasteAccent(archetype ? archetype.code : null);
 
   async function handleRun() {
     setRunning(true);
@@ -127,9 +142,41 @@ export default function HomePage() {
   }
 
   return (
-    <div className="fade-in space-y-6 py-6">
-      {/* 1. Signature: Taste Hero */}
-      <TasteHero />
+    <div
+      className="fade-in space-y-6 py-6"
+      style={{ ['--user-accent' as string]: accentHsl }}
+    >
+      {/* 1. Greeting + archetype callout */}
+      <div>
+        <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-text leading-tight">
+          {displayName ? (
+            <>Hey, <span className="text-user">{displayName}.</span></>
+          ) : (
+            'Hey there.'
+          )}
+        </h1>
+        {archetype ? (
+          <Link href="/profile" className="mt-3 inline-flex items-center gap-2 group">
+            <Badge
+              variant="mono"
+              className="text-sm px-2 py-0.5"
+              // style={{ color: accentHsl, borderColor: accentHsl }}
+            >
+              {archetype.code}
+            </Badge>
+            <span className="text-sm text-user opacity-60 group-hover:opacity-100 transition-opacity">
+              {archetype.name}
+            </span>
+          </Link>
+        ) : !noProfile && (
+          <Link
+            href="/profile"
+            className="mt-3 inline-block text-sm text-user opacity-60 hover:opacity-100 transition-opacity"
+          >
+            Discover your reader type &rarr;
+          </Link>
+        )}
+      </div>
 
       {/* 2. Stats strip */}
       {statsLoading ? (

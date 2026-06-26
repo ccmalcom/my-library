@@ -173,8 +173,19 @@ slash.
   Escape-to-close + `role="dialog"` + focus restore on unmount), `ToastProvider` + `useToast()`
   hook (success/error/info; `role="alert"` for errors; auto-dismiss 4.5s; mounted in
   `(main)/layout.tsx`).
-- **`TasteHero`** — per-user accent color (`lib/tasteAccent.ts` deterministic HSL from dominant
-  genre seed), top trait claim in hero display type, remaining traits as Badge chips.
+- **`TasteHero`** — archetype-first profile card. `lib/tasteAccent.ts` maps the 4-letter
+  archetype code to one of 16 curated HSL colors (warm for Immersive types, cool for Reflective);
+  falls back to a hash-derived color when no code is available. The component has no `showArchetype`
+  prop — archetype is always fetched unconditionally. Three render states: (1) loading skeleton,
+  (2) no-profile CTA ("MyLibrary doesn't know you yet"), (3) no-archetype CTA ("What kind of reader
+  are you?" + Discover button), (4) full archetype display (code badge + decoded subtitle +
+  archetype name + tagline + trait chips + axis bars). Axis bars show `axis-name | bar |
+  winning-letter + winning-label [why]` — left-aligned, not symmetric. Trait chips expand on click
+  (truncated at 60 chars). Footer always shows Re-derive (ghost) + Share buttons; stale warning
+  appears on the left when `is_stale`. `ArchetypeShareModal` renders the share card + canvas copy
+  using the archetype color throughout. `ArchetypeExplainerModal` is a static inline component
+  (no API call) explaining the 4 axes — opened via the "What is this?" link next to the "Reader
+  Type" eyebrow on every card state.
 - **Accessibility** — modals trap focus + Escape + restore; `useReducedMotion()` in SwipeCard
   disables rotation/spring; `motion-safe:animate-pulse/spin` on skeletons/spinners; `aria-live`
   regions via toast roles; all cover `<img>` have `alt`; focus-visible rings on all interactive
@@ -275,12 +286,25 @@ paths (CSV import and manual add) end-to-end on the live deployment.
   end of the removal surface.
 - `purge.py` — **bulk, user-scoped data removal** (the supported way to reset a user, e.g. to
   re-test onboarding without minting a new account). `clear_profile` drops traits + recs +
-  profile_meta but keeps books; `clear_library` drops books + enrichments and **cascades** to
-  clear the profile (→ a clean first-setup state, `stats.total == 0`, no orphaned taste data);
-  `delete_account` drops everything incl. `user_settings` (the stored Anthropic key) — app-data
-  only, it does **not** delete the Supabase auth user. Enrichments are deleted before books for
-  FK safety; `recommendations` (no FK) are dropped by `user_id`. Backs `DELETE /library` /
-  `/profile` / `/account` and the CLI `clear-library` / `clear-profile` / `delete-account`.
+  profile_meta + `reader_archetypes` but keeps books; `clear_library` drops books + enrichments
+  and **cascades** to clear the profile (→ a clean first-setup state, `stats.total == 0`, no
+  orphaned taste data); `delete_account` drops everything incl. `user_settings` (the stored
+  Anthropic key) — app-data only, it does **not** delete the Supabase auth user. Enrichments are
+  deleted before books for FK safety; `recommendations` (no FK) are dropped by `user_id`. Backs
+  `DELETE /library` / `/profile` / `/account` and the CLI `clear-library` / `clear-profile` /
+  `delete-account`.
+- `archetype.py` — **reader archetype system**. Scores the user's taste profile across 4 axes via
+  Claude Haiku tool-use → produces a 4-letter code (e.g. `IPBH`) mapped to one of 16 named
+  archetypes. Axes: `lens` (I=Immersive / R=Reflective), `engine` (P=Plot-first / C=Character-first),
+  `range` (B=Broad / D=Deep), `resonance` (H=Heart / M=Mind). `ARCHETYPES` dict maps all 16 codes
+  to `{name, tagline}`. `derive_archetype(*, user_id)` calls Haiku with the user's traits, upserts
+  `ReaderArchetype` row (one per user), returns `ArchetypeResult`. `scores_to_code()` converts four
+  floats to the letter code. The `_TOOL` schema requires all 8 fields (4 scores + 4 rationales) so
+  Claude always populates them. Alembic migration: `0005_reader_archetypes` (idempotent, chains after
+  `0004`). API endpoints: `POST /profile/archetype` (derive/re-derive), `GET /profile/archetype`
+  (fetch stored; 404 if none). `_archetype_out()` in `api.py` maps the DB row to `ArchetypeOut` —
+  it normalises empty-string rationales to `None` via `rationale or None` so the frontend's
+  truthiness check is reliable. `is_stale` is `True` when `derived_at < last_profiled_at`.
 - `recommend.py` — two-stage recommender. Stage 1 retrieval = metadata expansion
   (`catalog.openlibrary_subject` / `googlebooks_subject` / `googlebooks_author`) +
   Claude-seeded queries (`catalog.googlebooks_query`), merged + deduped against the
@@ -332,12 +356,15 @@ A hard reload rebuilds everything cleanly. Don't revert these to `router.push`/`
   `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`). Types here mirror the Pydantic
   schemas. `PROFILE_STATUS_KEY` is the shared SWR key for `/profile/status` so a mutation
   anywhere can revalidate the re-profile banner.
-- `app/` — routes: `/` (dashboard + run recommend), `/swipe` (rec swiping; `already_read`
-  lands the book on the read shelf then prompts a review), `/to-read` (per-book: start
-  reading / mark finished → review / remove), `/library` (rated books; click a row to
-  re-rate/review; a "N books missing reviews" button steps through unrated read books; a
-  **+ Add book** button opens `AddBookModal`), `/profile` (taste traits with inline editing,
-  rating distribution, genre breakdown), `/setup` (CSV import wizard **plus** a no-CSV
+- `app/` — routes: `/` (dashboard; greeting "Hey, {displayName}." with display name in
+  `text-user`; compact archetype callout badge+name linking to `/profile`; stats strip with
+  numbers in `text-user`; ratings bars in `bg-user`; run-recommend CTA; `--user-accent` is set
+  on the outer page wrapper so all `text-user`/`bg-user` tokens pick up the archetype color),
+  `/swipe` (rec swiping; `already_read` lands the book on the read shelf then prompts a review),
+  `/to-read` (per-book: start reading / mark finished → review / remove), `/library` (rated
+  books; click a row to re-rate/review; a "N books missing reviews" button steps through unrated
+  read books; a **+ Add book** button opens `AddBookModal`), `/profile` (`TasteHero` archetype
+  card at top; taste traits with inline editing, rating distribution, genre breakdown), `/setup` (CSV import wizard **plus** a no-CSV
   "add books manually" branch — `ManualStep`, extracted into `components/SetupWizard.tsx` so it
   can also render inline; the `/setup` route is now a thin wrapper around it). `layout.tsx`
   mounts `NavBar` + `ReprofileBanner` + `BottomNav` above/below all pages and wraps `children` in **`LibraryGate`**
@@ -350,9 +377,11 @@ A hard reload rebuilds everything cleanly. Don't revert these to `router.push`/`
   (manual add: debounced `/catalog/search` → pick a real result → optional shelf + star
   rating + review text → `POST /books`; used by both the Library page and the setup wizard's
   manual branch), `ReprofileBanner` (app-wide; shows only when `/profile/status` reports `dirty`,
-  runs `/profile/update`), `SwipeCard`, `NavBar`, `TasteHero` (per-user taste statement; used on
-  dashboard and profile header), `SetupWizard` (the onboarding flow; takes an optional `onComplete`
-  so it can be used both at `/setup` and inline by the gate), and `LibraryGate` (gates `/`,
+  runs `/profile/update`), `SwipeCard`, `NavBar`, `TasteHero` (archetype card; profile page only —
+  NOT on home page), `ArchetypeShareModal` (canvas share image using archetype color),
+  `ArchetypeExplainerModal` (static inline in TasteHero.tsx, not a separate file), `SetupWizard`
+  (the onboarding flow; takes an optional `onComplete` so it can be used both at `/setup` and
+  inline by the gate), and `LibraryGate` (gates `/`,
   `/swipe`, `/library` behind having a library — renders `SetupWizard` inline when
   `stats.total === 0`, otherwise the page; the decision is **latched** so ingesting books mid-wizard
   doesn't swap it out, and `SetupWizard`'s final step calls `onComplete` to advance to the page).
@@ -406,7 +435,11 @@ when to spend the Claude call.
   read history use read-only commands only (`git log`, `git diff`, `git show`). To check
   whether an edit is valid, read the file back with the file tools rather than stashing.
 - **Run via `python -m`** (`python -m mylibrary.cli ...`, `python -m pytest`). The console
-  scripts (pytest.exe, uvicorn.exe) may not be on PATH.
+  scripts (pytest.exe, uvicorn.exe) may not be on PATH. On Windows use `.venv/Scripts/python -m pytest`
+  — bare `python` may lack packages (e.g. `slowapi`) installed only in the venv.
+- **`session_scope()` is the DB context manager; `get_session()` is not.** `get_session()`
+  returns a bare `Session` (no `__exit__`). All core functions use `with session_scope() as session:`.
+  Don't write `with get_session() as session:` — it will fail.
 - **Windows PowerShell**: no `&&`. Chain with `;` + `if ($?) { ... }`, or run commands
   separately. Use a venv (`.venv`) and install deps into it.
 - **Enrichment commits per book** so Ctrl+C is safe and re-runs resume (already-enriched

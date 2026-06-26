@@ -32,6 +32,7 @@ from .db import (
     Book,
     Enrichment,
     ProfileMeta,
+    ReaderArchetype,
     Recommendation,
     TasteTrait,
     UserSettings,
@@ -61,6 +62,11 @@ def _delete_profile_rows(session, user_id: str) -> dict:
     session.query(ProfileMeta).filter(ProfileMeta.user_id == user_id).delete(
         synchronize_session=False
     )
+    # Drop the archetype row (no FK) -- all three purge paths call this helper so the
+    # archetype is removed on profile-reset, library-clear, and account-delete.
+    session.query(ReaderArchetype).filter(
+        ReaderArchetype.user_id == user_id
+    ).delete(synchronize_session=False)
     return {"traits_removed": traits, "recommendations_removed": recs}
 
 
