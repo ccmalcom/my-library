@@ -113,10 +113,10 @@ function SortSelect<T extends string>({
 type ReadSort = 'rating-desc' | 'rating-asc' | 'title-asc' | 'date-desc';
 
 const READ_SORT_OPTIONS: { value: ReadSort; label: string }[] = [
-  { value: 'rating-desc', label: 'Rating ↓' },
-  { value: 'rating-asc',  label: 'Rating ↑' },
-  { value: 'title-asc',   label: 'Title A–Z' },
-  { value: 'date-desc',   label: 'Date read ↓' },
+  { value: 'rating-desc', label: 'Rating \u2193' },
+  { value: 'rating-asc',  label: 'Rating \u2191' },
+  { value: 'title-asc',   label: 'Title A\u2013Z' },
+  { value: 'date-desc',   label: 'Date read \u2193' },
 ];
 
 function ReadTab({ books }: { books: Book[] }) {
