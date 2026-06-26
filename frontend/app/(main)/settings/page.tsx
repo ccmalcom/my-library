@@ -167,15 +167,15 @@ export default function SettingsPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) throw new Error('Could not get current user.');
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
-        password: emailCurrentPassword,
+        password: currentPassword,
       });
       if (signInError) {
-        setEmailError('Incorrect password.');
+        setEmailError(signInError.message || 'Failed to verify password.');
         return;
       }
-      const { error: updateError } = await supabase.auth.updateUser({ email: newEmail });
+      const { error: updateError } = await supabase.auth.updateUser({ email: newEmail.trim() });
       if (updateError) throw updateError;
       setEmailCurrentPassword('');
       setNewEmail('');
@@ -205,7 +205,7 @@ export default function SettingsPage() {
         password: currentPassword,
       });
       if (signInError) {
-        setPasswordError('Incorrect password.');
+        setPasswordError(signInError.message || 'Failed to verify password.');
         return;
       }
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
@@ -309,7 +309,7 @@ export default function SettingsPage() {
               <Button
                 type='submit'
                 loading={emailSaving}
-                disabled={emailSaving || !emailCurrentPassword || !newEmail}
+                disabled={emailSaving || !emailCurrentPassword || !newEmail.trim()}
               >
                 {emailSaving ? 'Saving...' : 'Update email'}
               </Button>
