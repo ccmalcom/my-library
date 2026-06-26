@@ -13,9 +13,89 @@ import {
 } from '@/lib/api';
 import { Badge, Button } from '@/components/ui';
 import { useToast } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { tasteAccent } from '@/lib/tasteAccent';
 import { ArchetypeShareModal } from '@/components/ArchetypeShareModal';
 import Link from 'next/link';
+
+// ── Archetype explainer modal ─────────────────────────────────────────────────
+
+function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
+  const titleId = 'archetype-explainer-title';
+  return (
+    <Modal labelId={titleId} onClose={onClose} className='w-full max-w-lg'>
+      <div className='rounded-2xl border border-border bg-surface p-6 space-y-5'>
+        <div>
+          <h2 id={titleId} className='font-display text-xl font-bold text-text'>
+            Your Reader Type
+          </h2>
+          <p className='mt-1 text-sm text-muted'>
+            A personality system for readers, based on four reading axes.
+          </p>
+        </div>
+
+        <div className='space-y-4 text-sm'>
+          <p className='text-muted'>
+            We scored your taste profile across four dimensions to figure out what kind
+            of reader you are. Each axis produces one letter, and together they make your
+            four-letter reader code.
+          </p>
+
+          <div className='space-y-3'>
+            {[
+              {
+                letters: 'I / R',
+                name: 'Lens',
+                desc: 'Do you read to be transported into another world (Immersive), or to engage with ideas and craft (Reflective)?',
+              },
+              {
+                letters: 'P / C',
+                name: 'Engine',
+                desc: "Are you driven by what happens next (Plot-first), or by who it's happening to (Character-first)?",
+              },
+              {
+                letters: 'B / D',
+                name: 'Range',
+                desc: 'Do you roam across genres and authors (Broad), or go deep into a few favourites (Deep)?',
+              },
+              {
+                letters: 'H / M',
+                name: 'Resonance',
+                desc: 'Does a book hit hardest when it makes you feel something (Heart), or when it gives you something to think about (Mind)?',
+              },
+            ].map(({ letters, name, desc }) => (
+              <div key={name} className='flex gap-3'>
+                <span className='font-mono text-xs font-bold text-user w-10 shrink-0 pt-0.5'>
+                  {letters}
+                </span>
+                <div>
+                  <span className='font-semibold text-text'>{name} -- </span>
+                  <span className='text-muted'>{desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className='text-muted'>
+            The four letters combine into one of 16 named archetypes -- from
+            The Wandering Escapist to The Cerebral Architect. Your code is derived
+            from your actual rated books and taste traits, so it should feel like you.
+          </p>
+
+          <p className='text-faint text-xs'>
+            Not feeling it? Re-derive after updating your taste profile and it may shift.
+          </p>
+        </div>
+
+        <div className='flex justify-end'>
+          <Button variant='ghost' size='sm' onClick={onClose}>
+            Got it
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 const TRAITS_KEY   = 'profile-traits';
 const SUBJECTS_KEY = 'profile-subjects';
@@ -39,6 +119,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   const [expandedAxis, setExpandedAxis]   = useState<string | null>(null);
   const [expandedChip, setExpandedChip]   = useState<number | null>(null);
   const [shareOpen, setShareOpen]         = useState(false);
+  const [explainerOpen, setExplainerOpen] = useState(false);
 
   const { data: profileStatus, isLoading: statusLoading } =
     useSWR<ProfileStatus>(PROFILE_STATUS_KEY, () => api.profileStatus());
@@ -138,9 +219,19 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
           padClass,
         ].join(' ')}
       >
-        <p className='font-mono text-xs uppercase tracking-widest text-muted mb-3'>
-          Reader Type
-        </p>
+        {explainerOpen && <ArchetypeExplainerModal onClose={() => setExplainerOpen(false)} />}
+        <div className='flex items-center gap-3 mb-3'>
+          <p className='font-mono text-xs uppercase tracking-widest text-muted'>
+            Reader Type
+          </p>
+          <button
+            type='button'
+            onClick={() => setExplainerOpen(true)}
+            className='font-mono text-xs text-faint hover:text-muted transition-colors'
+          >
+            What is this?
+          </button>
+        </div>
         <h1
           className={[
             'font-display font-extrabold tracking-tight text-text leading-tight',
@@ -177,9 +268,19 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
           padClass,
         ].join(' ')}
       >
-        <p className='font-mono text-xs uppercase tracking-widest text-muted mb-3'>
-          Reader Type
-        </p>
+        {explainerOpen && <ArchetypeExplainerModal onClose={() => setExplainerOpen(false)} />}
+        <div className='flex items-center gap-3 mb-3'>
+          <p className='font-mono text-xs uppercase tracking-widest text-muted'>
+            Reader Type
+          </p>
+          <button
+            type='button'
+            onClick={() => setExplainerOpen(true)}
+            className='font-mono text-xs text-faint hover:text-muted transition-colors'
+          >
+            What is this?
+          </button>
+        </div>
         <h1
           className={[
             'font-display font-extrabold tracking-tight text-text leading-tight',
@@ -209,9 +310,18 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       style={{ ['--user-accent' as string]: accentHsl }}
       className={['rounded-2xl border border-border bg-surface', padClass].join(' ')}
     >
-      <p className='font-mono text-xs uppercase tracking-widest text-muted mb-3'>
-        Reader Type
-      </p>
+      <div className='flex items-center gap-3 mb-3'>
+        <p className='font-mono text-xs uppercase tracking-widest text-muted'>
+          Reader Type
+        </p>
+        <button
+          type='button'
+          onClick={() => setExplainerOpen(true)}
+          className='font-mono text-xs text-faint hover:text-muted transition-colors'
+        >
+          What is this?
+        </button>
+      </div>
       <div className='flex items-center gap-3 mb-1'>
         <Badge variant='mono' className='text-base px-3 py-1'>
           {archetype.code}
@@ -317,10 +427,10 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
         </div>
       </div>
 
-      {/* Share modal */}
       {shareOpen && (
         <ArchetypeShareModal archetype={archetype} onClose={() => setShareOpen(false)} />
       )}
+      {explainerOpen && <ArchetypeExplainerModal onClose={() => setExplainerOpen(false)} />}
     </div>
   );
 }
