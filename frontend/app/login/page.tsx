@@ -1,16 +1,12 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { getSupabaseClient } from "@/utils/supabase/client";
+import { useState } from 'react';
+import { getSupabaseClient } from '@/utils/supabase/client';
+import { Button } from '@/components/ui';
 
-/**
- * Email + password sign-in. Invite-only launch: there's no sign-up form — accounts are
- * created by invite in the Supabase dashboard. On success the middleware lets the user
- * through to the app.
- */
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +14,7 @@ export default function LoginPage() {
     e.preventDefault();
     const supabase = getSupabaseClient();
     if (!supabase) {
-      setError("Auth is not configured (no Supabase env).");
+      setError('Auth is not configured (no Supabase env).');
       return;
     }
     setLoading(true);
@@ -29,65 +25,65 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    // Full document load (not client-side nav) so the app boots fresh for THIS user — no
-    // SWR cache or component state (e.g. LibraryGate's latch) leaks in from a prior session.
-    window.location.assign("/");
+    window.location.assign('/');
   }
 
+  const inputClass = [
+    'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
+    'placeholder-faint focus:border-accent focus:outline-none',
+    'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base',
+  ].join(' ');
+
+  const labelClass = 'mb-1 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0f1117] px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-[#1a1f2e] p-8 shadow-2xl">
-        <p className="mb-1 text-center text-xs font-semibold uppercase tracking-widest text-slate-500">
+    <div className='flex min-h-screen items-center justify-center bg-base px-4'>
+      <div className='w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-2xl'>
+        <p className='mb-1 text-center font-mono text-xs font-semibold uppercase tracking-widest text-faint'>
           MyLibrary
         </p>
-        <h1 className="mb-6 text-center text-xl font-bold text-white">Sign in</h1>
+        <h1 className='mb-6 text-center font-display text-2xl font-extrabold tracking-tight text-text'>
+          Welcome back
+        </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className='space-y-4'>
           <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Email
-            </label>
+            <label className={labelClass}>Email</label>
             <input
-              type="email"
+              type='email'
               required
               autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-600 focus:outline-none"
-              placeholder="you@example.com"
+              className={inputClass}
+              placeholder='you@example.com'
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Password
-            </label>
+            <label className={labelClass}>Password</label>
             <input
-              type="password"
+              type='password'
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-600 focus:outline-none"
-              placeholder="••••••••"
+              className={inputClass}
+              placeholder={'\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'}
             />
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className='text-sm text-danger'>{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={[
-              "w-full rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all",
-              loading
-                ? "cursor-not-allowed bg-blue-700 opacity-60"
-                : "bg-blue-600 hover:bg-blue-500 active:scale-95",
-            ].join(" ")}
+          <Button
+            type='submit'
+            size='lg'
+            loading={loading}
+            className='w-full'
           >
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
+            {loading ? 'Signing in...' : 'Sign in'}
+          </Button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-slate-500">
+        <p className='mt-4 text-center font-mono text-xs text-faint'>
           Invite-only. Ask the admin for an account.
         </p>
       </div>

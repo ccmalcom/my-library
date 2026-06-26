@@ -235,6 +235,7 @@ def _book_out(book: Book) -> BookOut:
         date_read=book.date_read,
         date_added=book.date_added,
         cover_url=enr.cover_url if enr else None,
+        description=enr.description if enr else None,
         confidence_label=enr.confidence_label if enr else None,
         resolution_confidence=enr.resolution_confidence if enr else None,
     )

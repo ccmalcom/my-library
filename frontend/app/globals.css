@@ -3,20 +3,47 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0f1117;
-  --card: #1a1f2e;
-  --elevated: #242938;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --border: #2d3748;
+  /* base */
+  --bg:       #161412;
+  --surface:  #1F1B18;
+  --elevated: #2A2420;
+  --border:   #3A332D;
+  --hairline: #2A2420;
+
+  /* text */
+  --text:     #F5F0E8;
+  --muted:    #A89F92;
+  --faint:    #6E665C;
+
+  /* brand + semantics */
+  --accent:        #FF5C3A;
+  --accent-hover:  #FF7355;
+  --accent-quiet:  rgba(255, 92, 58, 0.12);
+  --success:       #5BBF7B;
+  --danger:        #E0524B;
+  --warning:       #F5B82E;
+
+  /* semantic quiet backgrounds (opacity-adjusted; opacity modifier needs channel triplets) */
+  --success-quiet: rgba(91, 191, 123, 0.12);
+  --danger-quiet:  rgba(224, 82, 75, 0.12);
+  --warning-quiet: rgba(245, 184, 46, 0.12);
+
+  /* per-user accent (set at runtime; fallback = persimmon) */
+  --user-accent: #FF5C3A;
 }
 
 html,
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   min-height: 100vh;
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display), system-ui, sans-serif;
+  }
 }
 
 /* Card drag cursor */
@@ -27,14 +54,23 @@ body {
   cursor: grabbing;
 }
 
-/* Smooth fade for page transitions */
+/* Smooth fade for page transitions — disabled when reduced motion is preferred */
 @layer utilities {
   .fade-in {
     animation: fadeIn 0.25s ease-in-out;
   }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

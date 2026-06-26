@@ -159,6 +159,7 @@ class BookOut(BaseModel):
     date_read: date | None
     date_added: date | None = None
     cover_url: str | None = None
+    description: str | None = None
     confidence_label: str | None = None
     resolution_confidence: float | None = None
 
@@ -189,6 +190,7 @@ class RecommendationOut(BaseModel):
     isbn13: str | None
     cover_url: str | None
     subjects: list[str] | None
+    description: str | None
     catalog_source: str | None
     catalog_id: str | None
     retrieval_pool: str | None
