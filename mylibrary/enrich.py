@@ -199,7 +199,7 @@ def enrich_library(
         summary["skipped_existing"] = skipped
         if limit is not None:
             work = work[:limit]
-        # Use the full candidate count as the denominator so "10/50" is shown rather
+        # Use (skipped + len(work)) as the denominator so the UI shows "10/50" rather
         # than "10/44" when some books were already enriched — less confusing on re-runs.
         full_total = skipped + len(work)
         summary["total"] = full_total
