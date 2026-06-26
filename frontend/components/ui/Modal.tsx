@@ -21,7 +21,7 @@ export function Modal({ labelId, onClose, children, className }: ModalProps) {
     const dialog = dialogRef.current;
     if (dialog && !dialog.contains(document.activeElement)) {
       const first = dialog.querySelector<HTMLElement>(FOCUSABLE);
-      first?.focus();
+      (first ?? dialog).focus();
     }
     return () => {
       prevFocusRef.current?.focus();
