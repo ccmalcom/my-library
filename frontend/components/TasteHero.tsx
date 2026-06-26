@@ -21,11 +21,15 @@ function splitClaim(claim: string): [string, string] {
   const commaIdx = claim.indexOf(', ');
   const semiIdx  = claim.indexOf('; ');
   const dashIdx  = claim.indexOf(' - ');
-  const candidates = [commaIdx, semiIdx, dashIdx].filter(i => i > 0);
+  const splitters = [
+    { idx: commaIdx, leftLen: 1, rightSkip: 2 },
+    { idx: semiIdx,  leftLen: 1, rightSkip: 2 },
+    { idx: dashIdx,  leftLen: 0, rightSkip: 3 },
+  ].filter(s => s.idx > 0);
 
-  if (candidates.length > 0) {
-    const splitAt = Math.min(...candidates);
-    return [claim.slice(0, splitAt + 1), claim.slice(splitAt + 2)];
+  if (splitters.length > 0) {
+    const best = splitters.reduce((a, b) => (a.idx < b.idx ? a : b));
+    return [claim.slice(0, best.idx + best.leftLen), claim.slice(best.idx + best.rightSkip)];
   }
 
   // Fall back: split at the last space before the 45% mark
