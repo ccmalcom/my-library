@@ -551,7 +551,7 @@ function EnrichStep({
           {ingestResult.skipped > 0 && ` (${ingestResult.skipped} already existed)`}
           . Enrichment fetches covers, page counts, and genres from Open Library and Google
           Books. Takes{' '}
-          <strong className='text-text'>1-3 minutes</strong> for a typical library.
+          <strong className='text-text'>5-10 minutes</strong> for a typical library.
         </p>
       </div>
 
