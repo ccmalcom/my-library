@@ -333,6 +333,23 @@ def _seed_pool(
     return pool, queries
 
 
+def _fill_ol_descriptions(candidates: list[dict]) -> None:
+    """Fetch Work descriptions for OL candidates that didn't get one from the pool query.
+
+    The OL subjects endpoint returns works but no descriptions. We have the work key
+    already in `catalog_source`/`catalog_id`, so one extra cached GET per OL candidate
+    fills the gap. Disk-cached — repeat runs cost nothing.
+    """
+    from . import catalog as _catalog
+
+    for c in candidates:
+        if c.get("description") or c.get("catalog_source") != "openlibrary":
+            continue
+        work_key = c.get("catalog_id")
+        if work_key:
+            c["description"] = _catalog.openlibrary_work_description(work_key)
+
+
 def _assemble(
     metadata_pool: list[tuple[dict, str]],
     seed_pool: list[tuple[dict, str]],
@@ -562,6 +579,7 @@ def recommend(
             )
 
         candidates = _assemble(metadata_pool, seed_pool, signal, cap=_MAX_CANDIDATES)
+        _fill_ol_descriptions(candidates)
         if not candidates:
             return {
                 "run_id": None,

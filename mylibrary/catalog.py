@@ -172,13 +172,19 @@ def openlibrary_by_isbn(isbn: str) -> dict | None:
     record = data.get(f"ISBN:{isbn}")
     if not record:
         return None
+    edition_key = record.get("key")  # e.g. "/books/OL7247396M"
+    description = _ol_description(record)
+    if not description and edition_key:
+        work_key = _ol_edition_work_key(edition_key)
+        if work_key:
+            description = openlibrary_work_description(work_key)
     return {
         "source": "openlibrary",
-        "resolved_id": record.get("key"),
+        "resolved_id": edition_key,
         "title": record.get("title"),
         "subjects": [s.get("name") for s in record.get("subjects", []) if s.get("name")],
         "cover_url": (record.get("cover") or {}).get("medium"),
-        "description": _ol_description(record),
+        "description": description,
         "raw": {"isbn": isbn, "record": record},
     }
 
@@ -188,6 +194,38 @@ def _ol_description(record: dict) -> str | None:
     if isinstance(desc, dict):
         return desc.get("value")
     return desc if isinstance(desc, str) else None
+
+
+def openlibrary_work_description(work_key: str) -> str | None:
+    """Fetch description from an OL Work record (e.g. '/works/OL82584W').
+
+    OL Edition/ISBN records rarely carry descriptions; the Work record is the
+    authoritative place. Disk-cached, so repeat calls are free.
+    """
+    if not work_key:
+        return None
+    # Normalise: strip leading slash if caller includes it, then rebuild cleanly.
+    key = work_key.lstrip("/")
+    url = f"https://openlibrary.org/{key}.json"
+    data = _get_json(url)
+    if not data:
+        return None
+    return _ol_description(data)
+
+
+def _ol_edition_work_key(edition_key: str) -> str | None:
+    """Given an OL Edition key (e.g. '/books/OL7247396M'), return its Work key."""
+    if not edition_key:
+        return None
+    key = edition_key.lstrip("/")
+    url = f"https://openlibrary.org/{key}.json"
+    data = _get_json(url)
+    if not data:
+        return None
+    works = data.get("works") or []
+    if works:
+        return (works[0] or {}).get("key")
+    return None
 
 
 def openlibrary_query(query: str, *, max_results: int = 8) -> list[dict]:

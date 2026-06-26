@@ -226,6 +226,11 @@ paths (CSV import and manual add) end-to-end on the live deployment.
   both sources, normalizes to the shared candidate shape (incl. `isbn13`), de-dups across
   them, and floats cover-bearing hits to the front. Dedup uses an inline normalizer (not
   `enrich._normalize_title`) to avoid the enrich→catalog import cycle.
+  **OL description gap:** OL Edition records (`/api/books?jscmd=data`, `/books/OL...M.json`)
+  rarely carry descriptions; the description lives on the Work record (`/works/OL...W.json`).
+  `openlibrary_by_isbn` now follows Edition→Work when the edition has no description (via
+  `_ol_edition_work_key`); `openlibrary_work_description(work_key)` fetches a Work directly
+  (used by `enrich._apply` and `recommend._fill_ol_descriptions`).
 - `enrich.py` — resolves each rated book, scores confidence, commits per book (resumable).
   Progress callback uses the **full candidate count** as the denominator (already-enriched books
   count as "done" from the start), so the UI shows `10/50` not `10/44` on re-runs.
@@ -266,7 +271,12 @@ paths (CSV import and manual add) end-to-end on the live deployment.
   Claude-seeded queries (`catalog.googlebooks_query`), merged + deduped against the
   library. Stage 2 = Claude rerank/explain. Persists each run to `recommendations`
   (grouped by `run_id`). Anthropic key is checked at point of use, so the key only
-  matters when a Claude stage actually runs. **Cost profile:** seed queries use
+  matters when a Claude stage actually runs. **`_assemble` field rename:** the raw candidate
+  dict's `source` key becomes `catalog_source` and `resolved_id` becomes `catalog_id` in the
+  assembled pool — add new fields to both the initial `by_key[key] = {...}` block AND the
+  dedup merge `else` branch, or they'll be silently dropped. `_fill_ol_descriptions` runs
+  after `_assemble` to batch-fetch Work descriptions for OL candidates that didn't get one
+  from the subjects endpoint (disk-cached, free on repeat runs). **Cost profile:** seed queries use
   `claude-haiku-4-5-20251001` (low-stakes text generation); rerank uses `settings.model`
   (Sonnet). Both calls share a cacheable prefix (traits + top 20 loved books, marked
   `ephemeral` with extended-TTL beta) so repeated runs within ~1 hour get a cache hit
