@@ -167,6 +167,10 @@ export default function SettingsPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) throw new Error('Could not get current user.');
+       const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
       if (signInError) {
         setEmailError(signInError.message || 'Failed to verify password.');
         return;
@@ -196,6 +200,10 @@ export default function SettingsPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) throw new Error('Could not get current user.');
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
       if (signInError) {
         setPasswordError(signInError.message || 'Failed to verify password.');
         return;
