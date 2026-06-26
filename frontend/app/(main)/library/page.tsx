@@ -443,9 +443,9 @@ function ToReadTab({ books }: { books: Book[] }) {
 type CurrentlyReadingSort = 'date-desc' | 'date-asc' | 'title-asc';
 
 const CURRENTLY_READING_SORT_OPTIONS: { value: CurrentlyReadingSort; label: string }[] = [
-  { value: 'date-desc', label: 'Date added ↓' },
-  { value: 'date-asc',  label: 'Date added ↑' },
-  { value: 'title-asc', label: 'Title A–Z' },
+  { value: 'date-desc', label: 'Date added \u2193' },
+  { value: 'date-asc',  label: 'Date added \u2191' },
+  { value: 'title-asc', label: 'Title A\u2013Z' },
 ];
 
 function CurrentlyReadingTab({ books }: { books: Book[] }) {
