@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { ToastProvider } from "@/components/ui";
 
 const displayFont = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -42,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className="min-h-screen bg-base text-text antialiased"
         suppressHydrationWarning
       >
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );
