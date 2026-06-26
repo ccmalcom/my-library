@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui';
 import { type ArchetypeOut } from '@/lib/api';
+import { tasteAccent } from '@/lib/tasteAccent';
 
 const AXIS_LABELS = [
   { left: 'Immersive',  right: 'Reflective'      },
@@ -23,13 +24,7 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
   const titleId  = 'archetype-share-title';
   const cardRef  = useRef<HTMLDivElement>(null);
 
-  // Axis letter row: e.g. "I  P  B  H"
-  const axisLetters = [
-    archetype.lens.letter,
-    archetype.engine.letter,
-    archetype.range.letter,
-    archetype.resonance.letter,
-  ].join('  ');
+  const accentColor = tasteAccent(archetype.code);
 
   // Axis label pairs for the small row below the code
   const axisPairs = AXIS_LABELS.map((a, i) => {
@@ -53,9 +48,12 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
     ctx.fillStyle = '#1e1b18';
     ctx.fillRect(0, 0, 800, 560);
 
-    // Accent wash (top strip)
-    ctx.fillStyle = 'rgba(255, 92, 58, 0.12)';
+    // Accent wash (top strip) — archetype color at low opacity
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = accentColor;
     ctx.fillRect(0, 0, 800, 120);
+    ctx.restore();
 
     // Wordmark
     ctx.fillStyle = '#a3a09d';
@@ -64,7 +62,7 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
     ctx.fillText('MyLibrary', 56, 68);
 
     // Code
-    ctx.fillStyle = '#FF5C3A';
+    ctx.fillStyle = accentColor;
     ctx.font = 'bold 96px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(archetype.code, 400, 230);
@@ -84,8 +82,8 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
     ctx.font = '16px monospace';
     ctx.fillText(axisPairs, 400, 430);
 
-    // Bottom border accent
-    ctx.fillStyle = '#FF5C3A';
+    // Bottom border — archetype color
+    ctx.fillStyle = accentColor;
     ctx.fillRect(56, 480, 688, 2);
 
     try {
@@ -126,12 +124,15 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
         >
           {/* Accent wash */}
           <div
-            className='absolute inset-x-0 top-0 h-16 opacity-20'
-            style={{ background: 'var(--accent, #FF5C3A)' }}
+            className='absolute inset-x-0 top-0 h-16 opacity-[0.14]'
+            style={{ background: accentColor }}
             aria-hidden='true'
           />
           <p className='relative font-mono text-xs text-muted mb-3'>MyLibrary</p>
-          <p className='relative font-mono text-5xl font-bold text-accent tracking-widest mb-2'>
+          <p
+            className='relative font-mono text-5xl font-bold tracking-widest mb-2'
+            style={{ color: accentColor }}
+          >
             {archetype.code}
           </p>
           <p className='relative font-display text-xl font-bold text-text mb-1'>
