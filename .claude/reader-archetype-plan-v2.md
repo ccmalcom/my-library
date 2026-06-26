@@ -14,13 +14,14 @@ axes, producing a 4-letter code (e.g. `IPBH`) that maps to a named archetype ("T
 Escapist"). Derives entirely from existing taste traits -- no new pipeline step, no extra
 enrichment.
 
-**Relationship to TasteHero** (`frontend/components/TasteHero.tsx`): ArchetypeCard is
-complementary, not competing. TasteHero is trait-level ("what Claude inferred, in your words")
-and lives on `/`; ArchetypeCard is archetype-level ("your reader type classification") and lives
-on `/profile`. Different questions, different pages.
+**Relationship to TasteHero** (`frontend/components/TasteHero.tsx`): the archetype is **merged
+into the existing TasteHero card -- there is NO standalone ArchetypeCard component.** On `/profile`,
+TasteHero gains an archetype-led hero (code + name + tagline + axis bars) above the existing trait
+chips. The dashboard (`/`) TasteHero is **unchanged** (trait-led, no archetype). This is gated by a
+new `showArchetype` prop that only the profile page passes.
 
-**Timing:** Build after the frontend redesign is merged (all 6 phases). The archetype section
-slots into the redesigned `/profile`. Do not mix this into redesign sessions.
+**Timing:** Build after the frontend redesign is merged (all 6 phases). The archetype hero slots
+into the redesigned `/profile` TasteHero. Do not mix this into redesign sessions.
 
 ---
 
@@ -264,27 +265,41 @@ Export `ARCHETYPE_KEY = 'archetype'` (string const) as the shared SWR key.
 
 ---
 
-### `ArchetypeCard` (`components/ArchetypeCard.tsx`)
+### Merge archetype INTO TasteHero (`components/TasteHero.tsx`) -- no new card
 
-`'use client'`; section on `/profile` below the taste traits; uses `useSWR(ARCHETYPE_KEY, api.getArchetype)`.
+> **Do NOT create `ArchetypeCard.tsx`.** The archetype lives inside the existing TasteHero. Read
+> `TasteHero.tsx` first: it already has a `compact?: boolean` prop, loads traits/subjects/status
+> via SWR, computes `accentHsl = tasteAccent(seed)`, sets `--user-accent` on the wrapper, and
+> renders a loading skeleton, a no-profile CTA, and the has-profile hero (top trait claim + chips).
+> You are ADDING an archetype layer on top of that, behind a new prop -- not rewriting it.
 
-**States:**
+**Add a `showArchetype?: boolean` prop** (default `false`). Only `/profile` passes `showArchetype`;
+the dashboard renders TasteHero unchanged. When `showArchetype` is false, behavior is byte-for-byte
+the current component. When true, add a `useSWR(ARCHETYPE_KEY, api.getArchetype)` hook and fold its
+result into the existing render branches:
 
-1. **Loading** -- skeleton matching the Card shape (`motion-safe:animate-pulse`).
-2. **No archetype** (data === null) -- `Card` with eyebrow + invitation line + primary `Button`
-   (`size="md"`) "Discover your reader type". onClick: `post` via `api.deriveArchetype()`, use the
-   Button `loading` prop while pending, then `mutate(ARCHETYPE_KEY, result, { revalidate: false })`.
-   Toast on error.
-3. **Fresh** -- full card (below).
-4. **Stale** (`is_stale === true`) -- full card + quiet amber hint line and a small "Re-derive"
-   `Button` (`variant="secondary" size="sm"`), matching `ReprofileBanner` language. No
-   `window.confirm`/`alert` -- re-derive is cheap and reversible.
+- **Loading / no-profile branches:** unchanged (archetype is meaningless without a profile -- the
+  existing no-profile CTA already routes the user to build one).
+- **Has-profile + no archetype yet** (`archetype === null`): render the existing trait hero, and
+  ABOVE the trait claim show a slim invitation row -- eyebrow `font-mono text-xs uppercase
+tracking-widest text-muted` "Reader Type" + a primary `Button size="sm"` "Discover your reader
+  type". onClick: `await api.deriveArchetype()`, use the Button `loading` prop while pending, then
+  `mutate(ARCHETYPE_KEY, result, { revalidate: false })`. Toast on error (`useToast`).
+- **Has archetype** (`archetype` present): the archetype becomes the hero. Replace the trait-claim
+  headline with: eyebrow "Reader Type"; code `Badge variant="mono"` `className="text-base px-3 py-1"`;
+  name in the existing hero display type (`font-display ... text-4xl sm:text-5xl`, or the `compact`
+  `text-3xl`); tagline `text-sm text-muted italic`. Keep the existing **trait chips row below**
+  unchanged (they still add specificity under the archetype). Then the axis bars (below). Footer
+  `flex justify-between mt-5`: stale nudge (if any) + Share `Button variant="secondary" size="sm"`
+  that opens `ArchetypeShareModal`.
+- **Stale** (`archetype.is_stale === true`): same archetype hero + a quiet amber hint line and a
+  small "Re-derive" `Button variant="secondary" size="sm"` (re-runs `deriveArchetype` + mutate),
+  matching `ReprofileBanner` language. No `window.confirm`/`alert`.
 
-**Card structure:** wrapper sets `--user-accent` via `tasteAccent(code)`. Eyebrow
-(`font-mono text-xs uppercase tracking-widest text-muted`) "Reader Type"; code `Badge variant="mono"`
-with `className="text-base px-3 py-1"`; name `font-display text-2xl font-bold text-text`; tagline
-`text-sm text-muted italic`; then the axis bars (mt-5); footer `flex justify-between mt-5` with
-stale nudge (if any) + Share `Button variant="secondary" size="sm"`.
+The wrapper already sets `--user-accent` from `accentHsl`. When an archetype exists, seed the accent
+from the code instead so the card recolors to the archetype: `const seed = archetype ? archetype.code
+: (topSubject ?? topTrait?.claim ?? null)` feeding the existing `tasteAccent(seed)` call. Single
+source of accent -- do not add a second `--user-accent`.
 
 **Axis bars (bars, not radar -- resolved).** Track: `relative h-2 rounded-full bg-elevated overflow-hidden`.
 Compute fill as plain vars (no IIFE):
@@ -296,7 +311,11 @@ const left = score < 0 ? `${50 - pct}%` : '50%';
 ```
 
 Left/right pole labels: `text-xs text-faint`, `w-28` (right-aligned left label, left-aligned right
-label). Rationale: collapsed by default, toggled via `useState`.
+label). Per-axis rationale: collapsed by default, toggled via `useState`.
+
+> Compute the four `{score,left}` values and any conditional class/label strings as plain vars at
+> the top of the component (no IIFEs in JSX). Keep the archetype block inside the existing
+> has-profile return, not a separate early return, so the `compact` sizing already in scope applies.
 
 ---
 
@@ -322,9 +341,11 @@ Modal already handles role/aria/focus-trap/Escape/restore -- do NOT reimplement.
 
 ### Profile page (`app/(main)/profile/page.tsx`)
 
-Add `<ArchetypeCard />` as a section after the taste traits (before or after the genre breakdown --
-whichever flows). Page already uses SWR; add `useSWR(ARCHETYPE_KEY, api.getArchetype)` alongside
-existing hooks.
+The profile page already renders TasteHero as its header (per redesign Phase 4). Change that one
+render to pass the new prop: `<TasteHero showArchetype />` (keep any existing `compact` prop). That
+is the entire page change -- the archetype hero, derive CTA, axis bars, and share trigger all live
+inside TasteHero now. **Do not** add a separate archetype section or a second SWR hook on the page.
+The dashboard's `<TasteHero />` is left untouched (no `showArchetype`).
 
 ---
 
@@ -348,10 +369,13 @@ existing hooks.
 4. **Schemas + API** -- `ArchetypeAxisOut`/`ArchetypeOut`; `POST`/`GET /profile/archetype`
    (POST wraps RuntimeError -> 400; GET 404s when none; both compute axis letters + `is_stale`).
 5. **`lib/api.ts`** -- `deriveArchetype`, `getArchetype`, types, `ARCHETYPE_KEY`.
-6. **`ArchetypeCard`** -- all 4 states; integrate into `/profile`.
-7. **`ArchetypeShareModal`** -- via `Modal`; canvas image + text copy; toasts.
-8. **QA** -- end-to-end with a real profile; verify `is_stale` transitions across re-profile/re-derive;
-   verify clear-library deletes the archetype row; run `python -m pytest`; run axe on the modal.
+6. **Merge into `TasteHero`** -- add `showArchetype` prop + all archetype states (CTA/fresh/stale/
+   axis bars); pass `<TasteHero showArchetype />` on `/profile` only; leave the dashboard call alone.
+7. **`ArchetypeShareModal`** -- via `Modal`; canvas image + text copy; toasts; opened from the
+   TasteHero share button.
+8. **QA** -- end-to-end with a real profile; confirm the dashboard TasteHero is visually unchanged;
+   verify `is_stale` transitions across re-profile/re-derive; verify clear-library deletes the
+   archetype row; run `python -m pytest`; run axe on the modal.
 
 ---
 
