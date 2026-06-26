@@ -160,7 +160,7 @@ export default function HomePage() {
             <Badge
               variant="mono"
               className="text-sm px-2 py-0.5"
-              style={{ color: accentHsl, borderColor: accentHsl }}
+              // style={{ color: accentHsl, borderColor: accentHsl }}
             >
               {archetype.code}
             </Badge>
