@@ -577,8 +577,8 @@ function CurrentlyReadingTab({ books }: { books: Book[] }) {
 type RejectedSort = 'date-desc' | 'title-asc';
 
 const REJECTED_SORT_OPTIONS: { value: RejectedSort; label: string }[] = [
-  { value: 'date-desc', label: 'Date skipped ↓' },
-  { value: 'title-asc', label: 'Title A–Z' },
+  { value: 'date-desc', label: 'Date skipped \u2193' },
+  { value: 'title-asc', label: 'Title A\u2013Z' },
 ];
 
 function RejectedTab({ recs }: { recs: Recommendation[] }) {
