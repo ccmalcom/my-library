@@ -1,0 +1,22 @@
+# Keep the build context small and free of secrets / local state.
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.vscode
+.agents
+
+# Secrets and local data never go in the image.
+.env
+data/
+
+# The frontend deploys to Vercel, not in this image.
+frontend/
+
+# Docs / dev-only files.
+*.md
+tests/
+skills-lock.json

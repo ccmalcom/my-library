@@ -117,7 +117,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=list(get_settings().cors_origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -144,6 +144,17 @@ def current_user(
 
 # Annotated dependency alias — add `user_id: UserId` to a route to receive the scoped id.
 UserId = Annotated[str, Depends(current_user)]
+
+
+@app.get("/healthz")
+def healthz() -> dict:
+    """Unauthenticated liveness probe for the platform healthcheck (Railway, etc.).
+
+    Deliberately does NOT depend on `current_user`: in hosted mode every other route
+    requires a Bearer token, but a healthcheck has none, so it must stay public. Does
+    not touch the DB so it succeeds even before the first request / during a cold start.
+    """
+    return {"status": "ok"}
 
 
 @app.get("/health")

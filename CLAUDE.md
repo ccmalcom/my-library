@@ -123,7 +123,29 @@ first-setup without minting a new account.
   BackgroundTask fallback, no Redis needed. Upstash recommended for Railway deployment.
 - Setup wizard `EnrichStep` now polls with a progress bar (0/N → done) instead of blocking.
 
-Next: Phase 5 hosting (Railway API + worker, Vercel frontend, Supabase) and Phase 6 first-run UX polish.
+**Phase 5 (hosting / deployment) — deploy artifacts have landed:**
+- `Dockerfile` — single image for BOTH Railway services. Python pinned to **3.12-slim** (not
+  the 3.14 used locally) so psycopg/pandas/numpy install from prebuilt wheels with no compiler.
+  Installs `requirements.txt`, copies the repo (frontend/data/venv excluded via `.dockerignore`),
+  default `CMD` is `start.sh` (the web process).
+- `start.sh` — web entrypoint: `alembic upgrade head` then `uvicorn mylibrary.api:app --host
+  0.0.0.0 --port $PORT`. **Only the web service runs this** — the worker service overrides its
+  start command to `python -m arq mylibrary.worker.WorkerSettings` so migrations never race.
+- `railway.json` — pins the Dockerfile builder + an ON_FAILURE restart policy. Healthcheck path
+  and the worker's start-command override are set per-service in the Railway dashboard (see the
+  runbook) so the worker doesn't inherit an HTTP healthcheck.
+- `GET /healthz` — **unauthenticated** liveness probe (does not depend on `current_user`, no DB
+  hit) for the platform healthcheck. The older `GET /health` still requires a token and returns
+  book counts; use `/healthz` for Railway. Point the Railway healthcheck at `/healthz`.
+- **CORS is env-driven.** `config.cors_origins` reads `CORS_ORIGINS` (comma-separated frontend
+  origins, trailing slashes stripped); unset = localhost:3000 default. `api.py` feeds it into
+  `CORSMiddleware`. Set `CORS_ORIGINS` on the Railway web service to the Vercel domain(s).
+- Architecture: **API + worker → Railway** (two services, one repo/image), **frontend → Vercel**
+  (root dir `frontend/`, `NEXT_PUBLIC_API_URL` → Railway URL), **DB + auth → Supabase**, **queue
+  → Upstash Redis**. Full operator steps (provision, env vars, invite users): step-by-step in
+  **`mylibrary-phase5-deploy-runbook.md`**.
+
+Next: Phase 6 first-run UX polish (test both first-run paths end-to-end on the live deployment).
 
 ## Locked decisions (do not relitigate)
 

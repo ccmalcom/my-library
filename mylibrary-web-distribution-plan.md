@@ -184,22 +184,35 @@ within cloud timeout limits. Revisit if they become bottlenecks at scale.
 
 ---
 
-## Phase 5 — Hosting / deployment
+## Phase 5 — Hosting / deployment  ⏳ ARTIFACTS LANDED (operator deploy pending)
+
+Code/config artifacts are in the repo; what remains is the operator deploy (provision Railway +
+Upstash + Vercel, set env vars, invite users) — fully scripted in
+**`mylibrary-phase5-deploy-runbook.md`**.
+
+Landed in-repo: `Dockerfile` (one 3.12-slim image for both Railway services), `start.sh` (web
+entrypoint: `alembic upgrade head` → uvicorn on `$PORT`; worker overrides the start command to
+`python -m arq mylibrary.worker.WorkerSettings`), `railway.json` (Dockerfile builder +
+restart policy), `.dockerignore`, an **unauthenticated `GET /healthz`** for the platform
+healthcheck (the existing `/health` needs a token), and **env-driven CORS**
+(`CORS_ORIGINS` → `config.cors_origins` → `CORSMiddleware`).
 
 **Architecture:**
-- **API (FastAPI + arq worker)** → Railway (web service + worker service, same repo)
-- **Frontend (Next.js)** → Vercel
+- **API (FastAPI + arq worker)** → Railway (web service + worker service, same repo/image)
+- **Frontend (Next.js)** → Vercel (root dir `frontend/`)
 - **Database + Auth** → Supabase
 - **Queue** → Upstash Redis (serverless, no idle cost)
 
 **Tasks:**
-- Add `Dockerfile` for the Python API
-- Add `Procfile` or Railway config with two processes: `web` (uvicorn) and `worker` (arq)
-- Set environment variables in Railway: `DATABASE_URL`, `ENCRYPTION_KEY`, `REDIS_URL`,
-  `GOOGLE_BOOKS_API_KEY`, `ANTHROPIC_API_KEY` (Chase's own key for admin use only, optional)
-- Deploy frontend to Vercel; set `NEXT_PUBLIC_API_URL` to the Railway API URL
-- Configure CORS on the FastAPI app to allow the Vercel domain
-- Set up a custom domain if desired
+- ✅ Add `Dockerfile` for the Python API
+- ✅ Railway config with two processes: `web` (start.sh → uvicorn) and `worker` (arq). One
+  Dockerfile; the worker service overrides the start command in the dashboard.
+- ☐ Set environment variables in Railway: `DATABASE_URL`, `ENCRYPTION_KEY`, `REDIS_URL`,
+  `SUPABASE_URL`, `GOOGLE_BOOKS_API_KEY`, `CORS_ORIGINS`, `ANTHROPIC_API_KEY` (Chase's own key
+  for admin use only, optional) — operator step, see runbook.
+- ☐ Deploy frontend to Vercel; set `NEXT_PUBLIC_API_URL` to the Railway API URL — operator step.
+- ✅ Configure CORS on the FastAPI app to allow the Vercel domain (now via `CORS_ORIGINS`).
+- ☐ Set up a custom domain if desired — optional operator step.
 
 ---
 

@@ -26,6 +26,9 @@ DEFAULT_MODEL = "claude-sonnet-4-6"
 # does not provoke 429s from Open Library / Google Books. Tune via MYLIBRARY_REQ_PER_SEC
 # or `enrich --rps`; the enrich summary's http block flags any rate-limiting.
 DEFAULT_REQ_PER_SEC = 8.0
+# Browser origins allowed to call the API in local dev. In hosted mode the Vercel domain(s)
+# are supplied via the CORS_ORIGINS env var (comma-separated) and replace this default.
+DEFAULT_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 
 
 @dataclass(frozen=True)
@@ -53,6 +56,7 @@ class Settings:
     supabase_jwt_secret: str | None  # legacy HS256 fallback (older Supabase projects)
     encryption_key: str | None  # base64 32-byte key for AES-256-GCM of per-user API keys
     redis_url: str | None       # Redis URL for arq job queue; unset = local BackgroundTask fallback
+    cors_origins: tuple[str, ...]  # allowed browser origins for the API (frontend domains)
 
     @property
     def db_url(self) -> str:
@@ -130,4 +134,20 @@ def get_settings() -> Settings:
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
         encryption_key=os.getenv("ENCRYPTION_KEY"),
         redis_url=os.getenv("REDIS_URL"),
+        cors_origins=_resolve_cors_origins(),
     )
+
+
+def _resolve_cors_origins() -> tuple[str, ...]:
+    """Allowed browser origins for the API.
+
+    `CORS_ORIGINS` is a comma-separated list of frontend origins (e.g. the Vercel
+    production + preview domains). Unset == local dev default (localhost:3000).
+    Trailing slashes are stripped; browsers send the Origin header without one and a
+    mismatched trailing slash silently breaks CORS.
+    """
+    raw = os.getenv("CORS_ORIGINS")
+    if not raw:
+        return DEFAULT_CORS_ORIGINS
+    origins = tuple(o.strip().rstrip("/") for o in raw.split(",") if o.strip())
+    return origins or DEFAULT_CORS_ORIGINS
