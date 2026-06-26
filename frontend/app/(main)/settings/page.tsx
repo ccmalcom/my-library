@@ -175,7 +175,7 @@ export default function SettingsPage() {
         setEmailError('Incorrect password.');
         return;
       }
-      const { error: updateError } = await supabase.auth.updateUser({ email: newEmail });
+      const { error: updateError } = await supabase.auth.updateUser({ email: newEmail.trim() });
       if (updateError) throw updateError;
       setEmailCurrentPassword('');
       setNewEmail('');
