@@ -38,7 +38,7 @@ function hash(s: string): number {
 export function tasteAccent(seed: string | null | undefined): string {
   if (!seed) return 'var(--accent)';
 
-  if (seed in ARCHETYPE_COLORS) return ARCHETYPE_COLORS[seed]!;
+  if (Object.prototype.hasOwnProperty.call(ARCHETYPE_COLORS, seed)) return ARCHETYPE_COLORS[seed]!;
 
   const cached = cache.get(seed);
   if (cached) return cached;
