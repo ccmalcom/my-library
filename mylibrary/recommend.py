@@ -363,6 +363,7 @@ def _assemble(
                 "year": cand.get("year"),
                 "isbn13": isbn,
                 "subjects": (cand.get("subjects") or [])[:8],
+                "description": cand.get("description"),
                 "cover_url": cand.get("cover_url"),
                 "catalog_source": cand.get("source"),
                 "catalog_id": cand.get("resolved_id"),
@@ -375,6 +376,8 @@ def _assemble(
                 existing["author"] = cand.get("author")
             if not existing.get("subjects") and cand.get("subjects"):
                 existing["subjects"] = (cand.get("subjects") or [])[:8]
+            if not existing.get("description") and cand.get("description"):
+                existing["description"] = cand.get("description")
 
     for cand, reason in metadata_pool:
         add(cand, reason, "metadata")
@@ -393,13 +396,17 @@ def _cap_pool(candidates: list[dict], *, cap: int) -> list[dict]:
     """Trim the candidate pool to `cap` without letting the (larger) metadata pool starve
     the Claude-seeded one. If we paid for seed queries, their candidates must actually
     reach the reranker — so reserve a share of the cap for seed-only books before metadata
-    fills the rest. 'both'-pool candidates are the most grounded and are always kept."""
+    fills the rest. 'both'-pool candidates are the most grounded and are always kept.
+    Within each bucket, candidates with a description are sorted first."""
     if len(candidates) <= cap:
         return candidates
 
-    both = [c for c in candidates if c["retrieval_pool"] == "both"]
-    meta = [c for c in candidates if c["retrieval_pool"] == "metadata"]
-    seed = [c for c in candidates if c["retrieval_pool"] == "claude_seed"]
+    def _desc_first(lst: list[dict]) -> list[dict]:
+        return sorted(lst, key=lambda c: 0 if c.get("description") else 1)
+
+    both = _desc_first([c for c in candidates if c["retrieval_pool"] == "both"])
+    meta = _desc_first([c for c in candidates if c["retrieval_pool"] == "metadata"])
+    seed = _desc_first([c for c in candidates if c["retrieval_pool"] == "claude_seed"])
 
     chosen = both[:cap]
     remaining = cap - len(chosen)
@@ -489,7 +496,12 @@ def _claude_rerank(
         out.append(cand)
 
     out.sort(key=lambda c: c["score"], reverse=True)
-    return out[:n]
+    # Prefer candidates with descriptions (better UX), but never drop below n if
+    # description-having candidates are scarce.
+    with_desc = [c for c in out if c.get("description")]
+    without_desc = [c for c in out if not c.get("description")]
+    prioritised = with_desc + without_desc
+    return prioritised[:n]
 
 
 # --- orchestrator ----------------------------------------------------------

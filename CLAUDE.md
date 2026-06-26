@@ -161,7 +161,30 @@ target must match the injected port); `NEXT_PUBLIC_API_URL` must include `https:
 at build time (rebuild after changing); `CORS_ORIGINS` must be the exact Vercel origin, no trailing
 slash.
 
-Next: Phase 6 first-run UX polish (test both first-run paths end-to-end on the live deployment).
+**Frontend redesign has landed** (`frontend-redesign` branch, all 6 phases complete per
+`frontend/REDESIGN_SPEC.md`):
+- **Warm-dark design system** — CSS variables in `globals.css` (`--bg #161412`, `--accent #FF5C3A`
+  persimmon, `--user-accent` per-user at runtime) mirrored into `tailwind.config.ts` as token
+  classes (`bg-base`, `text-accent`, etc.). Fonts: Bricolage Grotesque (display), Inter (body),
+  JetBrains Mono (data labels) loaded via `next/font/google`.
+- **`components/ui/`** — full primitive set: `Button` (variants + loading), `Card`, `Badge`,
+  `Input`, `Textarea`, `Field` (render-prop: wires `htmlFor` / `aria-describedby` / `aria-invalid`
+  automatically), `Spinner`, `StarRating` (keyboard-accessible radiogroup), `Modal` (focus trap +
+  Escape-to-close + `role="dialog"` + focus restore on unmount), `ToastProvider` + `useToast()`
+  hook (success/error/info; `role="alert"` for errors; auto-dismiss 4.5s; mounted in
+  `(main)/layout.tsx`).
+- **`TasteHero`** — per-user accent color (`lib/tasteAccent.ts` deterministic HSL from dominant
+  genre seed), top trait claim in hero display type, remaining traits as Badge chips.
+- **Accessibility** — modals trap focus + Escape + restore; `useReducedMotion()` in SwipeCard
+  disables rotation/spring; `motion-safe:animate-pulse/spin` on skeletons/spinners; `aria-live`
+  regions via toast roles; all cover `<img>` have `alt`; focus-visible rings on all interactive
+  elements; no `window.confirm` anywhere (ToReadTab uses inline two-step confirm).
+- **Enrich progress** — `enrich_library` now passes the full candidate count (including already-
+  enriched books) as `total`, so the progress bar shows `10/50` instead of `10/44` on re-runs.
+  Already-enriched books start as "done" in the denominator.
+
+Next: merge `frontend-redesign` → `main`, redeploy Vercel + Railway, then test both first-run
+paths (CSV import and manual add) end-to-end on the live deployment.
 
 ## Locked decisions (do not relitigate)
 
@@ -204,6 +227,8 @@ Next: Phase 6 first-run UX polish (test both first-run paths end-to-end on the l
   them, and floats cover-bearing hits to the front. Dedup uses an inline normalizer (not
   `enrich._normalize_title`) to avoid the enrich→catalog import cycle.
 - `enrich.py` — resolves each rated book, scores confidence, commits per book (resumable).
+  Progress callback uses the **full candidate count** as the denominator (already-enriched books
+  count as "done" from the start), so the UI shows `10/50` not `10/44` on re-runs.
 - `profile.py` — groups rated books by star tier, uses Claude tool-use to infer
   tier-distinguishing, evidence-cited taste traits. `extract_taste_profile` is the full
   cold-start build; `update_taste_profile` is the **incremental re-profile** — it ships
@@ -300,16 +325,18 @@ A hard reload rebuilds everything cleanly. Don't revert these to `router.push`/`
   (manual add: debounced `/catalog/search` → pick a real result → optional shelf + star
   rating + review text → `POST /books`; used by both the Library page and the setup wizard's
   manual branch), `ReprofileBanner` (app-wide; shows only when `/profile/status` reports `dirty`,
-  runs `/profile/update`), `SwipeCard`, `NavBar`, `SetupWizard` (the onboarding flow; takes an
-  optional `onComplete` so it can be used both at `/setup` and inline by the gate), and
-  `LibraryGate` (gates `/`, `/swipe`, `/library` behind having a library — renders `SetupWizard`
-  inline when `stats.total === 0`, otherwise the page; the decision is **latched** so ingesting
-  books mid-wizard doesn't swap it out, and `SetupWizard`'s final step calls `onComplete` to
-  advance to the page).
+  runs `/profile/update`), `SwipeCard`, `NavBar`, `TasteHero` (per-user taste statement; used on
+  dashboard and profile header), `SetupWizard` (the onboarding flow; takes an optional `onComplete`
+  so it can be used both at `/setup` and inline by the gate), and `LibraryGate` (gates `/`,
+  `/swipe`, `/library` behind having a library — renders `SetupWizard` inline when
+  `stats.total === 0`, otherwise the page; the decision is **latched** so ingesting books mid-wizard
+  doesn't swap it out, and `SetupWizard`'s final step calls `onComplete` to advance to the page).
   Both `BookEditModal` and `AddBookModal` enforce the **review-requires-rating** invariant
   client-side (save/add disabled + amber hint when review text is entered with a 0 rating),
   mirroring the API's 422 so the UI never round-trips a doomed request. The swipe
   `already_read` review prompt reuses `BookEditModal`, so it's covered too.
+  Both modals now use `components/ui/Modal` (focus trap + Escape + `role="dialog"` + focus
+  restore) and call `useToast()` for save/remove success+error feedback.
 
 Re-profiling is **never automatic** in the UI: editing a book marks the profile dirty
 (`feedback_updated_at` > `last_profiled_at`), the banner appears, and the user chooses

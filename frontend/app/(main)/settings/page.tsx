@@ -10,7 +10,7 @@ import {
   type ApiKeyStatus,
   type UserProfile,
 } from '@/lib/api';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, useToast } from '@/components/ui';
 
 function DangerAction({
   title,
@@ -94,6 +94,8 @@ const inputClass = [
 const labelClass = 'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
 
 export default function SettingsPage() {
+  const toast = useToast();
+
   const { data: status, isLoading } = useSWR<ApiKeyStatus>(
     API_KEY_STATUS_KEY,
     () => api.apiKeyStatus()
@@ -105,28 +107,22 @@ export default function SettingsPage() {
 
   const [key, setKey] = useState('');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   const [nameInput, setNameInput] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [nameSaved, setNameSaved] = useState(false);
 
   async function handleSaveName(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = nameInput.trim();
     if (!trimmed) return;
     setNameSaving(true);
-    setNameError(null);
-    setNameSaved(false);
     try {
       await api.setProfile(trimmed);
       setNameInput('');
-      setNameSaved(true);
+      toast.success('Display name saved.');
       await mutate(USER_PROFILE_KEY);
     } catch (e) {
-      setNameError(e instanceof Error ? e.message : 'Failed to save name.');
+      toast.error(e instanceof Error ? e.message : 'Failed to save name.');
     } finally {
       setNameSaving(false);
     }
@@ -138,15 +134,13 @@ export default function SettingsPage() {
     e.preventDefault();
     if (!key.trim()) return;
     setSaving(true);
-    setError(null);
-    setSaved(false);
     try {
       await api.setApiKey(key.trim());
       setKey('');
-      setSaved(true);
+      toast.success('API key saved.');
       await mutate(API_KEY_STATUS_KEY);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save key.');
+      toast.error(e instanceof Error ? e.message : 'Failed to save key.');
     } finally {
       setSaving(false);
     }
@@ -154,13 +148,12 @@ export default function SettingsPage() {
 
   async function handleRemove() {
     setSaving(true);
-    setError(null);
-    setSaved(false);
     try {
       await api.clearApiKey();
+      toast.success('API key removed.');
       await mutate(API_KEY_STATUS_KEY);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to remove key.');
+      toast.error(e instanceof Error ? e.message : 'Failed to remove key.');
     } finally {
       setSaving(false);
     }
@@ -192,13 +185,11 @@ export default function SettingsPage() {
               <input
                 type='text'
                 value={nameInput}
-                onChange={(e) => { setNameInput(e.target.value); setNameSaved(false); }}
+                onChange={(e) => setNameInput(e.target.value)}
                 placeholder={userProfile?.display_name ?? 'e.g. Alex'}
                 className={inputClass}
               />
             </div>
-            {nameError && <p className='text-sm text-danger'>{nameError}</p>}
-            {nameSaved && <p className='text-sm text-success'>Saved.</p>}
             <Button
               type='submit'
               loading={nameSaving}
@@ -235,7 +226,7 @@ export default function SettingsPage() {
               <input
                 type='password'
                 value={key}
-                onChange={(e) => { setKey(e.target.value); setSaved(false); }}
+                onChange={(e) => setKey(e.target.value)}
                 placeholder='sk-ant-...'
                 autoComplete='off'
                 className={[inputClass, 'font-mono'].join(' ')}
@@ -253,9 +244,6 @@ export default function SettingsPage() {
                 .
               </p>
             </div>
-
-            {error && <p className='text-sm text-danger'>{error}</p>}
-            {saved && <p className='text-sm text-success'>Saved.</p>}
 
             <div className='flex items-center gap-2'>
               <Button
