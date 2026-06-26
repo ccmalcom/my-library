@@ -356,6 +356,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
               <button
                 key={t.id}
                 type='button'
+                disabled={!truncated}
                 onClick={() => truncated && setExpandedChip(isExpanded ? null : t.id)}
                 className={truncated ? 'cursor-pointer' : 'cursor-default'}
               >
