@@ -53,8 +53,8 @@ def run_enrich_job(
     last_flush = [0]
 
     def on_progress(done: int, total: int, title: str, label: str) -> None:
-        # Flush at start (done==0 to seed total), end, or every 5 books.
-        if done == 0 or done == total or (done - last_flush[0]) >= 5:
+        # Flush at start ("starting" label or done==0 to seed total), end, or every 5 books.
+        if done == 0 or label == "starting" or done == total or (done - last_flush[0]) >= 5:
             last_flush[0] = done
             with session_scope() as s:
                 j = s.query(EnrichJob).filter(EnrichJob.job_id == job_id).first()
