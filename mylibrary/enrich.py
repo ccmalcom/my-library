@@ -98,11 +98,20 @@ def _score_candidates(book: Book, candidates: list[dict]) -> tuple[dict | None, 
 
 def _apply(enr: Enrichment, cand: dict, label: str, method: str) -> None:
     enr.resolved_source = cand.get("source")
-    enr.resolved_id = cand.get("resolved_id")
+    resolved_id = cand.get("resolved_id")
+    enr.resolved_id = resolved_id
     enr.subjects = cand.get("subjects") or []
     enr.series = cand.get("series")
     enr.series_position = cand.get("series_position")
-    enr.description = cand.get("description")
+    description = cand.get("description")
+    # OL Edition records (/books/...) rarely carry descriptions. When one is missing,
+    # try the Work record directly — for search candidates the resolved_id is already
+    # a Work key (/works/...); for ISBN candidates the edition→work hop is done in
+    # openlibrary_by_isbn, but as a safety net we also handle /works/ keys here.
+    if not description and cand.get("source") == "openlibrary" and resolved_id:
+        if resolved_id.startswith("/works/"):
+            description = catalog.openlibrary_work_description(resolved_id)
+    enr.description = description
     enr.cover_url = cand.get("cover_url")
     enr.confidence_label = label
     enr.resolution_confidence = _CONF[label]
