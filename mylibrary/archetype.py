@@ -231,18 +231,37 @@ def derive_archetype(*, user_id: str | None = None) -> "ArchetypeResult":
             messages=[{"role": "user", "content": prompt}],
         )
 
-        tool_input: dict = {}
+        tool_input: dict | None = None
         for block in message.content:
-            if block.type == "tool_use":
-                tool_input = block.input
+            if getattr(block, "type", None) == "tool_use":
+                tool_input = getattr(block, "input", None) or {}
                 break
+        if not tool_input:
+            raise RuntimeError(
+                "Claude response missing tool payload (record_archetype_scores)."
+            )
 
-        lens = float(tool_input["lens"])
-        engine = float(tool_input["engine"])
-        range_ = float(tool_input["range"])
-        resonance = float(tool_input["resonance"])
+        import math
+
+        def _clamp_axis(x: float) -> float:
+            if not math.isfinite(x):
+                raise RuntimeError("Claude returned a non-finite axis score.")
+            return max(-1.0, min(1.0, x))
+
+        try:
+            lens = _clamp_axis(float(tool_input["lens"]))
+            engine = _clamp_axis(float(tool_input["engine"]))
+            range_ = _clamp_axis(float(tool_input["range"]))
+            resonance = _clamp_axis(float(tool_input["resonance"]))
+        except (KeyError, TypeError, ValueError) as e:
+            raise RuntimeError(
+                f"Invalid archetype tool payload returned by Claude: {e}"
+            ) from e
+
         code = scores_to_code(lens, engine, range_, resonance)
-        archetype = ARCHETYPES[code]
+        archetype = ARCHETYPES.get(code)
+        if archetype is None:
+            raise RuntimeError(f"Unknown archetype code derived: {code}")
         now = utcnow()
 
         row = (
