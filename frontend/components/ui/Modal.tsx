@@ -65,6 +65,7 @@ export function Modal({ labelId, onClose, children, className }: ModalProps) {
         role='dialog'
         aria-modal='true'
         aria-labelledby={labelId}
+        tabIndex={-1}
         onKeyDown={handleKeyDown}
         className={className}
         onClick={(e) => e.stopPropagation()}
