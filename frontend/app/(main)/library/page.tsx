@@ -267,9 +267,9 @@ function ReadTab({ books }: { books: Book[] }) {
 type ToReadSort = 'date-desc' | 'date-asc' | 'title-asc';
 
 const TO_READ_SORT_OPTIONS: { value: ToReadSort; label: string }[] = [
-  { value: 'date-desc', label: 'Date added ↓' },
-  { value: 'date-asc',  label: 'Date added ↑' },
-  { value: 'title-asc', label: 'Title A–Z' },
+  { value: 'date-desc', label: 'Date added \u2193' },
+  { value: 'date-asc',  label: 'Date added \u2191' },
+  { value: 'title-asc', label: 'Title A\u2013Z' },
 ];
 
 function ToReadTab({ books }: { books: Book[] }) {
