@@ -129,7 +129,11 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
               {descExpanded ? desc : descShort}
             </p>
             {desc.length > 180 && (
+              <button
+                type='button'
+                onClick={() => setDescExpanded((v) => !v)}
                 className='mt-1 rounded text-xs text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base'
+              >
                 {descExpanded ? 'Show less' : 'Show more'}
               </button>
             )}
