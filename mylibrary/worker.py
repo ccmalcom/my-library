@@ -9,18 +9,80 @@ Run the worker alongside the API:
 The API enqueues jobs via `arq.create_pool`; the worker picks them up,
 runs the core function, and writes progress + final status to `EnrichJob`.
 
-Local / no-Redis mode: the API falls back to FastAPI BackgroundTasks and
-calls `run_enrich_job` directly (same function, no arq involved).
+Default (no-Redis) mode: the API runs enrichment as a FastAPI BackgroundTask
+calling `run_enrich_job` directly (same function, no arq involved). This is the
+SUPPORTED PRODUCTION path for the invite-only deployment. arq is opt-in: set
+REDIS_URL (and run this worker) only when you need a dedicated worker process.
 """
 
 from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import datetime
 
 from .config import get_settings
 from .db import EnrichJob, session_scope, utcnow
 from .enrich import enrich_library
+
+# --------------------------------------------------------------------------- #
+#  Dead-job safety nets                                                        #
+# --------------------------------------------------------------------------- #
+
+INTERRUPTED_MESSAGE = "Enrichment was interrupted, please retry."
+
+
+def recover_orphaned_jobs() -> int:
+    """Fail jobs left running/pending by a previous web process (called at startup).
+
+    In BackgroundTask mode (REDIS_URL unset) a redeploy/restart kills any in-flight
+    enrich, leaving an EnrichJob stuck 'running'/'pending' that the frontend polls
+    forever. A fresh boot means no in-process task survived, so we error them.
+
+    No-op when REDIS_URL is set: in arq mode the worker is a SEPARATE process and a
+    web restart must not touch jobs it is still running. Returns the count recovered.
+    """
+    if get_settings().redis_url is not None:
+        return 0
+    recovered = 0
+    with session_scope() as session:
+        jobs = (
+            session.query(EnrichJob)
+            .filter(EnrichJob.status.in_(("pending", "running")))
+            .all()
+        )
+        for job in jobs:
+            job.status = "error"
+            job.error = INTERRUPTED_MESSAGE
+            job.finished_at = utcnow()
+            recovered += 1
+    return recovered
+
+
+STALE_JOB_SECONDS = 1800  # 30 min: a 'running' job older than this is treated as dead
+
+
+def fail_if_stale(session, job: EnrichJob, *, now: datetime | None = None) -> EnrichJob:
+    """Mark a long-stuck 'running' job as errored. Idempotent; mutates + returns job.
+
+    Defense-in-depth for an in-process hang no restart cleared. No-op for non-running
+    jobs or jobs without a started_at. The caller's session_scope() commits the change.
+    """
+    if job.status != "running" or job.started_at is None:
+        return job
+    now = now or utcnow()
+    started = job.started_at
+    # db convention is naive UTC (see db.utcnow); strip tzinfo if a backend ever
+    # returns aware datetimes so the subtraction and stored finished_at stay naive.
+    if started.tzinfo is not None:
+        started = started.replace(tzinfo=None)
+    if now.tzinfo is not None:
+        now = now.replace(tzinfo=None)
+    if (now - started).total_seconds() > STALE_JOB_SECONDS:
+        job.status = "error"
+        job.error = INTERRUPTED_MESSAGE
+        job.finished_at = now
+    return job
 
 
 # --------------------------------------------------------------------------- #
