@@ -19,7 +19,7 @@ import json
 from datetime import datetime
 
 from .config import LOCAL_USER_ID, get_settings
-from .db import Book, ProfileMeta, TasteTrait, init_db, session_scope, utcnow
+from .db import Book, ProfileMeta, Recommendation, TasteTrait, init_db, session_scope, utcnow
 from .user_settings import resolve_anthropic_key
 
 _TOOL = {
@@ -133,8 +133,8 @@ def _book_payload(book: Book) -> dict:
 
 
 def build_tiers(session, user_id: str = LOCAL_USER_ID) -> dict[str, list[dict]]:
-    """Return `user_id`'s rated books and DNF books grouped into tiers, with enriched metadata."""
-    tiers: dict[str, list[dict]] = {"5": [], "4": [], "3": [], "<=2": [], "dnf": []}
+    """Return `user_id`'s rated books, DNF books, and noted rejected recs grouped into tiers."""
+    tiers: dict[str, list[dict]] = {"5": [], "4": [], "3": [], "<=2": [], "dnf": [], "rejected": []}
     for book in session.query(Book).filter(Book.user_id == user_id).all():
         if book.exclusive_shelf == "did-not-finish":
             tiers["dnf"].append(_book_payload(book))
@@ -143,6 +143,19 @@ def build_tiers(session, user_id: str = LOCAL_USER_ID) -> dict[str, list[dict]]:
         if r is None:
             continue
         tiers[_tier(r)].append(_book_payload(book))
+    # Rejected recommendations with a user note are explicit aversion signal.
+    for rec in (
+        session.query(Recommendation)
+        .filter(
+            Recommendation.user_id == user_id,
+            Recommendation.status == "rejected",
+            Recommendation.user_note.isnot(None),
+        )
+        .all()
+    ):
+        tiers["rejected"].append(
+            {"title": rec.title, "author": rec.author, "note": rec.user_note}
+        )
     return tiers
 
 
@@ -201,9 +214,13 @@ def _build_prompt(tiers: dict[str, list[dict]]) -> str:
         "these as the strongest possible aversion signal, even stronger than 1-2 star "
         "ratings, since the reader could not complete them. Any `review` field on a "
         "DNF book is direct first-person evidence explaining why they quit.\n\n"
+        "The `rejected` tier contains books the reader explicitly skipped when "
+        "recommended, with a note explaining why. These are direct first-person "
+        "statements of aversion — treat each `note` as reliable testimony about what "
+        "this reader does NOT want, and use them to sharpen aversion traits.\n\n"
         "Infer the reader's taste traits. Prioritize, in order:\n"
         "  1. What separates the 5-star books from the 4-star books?\n"
-        "  2. What do the lowest-rated books (<=2 and 3) and DNF books share? (these are 'aversion' traits)\n"
+        "  2. What do the lowest-rated books (<=2 and 3), DNF books, and rejected recommendations share? (these are 'aversion' traits)\n"
         "  3. Cross-cutting rewards visible across the high tiers.\n\n"
         "For EACH trait, split the evidence into two fields:\n"
         "  - `exhibits`: the books that SHOW the trait. These MUST match the polarity — "
@@ -258,7 +275,7 @@ def extract_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_I
         )
     with session_scope() as session:
         tiers = build_tiers(session, user_id)
-        total_rated = sum(len(v) for v in tiers.values())
+        total_rated = sum(len(v) for k, v in tiers.items() if k != "rejected")
         if total_rated == 0:
             raise RuntimeError(
                 "No rated books found. Run ingest (and enrich) first."

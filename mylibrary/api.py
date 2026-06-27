@@ -106,7 +106,7 @@ async def lifespan(_app: FastAPI):
     yield
 
     if _app.state.arq_pool is not None:
-        await _app.state.arq_pool.close()
+        await _app.state.arq_pool.aclose()
 
 
 app = FastAPI(
@@ -626,22 +626,26 @@ def feedback(rec_id: int, req: FeedbackRequest, user_id: UserId) -> RecFeedbackR
     Returns the affected library book (None for rejected).
     """
     valid = {"accepted", "rejected", "already_read"}
-    if req.status not in valid:
+    if req.status is not None and req.status not in valid:
         raise HTTPException(status_code=422, detail=f"status must be one of {valid}")
+    if req.status is None and req.user_note is None:
+        raise HTTPException(status_code=422, detail="Provide status and/or user_note")
 
     with session_scope() as session:
         rec = session.get(Recommendation, rec_id)
         if rec is None or rec.user_id != user_id:
             raise HTTPException(status_code=404, detail=f"Recommendation {rec_id} not found")
 
-        rec.status = req.status
+        if req.status is not None:
+            rec.status = req.status
         if req.user_note is not None:
             rec.user_note = req.user_note
 
         book_out: BookOut | None = None
-        if req.status == "accepted":
+        effective_status = req.status or rec.status
+        if effective_status == "accepted":
             book_out = _book_out(_ensure_library_book(session, rec, "to-read", user_id))
-        elif req.status == "already_read":
+        elif effective_status == "already_read":
             book_out = _book_out(_ensure_library_book(session, rec, "read", user_id))
 
         return RecFeedbackResult(
