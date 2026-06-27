@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { ExternalLink, BookOpen, X } from 'lucide-react';
 import { useState } from 'react';
-import { Modal, useToast } from '@/components/ui';
+import { Modal } from '@/components/ui';
 import { bookLinks } from '@/lib/bookLinks';
 import type { Book, Shelf } from '@/lib/api';
 
@@ -19,7 +19,6 @@ const LABEL_ID = 'book-detail-modal-title';
 
 export default function BookDetailModal({ book, onClose, onMove, onRemove, busy = false }: Props) {
   const [removeArmed, setRemoveArmed] = useState(false);
-  const toast = useToast();
 
   const links = bookLinks({ title: book.title, author: book.author, isbn13: book.isbn13 });
 
@@ -94,7 +93,7 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
             </p>
             {meta.length > 0 && (
               <p className='mt-1 font-mono text-xs text-faint'>
-                {meta.join(' · ')}
+                {meta.join(' \u00B7 ')}
               </p>
             )}
           </div>
