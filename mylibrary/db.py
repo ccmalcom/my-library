@@ -86,10 +86,7 @@ class Book(Base):
     # ProfileMeta.last_profiled_at to decide whether the taste profile is stale ("dirty").
     # Never set by Goodreads import — only by in-app feedback.
     feedback_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
-    # When True, this book is tracked in the library but excluded from taste profiling
-    # and archetype derivation. Useful for books the user wants to remember but whose
-    # ratings shouldn't skew their taste model (e.g. guilty pleasures, gifts, DNF-but-keep).
-    exclude_from_profile: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    exclude_from_profile: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     date_read: Mapped[date | None] = mapped_column(Date)
     date_added: Mapped[date | None] = mapped_column(Date)
