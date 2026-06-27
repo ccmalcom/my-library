@@ -245,7 +245,7 @@ export default function BookEditModal({
         >
           <span
             className={[
-              'absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white shadow transition-transform',
+              'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
               exclude ? 'translate-x-4' : 'translate-x-0.5',
             ].join(' ')}
           />
@@ -262,7 +262,7 @@ export default function BookEditModal({
         {queuePosition ? (
           <button
             type='button'
-            onClick={onFinishQueue}
+            onClick={onClose}
             disabled={busy}
             className='text-sm font-medium text-faint transition hover:text-muted disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded'
           >
@@ -294,7 +294,7 @@ export default function BookEditModal({
 
         {/* Right side: cancel + save */}
         <div className='flex gap-2'>
-          <Button variant='ghost' onClick={onClose} disabled={busy}>
+          <Button variant='ghost' onClick={queuePosition && onFinishQueue ? onFinishQueue : onClose} disabled={busy}>
             {queuePosition ? 'Skip' : 'Cancel'}
           </Button>
           <Button
