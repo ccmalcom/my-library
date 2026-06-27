@@ -30,7 +30,7 @@ def upgrade() -> None:
                 "exclude_from_profile",
                 sa.Boolean(),
                 nullable=False,
-                server_default="0",
+                server_default=sa.false(),
             ),
         )
 
