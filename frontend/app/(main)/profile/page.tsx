@@ -15,6 +15,7 @@ import {
 } from '@/lib/api';
 import { Button, Badge, Card, useToast } from '@/components/ui';
 import { TasteHero } from '@/components/TasteHero';
+import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
 
 const TRAITS_KEY   = 'profile-traits';
 const STATS_KEY    = 'stats';
@@ -425,8 +426,18 @@ export default function ProfilePage() {
     () => api.books({ limit: 500 })
   );
 
-  const bookMap    = new Map(allBooks.map((b) => [b.id, b.title]));
-  const isLoading  = traitsLoading || statsLoading || subjectsLoading;
+  const bookMap   = new Map(allBooks.map((b) => [b.id, b.title]));
+  const isLoading = traitsLoading || statsLoading || subjectsLoading;
+
+  // post-first-profile feedback prompt: fire once when profile data first loads
+  const { fire: fireProfilePrompt, modal: profileModal } = useFeedbackPrompt('post-first-profile');
+  const profileFiredRef = useRef(false);
+  useEffect(() => {
+    if (!traitsLoading && !profileFiredRef.current) {
+      profileFiredRef.current = true;
+      fireProfilePrompt();
+    }
+  }, [traitsLoading, fireProfilePrompt]);
 
   async function handleBuildProfile() {
     await api.runProfile();
@@ -453,6 +464,7 @@ export default function ProfilePage() {
           {subjects && <GenreSection subjects={subjects} />}
         </>
       )}
+      {profileModal}
     </div>
   );
 }

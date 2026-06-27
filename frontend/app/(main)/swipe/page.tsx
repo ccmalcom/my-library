@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { Inbox, Sparkles } from 'lucide-react';
@@ -8,6 +8,7 @@ import { api, type Book, type Recommendation, type Trait } from '@/lib/api';
 import { Button, Spinner, useToast } from '@/components/ui';
 import SwipeCard from '@/components/SwipeCard';
 import BookEditModal from '@/components/BookEditModal';
+import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
 
 export default function SwipePage() {
   const router = useRouter();
@@ -20,6 +21,25 @@ export default function SwipePage() {
 
   const { data: traits = [] } =
     useSWR<Trait[]>('profile', () => api.profile());
+
+  // post-recs feedback prompt: fire when the user actions the last card this session
+  const runId = recs?.[0]?.run_id;
+  const { fire: fireRecsPrompt, modal: recsModal } = useFeedbackPrompt('post-recs', runId);
+
+  const pending = (recs ?? [])
+    .filter((r) => r.status === 'served' && !dismissed.has(r.id))
+    .sort((a, b) => a.rank - b.rank);
+
+  const total = (recs ?? []).filter(
+    (r) => r.status === 'served' || dismissed.has(r.id)
+  );
+
+  useEffect(() => {
+    if (dismissed.size > 0 && pending.length === 0 && recs && recs.length > 0) {
+      fireRecsPrompt();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending.length, dismissed.size]);
 
   const handleDecide = useCallback(
     async (recId: number, status: 'accepted' | 'rejected' | 'already_read') => {
@@ -61,14 +81,6 @@ export default function SwipePage() {
     );
   }
 
-  const pending = (recs ?? [])
-    .filter((r) => r.status === 'served' && !dismissed.has(r.id))
-    .sort((a, b) => a.rank - b.rank);
-
-  const total = (recs ?? []).filter(
-    (r) => r.status === 'served' || dismissed.has(r.id)
-  );
-
   if ((recs ?? []).length === 0) {
     return (
       <div className='fade-in py-20 text-center space-y-4'>
@@ -102,6 +114,7 @@ export default function SwipePage() {
             onClose={() => setReviewing(null)}
           />
         )}
+        {recsModal}
       </>
     );
   }
@@ -187,6 +200,7 @@ export default function SwipePage() {
           onClose={() => setReviewing(null)}
         />
       )}
+      {recsModal}
     </>
   );
 }

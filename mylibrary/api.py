@@ -55,7 +55,9 @@ from .schemas import (
     EnrichJobOut,
     EnrichRequest,
     EnrichStartRequest,
+    FeedbackDismiss,
     FeedbackRequest,
+    FeedbackSubmit,
     IngestRequest,
     ProfileStatusOut,
     RecFeedbackResult,
@@ -66,6 +68,12 @@ from .schemas import (
     TraitUpdateRequest,
     UserProfileOut,
     UserProfileRequest,
+)
+from .feedback import (
+    VALID_CATEGORIES,
+    check_prompt_eligibility,
+    dismiss_prompt,
+    submit_feedback,
 )
 from .stats import dataset_stats
 from .user_settings import (
@@ -809,3 +817,87 @@ def get_archetype(user_id: UserId) -> ArchetypeOut:
             raise HTTPException(status_code=404, detail="No archetype derived yet")
         last_profiled_at = _get_last_profiled_at(session, user_id)
         return _archetype_out(row, last_profiled_at)
+
+
+# ---------------------------------------------------------------------------
+# Beta-feedback endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.post("/feedback", status_code=201)
+def post_feedback(req: FeedbackSubmit, user_id: UserId) -> dict:
+    """Submit user feedback (bug report, idea, confusing UX, or praise).
+
+    Validates category and body, inserts a Feedback row, and — for one-time
+    triggers — upserts a FeedbackPromptState row to 'submitted'.
+    """
+    category = req.category.lower().strip()
+    if category not in VALID_CATEGORIES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"category must be one of {sorted(VALID_CATEGORIES)}",
+        )
+    if not req.body or not req.body.strip():
+        raise HTTPException(status_code=422, detail="body must be a non-empty string")
+
+    trigger = req.trigger.lower().strip() if req.trigger else None
+    run_id = req.run_id.strip() if req.run_id else None
+    if trigger == "post-recs" and not run_id:
+        raise HTTPException(status_code=422, detail="run_id is required when trigger='post-recs'")
+
+    submit_feedback(
+        user_id,
+        category=category,
+        body=req.body,
+        trigger=trigger,
+        run_id=run_id,
+        page=req.page,
+        app_version=req.app_version,
+    )
+    return {}
+
+
+@app.get("/feedback/prompt")
+def get_feedback_prompt(
+    user_id: UserId,
+    trigger: str = Query(..., description="Which prompt surface to check"),
+    run_id: str | None = Query(None, description="Recommend run_id (post-recs only)"),
+) -> dict:
+    """Check whether a feedback prompt should be shown to the current user.
+
+    Returns `{ "show": true | false }`. Respects the global enable flag,
+    one-time trigger state, snooze windows, and the post-recs per-run signal.
+    """
+    trigger_norm = trigger.lower().strip()
+    run_id_norm = run_id.strip() if run_id else None
+    if trigger_norm == "post-recs" and not run_id_norm:
+        raise HTTPException(status_code=422, detail="run_id is required when trigger='post-recs'")
+
+    show = check_prompt_eligibility(user_id, trigger=trigger_norm, run_id=run_id_norm)
+    return {"show": show}
+
+
+@app.post("/feedback/dismiss", status_code=204)
+def post_feedback_dismiss(req: FeedbackDismiss, user_id: UserId) -> None:
+    """Record the user's dismiss decision for a feedback prompt.
+
+    mode=dont_ask  -> permanently silence this trigger (global off-switch).
+    mode=ask_later -> snooze for settings.feedback_snooze_hours hours.
+
+    Returns 204 No Content.
+    """
+    if req.mode not in {"ask_later", "dont_ask"}:
+        raise HTTPException(
+            status_code=422,
+            detail="mode must be 'ask_later' or 'dont_ask'",
+        )
+    trigger_norm = req.trigger.lower().strip()
+    run_id_norm = req.run_id.strip() if req.run_id else None
+    if trigger_norm == "post-recs" and req.mode == "ask_later" and not run_id_norm:
+        raise HTTPException(status_code=422, detail="run_id is required when trigger='post-recs' and mode='ask_later'")
+    dismiss_prompt(
+        user_id,
+        trigger=trigger_norm,
+        run_id=run_id_norm,
+        mode=req.mode,
+    )
