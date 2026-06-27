@@ -16,6 +16,7 @@ const SHELF_OPTIONS: { value: Shelf; label: string }[] = [
   { value: 'read', label: 'Read' },
   { value: 'currently-reading', label: 'Reading' },
   { value: 'to-read', label: 'To read' },
+  { value: 'did-not-finish', label: 'Did not finish' },
 ];
 
 const inputClass = [

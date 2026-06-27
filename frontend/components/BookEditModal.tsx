@@ -12,6 +12,7 @@ interface Props {
   queuePosition?: { index: number; total: number };
   onFinishQueue?: () => void;
   allowRemove?: boolean;
+  allowReviewWithoutRating?: boolean;
 }
 
 const inputClass = [
@@ -29,6 +30,7 @@ export default function BookEditModal({
   queuePosition,
   onFinishQueue,
   allowRemove,
+  allowReviewWithoutRating = false,
 }: Props) {
   const toast = useToast();
 
@@ -49,7 +51,7 @@ export default function BookEditModal({
   const reviewChanged       = review.trim() !== initialReview.trim();
   const dateChanged         = dateRead !== '' && dateRead !== initialDate;
   const dirty               = ratingChanged || reviewChanged || dateChanged;
-  const reviewWithoutRating = review.trim() !== '' && rating === 0;
+  const reviewWithoutRating = !allowReviewWithoutRating && review.trim() !== '' && rating === 0;
   const canSave             = dirty && !reviewWithoutRating;
 
   const desc = book.description ?? null;
