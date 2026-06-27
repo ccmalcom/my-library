@@ -54,7 +54,7 @@ class RecommendRequest(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    status: str  # "accepted" | "rejected"
+    status: str | None = None  # "accepted" | "rejected" | "already_read"; omit to update only user_note
     user_note: str | None = None
 
 

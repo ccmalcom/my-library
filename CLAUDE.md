@@ -407,6 +407,8 @@ when to spend the Claude call.
 
 ## Conventions / gotchas
 
+- **`Modal` component** (`components/ui/Modal.tsx`) takes `labelId` (ARIA string) + `onClose` + optional `className` — no `title` prop. Render the heading *inside* as a child with `id={labelId}`. Missing `className` leaves the dialog unstyled.
+
 - **No non-ASCII characters inside JS string literals in `.tsx` files.** Turbopack's
   JSX parser rejects them with "Expected '</', got 'ident'". Em dashes (`—`), curly
   quotes (`"` `"`), ellipses (`…`), etc. are fine in JSX *text nodes* (between tags)

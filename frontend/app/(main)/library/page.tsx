@@ -12,7 +12,7 @@ import {
   type Recommendation,
   type Shelf,
 } from '@/lib/api';
-import { Button, Badge, Card } from '@/components/ui';
+import { Button, Badge, Card, Modal } from '@/components/ui';
 import BookEditModal from '@/components/BookEditModal';
 import AddBookModal from '@/components/AddBookModal';
 
@@ -800,6 +800,31 @@ const REJECTED_SORT_OPTIONS: { value: RejectedSort; label: string }[] = [
 function RejectedTab({ recs }: { recs: Recommendation[] }) {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<RejectedSort>('date-desc');
+  const [editingNote, setEditingNote] = useState<Recommendation | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
+
+  function openNoteModal(rec: Recommendation) {
+    setEditingNote(rec);
+    setNoteText(rec.user_note ?? '');
+    setNoteError(null);
+  }
+
+  async function saveNote() {
+    if (!editingNote) return;
+    setSavingNote(true);
+    setNoteError(null);
+    try {
+      await api.feedback(editingNote.id, { user_note: noteText.trim() || null });
+      await mutate(REJECTED_KEY);
+      setEditingNote(null);
+    } catch (e) {
+      setNoteError(e instanceof Error ? e.message : 'Failed to save note.');
+    } finally {
+      setSavingNote(false);
+    }
+  }
 
   const filtered = recs
     .filter((r) => {
@@ -860,14 +885,70 @@ function RejectedTab({ recs }: { recs: Recommendation[] }) {
                   {rec.author ?? 'Unknown author'}
                   {rec.year ? ` · ${rec.year}` : ''}
                 </p>
-                {rec.rationale && (
+                {rec.user_note && (
+                  <p className='mt-1 text-xs text-faint line-clamp-2 italic'>{rec.user_note}</p>
+                )}
+                {!rec.user_note && rec.rationale && (
                   <p className='mt-1 text-xs text-faint line-clamp-2'>{rec.rationale}</p>
                 )}
+                <div className='mt-3'>
+                  <button
+                    type='button'
+                    onClick={() => openNoteModal(rec)}
+                    className={[
+                      'rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted',
+                      'transition hover:border-muted hover:text-text',
+                      'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                    ].join(' ')}
+                  >
+                    {rec.user_note ? 'Edit note' : 'Add note'}
+                  </button>
+                </div>
               </div>
               <Badge variant='danger'>skipped</Badge>
             </li>
           ))}
         </ul>
+      )}
+
+      {editingNote && (
+        <Modal
+          labelId='rejection-note-title'
+          onClose={() => setEditingNote(null)}
+          className='w-full max-w-md rounded-2xl border border-border bg-surface p-6'
+        >
+          <div className='space-y-4'>
+            <h2 id='rejection-note-title' className='text-base font-semibold text-text'>
+              {editingNote.user_note ? 'Edit rejection note' : 'Add rejection note'}
+            </h2>
+            <p className='text-sm text-muted'>
+              Why did you skip <span className='font-semibold text-text'>{editingNote.title}</span>? This helps the recommender learn your taste.
+            </p>
+            <textarea
+              aria-label='Rejection note'
+              className={[
+                'w-full rounded-lg border border-border bg-elevated px-3 py-2',
+                'text-sm text-text placeholder:text-faint',
+                'focus:outline-none focus:ring-1 focus:ring-accent',
+                'resize-none',
+              ].join(' ')}
+              rows={3}
+              placeholder='e.g. Not a fan of this genre, already read something similar...'
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              autoFocus
+            />
+            {noteError && <p className='text-xs text-danger'>{noteError}</p>}
+            <div className='flex justify-end gap-2'>
+              <Button variant='ghost' size='sm' onClick={() => setEditingNote(null)}>
+                Cancel
+              </Button>
+              <Button size='sm' loading={savingNote} onClick={saveNote}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

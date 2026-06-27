@@ -232,10 +232,15 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
         )
         .all()
     )
+    rejected_with_notes: list[dict] = []
     for r in rejected:
         library_keys.add(_dedup_key(r.title, r.author))
         if r.isbn13:
             library_isbns.add(r.isbn13)
+        if r.user_note:
+            rejected_with_notes.append(
+                {"title": r.title, "author": r.author, "note": r.user_note}
+            )
 
     loved.sort(key=lambda d: (d["rating"], d["read_year"] or 0), reverse=True)
     traits = (
@@ -259,6 +264,7 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
             }
             for t in traits
         ],
+        "rejected_with_notes": rejected_with_notes,
     }
 
 
@@ -459,16 +465,26 @@ def _claude_rerank(
     ]
     valid_trait_ids = {t["id"] for t in signal["traits"]}
     valid_book_ids = {b["id"] for b in signal["loved"]}
+    rejected_with_notes = signal.get("rejected_with_notes") or []
     profile_context = (
         "TASTE TRAITS (JSON):\n"
         + json.dumps(signal["traits"], ensure_ascii=False)
         + "\n\nLOVED BOOKS (JSON):\n"
         + json.dumps(signal["loved"][:_LOVED_SAMPLE], ensure_ascii=False)
+        + (
+            "\n\nREJECTED RECOMMENDATIONS WITH NOTES (JSON):\n"
+            "These are books the reader explicitly skipped with an explanation. Treat "
+            "each note as direct testimony about what to avoid — heavily penalize "
+            "candidates that share the same qualities.\n"
+            + json.dumps(rejected_with_notes, ensure_ascii=False)
+            if rejected_with_notes else ""
+        )
     )
     task_prompt = (
         f"Rank the best {n} candidates for this reader and explain each. Choose ONLY from "
         "the CANDIDATES list (cite each by its `idx`). Score 0..1 for fit. Penalize "
-        "anything that trips an aversion trait. Ground every pick in specific trait ids "
+        "anything that trips an aversion trait or resembles a rejected book's noted reason. "
+        "Ground every pick in specific trait ids "
         "and the library book ids it most resembles — use only ids that appear above.\n\n"
         "CANDIDATES (JSON):\n"
         + json.dumps(indexed, ensure_ascii=False)

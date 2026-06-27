@@ -91,8 +91,8 @@ export interface SubjectBreakdown {
 }
 
 export interface FeedbackRequest {
-  status: "accepted" | "rejected" | "already_read";
-  user_note?: string;
+  status?: "accepted" | "rejected" | "already_read";
+  user_note?: string | null;
 }
 
 /**
