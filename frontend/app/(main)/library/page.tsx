@@ -253,6 +253,7 @@ function ReadTab({ books }: { books: Book[] }) {
 
       {queue && queue[qIndex] && (
         <BookEditModal
+          key={queue[qIndex]!.id}
           book={queue[qIndex]!}
           listKey={READ_KEY}
           queuePosition={{ index: qIndex, total: queue.length }}
