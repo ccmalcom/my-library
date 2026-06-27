@@ -207,6 +207,25 @@ export interface UserProfile {
   display_name: string | null;
 }
 
+export interface FeedbackSubmit {
+  category: string;
+  body: string;
+  trigger?: string | null;
+  run_id?: string | null;
+  page?: string | null;
+  app_version?: string | null;
+}
+
+export interface FeedbackDismiss {
+  trigger: string;
+  run_id?: string | null;
+  mode: 'ask_later' | 'dont_ask';
+}
+
+export interface FeedbackPromptResponse {
+  show: boolean;
+}
+
 /**
  * Shared SWR key for the profile-status query, so any mutation (a re-rate/review)
  * can revalidate the re-profile banner via `mutate(PROFILE_STATUS_KEY)`.
@@ -422,6 +441,23 @@ export const api = {
       throw e;
     }
   },
+
+  // ── Feedback ──────────────────────────────────────────────────────────────
+  /** Submit general feedback (bug, idea, etc.). */
+  submitFeedback: (payload: FeedbackSubmit): Promise<void> =>
+    post<void>('/feedback', payload),
+
+  /** Check whether a feedback prompt should be shown. */
+  feedbackPrompt: (trigger: string, runId?: string): Promise<FeedbackPromptResponse> => {
+    const qs = new URLSearchParams();
+    qs.set('trigger', trigger);
+    if (runId !== undefined) qs.set('run_id', runId);
+    return get<FeedbackPromptResponse>(`/feedback/prompt?${qs.toString()}`);
+  },
+
+  /** Dismiss a feedback prompt. */
+  dismissFeedback: (payload: FeedbackDismiss): Promise<void> =>
+    post<void>('/feedback/dismiss', payload),
 
   // ── Destructive data removal ──────────────────────────────────────────────
   /** Drop the entire library (books + enrichments) and the derived taste profile/recs. */
