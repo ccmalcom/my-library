@@ -37,6 +37,7 @@ export interface Book {
   description?: string | null;
   confidence_label: string | null;
   resolution_confidence: number | null;
+  exclude_from_profile: boolean;
 }
 
 export interface Recommendation {
@@ -116,6 +117,8 @@ export interface BookFeedbackRequest {
   clear_review?: boolean;
   /** ISO date (YYYY-MM-DD) the book was read; omit to leave unchanged. */
   date_read?: string;
+  /** Exclude this book from taste profiling/archetype derivation; omit to leave unchanged. */
+  exclude_from_profile?: boolean;
 }
 
 export type Shelf = "to-read" | "currently-reading" | "read" | "did-not-finish";

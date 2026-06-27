@@ -7,7 +7,7 @@
 ## Shelves & data model
 
 - ✓ add "did not finish" (DNF) shelf
-- UI/DB - add 'do not use for profile' flag. Users may want to track some books but not have them included in the profile for recommendations. (relates to DNF: DNF books probably default to excluded-from-profile)
+- ✓ UI/DB - add 'do not use for profile' flag. Users may want to track some books but not have them included in the profile for recommendations. (relates to DNF: DNF books probably default to excluded-from-profile)
 - Make to-read shelf better: should have modal view, description/details, maybe link out to bookstores
   - Mobile pass for the new to-read modal + add-book modal (recent mobile work didn't cover these)
 

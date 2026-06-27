@@ -34,14 +34,16 @@ export default function BookEditModal({
 }: Props) {
   const toast = useToast();
 
-  const initialRating = book.effective_rating ?? 0;
-  const initialReview = book.app_review ?? '';
-  const initialDate   = book.date_read ?? '';
+  const initialRating   = book.effective_rating ?? 0;
+  const initialReview   = book.app_review ?? '';
+  const initialDate     = book.date_read ?? '';
+  const initialExclude  = book.exclude_from_profile ?? false;
 
   const [rating, setRating]         = useState(initialRating);
   const [hover, setHover]           = useState(0);
   const [review, setReview]         = useState(initialReview);
   const [dateRead, setDateRead]     = useState(initialDate);
+  const [exclude, setExclude]       = useState(initialExclude);
   const [saving, setSaving]         = useState(false);
   const [removeArmed, setRemoveArmed] = useState(false);
   const [removing, setRemoving]     = useState(false);
@@ -50,7 +52,8 @@ export default function BookEditModal({
   const ratingChanged       = rating !== initialRating;
   const reviewChanged       = review.trim() !== initialReview.trim();
   const dateChanged         = dateRead !== '' && dateRead !== initialDate;
-  const dirty               = ratingChanged || reviewChanged || dateChanged;
+  const excludeChanged      = exclude !== initialExclude;
+  const dirty               = ratingChanged || reviewChanged || dateChanged || excludeChanged;
   const reviewWithoutRating = !allowReviewWithoutRating && review.trim() !== '' && rating === 0;
   const canSave             = dirty && !reviewWithoutRating;
 
@@ -70,6 +73,7 @@ export default function BookEditModal({
       else req.review = review.trim();
     }
     if (dateChanged) req.date_read = dateRead;
+    if (excludeChanged) req.exclude_from_profile = exclude;
     try {
       await api.setBookFeedback(book.id, req);
       await Promise.all([mutate(listKey), mutate(PROFILE_STATUS_KEY)]);
@@ -206,6 +210,31 @@ export default function BookEditModal({
           onChange={(e) => setDateRead(e.target.value)}
           className='rounded-lg border border-border bg-base px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus-visible:ring-1 focus-visible:ring-accent [color-scheme:dark]'
         />
+      </div>
+
+      {/* Exclude from profile toggle */}
+      <div className='mb-5 flex items-start gap-3'>
+        <button
+          type='button'
+          role='switch'
+          aria-checked={exclude}
+          onClick={() => setExclude(!exclude)}
+          className={[
+            'relative mt-0.5 h-5 w-9 flex-shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+            exclude ? 'bg-accent' : 'bg-border',
+          ].join(' ')}
+        >
+          <span
+            className={[
+              'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+              exclude ? 'translate-x-4' : 'translate-x-0.5',
+            ].join(' ')}
+          />
+        </button>
+        <div>
+          <p className='text-sm font-medium text-text'>Exclude from taste profile</p>
+          <p className='text-xs text-faint'>Track this book without letting it influence your recommendations or reader archetype.</p>
+        </div>
       </div>
 
       {/* Footer actions */}
