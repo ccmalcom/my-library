@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from mylibrary import catalog, recommend
 from mylibrary.config import get_settings
-from mylibrary.db import Book, Enrichment, Recommendation, TasteTrait, session_scope
+from mylibrary.db import Book, Enrichment, ProfileMeta, Recommendation, TasteTrait, session_scope
+from mylibrary.db import utcnow
 
 
 # --- helpers ---------------------------------------------------------------
@@ -74,6 +75,12 @@ def _seed_library():
                 exhibits=[1],
                 contrasts=[],
                 inference_confidence=0.8,
+            )
+        )
+        session.add(
+            ProfileMeta(
+                last_profiled_at=utcnow(),
+                last_profile_kind="full",
             )
         )
 

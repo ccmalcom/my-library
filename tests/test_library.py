@@ -15,6 +15,7 @@ from mylibrary.db import Book, Enrichment, TasteTrait, session_scope
 from mylibrary.ingest import ingest_csv
 from mylibrary.library import (
     BookNotFoundError,
+    add_book,
     profile_status,
     remove_book,
     set_book_feedback,
@@ -313,3 +314,13 @@ def test_update_only_sends_changed_and_cited_books(monkeypatch):
         assert sorted(traits[0].exhibits) == sorted([dune, cited])
         assert get_profile_meta(session).last_profile_kind == "update"
     assert profile_status()["dirty"] is False
+
+
+def test_dnf_book_can_be_reviewed_without_rating():
+    """DNF books are exempt from the review-requires-rating invariant."""
+    book_id = add_book(title="Quit This One", author="Author X", shelf="to-read")
+    set_book_shelf(book_id, "did-not-finish")
+    # Should not raise — DNF books may carry a review without a rating
+    result = set_book_feedback(book_id, review="Couldn't get past chapter 2.")
+    assert result["app_review"] == "Couldn't get past chapter 2."
+    assert result["effective_rating"] is None

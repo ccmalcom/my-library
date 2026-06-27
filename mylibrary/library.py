@@ -194,7 +194,8 @@ def set_book_feedback(
         # A review can't exist without a rating. After applying the rating change above,
         # if the book carries a review but has no effective rating, reject — the rating can
         # be supplied in the same call. Clearing a review or date-only edits are unaffected.
-        if book.app_review and book.effective_rating is None:
+        # Exception: DNF books are exempt — a review on an unfinished book doesn't require a rating.
+        if book.app_review and book.effective_rating is None and book.exclusive_shelf != "did-not-finish":
             raise ValueError(
                 "A review requires a rating. Rate the book 1-5 (same update is fine) "
                 "before saving a review."
@@ -218,6 +219,10 @@ def set_book_shelf(book_id: int, shelf: str, *, user_id: str = LOCAL_USER_ID) ->
         book = session.get(Book, book_id)
         if book is None or book.user_id != user_id:
             raise BookNotFoundError(f"Book {book_id} not found.")
+        if shelf != "did-not-finish" and book.app_review and book.effective_rating is None:
+            raise ValueError(
+                "A review requires a rating. Rate the book 1-5 before moving it off did-not-finish."
+            )
         book.exclusive_shelf = shelf
         return _book_summary(book)
 
