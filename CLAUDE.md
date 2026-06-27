@@ -123,6 +123,11 @@ first-setup without minting a new account.
 - `POST /enrich/start` — creates an `EnrichJob` row, enqueues via arq when `REDIS_URL` is set,
   falls back to FastAPI `BackgroundTasks` otherwise (local dev needs no Redis). Rate-limited
   5/minute per user (SlowAPI). Returns `{job_id, status, ...}` immediately.
+  As of the efficiency pass, BackgroundTasks is the **intended production mode**
+  (invite-only scale): the Railway worker service + Upstash are retired and REDIS_URL
+  is unset. arq stays in the tree, dormant, for future horizontal scale. A web restart
+  mid-job is recovered by `worker.recover_orphaned_jobs()` at startup (gated on REDIS_URL
+  unset), and `worker.fail_if_stale` errors a job stuck 'running' past 30 min.
 - `GET /enrich/status/{job_id}` — returns live `EnrichJobOut` (status + progress + total).
   Frontend polls at 2s intervals until `status == 'done' | 'error'`.
 - `POST /enrich` kept for CLI / local tooling (synchronous, no rate limit).
@@ -153,6 +158,10 @@ first-setup without minting a new account.
   (root dir `frontend/`, `NEXT_PUBLIC_API_URL` → Railway URL), **DB + auth → Supabase**, **queue
   → Upstash Redis**. Full operator steps (provision, env vars, invite users): step-by-step in
   **`mylibrary-phase5-deploy-runbook.md`**.
+  **Efficiency pass (2026-06-26):** the worker service + Upstash Redis are retired for the
+  invite-only launch — a single Railway web service runs enrichment as a BackgroundTask. The
+  catalog cache lives on a Railway volume mounted at `/data` (`MYLIBRARY_DATA_DIR=/data`) so
+  it survives redeploys and is shared by enrich + recommend in the one process.
 
 **Phase 5 is LIVE (deployed 2026-06-26):** Vercel frontend → Railway web (uvicorn) + worker (arq)
 → Supabase Postgres/auth → Upstash Redis, serving end-to-end. Deploy gotchas recorded in the

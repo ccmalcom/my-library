@@ -75,7 +75,7 @@ from .user_settings import (
     set_anthropic_key,
     set_display_name,
 )
-from .worker import create_enrich_job, run_enrich_job
+from .worker import create_enrich_job, fail_if_stale, recover_orphaned_jobs, run_enrich_job
 
 def _rate_limit_key(request: Request) -> str:
     """Rate-limit key: the authenticated user_id (stashed on request.state by
@@ -93,6 +93,7 @@ async def lifespan(_app: FastAPI):
     Also initialise the arq Redis pool when REDIS_URL is configured.
     """
     init_db()
+    recover_orphaned_jobs()
 
     # Initialise the arq connection pool so routes can enqueue jobs.
     settings = get_settings()
@@ -344,9 +345,9 @@ async def enrich_start(
 ) -> EnrichJobOut:
     """Enqueue a library enrichment job and return its job_id for polling.
 
-    When REDIS_URL is configured the job runs in the arq worker process. Otherwise it
-    runs in a FastAPI BackgroundTask (fine for local single-user dev without Redis).
-    Poll GET /enrich/status/{job_id} until status is 'done' or 'error'.
+    By default (REDIS_URL unset) the job runs as a FastAPI BackgroundTask in this web
+    process -- the supported production mode. When REDIS_URL is configured it is handed
+    off to the arq worker instead. Poll GET /enrich/status/{job_id} until 'done'/'error'.
     """
     job_id = create_enrich_job(user_id)
 
@@ -361,7 +362,8 @@ async def enrich_start(
             limit=req.limit,
         )
     else:
-        # Local dev fallback: run in a BackgroundTask (same blocking function, no Redis)
+        # Default mode: run in a BackgroundTask (same blocking function, no Redis).
+        # On a mid-job web restart, recover_orphaned_jobs() fails the stranded row at boot.
         background_tasks.add_task(
             run_enrich_job,
             job_id=job_id,
@@ -389,6 +391,7 @@ def enrich_status(job_id: str, user_id: UserId) -> EnrichJobOut:
         )
         if job is None:
             raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found")
+        fail_if_stale(session, job)
         return EnrichJobOut.model_validate(job)
 
 
