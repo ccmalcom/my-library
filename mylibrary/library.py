@@ -219,6 +219,10 @@ def set_book_shelf(book_id: int, shelf: str, *, user_id: str = LOCAL_USER_ID) ->
         book = session.get(Book, book_id)
         if book is None or book.user_id != user_id:
             raise BookNotFoundError(f"Book {book_id} not found.")
+        if shelf != "did-not-finish" and book.app_review and book.effective_rating is None:
+            raise ValueError(
+                "A review requires a rating. Rate the book 1-5 before moving it off did-not-finish."
+            )
         book.exclusive_shelf = shelf
         return _book_summary(book)
 
