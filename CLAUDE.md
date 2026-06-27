@@ -367,6 +367,7 @@ leaks the previous user's / pre-wipe state into the next render (e.g. user B bri
 A's cached `stats`, or a cleared library still showing the dashboard) until a manual refresh.
 A hard reload rebuilds everything cleanly. Don't revert these to `router.push`/`replace`.
 
+- `lib/bookLinks.ts` — pure function `bookLinks(book)` returning `{ label, href }[]` for Amazon, Bookshop.org, and WorldCat. Uses ISBN13 when present, falls back to title+author search query.
 - `lib/api.ts` — the single typed fetch client. All calls go through it; `BASE` is
   `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`). Types here mirror the Pydantic
   schemas. `PROFILE_STATUS_KEY` is the shared SWR key for `/profile/status` so a mutation
@@ -388,7 +389,7 @@ A hard reload rebuilds everything cleanly. Don't revert these to `router.push`/`
   mismatch only, not real ones inside the app).
 - `components/` — `BookEditModal` (re-rate + review; diff-based save; optional
   `queuePosition`/`onFinishQueue` for the step-through review queue; opt-in `allowRemove` shows a
-  two-step "Remove" → `DELETE /books/{id}`, passed only by the Library row editor), `AddBookModal`
+  two-step "Remove" → `DELETE /books/{id}`, passed only by the Library row editor), `BookDetailModal` (read-only detail view for a To-Read book: cover, description, external "find it" links via `lib/bookLinks.ts`, shelf actions — all mutations passed as callbacks; used by `ToReadTab`), `AddBookModal`
   (manual add: debounced `/catalog/search` → pick a real result → optional shelf + star
   rating + review text → `POST /books`; used by both the Library page and the setup wizard's
   manual branch), `ReprofileBanner` (app-wide; shows only when `/profile/status` reports `dirty`,

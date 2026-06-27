@@ -16,7 +16,7 @@ const SHELF_OPTIONS: { value: Shelf; label: string }[] = [
   { value: 'read', label: 'Read' },
   { value: 'currently-reading', label: 'Reading' },
   { value: 'to-read', label: 'To read' },
-  { value: 'did-not-finish', label: 'Did not finish' },
+  { value: 'did-not-finish', label: 'DNF' },
 ];
 
 const inputClass = [
@@ -214,7 +214,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
             <span className='mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted'>
               Shelf
             </span>
-            <div className='flex gap-1 rounded-lg border border-border bg-elevated p-1'>
+            <div className='flex flex-wrap gap-1 rounded-lg border border-border bg-elevated p-1'>
               {SHELF_OPTIONS.map((o) => (
                 <button
                   key={o.value}
