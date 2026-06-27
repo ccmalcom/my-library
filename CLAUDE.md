@@ -113,7 +113,7 @@ are unset. The pieces:
 **Phase 4 (background jobs + rate limiting) has landed:**
 
 - `EnrichJob` table (`enrich_jobs`): tracks `(job_id, user_id, status, progress, total,
-started_at, finished_at, error)` — one row per `POST /enrich/start` call. Status moves
+  started_at, finished_at, error)` — one row per `POST /enrich/start` call. Status moves
   `pending → running → done | error`; `progress`/`total` are updated every 5 books from the
   `enrich_library` progress callback so the frontend can poll for real-time progress.
   Alembic migration: `0003_add_enrich_jobs` (revision `0003_enrich_jobs`, chains after `0002`
