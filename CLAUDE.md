@@ -367,6 +367,7 @@ leaks the previous user's / pre-wipe state into the next render (e.g. user B bri
 A's cached `stats`, or a cleared library still showing the dashboard) until a manual refresh.
 A hard reload rebuilds everything cleanly. Don't revert these to `router.push`/`replace`.
 
+- `lib/bookLinks.ts` — pure function `bookLinks(book)` returning `{ label, href }[]` for Amazon, Bookshop.org, and WorldCat. Uses ISBN13 when present, falls back to title+author search query.
 - `lib/api.ts` — the single typed fetch client. All calls go through it; `BASE` is
   `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`). Types here mirror the Pydantic
   schemas. `PROFILE_STATUS_KEY` is the shared SWR key for `/profile/status` so a mutation
@@ -388,7 +389,7 @@ A hard reload rebuilds everything cleanly. Don't revert these to `router.push`/`
   mismatch only, not real ones inside the app).
 - `components/` — `BookEditModal` (re-rate + review; diff-based save; optional
   `queuePosition`/`onFinishQueue` for the step-through review queue; opt-in `allowRemove` shows a
-  two-step "Remove" → `DELETE /books/{id}`, passed only by the Library row editor), `AddBookModal`
+  two-step "Remove" → `DELETE /books/{id}`, passed only by the Library row editor), `BookDetailModal` (read-only detail view for a To-Read book: cover, description, external "find it" links via `lib/bookLinks.ts`, shelf actions — all mutations passed as callbacks; used by `ToReadTab`), `AddBookModal`
   (manual add: debounced `/catalog/search` → pick a real result → optional shelf + star
   rating + review text → `POST /books`; used by both the Library page and the setup wizard's
   manual branch), `ReprofileBanner` (app-wide; shows only when `/profile/status` reports `dirty`,
@@ -554,10 +555,4 @@ python -m mylibrary.cli clear-profile    # drop traits + recs; keep books (-y to
 python -m mylibrary.cli clear-library    # drop books + enrichments + profile (clean reset)
 python -m mylibrary.cli delete-account   # drop ALL data incl. stored API key
 python -m mylibrary.cli profile-status  # is the profile stale vs. recent edits?
-python -m mylibrary.cli reprofile       # incremental re-profile (--full to rebuild)
-python -m mylibrary.cli recommend       # --n N; two-stage recs, needs ANTHROPIC_API_KEY
-python -m mylibrary.cli recs            # reprint the latest recommend run
-python -m mylibrary.cli stats
-python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
-python -m pytest                        # ingest + matching + catalog + recommender + fee
-```
+python -m mylibrary.cli reprofile       # incremental re-pro
