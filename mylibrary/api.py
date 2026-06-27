@@ -626,9 +626,11 @@ def feedback(rec_id: int, req: FeedbackRequest, user_id: UserId) -> RecFeedbackR
     Returns the affected library book (None for rejected).
     """
     valid = {"accepted", "rejected", "already_read"}
-    if req.status is not None and req.status not in valid:
+    status_provided = "status" in req.model_fields_set
+    user_note_provided = "user_note" in req.model_fields_set
+    if status_provided and req.status not in valid:
         raise HTTPException(status_code=422, detail=f"status must be one of {valid}")
-    if req.status is None and req.user_note is None:
+    if not status_provided and not user_note_provided:
         raise HTTPException(status_code=422, detail="Provide status and/or user_note")
 
     with session_scope() as session:
@@ -636,9 +638,9 @@ def feedback(rec_id: int, req: FeedbackRequest, user_id: UserId) -> RecFeedbackR
         if rec is None or rec.user_id != user_id:
             raise HTTPException(status_code=404, detail=f"Recommendation {rec_id} not found")
 
-        if req.status is not None:
+        if status_provided:
             rec.status = req.status
-        if req.user_note is not None:
+        if user_note_provided:
             rec.user_note = req.user_note
 
         book_out: BookOut | None = None

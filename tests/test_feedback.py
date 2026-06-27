@@ -175,6 +175,21 @@ def test_user_note_is_persisted():
         assert rec.user_note == "Already read this one."
 
 
+def test_user_note_can_be_cleared_with_null():
+    rec_id = _make_rec(user_note="Already read this one.")
+    with TestClient(app) as client:
+        resp = client.patch(
+            f"/recommendations/{rec_id}/feedback",
+            json={"user_note": None},
+        )
+    assert resp.status_code == 200
+    assert resp.json()["user_note"] is None
+
+    with session_scope() as session:
+        rec = session.get(Recommendation, rec_id)
+        assert rec.user_note is None
+
+
 def test_404_on_unknown_id():
     with TestClient(app) as client:
         resp = client.patch("/recommendations/99999/feedback", json={"status": "rejected"})
