@@ -456,8 +456,17 @@ export const api = {
   },
 
   /** Dismiss a feedback prompt. */
-  dismissFeedback: (payload: FeedbackDismiss): Promise<void> =>
-    post<void>('/feedback/dismiss', payload),
+  dismissFeedback: async (payload: FeedbackDismiss): Promise<void> => {
+    const res = await fetch(`${BASE}/feedback/dismiss`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(`POST /feedback/dismiss → ${res.status}: ${detail}`);
+    }
+  },
 
   // ── Destructive data removal ──────────────────────────────────────────────
   /** Drop the entire library (books + enrichments) and the derived taste profile/recs. */
