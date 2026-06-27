@@ -14,6 +14,7 @@ import {
 } from '@/lib/api';
 import { Button, Badge, Card, Modal } from '@/components/ui';
 import BookEditModal from '@/components/BookEditModal';
+import BookDetailModal from '@/components/BookDetailModal';
 import AddBookModal from '@/components/AddBookModal';
 
 const READ_KEY              = 'books-read';
@@ -279,7 +280,7 @@ function ToReadTab({ books }: { books: Book[] }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<Book | null>(null);
-  const [removeArmed, setRemoveArmed] = useState<number | null>(null);
+  const [detail, setDetail] = useState<Book | null>(null);
 
   const filtered = books
     .filter((b) => {
@@ -330,7 +331,6 @@ function ToReadTab({ books }: { books: Book[] }) {
       setActionError(e instanceof Error ? e.message : 'Failed to remove book.');
     } finally {
       setBusyId(null);
-      setRemoveArmed(null);
     }
   }
 
@@ -356,84 +356,30 @@ function ToReadTab({ books }: { books: Book[] }) {
       ) : (
         <ul className='space-y-3'>
           {filtered.map((book) => {
-            const busy = busyId === book.id;
-            const armed = removeArmed === book.id;
             return (
               <li
                 key={book.id}
-                className='flex gap-4 rounded-xl border border-border bg-surface p-4'
+                className='rounded-xl border border-border bg-surface'
               >
-                <CoverThumb book={book} size='md' />
-                <div className='min-w-0 flex-1'>
-                  <p className='truncate font-semibold text-text'>{book.title}</p>
-                  <p className='text-sm text-muted'>{book.author ?? 'Unknown author'}</p>
-                  {book.year_published && (
-                    <p className='font-mono text-xs text-faint'>{book.year_published}</p>
-                  )}
-                  <div className='mt-3 flex flex-wrap gap-2'>
-                    <button
-                      type='button'
-                      disabled={busy}
-                      onClick={() => moveTo(book, 'currently-reading')}
-                      className={[
-                        'rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted',
-                        'transition hover:border-muted hover:text-text disabled:opacity-50',
-                        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
-                      ].join(' ')}
-                    >
-                      Start reading
-                    </button>
-                    <button
-                      type='button'
-                      disabled={busy}
-                      onClick={() => moveTo(book, 'read', true)}
-                      className={[
-                        'rounded-md border border-success/40 bg-success/10 px-2.5 py-1 text-xs font-medium text-success',
-                        'transition hover:bg-success/20 disabled:opacity-50',
-                        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-success',
-                      ].join(' ')}
-                    >
-                      Mark finished
-                    </button>
-                    <button
-                      type='button'
-                      disabled={busy}
-                      onClick={() => moveTo(book, 'did-not-finish')}
-                      className={[
-                        'rounded-md border border-border px-2.5 py-1 text-xs font-medium text-faint',
-                        'transition hover:border-muted hover:text-text disabled:opacity-50',
-                        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
-                      ].join(' ')}
-                    >
-                      Did not finish
-                    </button>
-                    {armed ? (
-                      <button
-                        type='button'
-                        disabled={busy}
-                        onClick={() => remove(book)}
-                        className={[
-                          'rounded-md border border-danger/60 bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger',
-                          'transition hover:bg-danger/20 disabled:opacity-50',
-                        ].join(' ')}
-                      >
-                        {busy ? 'Removing...' : 'Confirm remove'}
-                      </button>
-                    ) : (
-                      <button
-                        type='button'
-                        disabled={busy}
-                        onClick={() => setRemoveArmed(book.id)}
-                        className={[
-                          'rounded-md border border-border px-2.5 py-1 text-xs font-medium text-faint',
-                          'transition hover:border-danger/60 hover:text-danger disabled:opacity-50',
-                        ].join(' ')}
-                      >
-                        Remove
-                      </button>
+                <button
+                  type='button'
+                  onClick={() => setDetail(book)}
+                  className={[
+                    'flex w-full gap-4 p-4 text-left',
+                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-xl',
+                    'hover:bg-elevated transition',
+                  ].join(' ')}
+                >
+                  <CoverThumb book={book} size='md' />
+                  <div className='min-w-0 flex-1'>
+                    <p className='truncate font-semibold text-text'>{book.title}</p>
+                    <p className='text-sm text-muted'>{book.author ?? 'Unknown author'}</p>
+                    {book.year_published && (
+                      <p className='font-mono text-xs text-faint'>{book.year_published}</p>
                     )}
+                    <p className='mt-1 text-xs text-faint'>Tap to view details</p>
                   </div>
-                </div>
+                </button>
               </li>
             );
           })}
@@ -445,6 +391,21 @@ function ToReadTab({ books }: { books: Book[] }) {
           book={reviewing}
           listKey={READ_KEY}
           onClose={() => { setReviewing(null); void Promise.all([mutate(TO_READ_KEY), mutate(READ_KEY)]); }}
+        />
+      )}
+      {detail && (
+        <BookDetailModal
+          book={detail}
+          onClose={() => setDetail(null)}
+          onMove={(book, shelf, thenReview) => {
+            setDetail(null);
+            void moveTo(book, shelf, thenReview);
+          }}
+          onRemove={(book) => {
+            setDetail(null);
+            void remove(book);
+          }}
+          busy={busyId === detail.id}
         />
       )}
     </div>
