@@ -133,9 +133,12 @@ def _book_payload(book: Book) -> dict:
 
 
 def build_tiers(session, user_id: str = LOCAL_USER_ID) -> dict[str, list[dict]]:
-    """Return `user_id`'s rated books grouped into rating tiers, with enriched metadata."""
-    tiers: dict[str, list[dict]] = {"5": [], "4": [], "3": [], "<=2": []}
+    """Return `user_id`'s rated books and DNF books grouped into tiers, with enriched metadata."""
+    tiers: dict[str, list[dict]] = {"5": [], "4": [], "3": [], "<=2": [], "dnf": []}
     for book in session.query(Book).filter(Book.user_id == user_id).all():
+        if book.exclusive_shelf == "did-not-finish":
+            tiers["dnf"].append(_book_payload(book))
+            continue
         r = book.effective_rating
         if r is None:
             continue
@@ -168,7 +171,7 @@ def mark_profiled(session, kind: str, user_id: str = LOCAL_USER_ID) -> None:
 def books_changed_since(
     session, since: datetime | None, user_id: str = LOCAL_USER_ID
 ) -> list[Book]:
-    """Rated books (of `user_id`) whose in-app rating/review changed after `since`.
+    """Rated books and DNF books (of `user_id`) whose in-app rating/review changed after `since`.
 
     `since=None` (never profiled) means every book carrying feedback is 'changed'.
     Unrated books are excluded — they don't participate in taste analysis.
@@ -178,22 +181,29 @@ def books_changed_since(
     )
     if since is not None:
         q = q.filter(Book.feedback_updated_at > since)
-    return [b for b in q.all() if b.effective_rating is not None]
+    return [
+        b for b in q.all()
+        if b.effective_rating is not None or b.exclusive_shelf == "did-not-finish"
+    ]
 
 
 def _build_prompt(tiers: dict[str, list[dict]]) -> str:
     counts = {k: len(v) for k, v in tiers.items()}
     return (
-        "Below is a reader's rated library, grouped by star rating. Each book has "
+        "Below is a reader's library, grouped by star rating and status. Each book has "
         "enriched metadata (subjects, year, length, series). Most books have no review "
         "text, so reason mainly from metadata + the rating tiers — but where a book "
         "carries a `review` field, those are the reader's own words: treat them as the "
         "strongest, most direct signal, above any metadata inference.\n\n"
         f"Tier sizes: {counts}. Note the heavy positive skew — 'loved it' has low "
         "discriminative power, so focus on what is genuinely distinguishing.\n\n"
+        "The `dnf` tier contains books the reader abandoned before finishing. Treat "
+        "these as the strongest possible aversion signal, even stronger than 1-2 star "
+        "ratings, since the reader could not complete them. Any `review` field on a "
+        "DNF book is direct first-person evidence explaining why they quit.\n\n"
         "Infer the reader's taste traits. Prioritize, in order:\n"
         "  1. What separates the 5-star books from the 4-star books?\n"
-        "  2. What do the lowest-rated books (<=2 and 3) share? (these are 'aversion' traits)\n"
+        "  2. What do the lowest-rated books (<=2 and 3) and DNF books share? (these are 'aversion' traits)\n"
         "  3. Cross-cutting rewards visible across the high tiers.\n\n"
         "For EACH trait, split the evidence into two fields:\n"
         "  - `exhibits`: the books that SHOW the trait. These MUST match the polarity — "
