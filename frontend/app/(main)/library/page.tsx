@@ -602,8 +602,8 @@ function CurrentlyReadingTab({ books }: { books: Book[] }) {
 type DnfSort = 'date-desc' | 'title-asc';
 
 const DNF_SORT_OPTIONS: { value: DnfSort; label: string }[] = [
-  { value: 'date-desc', label: 'Date added ↓' },
-  { value: 'title-asc', label: 'Title A–Z' },
+  { value: 'date-desc', label: 'Date added \u2193' },
+  { value: 'title-asc', label: 'Title A\u2013Z' },
 ];
 
 function DnfTab({ books }: { books: Book[] }) {
