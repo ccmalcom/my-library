@@ -891,9 +891,13 @@ def post_feedback_dismiss(req: FeedbackDismiss, user_id: UserId) -> None:
             status_code=422,
             detail="mode must be 'ask_later' or 'dont_ask'",
         )
+    trigger_norm = req.trigger.lower().strip()
+    run_id_norm = req.run_id.strip() if req.run_id else None
+    if trigger_norm == "post-recs" and req.mode == "ask_later" and not run_id_norm:
+        raise HTTPException(status_code=422, detail="run_id is required when trigger='post-recs' and mode='ask_later'")
     dismiss_prompt(
         user_id,
-        trigger=req.trigger,
-        run_id=req.run_id,
+        trigger=trigger_norm,
+        run_id=run_id_norm,
         mode=req.mode,
     )
