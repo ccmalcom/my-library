@@ -147,7 +147,7 @@ are unset. The pieces:
   Installs `requirements.txt`, copies the repo (frontend/data/venv excluded via `.dockerignore`),
   default `CMD` is `start.sh` (the web process).
 - `start.sh` — web entrypoint: `alembic upgrade head` then `uvicorn mylibrary.api:app --host
-0.0.0.0 --port $PORT`. **Only the web service runs this** — the worker service overrides its
+  0.0.0.0 --port $PORT`. **Only the web service runs this** — the worker service overrides its
   start command to `python -m arq mylibrary.worker.WorkerSettings` so migrations never race.
 - `railway.json` — pins the Dockerfile builder + an ON_FAILURE restart policy. Healthcheck path
   and the worker's start-command override are set per-service in the Railway dashboard (see the
