@@ -694,7 +694,14 @@ function DnfTab({ books }: { books: Book[] }) {
                 <CoverThumb book={book} size='md' />
                 <div className='min-w-0 flex-1'>
                   <p className='truncate font-semibold text-text'>{book.title}</p>
-                  <p className='text-sm text-muted'>{book.author ?? 'Unknown author'}</p>
+                  <div className='flex items-center gap-2'>
+                    <p className='text-sm text-muted'>{book.author ?? 'Unknown author'}</p>
+                    {book.exclude_from_profile && (
+                      <span className='rounded px-1.5 py-0.5 text-xs font-medium bg-border text-faint'>
+                        excluded
+                      </span>
+                    )}
+                  </div>
                   {book.app_review && (
                     <p className='mt-1 text-xs text-faint line-clamp-2 italic'>{book.app_review}</p>
                   )}

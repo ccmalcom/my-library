@@ -135,7 +135,9 @@ def _book_payload(book: Book) -> dict:
 def build_tiers(session, user_id: str = LOCAL_USER_ID) -> dict[str, list[dict]]:
     """Return `user_id`'s rated books, DNF books, and noted rejected recs grouped into tiers."""
     tiers: dict[str, list[dict]] = {"5": [], "4": [], "3": [], "<=2": [], "dnf": [], "rejected": []}
-    for book in session.query(Book).filter(Book.user_id == user_id).all():
+    for book in session.query(Book).filter(
+        Book.user_id == user_id, Book.exclude_from_profile == False  # noqa: E712
+    ).all():
         if book.exclusive_shelf == "did-not-finish":
             tiers["dnf"].append(_book_payload(book))
             continue
@@ -190,7 +192,9 @@ def books_changed_since(
     Unrated books are excluded — they don't participate in taste analysis.
     """
     q = session.query(Book).filter(
-        Book.user_id == user_id, Book.feedback_updated_at.isnot(None)
+        Book.user_id == user_id,
+        Book.feedback_updated_at.isnot(None),
+        Book.exclude_from_profile == False,  # noqa: E712
     )
     if since is not None:
         q = q.filter(Book.feedback_updated_at > since)

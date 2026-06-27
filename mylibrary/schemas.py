@@ -83,6 +83,7 @@ class BookFeedbackRequest(BaseModel):
     review: str | None = None
     clear_review: bool = False
     date_read: date | None = None
+    exclude_from_profile: bool | None = None  # None = leave unchanged
 
 
 class ShelfRequest(BaseModel):
@@ -162,6 +163,7 @@ class BookOut(BaseModel):
     description: str | None = None
     confidence_label: str | None = None
     resolution_confidence: float | None = None
+    exclude_from_profile: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

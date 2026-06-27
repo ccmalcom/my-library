@@ -510,6 +510,7 @@ def rate_or_review_book(book_id: int, req: BookFeedbackRequest, user_id: UserId)
             review=req.review,
             clear_review=req.clear_review,
             date_read=req.date_read,
+            exclude_from_profile=req.exclude_from_profile,
             user_id=user_id,
         )
     except BookNotFoundError as e:
