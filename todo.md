@@ -1,13 +1,11 @@
 # TODO
 
-## Quick wins
+## Beta Tester Support
 
-- ✓ add link to goodreads export help page in setup
+- the project is now in beta testing and is invite only. I have set up each account in supabase and have configured an anthropic key for each. I want to ensure that I am actually collecting feedback from the users who are testing, so we need to have a surface for that (maybe a banner with a modal linked?). Additionally, we should prompt users to submit feedback after certain actions are taken, or even just after a certain amount of time using the app.
 
 ## Shelves & data model
 
-- ✓ add "did not finish" (DNF) shelf
-- ✓ UI/DB - add 'do not use for profile' flag. Users may want to track some books but not have them included in the profile for recommendations. (relates to DNF: DNF books probably default to excluded-from-profile)
 - Make to-read shelf better: should have modal view, description/details, maybe link out to bookstores
   - Mobile pass for the new to-read modal + add-book modal (recent mobile work didn't cover these)
 

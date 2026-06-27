@@ -555,4 +555,10 @@ python -m mylibrary.cli clear-profile    # drop traits + recs; keep books (-y to
 python -m mylibrary.cli clear-library    # drop books + enrichments + profile (clean reset)
 python -m mylibrary.cli delete-account   # drop ALL data incl. stored API key
 python -m mylibrary.cli profile-status  # is the profile stale vs. recent edits?
-python -m mylibrary.cli reprofile       # incremental re-pro
+python -m mylibrary.cli reprofile       # incremental re-profile (--full to rebuild)
+python -m mylibrary.cli recommend       # --n N; two-stage recs, needs ANTHROPIC_API_KEY
+python -m mylibrary.cli recs            # reprint the latest recommend run
+python -m mylibrary.cli stats
+python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
+python -m pytest                        # ingest + matching + catalog + recommender + fee
+```
