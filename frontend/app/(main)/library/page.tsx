@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, Suspense } from 'react';
 import Image from 'next/image';
@@ -20,9 +20,10 @@ const READ_KEY              = 'books-read';
 const TO_READ_KEY           = 'books-to-read';
 const CURRENTLY_READING_KEY = 'books-currently-reading';
 const REJECTED_KEY          = 'recs-rejected';
+const DNF_KEY               = 'books-dnf';
 
 const STARS = [5, 4, 3, 2, 1] as const;
-type Tab = 'read' | 'to-read' | 'currently-reading' | 'rejected';
+type Tab = 'read' | 'to-read' | 'currently-reading' | 'did-not-finish' | 'rejected';
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
@@ -310,7 +311,7 @@ function ToReadTab({ books }: { books: Book[] }) {
     setActionError(null);
     try {
       await api.setBookShelf(book.id, shelf);
-      await Promise.all([mutate(TO_READ_KEY), mutate(READ_KEY), mutate(CURRENTLY_READING_KEY)]);
+      await Promise.all([mutate(TO_READ_KEY), mutate(READ_KEY), mutate(CURRENTLY_READING_KEY), mutate(DNF_KEY)]);
       if (thenReview) setReviewing(book);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to move book.');
@@ -393,6 +394,18 @@ function ToReadTab({ books }: { books: Book[] }) {
                       ].join(' ')}
                     >
                       Mark finished
+                    </button>
+                    <button
+                      type='button'
+                      disabled={busy}
+                      onClick={() => moveTo(book, 'did-not-finish')}
+                      className={[
+                        'rounded-md border border-border px-2.5 py-1 text-xs font-medium text-faint',
+                        'transition hover:border-muted hover:text-text disabled:opacity-50',
+                        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                      ].join(' ')}
+                    >
+                      Did not finish
                     </button>
                     {armed ? (
                       <button
@@ -485,7 +498,7 @@ function CurrentlyReadingTab({ books }: { books: Book[] }) {
     setActionError(null);
     try {
       await api.setBookShelf(book.id, shelf);
-      await Promise.all([mutate(CURRENTLY_READING_KEY), mutate(TO_READ_KEY), mutate(READ_KEY)]);
+      await Promise.all([mutate(CURRENTLY_READING_KEY), mutate(TO_READ_KEY), mutate(READ_KEY), mutate(DNF_KEY)]);
       if (thenReview) setReviewing(book);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to move book.');
@@ -552,6 +565,18 @@ function CurrentlyReadingTab({ books }: { books: Book[] }) {
                     >
                       Put back
                     </button>
+                    <button
+                      type='button'
+                      disabled={busy}
+                      onClick={() => moveTo(book, 'did-not-finish')}
+                      className={[
+                        'rounded-md border border-border px-2.5 py-1 text-xs font-medium text-faint',
+                        'transition hover:border-muted hover:text-text disabled:opacity-50',
+                        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                      ].join(' ')}
+                    >
+                      Did not finish
+                    </button>
                   </div>
                 </div>
                 <Badge variant='accent'>reading</Badge>
@@ -566,6 +591,197 @@ function CurrentlyReadingTab({ books }: { books: Book[] }) {
           book={reviewing}
           listKey={READ_KEY}
           onClose={() => { setReviewing(null); void Promise.all([mutate(CURRENTLY_READING_KEY), mutate(READ_KEY)]); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Did Not Finish tab ────────────────────────────────────────────────────────
+
+type DnfSort = 'date-desc' | 'title-asc';
+
+const DNF_SORT_OPTIONS: { value: DnfSort; label: string }[] = [
+  { value: 'date-desc', label: 'Date added ↓' },
+  { value: 'title-asc', label: 'Title A–Z' },
+];
+
+function DnfTab({ books }: { books: Book[] }) {
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<DnfSort>('date-desc');
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [addingNote, setAddingNote] = useState<Book | null>(null);
+  const [reviewing, setReviewing] = useState<Book | null>(null);
+  const [removeArmed, setRemoveArmed] = useState<number | null>(null);
+
+  const filtered = books
+    .filter((b) => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return b.title?.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q);
+    })
+    .slice()
+    .sort((a, b) => {
+      switch (sort) {
+        case 'date-desc': {
+          if (a.date_added && b.date_added) return b.date_added.localeCompare(a.date_added);
+          if (a.date_added) return -1;
+          if (b.date_added) return 1;
+          return (a.title ?? '').localeCompare(b.title ?? '');
+        }
+        case 'title-asc': return (a.title ?? '').localeCompare(b.title ?? '');
+      }
+    });
+
+  async function moveTo(book: Book, shelf: Shelf, thenReview = false) {
+    setBusyId(book.id);
+    setActionError(null);
+    try {
+      await api.setBookShelf(book.id, shelf);
+      await Promise.all([mutate(DNF_KEY), mutate(TO_READ_KEY), mutate(READ_KEY), mutate(CURRENTLY_READING_KEY)]);
+      if (thenReview) setReviewing(book);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Failed to move book.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function remove(book: Book) {
+    setBusyId(book.id);
+    setActionError(null);
+    try {
+      await api.removeBook(book.id);
+      await mutate(DNF_KEY);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Failed to remove book.');
+    } finally {
+      setBusyId(null);
+      setRemoveArmed(null);
+    }
+  }
+
+  if (books.length === 0) {
+    return (
+      <div className='py-16 text-center text-faint'>
+        No abandoned books yet. Move a book here from Currently Reading or To Read.
+      </div>
+    );
+  }
+
+  return (
+    <div className='space-y-5'>
+      <div className='flex flex-wrap items-center gap-2'>
+        <SearchInput value={search} onChange={setSearch} />
+        <SortSelect value={sort} onChange={setSort} options={DNF_SORT_OPTIONS} />
+      </div>
+
+      {actionError && <p className='text-sm text-danger'>{actionError}</p>}
+
+      {filtered.length === 0 ? (
+        <p className='py-12 text-center text-faint'>No books match your search.</p>
+      ) : (
+        <ul className='space-y-3'>
+          {filtered.map((book) => {
+            const busy = busyId === book.id;
+            const armed = removeArmed === book.id;
+            return (
+              <li
+                key={book.id}
+                className='flex gap-4 rounded-xl border border-border bg-surface p-4'
+              >
+                <CoverThumb book={book} size='md' />
+                <div className='min-w-0 flex-1'>
+                  <p className='truncate font-semibold text-text'>{book.title}</p>
+                  <p className='text-sm text-muted'>{book.author ?? 'Unknown author'}</p>
+                  {book.app_review && (
+                    <p className='mt-1 text-xs text-faint line-clamp-2 italic'>{book.app_review}</p>
+                  )}
+                  <div className='mt-3 flex flex-wrap gap-2'>
+                    <button
+                      type='button'
+                      disabled={busy}
+                      onClick={() => moveTo(book, 'to-read')}
+                      className={[
+                        'rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted',
+                        'transition hover:border-muted hover:text-text disabled:opacity-50',
+                        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                      ].join(' ')}
+                    >
+                      Try again
+                    </button>
+                    <button
+                      type='button'
+                      disabled={busy}
+                      onClick={() => moveTo(book, 'read', true)}
+                      className={[
+                        'rounded-md border border-success/40 bg-success/10 px-2.5 py-1 text-xs font-medium text-success',
+                        'transition hover:bg-success/20 disabled:opacity-50',
+                        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-success',
+                      ].join(' ')}
+                    >
+                      Finished it
+                    </button>
+                    <button
+                      type='button'
+                      disabled={busy}
+                      onClick={() => setAddingNote(book)}
+                      className={[
+                        'rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted',
+                        'transition hover:border-muted hover:text-text disabled:opacity-50',
+                        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                      ].join(' ')}
+                    >
+                      {book.app_review ? 'Edit note' : 'Add note'}
+                    </button>
+                    {armed ? (
+                      <button
+                        type='button'
+                        disabled={busy}
+                        onClick={() => remove(book)}
+                        className={[
+                          'rounded-md border border-danger/60 bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger',
+                          'transition hover:bg-danger/20 disabled:opacity-50',
+                        ].join(' ')}
+                      >
+                        {busy ? 'Removing...' : 'Confirm remove'}
+                      </button>
+                    ) : (
+                      <button
+                        type='button'
+                        disabled={busy}
+                        onClick={() => setRemoveArmed(book.id)}
+                        className={[
+                          'rounded-md border border-border px-2.5 py-1 text-xs font-medium text-faint',
+                          'transition hover:border-danger/60 hover:text-danger disabled:opacity-50',
+                        ].join(' ')}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {addingNote && (
+        <BookEditModal
+          book={addingNote}
+          listKey={DNF_KEY}
+          allowReviewWithoutRating
+          onClose={() => { setAddingNote(null); void mutate(DNF_KEY); }}
+        />
+      )}
+
+      {reviewing && (
+        <BookEditModal
+          book={reviewing}
+          listKey={READ_KEY}
+          onClose={() => { setReviewing(null); void Promise.all([mutate(DNF_KEY), mutate(READ_KEY)]); }}
         />
       )}
     </div>
@@ -664,7 +880,7 @@ function LibraryInner() {
   const router = useRouter();
   const rawTab = searchParams.get('tab') ?? 'read';
   const activeTab: Tab = (
-    ['read', 'to-read', 'currently-reading', 'rejected'] as const
+    ['read', 'to-read', 'currently-reading', 'did-not-finish', 'rejected'] as const
   ).includes(rawTab as Tab)
     ? (rawTab as Tab)
     : 'read';
@@ -684,6 +900,7 @@ function LibraryInner() {
       mutate(READ_KEY),
       mutate(TO_READ_KEY),
       mutate(CURRENTLY_READING_KEY),
+      mutate(DNF_KEY),
       mutate(PROFILE_STATUS_KEY),
       mutate('stats', api.stats(), { revalidate: false }),
     ]);
@@ -701,15 +918,20 @@ function LibraryInner() {
     CURRENTLY_READING_KEY,
     () => api.books({ shelf: 'currently-reading', limit: 500 })
   );
+  const { data: dnfBooks = [], isLoading: dnfLoading } = useSWR<Book[]>(
+    DNF_KEY,
+    () => api.books({ shelf: 'did-not-finish', limit: 500 })
+  );
   const { data: rejectedRecs = [], isLoading: recsLoading } = useSWR<Recommendation[]>(
     REJECTED_KEY,
     () => api.rejectedRecs()
   );
 
   const tabs: { id: Tab; label: string; count: number }[] = [
-    { id: 'read',              label: 'Read',             count: readBooks.length },
+    { id: 'read',              label: 'Read',              count: readBooks.length },
     { id: 'currently-reading', label: 'Currently Reading', count: currentlyReadingBooks.length },
     { id: 'to-read',           label: 'To Read',           count: toReadBooks.length },
+    { id: 'did-not-finish',    label: 'Did Not Finish',    count: dnfBooks.length },
     { id: 'rejected',          label: 'Rejected',          count: rejectedRecs.length },
   ];
 
@@ -717,6 +939,7 @@ function LibraryInner() {
     readLoading ||
     toReadLoading ||
     currentlyReadingLoading ||
+    (activeTab === 'did-not-finish' && dnfLoading) ||
     (activeTab === 'rejected' && recsLoading);
 
   return (
@@ -774,6 +997,7 @@ function LibraryInner() {
           {activeTab === 'read'              && <ReadTab              books={readBooks} />}
           {activeTab === 'currently-reading' && <CurrentlyReadingTab  books={currentlyReadingBooks} />}
           {activeTab === 'to-read'           && <ToReadTab            books={toReadBooks} />}
+          {activeTab === 'did-not-finish'    && <DnfTab               books={dnfBooks} />}
           {activeTab === 'rejected'          && <RejectedTab          recs={rejectedRecs} />}
         </>
       )}
@@ -804,3 +1028,5 @@ export default function LibraryPage() {
     </Suspense>
   );
 }
+
+
