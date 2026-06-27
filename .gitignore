@@ -19,3 +19,8 @@ venv/
 #UI Test
 
 frontend/app/ui-test/
+
+#claude docs
+docs/
+.superpowers/
+.vscode/
