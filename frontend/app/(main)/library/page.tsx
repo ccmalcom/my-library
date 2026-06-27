@@ -925,6 +925,7 @@ function RejectedTab({ recs }: { recs: Recommendation[] }) {
               Why did you skip <span className='font-semibold text-text'>{editingNote.title}</span>? This helps the recommender learn your taste.
             </p>
             <textarea
+              aria-label='Rejection note'
               className={[
                 'w-full rounded-lg border border-border bg-elevated px-3 py-2',
                 'text-sm text-text placeholder:text-faint',
