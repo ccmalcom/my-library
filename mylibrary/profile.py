@@ -436,7 +436,10 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
 
     with session_scope() as session:
         changed = books_changed_since(session, since, user_id)
-        # Excluded books must not be sent to Claude for profiling; filter them out.
+        # Excluded books must not be sent to Claude for profiling — only include
+        # non-excluded books as the "changed" signal for the incremental update.
+        # Keeping excluded books in `books_changed_since` (above) is intentional:
+        # it ensures toggling a book's exclude flag dirties the profile.
         # If the only changes are exclusion toggles, a full rebuild is required to
         # properly drop their signal from the existing traits.
         changed_ids = [b.id for b in changed if not b.exclude_from_profile]
