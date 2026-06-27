@@ -186,15 +186,16 @@ def mark_profiled(session, kind: str, user_id: str = LOCAL_USER_ID) -> None:
 def books_changed_since(
     session, since: datetime | None, user_id: str = LOCAL_USER_ID
 ) -> list[Book]:
-    """Rated books and DNF books (of `user_id`) whose in-app rating/review changed after `since`.
+    """Rated books and DNF books (of `user_id`) whose in-app feedback changed after `since`.
 
-    `since=None` (never profiled) means every book carrying feedback is 'changed'.
-    Unrated books are excluded — they don't participate in taste analysis.
+    Includes books toggled to/from `exclude_from_profile` so that those changes
+    dirty the profile. `since=None` (never profiled) means every book carrying
+    feedback is 'changed'. Unrated books are excluded — they don't participate
+    in taste analysis.
     """
     q = session.query(Book).filter(
         Book.user_id == user_id,
         Book.feedback_updated_at.isnot(None),
-        Book.exclude_from_profile == False,  # noqa: E712
     )
     if since is not None:
         q = q.filter(Book.feedback_updated_at > since)
@@ -435,15 +436,23 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
 
     with session_scope() as session:
         changed = books_changed_since(session, since, user_id)
-        if not changed:
-            return {
-                "mode": "update",
-                "changed_books": 0,
-                "traits_before": len(existing),
-                "traits_after": len(existing),
-                "note": "Profile already up to date — no rating/review changes since last build.",
-                "model": settings.model,
-            }
+        # Excluded books must not be sent to Claude for profiling; filter them out.
+        # If the only changes are exclusion toggles, a full rebuild is required to
+        # properly drop their signal from the existing traits.
+        changed_ids = [b.id for b in changed if not b.exclude_from_profile]
+        if not changed_ids:
+            if not changed:
+                return {
+                    "mode": "update",
+                    "changed_books": 0,
+                    "traits_before": len(existing),
+                    "traits_after": len(existing),
+                    "note": "Profile already up to date — no rating/review changes since last build.",
+                    "model": settings.model,
+                }
+            # Only exclusion toggles changed; incremental update cannot remove their
+            # signal, so fall back to a full rebuild.
+            return extract_taste_profile(max_tokens=max_tokens, user_id=user_id)
 
         # Serialize the current traits and gather the books they cite.
         current_rows = (
@@ -466,8 +475,6 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
         for t in current_rows:
             cited_ids.update(t.exhibits or [])
             cited_ids.update(t.contrasts or [])
-
-        changed_ids = [b.id for b in changed]
         wanted_ids = cited_ids.union(changed_ids)
 
         books = {
