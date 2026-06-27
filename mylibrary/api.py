@@ -831,7 +831,7 @@ def post_feedback(req: FeedbackSubmit, user_id: UserId) -> dict:
     Validates category and body, inserts a Feedback row, and — for one-time
     triggers — upserts a FeedbackPromptState row to 'submitted'.
     """
-    category = req.category.lower()
+    category = req.category.lower().strip()
     if category not in VALID_CATEGORIES:
         raise HTTPException(
             status_code=422,
@@ -840,12 +840,17 @@ def post_feedback(req: FeedbackSubmit, user_id: UserId) -> dict:
     if not req.body or not req.body.strip():
         raise HTTPException(status_code=422, detail="body must be a non-empty string")
 
+    trigger = req.trigger.lower().strip() if req.trigger else None
+    run_id = req.run_id.strip() if req.run_id else None
+    if trigger == "post-recs" and not run_id:
+        raise HTTPException(status_code=422, detail="run_id is required when trigger='post-recs'")
+
     submit_feedback(
         user_id,
         category=category,
         body=req.body,
-        trigger=req.trigger,
-        run_id=req.run_id,
+        trigger=trigger,
+        run_id=run_id,
         page=req.page,
         app_version=req.app_version,
     )
