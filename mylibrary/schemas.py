@@ -255,5 +255,25 @@ class ArchetypeOut(BaseModel):
     is_stale: bool       # True when derived_at < ProfileMeta.last_profiled_at
 
 
+class FeedbackSubmit(BaseModel):
+    """Body for POST /feedback -- user-submitted bug/idea/confusing/praise."""
+
+    category: str
+    body: str
+    trigger: str | None = None
+    run_id: str | None = None
+    page: str | None = None
+    app_version: str | None = None
+
+
+class FeedbackDismiss(BaseModel):
+    """Body for POST /feedback/dismiss -- snooze or permanently silence a prompt."""
+
+    trigger: str
+    run_id: str | None = None
+    mode: str  # "ask_later" | "dont_ask"
+
+
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.
 RecFeedbackResult.model_rebuild()
+esult.model_rebuild()
