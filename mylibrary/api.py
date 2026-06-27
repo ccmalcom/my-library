@@ -868,7 +868,12 @@ def get_feedback_prompt(
     Returns `{ "show": true | false }`. Respects the global enable flag,
     one-time trigger state, snooze windows, and the post-recs per-run signal.
     """
-    show = check_prompt_eligibility(user_id, trigger=trigger, run_id=run_id)
+    trigger_norm = trigger.lower().strip()
+    run_id_norm = run_id.strip() if run_id else None
+    if trigger_norm == "post-recs" and not run_id_norm:
+        raise HTTPException(status_code=422, detail="run_id is required when trigger='post-recs'")
+
+    show = check_prompt_eligibility(user_id, trigger=trigger_norm, run_id=run_id_norm)
     return {"show": show}
 
 
