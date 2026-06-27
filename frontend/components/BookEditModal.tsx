@@ -64,7 +64,11 @@ export default function BookEditModal({
     : desc;
 
   async function handleSave() {
-    if (!dirty) { onClose(); return; }
+    if (!dirty) {
+      if (queuePosition && onFinishQueue) onFinishQueue();
+      else onClose();
+      return;
+    }
     setSaving(true);
     const req: BookFeedbackRequest = {};
     if (ratingChanged) req.rating = rating;
@@ -75,10 +79,19 @@ export default function BookEditModal({
     if (dateChanged) req.date_read = dateRead;
     if (excludeChanged) req.exclude_from_profile = exclude;
     try {
-      await api.setBookFeedback(book.id, req);
-      await Promise.all([mutate(listKey), mutate(PROFILE_STATUS_KEY)]);
+      const result = await api.setBookFeedback(book.id, req);
+      // Optimistically patch the cached list; do NOT refetch on the critical path.
+      mutate(
+        listKey,
+        (curr?: Book[]) =>
+          curr ? curr.map((b) => (b.id === book.id ? { ...b, ...result } : b)) : curr,
+        { revalidate: false },
+      );
+      // Profile-status may have flipped to dirty; revalidate quietly, unawaited.
+      void mutate(PROFILE_STATUS_KEY);
       toast.success('Saved.');
-      onClose();
+      if (queuePosition && onFinishQueue) onFinishQueue();
+      else onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save.');
       setSaving(false);
@@ -89,7 +102,13 @@ export default function BookEditModal({
     setRemoving(true);
     try {
       await api.removeBook(book.id);
-      await Promise.all([mutate(listKey), mutate('stats'), mutate(PROFILE_STATUS_KEY)]);
+      mutate(
+        listKey,
+        (curr?: Book[]) => (curr ? curr.filter((b) => b.id !== book.id) : curr),
+        { revalidate: false },
+      );
+      void mutate('stats');
+      void mutate(PROFILE_STATUS_KEY);
       toast.success(`${book.title} removed.`);
       onClose();
     } catch (e) {
@@ -226,7 +245,7 @@ export default function BookEditModal({
         >
           <span
             className={[
-              'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+              'absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white shadow transition-transform',
               exclude ? 'translate-x-4' : 'translate-x-0.5',
             ].join(' ')}
           />

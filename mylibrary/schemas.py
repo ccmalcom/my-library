@@ -276,4 +276,3 @@ class FeedbackDismiss(BaseModel):
 
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.
 RecFeedbackResult.model_rebuild()
-esult.model_rebuild()

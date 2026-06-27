@@ -253,6 +253,7 @@ function ReadTab({ books }: { books: Book[] }) {
 
       {queue && queue[qIndex] && (
         <BookEditModal
+          key={queue[qIndex]!.id}
           book={queue[qIndex]!}
           listKey={READ_KEY}
           queuePosition={{ index: qIndex, total: queue.length }}
@@ -312,7 +313,10 @@ function ToReadTab({ books }: { books: Book[] }) {
     setActionError(null);
     try {
       await api.setBookShelf(book.id, shelf);
-      await Promise.all([mutate(TO_READ_KEY), mutate(READ_KEY), mutate(CURRENTLY_READING_KEY), mutate(DNF_KEY)]);
+      mutate(TO_READ_KEY, (curr?: Book[]) => (curr ? curr.filter((b) => b.id !== book.id) : curr), { revalidate: false });
+      void mutate(READ_KEY);
+      void mutate(CURRENTLY_READING_KEY);
+      void mutate(DNF_KEY);
       if (thenReview) setReviewing(book);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to move book.');
@@ -459,7 +463,10 @@ function CurrentlyReadingTab({ books }: { books: Book[] }) {
     setActionError(null);
     try {
       await api.setBookShelf(book.id, shelf);
-      await Promise.all([mutate(CURRENTLY_READING_KEY), mutate(TO_READ_KEY), mutate(READ_KEY), mutate(DNF_KEY)]);
+      mutate(CURRENTLY_READING_KEY, (curr?: Book[]) => (curr ? curr.filter((b) => b.id !== book.id) : curr), { revalidate: false });
+      void mutate(READ_KEY);
+      void mutate(TO_READ_KEY);
+      void mutate(DNF_KEY);
       if (thenReview) setReviewing(book);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to move book.');
@@ -600,7 +607,10 @@ function DnfTab({ books }: { books: Book[] }) {
     setActionError(null);
     try {
       await api.setBookShelf(book.id, shelf);
-      await Promise.all([mutate(DNF_KEY), mutate(TO_READ_KEY), mutate(READ_KEY), mutate(CURRENTLY_READING_KEY)]);
+      mutate(DNF_KEY, (curr?: Book[]) => (curr ? curr.filter((b) => b.id !== book.id) : curr), { revalidate: false });
+      void mutate(TO_READ_KEY);
+      void mutate(READ_KEY);
+      void mutate(CURRENTLY_READING_KEY);
       if (thenReview) setReviewing(book);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to move book.');

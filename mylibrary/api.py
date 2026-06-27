@@ -19,8 +19,10 @@ import tempfile
 from contextlib import asynccontextmanager
 from typing import Annotated
 
+import fnmatch
+
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -29,6 +31,7 @@ from . import catalog
 from .auth import AuthError, resolve_user_id
 from .config import get_settings
 from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
+from sqlalchemy.orm import joinedload
 from .enrich import _normalize_title, _surname, enrich_library
 from .ingest import ingest_csv
 from .library import (
@@ -127,12 +130,43 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=list(get_settings().cors_origins),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors_patterns: tuple[str, ...] = get_settings().cors_origins
+
+CORS_ALLOW_HEADERS = "authorization,content-type,x-requested-with"
+CORS_ALLOW_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+
+
+def _origin_allowed(origin: str) -> bool:
+    """Return True if *origin* matches any exact string or fnmatch pattern in CORS_ORIGINS."""
+    return any(fnmatch.fnmatch(origin, pat) for pat in _cors_patterns)
+
+
+@app.middleware("http")
+async def cors_middleware(request: Request, call_next):
+    origin = request.headers.get("origin", "")
+    allowed = _origin_allowed(origin) if origin else False
+
+    if request.method == "OPTIONS":
+        # Preflight
+        if allowed:
+            return Response(
+                status_code=204,
+                headers={
+                    "Access-Control-Allow-Origin": origin,
+                    "Access-Control-Allow-Methods": CORS_ALLOW_METHODS,
+                    "Access-Control-Allow-Headers": CORS_ALLOW_HEADERS,
+                    "Access-Control-Allow-Credentials": "true",
+                    "Vary": "Origin",
+                },
+            )
+        return Response(status_code=403)
+
+    response = await call_next(request)
+    if allowed:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Vary"] = "Origin"
+    return response
 
 
 def current_user(
@@ -436,7 +470,11 @@ def list_books(
     offset: int = 0,
 ) -> list[BookOut]:
     with session_scope() as session:
-        q = session.query(Book).filter(Book.user_id == user_id)
+        q = (
+            session.query(Book)
+            .options(joinedload(Book.enrichment))
+            .filter(Book.user_id == user_id)
+        )
         if shelf:
             q = q.filter(Book.exclusive_shelf == shelf)
         q = q.order_by(Book.id)
