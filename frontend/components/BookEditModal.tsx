@@ -213,14 +213,14 @@ export default function BookEditModal({
       </div>
 
       {/* Exclude from profile toggle */}
-      <div className='mb-5 flex items-start gap-3'>
+      <div className='mb-5 flex items-center gap-3'>
         <button
           type='button'
           role='switch'
           aria-checked={exclude}
           onClick={() => setExclude(!exclude)}
           className={[
-            'relative mt-0.5 h-5 w-9 flex-shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+            'relative h-5 w-9 flex-shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
             exclude ? 'bg-accent' : 'bg-border',
           ].join(' ')}
         >
