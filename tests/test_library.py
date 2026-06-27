@@ -324,3 +324,43 @@ def test_dnf_book_can_be_reviewed_without_rating():
     result = set_book_feedback(book_id, review="Couldn't get past chapter 2.")
     assert result["app_review"] == "Couldn't get past chapter 2."
     assert result["effective_rating"] is None
+
+
+def test_list_books_does_not_n_plus_one_on_enrichment():
+    """Eager-loading enrichment keeps SQL execute count flat as rows grow."""
+    from sqlalchemy import event
+    from mylibrary.db import Book, Enrichment, _ensure_engine, session_scope
+    from mylibrary.api import list_books
+    from mylibrary.config import LOCAL_USER_ID
+
+    # Seed 20 read books, each with an enrichment row.
+    with session_scope() as session:
+        for i in range(20):
+            b = Book(
+                user_id=LOCAL_USER_ID,
+                title=f"Book {i}",
+                author="A",
+                exclusive_shelf="read",
+                goodreads_rating=4,
+            )
+            session.add(b)
+            session.flush()
+            session.add(Enrichment(book_id=b.id, resolution_confidence=1.0, cover_url=f"http://x/{i}.jpg"))
+
+    engine, _ = _ensure_engine()
+    counter = {"n": 0}
+
+    def _count(conn, cursor, statement, params, context, executemany):
+        counter["n"] += 1
+
+    event.listen(engine, "after_cursor_execute", _count)
+    try:
+        out = list_books(user_id=LOCAL_USER_ID, shelf="read", limit=500)
+    finally:
+        event.remove(engine, "after_cursor_execute", _count)
+
+    assert len(out) == 20
+    assert all(b.cover_url is not None for b in out)
+    # With a lazy relationship this is ~21 (1 list + 20 per-row). Eager join => a small
+    # constant. Allow generous headroom but well under the per-row blowup.
+    assert counter["n"] <= 5, f"expected eager load, got {counter['n']} queries"

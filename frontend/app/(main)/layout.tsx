@@ -3,10 +3,11 @@ import ReprofileBanner from "@/components/ReprofileBanner";
 import FeedbackLauncher from "@/components/FeedbackLauncher";
 import LibraryGate from "@/components/LibraryGate";
 import BottomNav from "@/components/BottomNav";
+import Providers from "@/app/providers";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <Providers>
       <NavBar />
       <ReprofileBanner />
       <FeedbackLauncher />
@@ -16,6 +17,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <LibraryGate>{children}</LibraryGate>
       </main>
       <BottomNav />
-    </>
+    </Providers>
   );
 }

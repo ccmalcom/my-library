@@ -29,6 +29,7 @@ from . import catalog
 from .auth import AuthError, resolve_user_id
 from .config import get_settings
 from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
+from sqlalchemy.orm import joinedload
 from .enrich import _normalize_title, _surname, enrich_library
 from .ingest import ingest_csv
 from .library import (
@@ -436,7 +437,11 @@ def list_books(
     offset: int = 0,
 ) -> list[BookOut]:
     with session_scope() as session:
-        q = session.query(Book).filter(Book.user_id == user_id)
+        q = (
+            session.query(Book)
+            .options(joinedload(Book.enrichment))
+            .filter(Book.user_id == user_id)
+        )
         if shelf:
             q = q.filter(Book.exclusive_shelf == shelf)
         q = q.order_by(Book.id)
