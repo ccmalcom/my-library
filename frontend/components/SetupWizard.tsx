@@ -313,7 +313,15 @@ function UploadStep({
         <p className='text-sm text-muted'>
           In Goodreads, go to{' '}
           <strong className='text-text'>My Books &rsaquo; Import/Export &rsaquo; Export Library</strong>.
-          Download the CSV, then drop it here.
+          Download the CSV, then drop it here.{' '}
+          <a
+            href='https://help.goodreads.com/s/article/How-do-I-import-or-export-my-books-1553870934590'
+            target='_blank'
+            rel='noreferrer'
+            className='text-accent hover:underline'
+          >
+            Need help?
+          </a>
         </p>
       </div>
 
