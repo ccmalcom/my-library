@@ -8,6 +8,7 @@ import { mutate } from 'swr';
 import { api, API_KEY_STATUS_KEY, PROFILE_STATUS_KEY, USER_PROFILE_KEY, type Book } from '@/lib/api';
 import { Button, Spinner } from '@/components/ui';
 import AddBookModal from '@/components/AddBookModal';
+import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
 
 type Step = 'name' | 'api-key' | 'upload' | 'enrich' | 'manual' | 'profile' | 'done';
 
@@ -681,6 +682,12 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
 
 function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: () => void }) {
   const router = useRouter();
+  const { fire, modal } = useFeedbackPrompt('post-setup');
+
+  useEffect(() => {
+    fire();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleFinish() {
     onComplete?.();
@@ -688,29 +695,32 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
   }
 
   return (
-    <div className='space-y-6 text-center'>
-      <div className='text-6xl'>
-        &#x1F389;
-      </div>
-      <div>
-        <h2 className='mb-2 text-2xl font-bold text-text'>You&apos;re all set!</h2>
-        <p className='text-sm text-muted'>
-          {profiled
-            ? 'Your library is ready and your taste profile is built. Head to the dashboard to run your first AI recommendations.'
-            : 'Your library is ready. Build your taste profile before requesting recommendations.'}
-        </p>
-      </div>
-
-      {!profiled && (
-        <div className='rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning text-left'>
-          Recommendations need a taste profile first. Go to My Profile to build it.
+    <>
+      <div className='space-y-6 text-center'>
+        <div className='text-6xl'>
+          &#x1F389;
         </div>
-      )}
+        <div>
+          <h2 className='mb-2 text-2xl font-bold text-text'>You&apos;re all set!</h2>
+          <p className='text-sm text-muted'>
+            {profiled
+              ? 'Your library is ready and your taste profile is built. Head to the dashboard to run your first AI recommendations.'
+              : 'Your library is ready. Build your taste profile before requesting recommendations.'}
+          </p>
+        </div>
 
-      <Button size='lg' className='w-full' onClick={handleFinish}>
-        Go to Dashboard
-      </Button>
-    </div>
+        {!profiled && (
+          <div className='rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning text-left'>
+            Recommendations need a taste profile first. Go to My Profile to build it.
+          </div>
+        )}
+
+        <Button size='lg' className='w-full' onClick={handleFinish}>
+          Go to Dashboard
+        </Button>
+      </div>
+      {modal}
+    </>
   );
 }
 
