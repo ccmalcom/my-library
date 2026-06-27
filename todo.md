@@ -1,5 +1,10 @@
 # TODO
 
+## BUGS
+
+- missing reviews flow-- save and next closed modal
+- in general, saving any row takes a long time. can we speed this up?
+
 ## Beta Tester Support
 
 - the project is now in beta testing and is invite only. I have set up each account in supabase and have configured an anthropic key for each. I want to ensure that I am actually collecting feedback from the users who are testing, so we need to have a surface for that (maybe a banner with a modal linked?). Additionally, we should prompt users to submit feedback after certain actions are taken, or even just after a certain amount of time using the app.
@@ -28,3 +33,4 @@
 - Invite flow / account management for invite-only launch (how do you actually invite + revoke users?)
 - Backup / export: can a user get their data back out (ratings/reviews they've added in-app)?
 - 'admin' console- check users, token usage, api usage, feedback, etc
+- social aspect-- add friends on platform, see each others activity, etc

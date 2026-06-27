@@ -280,6 +280,70 @@ class UserSettings(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=utcnow)
 
 
+class Feedback(Base):
+    """User-submitted feedback (bug reports, ideas, praise, confusing UX).
+
+    Collected via the in-app FeedbackModal. Rows are append-only — no updates.
+    `trigger` identifies which prompt surface fired (e.g. 'post-recs'); NULL means
+    the user opened the modal manually (general surface). `run_id` is only set for
+    post-recs feedback so the run can be cross-referenced later.
+    """
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String, index=True, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
+    # bug | idea | confusing | praise
+    category: Mapped[str] = mapped_column(String, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    # Which prompt surface fired, or NULL for general (user-initiated) submissions.
+    trigger: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Recommender run_id; only set for post-recs feedback.
+    run_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Route path at submission time (e.g. '/swipe').
+    page: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Build id or 'unknown'.
+    app_version: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class FeedbackPromptState(Base):
+    """Tracks whether a targeted feedback prompt has been shown/snoozed/submitted.
+
+    One row per (user, trigger, run_id). `run_id` is '' (empty string, NOT NULL) for
+    one-time triggers and the global dont_ask sentinel — using '' avoids the Postgres
+    and SQLite gotcha where NULLs are treated as distinct in unique indexes, which would
+    allow duplicate (user, trigger) rows to bypass the constraint.
+
+    status values: ask_later | submitted | dont_ask
+    """
+
+    __tablename__ = "feedback_prompt_state"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
+    # post-setup | post-first-profile | post-recs
+    trigger: Mapped[str] = mapped_column(String, nullable=False)
+    # '' for one-time triggers and global dont_ask; run UUID for post-recs.
+    # MUST be NOT NULL with default '' — see class docstring.
+    run_id: Mapped[str] = mapped_column(String, nullable=False, default="", server_default="")
+    # ask_later | submitted | dont_ask
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    # Set only when status='ask_later'.
+    snooze_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "trigger", "run_id", name="uq_feedback_prompt_state"),
+    )
+
+
 class ReaderArchetype(Base):
     """Per-user reader personality archetype -- 4-axis code derived from taste traits.
 

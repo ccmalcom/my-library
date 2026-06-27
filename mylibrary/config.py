@@ -58,6 +58,10 @@ class Settings:
     redis_url: str | None       # Redis URL for arq job queue; unset = local BackgroundTask fallback
     cors_origins: tuple[str, ...]  # allowed browser origins for the API (frontend domains)
 
+    # --- beta feedback -------------------------------------------------------
+    feedback_prompts_enabled: bool  # set False post-beta to silence targeted prompts
+    feedback_snooze_hours: int      # hours before a snoozed prompt re-surfaces
+
     @property
     def db_url(self) -> str:
         # Hosted Postgres when DATABASE_URL is provided; otherwise the local SQLite file.
@@ -83,6 +87,10 @@ class Settings:
     def auth_enabled(self) -> bool:
         """True when any Supabase auth verification is configured (JWKS or HS256 secret)."""
         return bool(self.jwks_url or self.supabase_jwt_secret)
+
+
+def _env_bool(key: str, default: bool = True) -> bool:
+    return os.getenv(key, str(default)).strip().lower() not in {"false", "0", "no", ""}
 
 
 def _normalize_pg_url(url: str) -> str:
@@ -135,6 +143,8 @@ def get_settings() -> Settings:
         encryption_key=os.getenv("ENCRYPTION_KEY"),
         redis_url=os.getenv("REDIS_URL"),
         cors_origins=_resolve_cors_origins(),
+        feedback_prompts_enabled=_env_bool("FEEDBACK_PROMPTS_ENABLED", True),
+        feedback_snooze_hours=int(os.getenv("FEEDBACK_SNOOZE_HOURS", "72")),
     )
 
 
