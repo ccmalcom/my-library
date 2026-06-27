@@ -151,8 +151,11 @@ def get_settings() -> Settings:
 def _resolve_cors_origins() -> tuple[str, ...]:
     """Allowed browser origins for the API.
 
-    `CORS_ORIGINS` is a comma-separated list of frontend origins (e.g. the Vercel
-    production + preview domains). Unset == local dev default (localhost:3000).
+    `CORS_ORIGINS` is a comma-separated list of frontend origins. Entries may be:
+      - Exact origins: ``https://mylibrary.vercel.app``
+      - Wildcard patterns (fnmatch): ``https://my-library*.vercel.app``
+
+    Unset == local dev default (localhost:3000).
     Trailing slashes are stripped; browsers send the Origin header without one and a
     mismatched trailing slash silently breaks CORS.
     """
