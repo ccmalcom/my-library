@@ -458,6 +458,25 @@ def delete_account_cmd(
     _echo(delete_account())
 
 
+@app.command(name="eval")
+def run_eval_cmd(
+    k: int = typer.Option(10, help="top-k cutoff for recall/precision"),
+    holdout: int = typer.Option(5, help="number of loved books to hold out"),
+    seed: int = typer.Option(1234, help="RNG seed for reproducible hold-out"),
+    judge: bool = typer.Option(False, help="run the optional Claude groundedness judge"),
+    compare: str = typer.Option(None, help="path to a prior results JSON to diff against"),
+) -> None:
+    """Run the minimal eval baseline and write a snapshot to data/eval/."""
+    from . import eval as _eval
+
+    results = _eval.run_eval(k=k, holdout=holdout, seed=seed, judge=judge)
+    path = _eval.write_snapshot(results)
+    typer.echo(_eval.format_summary(results))
+    typer.echo(f"\nSnapshot: {path}")
+    if compare:
+        typer.echo("\n" + _eval.format_compare(results, _eval.load_snapshot(compare)))
+
+
 @app.command()
 def serve(
     host: str = "127.0.0.1",

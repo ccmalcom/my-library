@@ -5,6 +5,7 @@
 data/*.csv
 data/*.db
 data/cache/
+data/eval/
 
 # Python
 __pycache__/
