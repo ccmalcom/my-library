@@ -765,6 +765,9 @@ def update_trait(trait_id: int, req: TraitUpdateRequest, user_id: UserId) -> Tra
     from .library import TraitNotFoundError, set_trait_verdict
     from .db import TasteTrait
 
+    if req.claim is None and req.user_note is None and req.status is None and req.user_weight is None:
+        raise HTTPException(status_code=422, detail="at least one field (claim, user_note, status, user_weight) must be provided")
+
     with session_scope() as session:
         trait: TasteTrait | None = None
 

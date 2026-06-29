@@ -44,7 +44,7 @@ function TargetedModal({ trigger, runId, heading, onClose }: TargetedModalProps)
     setSubmitting(true);
     try {
       await api.submitFeedback({
-        category: trigger,
+        category: 'targeted',
         body: bodyTrimmed,
         trigger,
         run_id: runId ?? null,
