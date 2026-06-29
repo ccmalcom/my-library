@@ -173,11 +173,11 @@ function TraitCard({
               {trait.status}
             </Badge>
           )}
-          {hasLowWeight && (
+          {hasLowWeight && trait.user_weight != null && (
             <span className='font-mono text-xs text-faint' title='Reduced weight'>
-              {trait.user_weight === 0 ? '0x' : '0.5x'}
+              {`${Math.round(trait.user_weight * 10) / 10}x`}
             </span>
-          )}
+          )
         </div>
       </div>
 
