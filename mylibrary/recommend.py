@@ -554,8 +554,7 @@ def _user_steering_block(signal: dict) -> str:
         "Favor candidates resembling the more-like books; penalize candidates "
         "resembling the less-like books; penalize candidates matching frequent reject "
         "reasons; weight trait influence by each trait's `user_weight` — traits with a "
-        "lower weight should influence the score less (0.0 = ignore, 1.0 = normal, "
-        ">1.0 = amplify)."
+        "lower weight should influence the score less (0.0 = ignore, 1.0 = normal)."
     )
     return "\n\n".join(lines)
 
