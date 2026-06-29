@@ -647,7 +647,9 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
         # properly drop their signal from the existing traits.
         changed_ids = [b.id for b in changed if not b.exclude_from_profile]
 
-        # Check whether trait verdicts or taste signals were recorded after the last profile.
+        # Check whether trait verdicts, taste signals, or rec rejection reasons were
+        # recorded after the last profile build.
+        meta_for_check = get_profile_meta(session, user_id)
         has_feedback_since = (
             since is not None
             and (
@@ -665,6 +667,10 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
                 )
                 .first()
                 is not None
+                or (
+                    meta_for_check.rec_feedback_updated_at is not None
+                    and meta_for_check.rec_feedback_updated_at > since
+                )
             )
         )
 
