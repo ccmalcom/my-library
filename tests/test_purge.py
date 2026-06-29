@@ -90,8 +90,9 @@ def test_clear_library_cascades_to_profile():
     # Books, enrichments, and all derived taste data gone…
     assert c["books"] == 0 and c["enrich"] == 0
     assert c["traits"] == 0 and c["recs"] == 0 and c["meta"] == 0
-    # …but the stored API key survives a library clear.
+    # …but the stored API key and durable signals/jobs survive a library clear.
     assert c["settings"] == 1
+    assert c["signals"] == 1 and c["jobs"] == 1
 
 
 def test_clear_library_keeps_taste_signal_and_jobs():
