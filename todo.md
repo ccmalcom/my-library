@@ -4,9 +4,6 @@
 
 ## Shelves & data model
 
-- Make to-read shelf better: should have modal view, description/details, maybe link out to bookstores
-  - Mobile pass for the new to-read modal + add-book modal (recent mobile work didn't cover these)
-
 ## Profiling / recommender
 
 - Refine profiling (and ReaderType) based on user feedback
