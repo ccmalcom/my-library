@@ -4,9 +4,23 @@
 
 ## Shelves & data model
 
+## Onboarding
+
+- Spotify Wrapped-style profile reveal
+- if not doing goodreads import, manual book addition is a bit of a slog
+  - search is not super accurate-- if you type series name, it doesn't return all of the books
+    - 'one book I read is 7-8 book series, but when typed in the series name it didn't return the 8th book
+    - typed 'the fault', expected the fault in our stars to come up, did not at all
+      - a bunch of books about faults/geoscience, probably doing keyword searching instead of semantic
+  - custom imports? Other library managers?
+  - custom spreadsheets, google play books, apple books, etc.
+
 ## Profiling / recommender
 
 - Refine profiling (and ReaderType) based on user feedback
+- On small sample sizes, seem to recommend only authors already read
+- Add recommendations based on selected book in library (more books like this)
+- recommends same books but in different languages
 
 ## Roadmap gaps (from CLAUDE.md — remaining phases)
 
