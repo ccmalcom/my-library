@@ -30,7 +30,7 @@ import uuid
 from collections import Counter
 
 from .config import LOCAL_USER_ID, get_settings
-from .db import Book, Recommendation, TasteTrait, init_db, session_scope
+from .db import Book, Recommendation, TasteSignal, TasteTrait, init_db, session_scope
 from .enrich import _normalize_title, _surname
 from .profile import books_changed_since, get_profile_meta
 from .user_settings import resolve_anthropic_key
@@ -249,23 +249,86 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
         .order_by(TasteTrait.inference_confidence.desc())
         .all()
     )
+
+    # --- structured feedback (Task 2.2) -----------------------------------
+    # more/less-like book signals, rendered "{title} by {author}" (book-kind only).
+    more_like, less_like = _feedback_book_signals(session, user_id)
+    # aggregate reject reasons across the user's rejected recs.
+    reject_reason_counts = _reject_reason_counts(session, user_id)
+
     return {
         "library_keys": library_keys,
         "library_isbns": library_isbns,
         "loved": loved,
         "top_subjects": [s for s, _ in subject_counts.most_common(_TOP_SUBJECTS)],
         "top_authors": [a for a, _ in author_counts.most_common(_TOP_AUTHORS)],
+        # Rejected traits are dead to the reranker — excluded entirely. Each surviving
+        # trait carries its user_weight + status so stage-2 can weight its influence.
         "traits": [
             {
                 "id": t.id,
                 "claim": t.claim,
                 "polarity": t.polarity,
                 "confidence": round(t.inference_confidence, 2),
+                "user_weight": t.user_weight if t.user_weight is not None else 1.0,
+                "status": t.status or "proposed",
             }
             for t in traits
+            if (t.status or "proposed") != "rejected"
         ],
+        "more_like": more_like,
+        "less_like": less_like,
+        "reject_reason_counts": reject_reason_counts,
         "rejected_with_notes": rejected_with_notes,
     }
+
+
+def _feedback_book_signals(
+    session, user_id: str = LOCAL_USER_ID
+) -> tuple[list[str], list[str]]:
+    """more/less-like book labels from TasteSignal (book-kind), same join as
+    profile._feedback_context — "{title} by {author}" (title-only if no author)."""
+    more_like: list[str] = []
+    less_like: list[str] = []
+    signals = (
+        session.query(TasteSignal)
+        .filter(TasteSignal.user_id == user_id, TasteSignal.target_kind == "book")
+        .all()
+    )
+    for sig in signals:
+        if sig.target_book_id is None:
+            continue
+        book = (
+            session.query(Book)
+            .filter(Book.id == sig.target_book_id, Book.user_id == user_id)
+            .one_or_none()
+        )
+        if book is None:
+            continue
+        label = f"{book.title} by {book.author}" if book.author else book.title
+        if sig.direction == "more":
+            more_like.append(label)
+        elif sig.direction == "less":
+            less_like.append(label)
+    return more_like, less_like
+
+
+def _reject_reason_counts(session, user_id: str = LOCAL_USER_ID) -> dict[str, int]:
+    """Flatten + count reject_reasons across the user's rejected recommendations."""
+    rows = (
+        session.query(Recommendation)
+        .filter(
+            Recommendation.user_id == user_id,
+            Recommendation.status == _REJECTED_STATUS,
+            Recommendation.reject_reasons.isnot(None),
+        )
+        .all()
+    )
+    counts: Counter[str] = Counter()
+    for r in rows:
+        for reason in r.reject_reasons or []:
+            counts[reason] += 1
+    return dict(counts)
 
 
 # --- stage 1: retrieval ----------------------------------------------------
@@ -298,11 +361,24 @@ def _claude_seed_queries(
         + "\n\nLOVED BOOKS (JSON):\n"
         + json.dumps(signal["loved"][:_LOVED_SAMPLE], ensure_ascii=False)
     )
+    more_like = signal.get("more_like") or []
+    less_like = signal.get("less_like") or []
+    steering = ""
+    if more_like:
+        steering += (
+            " Bias the queries toward the qualities of these books the reader wants "
+            "more of: " + json.dumps(more_like, ensure_ascii=False) + "."
+        )
+    if less_like:
+        steering += (
+            " Avoid the qualities of these books the reader wants less of: "
+            + json.dumps(less_like, ensure_ascii=False) + "."
+        )
     task_prompt = (
         "A reader's taste profile and a sample of their loved books are above. Propose "
         f"up to {n_queries} CATALOG SEARCH QUERIES (search terms, not book titles) that "
         "would surface books they are likely to rate highly. Chase their distinguishing "
-        "traits, cover their range, and avoid generic bestseller terms."
+        "traits, cover their range, and avoid generic bestseller terms." + steering
     )
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -449,6 +525,41 @@ def _cap_pool(candidates: list[dict], *, cap: int) -> list[dict]:
 # --- stage 2: rerank -------------------------------------------------------
 
 
+def _user_steering_block(signal: dict) -> str:
+    """Render the `## User Steering` section appended to the cached profile prefix.
+
+    Carries the user's more/less-like books and frequent reject reasons, plus the
+    instruction that trait influence is weighted by each trait's `user_weight`. Returns
+    "" only when there is no steering signal at all (the user_weight instruction is
+    always emitted so the reranker knows traits carry weights)."""
+    more_like = signal.get("more_like") or []
+    less_like = signal.get("less_like") or []
+    reject_counts = signal.get("reject_reason_counts") or {}
+
+    lines = ["\n\n## User Steering"]
+    if more_like:
+        lines.append(
+            "MORE LIKE (books the reader explicitly wants more of):\n"
+            + json.dumps(more_like, ensure_ascii=False)
+        )
+    if less_like:
+        lines.append(
+            "LESS LIKE (books the reader explicitly wants less of):\n"
+            + json.dumps(less_like, ensure_ascii=False)
+        )
+    if reject_counts:
+        reasons = ", ".join(f"{r}: {c} times" for r, c in reject_counts.items())
+        lines.append("FREQUENT REJECT REASONS: " + reasons)
+    lines.append(
+        "Favor candidates resembling the more-like books; penalize candidates "
+        "resembling the less-like books; penalize candidates matching frequent reject "
+        "reasons; weight trait influence by each trait's `user_weight` — traits with a "
+        "lower weight should influence the score less (0.0 = ignore, 1.0 = normal, "
+        ">1.0 = amplify)."
+    )
+    return "\n\n".join(lines)
+
+
 def _claude_rerank(
     candidates: list[dict], signal: dict, *, n: int, api_key: str | None = None
 ) -> list[dict]:
@@ -479,6 +590,7 @@ def _claude_rerank(
             + json.dumps(rejected_with_notes, ensure_ascii=False)
             if rejected_with_notes else ""
         )
+        + _user_steering_block(signal)
     )
     task_prompt = (
         f"Rank the best {n} candidates for this reader and explain each. Choose ONLY from "
