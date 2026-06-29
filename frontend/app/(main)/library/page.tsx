@@ -8,6 +8,7 @@ import { BookOpen } from 'lucide-react';
 import {
   api,
   PROFILE_STATUS_KEY,
+  recordTasteSignal,
   type Book,
   type Recommendation,
   type Shelf,
@@ -218,14 +219,13 @@ function ReadTab({ books }: { books: Book[] }) {
       ) : (
         <ul className='divide-y divide-hairline'>
           {filtered.map((book) => (
-            <li key={book.id}>
+            <li key={book.id} className='flex items-center gap-1 rounded-lg px-2 py-3 hover:bg-elevated transition'>
               <button
                 type='button'
                 onClick={() => setEditing(book)}
                 className={[
-                  'flex w-full items-center gap-4 px-2 py-3 rounded-lg text-left transition',
-                  'hover:bg-elevated',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base',
+                  'flex flex-1 min-w-0 items-center gap-4 text-left',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base rounded',
                 ].join(' ')}
               >
                 <CoverThumb book={book} size='sm' />
@@ -237,6 +237,40 @@ function ReadTab({ books }: { books: Book[] }) {
                   <StarDisplay rating={book.effective_rating} />
                 </div>
               </button>
+              <div className='flex shrink-0 gap-1 pl-2'>
+                <button
+                  type='button'
+                  aria-label='More like this'
+                  onClick={() => {
+                    void recordTasteSignal({ target_kind: 'book', target_book_id: book.id, direction: 'more' })
+                      .then(() => { void mutate(PROFILE_STATUS_KEY); })
+                      .catch((e) => console.error('taste signal failed', e));
+                  }}
+                  className={[
+                    'rounded-full border border-border px-2 py-0.5 text-xs text-muted',
+                    'transition hover:border-success/60 hover:text-success active:scale-95',
+                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                  ].join(' ')}
+                >
+                  +
+                </button>
+                <button
+                  type='button'
+                  aria-label='Less like this'
+                  onClick={() => {
+                    void recordTasteSignal({ target_kind: 'book', target_book_id: book.id, direction: 'less' })
+                      .then(() => { void mutate(PROFILE_STATUS_KEY); })
+                      .catch((e) => console.error('taste signal failed', e));
+                  }}
+                  className={[
+                    'rounded-full border border-border px-2 py-0.5 text-xs text-muted',
+                    'transition hover:border-danger/60 hover:text-danger active:scale-95',
+                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                  ].join(' ')}
+                >
+                  &minus;
+                </button>
+              </div>
             </li>
           ))}
         </ul>

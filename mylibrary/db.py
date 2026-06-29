@@ -287,6 +287,7 @@ class ProfileMeta(Base):
     )
     last_profiled_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_profile_kind: Mapped[str | None] = mapped_column(String)  # full | update
+    rec_feedback_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class UserSettings(Base):
@@ -538,6 +539,15 @@ def init_db() -> None:
                                 f"ALTER TABLE recommendations ADD COLUMN {col_name} {col_type}"
                             )
                         )
+    # Lightweight migration: profile_meta gets new nullable columns added in place.
+    if "profile_meta" in insp.get_table_names():
+        pm_cols = {c["name"] for c in insp.get_columns("profile_meta")}
+        with engine.begin() as conn:
+            if "rec_feedback_updated_at" not in pm_cols:
+                conn.execute(
+                    sa_text("ALTER TABLE profile_meta ADD COLUMN rec_feedback_updated_at DATETIME")
+                )
+
     # Lightweight migration: user_settings gets new columns added in place.
     if "user_settings" in insp.get_table_names():
         us_cols = {c["name"] for c in insp.get_columns("user_settings")}

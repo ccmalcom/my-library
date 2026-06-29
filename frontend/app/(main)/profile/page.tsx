@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 import {
   api,
+  setTraitVerdict,
   type Trait,
   type Stats,
   type SubjectBreakdown,
@@ -33,9 +34,10 @@ function TraitCard({
 }) {
   const toast = useToast();
   const isReward = trait.polarity === 'reward';
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState(trait.claim);
-  const [saving, setSaving]   = useState(false);
+  const [editing, setEditing]     = useState(false);
+  const [draft, setDraft]         = useState(trait.claim);
+  const [saving, setSaving]       = useState(false);
+  const [verdicting, setVerdicting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -75,6 +77,28 @@ function TraitCard({
     setDraft(trait.claim);
   }
 
+  async function handleVerdict(
+    status?: 'confirmed' | 'rejected',
+    user_weight?: number,
+  ) {
+    setVerdicting(true);
+    try {
+      const updated = await setTraitVerdict(trait.id, { status, user_weight });
+      await mutate(
+        TRAITS_KEY,
+        (prev: Trait[] | undefined) =>
+          (prev ?? []).map((t) => (t.id === updated.id ? updated : t)),
+        { revalidate: false },
+      );
+      await mutate(PROFILE_STATUS_KEY);
+      toast.success('Trait updated.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Update failed.');
+    } finally {
+      setVerdicting(false);
+    }
+  }
+
   const exhibitTitles  = (trait.exhibits  ?? []).map((id) => bookMap.get(id)).filter(Boolean) as string[];
   const contrastTitles = (trait.contrasts ?? []).map((id) => bookMap.get(id)).filter(Boolean) as string[];
 
@@ -84,8 +108,16 @@ function TraitCard({
     ? 'border-success/30 bg-success/5'
     : 'border-danger/30 bg-danger/5';
 
+  const isRejected  = trait.status === 'rejected';
+  const isConfirmed = trait.status === 'confirmed';
+  const hasLowWeight = trait.user_weight != null && trait.user_weight < 1.0;
+
   return (
-    <div className={['rounded-xl border p-4 space-y-3 transition', borderClass].join(' ')}>
+    <div className={[
+      'rounded-xl border p-4 space-y-3 transition',
+      borderClass,
+      isRejected ? 'opacity-50' : '',
+    ].join(' ')}>
       {/* Header row */}
       <div className='flex items-start gap-3'>
         <Badge variant={polarityVariant} className='mt-0.5 shrink-0'>
@@ -114,7 +146,10 @@ function TraitCard({
               type='button'
               onClick={() => setEditing(true)}
               title='Click to edit'
-              className='group text-left text-sm text-text hover:text-text focus-visible:outline-none'
+              className={[
+                'group text-left text-sm text-text hover:text-text focus-visible:outline-none',
+                isRejected ? 'line-through text-faint' : '',
+              ].join(' ')}
             >
               {trait.claim}
               <span className='ml-2 opacity-0 group-hover:opacity-50 text-xs text-faint transition-opacity'>
@@ -130,9 +165,18 @@ function TraitCard({
             {Math.round(trait.inference_confidence * 100)}%
           </span>
           {trait.status !== 'proposed' && (
-            <Badge variant={trait.status === 'edited' ? 'accent' : trait.status === 'confirmed' ? 'success' : 'default'}>
+            <Badge variant={
+              trait.status === 'edited'     ? 'accent'   :
+              trait.status === 'confirmed'  ? 'success'  :
+              trait.status === 'rejected'   ? 'danger'   : 'default'
+            }>
               {trait.status}
             </Badge>
+          )}
+          {hasLowWeight && (
+            <span className='font-mono text-xs text-faint' title='Reduced weight'>
+              {trait.user_weight === 0 ? '0x' : '0.5x'}
+            </span>
           )}
         </div>
       </div>
@@ -147,6 +191,39 @@ function TraitCard({
             Cancel
           </Button>
           <span className='text-xs text-faint'>Cmd+Enter to save · Esc to cancel</span>
+        </div>
+      )}
+
+      {/* Verdict controls */}
+      {!editing && (
+        <div className='flex items-center gap-2 pl-14'>
+          <Button
+            size='sm'
+            variant={isConfirmed ? 'primary' : 'ghost'}
+            disabled={verdicting}
+            onClick={() => void handleVerdict('confirmed')}
+            title='Confirm this trait'
+          >
+            Confirm
+          </Button>
+          <Button
+            size='sm'
+            variant={isRejected ? 'danger' : 'ghost'}
+            disabled={verdicting}
+            onClick={() => void handleVerdict('rejected')}
+            title='This trait does not describe me'
+          >
+            Not me
+          </Button>
+          <Button
+            size='sm'
+            variant='ghost'
+            disabled={verdicting}
+            onClick={() => void handleVerdict(undefined, 0.5)}
+            title='Reduce influence of this trait'
+          >
+            Apply less
+          </Button>
         </div>
       )}
 

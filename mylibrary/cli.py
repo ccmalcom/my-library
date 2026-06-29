@@ -478,6 +478,114 @@ def run_eval_cmd(
 
 
 @app.command()
+def trait(
+    trait_id: int = typer.Argument(..., help="The taste trait id."),
+    confirm: bool = typer.Option(False, help="Confirm this trait."),
+    reject: bool = typer.Option(False, help="Reject this trait."),
+    weight: float = typer.Option(None, help="Set the user weight (e.g. 0.5 to reduce influence)."),
+) -> None:
+    """Set a verdict on a taste trait: confirm, reject, or adjust its weight."""
+    from .config import LOCAL_USER_ID
+    from .db import session_scope
+    from .library import TraitNotFoundError, set_trait_verdict
+
+    # Validate that at least one option is provided
+    if not (confirm or reject or weight is not None):
+        typer.secho(
+            "At least one of --confirm, --reject, or --weight must be provided.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    # Validate that --confirm and --reject are mutually exclusive
+    if confirm and reject:
+        typer.secho("--confirm and --reject are mutually exclusive.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    # Convert confirm/reject to status value
+    status = None
+    if confirm:
+        status = "confirmed"
+    elif reject:
+        status = "rejected"
+
+    init_db()
+    try:
+        with session_scope() as session:
+            trait = set_trait_verdict(
+                session,
+                trait_id,
+                status=status,
+                user_weight=weight,
+                user_id=LOCAL_USER_ID,
+            )
+            session.commit()
+    except TraitNotFoundError as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    # Print confirmation
+    typer.secho(f"\n{trait.claim}", fg=typer.colors.GREEN, bold=True)
+    if status:
+        typer.echo(f"Status: {trait.status}")
+    if weight is not None:
+        typer.echo(f"User weight: {trait.user_weight}")
+    typer.echo("\nProfile may now be stale — run `profile-status` / `reprofile`.")
+
+
+@app.command()
+def like(
+    book_id: int = typer.Argument(..., help="The library book id."),
+    more: bool = typer.Option(False, help="Like this book more."),
+    less: bool = typer.Option(False, help="Like this book less."),
+) -> None:
+    """Record a taste signal: like a book more or less."""
+    from .config import LOCAL_USER_ID
+    from .db import Book, session_scope
+    from .library import BookNotFoundError, TasteSignalError, record_taste_signal
+
+    # Validate that at least one option is provided
+    if not (more or less):
+        typer.secho(
+            "At least one of --more or --less must be provided.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    # Validate that --more and --less are mutually exclusive
+    if more and less:
+        typer.secho("--more and --less are mutually exclusive.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    direction = "more" if more else "less"
+
+    init_db()
+    try:
+        with session_scope() as session:
+            # Get book title for confirmation
+            book = session.query(Book).filter(Book.id == book_id, Book.user_id == LOCAL_USER_ID).first()
+            if book is None:
+                raise BookNotFoundError(f"Book {book_id} not found")
+            book_title = book.title
+
+            # Record the signal
+            record_taste_signal(
+                session,
+                direction=direction,
+                target_kind="book",
+                target_book_id=book_id,
+                user_id=LOCAL_USER_ID,
+            )
+            session.commit()
+    except (BookNotFoundError, TasteSignalError) as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    typer.secho(f"✓ Recorded: like {direction} '{book_title}'", fg=typer.colors.GREEN)
+    typer.echo("Profile may now be stale — run `profile-status` / `reprofile`.")
+
+
+@app.command()
 def serve(
     host: str = "127.0.0.1",
     port: int = 8000,
