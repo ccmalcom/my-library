@@ -21,16 +21,6 @@ const inputClass = [
   'focus-visible:ring-1 focus-visible:ring-accent',
 ].join(' ');
 
-const labelClass =
-  'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
-
-const categoryOptions = [
-  { value: 'bug',       label: 'Bug' },
-  { value: 'idea',      label: 'Idea' },
-  { value: 'confusing', label: 'Confusing' },
-  { value: 'praise',    label: 'Praise' },
-] as const;
-
 // ── Inner modal component ─────────────────────────────────────────────────────
 // Renders the targeted prompt modal with Submit / Ask me later / Don't ask again.
 
@@ -43,19 +33,18 @@ interface TargetedModalProps {
 
 function TargetedModal({ trigger, runId, heading, onClose }: TargetedModalProps) {
   const toast = useToast();
-  const [category, setCategory] = useState<string | null>(null);
-  const [body, setBody]         = useState('');
+  const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const bodyTrimmed = body.trim();
-  const canSubmit   = category !== null && bodyTrimmed.length > 0 && !submitting;
+  const canSubmit = bodyTrimmed.length > 0 && !submitting;
 
   async function handleSubmit() {
-    if (!canSubmit || !category) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     try {
       await api.submitFeedback({
-        category,
+        category: 'targeted',
         body: bodyTrimmed,
         trigger,
         run_id: runId ?? null,
@@ -116,34 +105,8 @@ function TargetedModal({ trigger, runId, heading, onClose }: TargetedModalProps)
         </h2>
       </div>
 
-      {/* Category buttons */}
-      <div className='mb-6'>
-        <label className={labelClass}>Category</label>
-        <div className='grid grid-cols-2 gap-2'>
-          {categoryOptions.map(({ value, label }) => (
-            <button
-              key={value}
-              type='button'
-              onClick={() => setCategory(value)}
-              disabled={submitting}
-              className={[
-                'rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
-                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-                category === value
-                  ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-border bg-base text-text hover:border-accent/50',
-              ].join(' ')}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Body textarea */}
       <div className='mb-6 flex-1'>
-        <label className={labelClass}>Feedback</label>
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}

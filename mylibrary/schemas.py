@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class IngestRequest(BaseModel):
@@ -56,6 +58,7 @@ class RecommendRequest(BaseModel):
 class FeedbackRequest(BaseModel):
     status: str | None = None  # "accepted" | "rejected" | "already_read"; omit to update only user_note
     user_note: str | None = None
+    reject_reasons: list[str] | None = None
 
 
 class RecFeedbackResult(BaseModel):
@@ -84,6 +87,7 @@ class BookFeedbackRequest(BaseModel):
     clear_review: bool = False
     date_read: date | None = None
     exclude_from_profile: bool | None = None  # None = leave unchanged
+    is_favorite: bool | None = None  # None = leave unchanged
 
 
 class ShelfRequest(BaseModel):
@@ -131,10 +135,12 @@ class AddBookRequest(BaseModel):
 
 
 class TraitUpdateRequest(BaseModel):
-    """Update a taste trait's claim text and/or user note (PATCH /profile/traits/{id})."""
+    """Update a taste trait's claim text, user note, status, or weight (PATCH /profile/traits/{id})."""
 
     claim: str | None = None
     user_note: str | None = None
+    status: Literal["confirmed", "rejected"] | None = None
+    user_weight: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class ProfileStatusOut(BaseModel):
@@ -164,6 +170,7 @@ class BookOut(BaseModel):
     confidence_label: str | None = None
     resolution_confidence: float | None = None
     exclude_from_profile: bool = False
+    is_favorite: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -177,6 +184,8 @@ class TraitOut(BaseModel):
     inference_confidence: float
     status: str
     user_note: str | None
+    user_weight: float | None
+    verdict_updated_at: datetime | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -272,6 +281,35 @@ class FeedbackDismiss(BaseModel):
     trigger: str
     run_id: str | None = None
     mode: str  # "ask_later" | "dont_ask"
+
+
+class TasteSignalRequest(BaseModel):
+    """Body for POST /taste-signal — record a more/less-like-this preference.
+
+    direction: "more" to want more like this, "less" to want fewer like this.
+    target_kind: "book" for a library book (requires target_book_id), "rec" for a
+      served recommendation (requires snapshot with at least title/author).
+    target_book_id: id of the user's own Book row (required for book kind).
+    snapshot: JSON snapshot of the rec's title/author/subjects (required for rec kind).
+    """
+
+    direction: Literal["more", "less"]
+    target_kind: Literal["book", "rec"]
+    target_book_id: int | None = None
+    snapshot: dict | None = None
+
+
+class TasteSignalOut(BaseModel):
+    """Response for POST /taste-signal."""
+
+    id: int
+    direction: str
+    target_kind: str
+    target_book_id: int | None
+    snapshot: dict | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.

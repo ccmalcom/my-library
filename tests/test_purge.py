@@ -10,9 +10,11 @@ from __future__ import annotations
 from mylibrary import library, purge
 from mylibrary.db import (
     Book,
+    EnrichJob,
     Enrichment,
     ProfileMeta,
     Recommendation,
+    TasteSignal,
     TasteTrait,
     UserSettings,
     session_scope,
@@ -20,7 +22,8 @@ from mylibrary.db import (
 
 
 def _seed(user_id: str) -> None:
-    """Give `user_id` two enriched books plus a trait, rec, profile_meta, and stored key."""
+    """Give `user_id` two enriched books plus a trait, rec, profile_meta, stored key,
+    taste signal, and enrich job."""
     library.add_book(
         title="Dune", author="Frank Herbert", rating=5,
         subjects=["science fiction"], cover_url="http://x/dune.jpg", user_id=user_id,
@@ -34,6 +37,8 @@ def _seed(user_id: str) -> None:
         s.add(Recommendation(user_id=user_id, run_id="run-1", rank=1, title="Foundation"))
         s.add(ProfileMeta(user_id=user_id, last_profile_kind="full"))
         s.add(UserSettings(user_id=user_id, anthropic_api_key_encrypted="enc-blob"))
+        s.add(TasteSignal(user_id=user_id, direction="more", target_kind="book", target_book_id=1))
+        s.add(EnrichJob(user_id=user_id, job_id=f"job-{user_id}", status="done"))
 
 
 def _counts(user_id: str) -> dict:
@@ -50,13 +55,18 @@ def _counts(user_id: str) -> dict:
             "recs": s.query(Recommendation).filter(Recommendation.user_id == user_id).count(),
             "meta": s.query(ProfileMeta).filter(ProfileMeta.user_id == user_id).count(),
             "settings": s.query(UserSettings).filter(UserSettings.user_id == user_id).count(),
+            "signals": s.query(TasteSignal).filter(TasteSignal.user_id == user_id).count(),
+            "jobs": s.query(EnrichJob).filter(EnrichJob.user_id == user_id).count(),
         }
 
 
 def test_seed_is_complete():
     _seed("local")
     c = _counts("local")
-    assert c == {"books": 2, "enrich": 2, "traits": 1, "recs": 1, "meta": 1, "settings": 1}
+    assert c == {
+        "books": 2, "enrich": 2, "traits": 1, "recs": 1, "meta": 1, "settings": 1,
+        "signals": 1, "jobs": 1,
+    }
 
 
 def test_clear_profile_keeps_books():
@@ -68,6 +78,8 @@ def test_clear_profile_keeps_books():
     assert c["traits"] == 0 and c["recs"] == 0 and c["meta"] == 0
     # Library + settings untouched.
     assert c["books"] == 2 and c["enrich"] == 2 and c["settings"] == 1
+    # TasteSignal and EnrichJob are durable — clear_profile must not remove them.
+    assert c["signals"] == 1 and c["jobs"] == 1
 
 
 def test_clear_library_cascades_to_profile():
@@ -78,16 +90,29 @@ def test_clear_library_cascades_to_profile():
     # Books, enrichments, and all derived taste data gone…
     assert c["books"] == 0 and c["enrich"] == 0
     assert c["traits"] == 0 and c["recs"] == 0 and c["meta"] == 0
-    # …but the stored API key survives a library clear.
+    # …but the stored API key and durable signals/jobs survive a library clear.
     assert c["settings"] == 1
+    assert c["signals"] == 1 and c["jobs"] == 1
+
+
+def test_clear_library_keeps_taste_signal_and_jobs():
+    """TasteSignal and EnrichJob are durable — clear_library must not remove them."""
+    _seed("local")
+    purge.clear_library()
+    c = _counts("local")
+    assert c["signals"] == 1
+    assert c["jobs"] == 1
 
 
 def test_delete_account_removes_everything():
     _seed("local")
     result = purge.delete_account()
     assert result["settings_removed"] == 1
+    assert result["signals_removed"] == 1
+    assert result["jobs_removed"] == 1
     assert _counts("local") == {
         "books": 0, "enrich": 0, "traits": 0, "recs": 0, "meta": 0, "settings": 0,
+        "signals": 0, "jobs": 0,
     }
 
 
@@ -101,4 +126,5 @@ def test_purge_is_user_scoped():
     assert _counts("local")["books"] == 0
     assert _counts("other-user") == {
         "books": 2, "enrich": 2, "traits": 1, "recs": 1, "meta": 1, "settings": 1,
+        "signals": 1, "jobs": 1,
     }

@@ -26,7 +26,7 @@ ONE_TIME_TRIGGERS = {"post-setup", "post-first-profile"}
 # Trigger that fires once per recommend run.
 REPEATABLE_TRIGGER = "post-recs"
 
-VALID_CATEGORIES = {"bug", "idea", "confusing", "praise"}
+VALID_CATEGORIES = {"bug", "idea", "confusing", "praise", "targeted"}
 
 
 # ---------------------------------------------------------------------------

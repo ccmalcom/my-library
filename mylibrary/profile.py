@@ -19,7 +19,16 @@ import json
 from datetime import datetime
 
 from .config import LOCAL_USER_ID, get_settings
-from .db import Book, ProfileMeta, Recommendation, TasteTrait, init_db, session_scope, utcnow
+from .db import (
+    Book,
+    ProfileMeta,
+    Recommendation,
+    TasteSignal,
+    TasteTrait,
+    init_db,
+    session_scope,
+    utcnow,
+)
 from .user_settings import resolve_anthropic_key
 
 _TOOL = {
@@ -132,8 +141,16 @@ def _book_payload(book: Book) -> dict:
     return payload
 
 
-def build_tiers(session, user_id: str = LOCAL_USER_ID) -> dict[str, list[dict]]:
-    """Return `user_id`'s rated books, DNF books, and noted rejected recs grouped into tiers."""
+def build_tiers(
+    session,
+    user_id: str = LOCAL_USER_ID,
+    less_like_books: list[str] | None = None,
+) -> dict[str, list[dict]]:
+    """Return `user_id`'s rated books, DNF books, and noted rejected recs grouped into tiers.
+
+    When `less_like_books` is provided (titles the user marked "less like"), they are
+    surfaced in a `less_like` bucket so the extractor can sharpen aversion reasoning.
+    """
     tiers: dict[str, list[dict]] = {"5": [], "4": [], "3": [], "<=2": [], "dnf": [], "rejected": []}
     for book in session.query(Book).filter(
         Book.user_id == user_id, Book.exclude_from_profile.is_(False)
@@ -158,6 +175,8 @@ def build_tiers(session, user_id: str = LOCAL_USER_ID) -> dict[str, list[dict]]:
         tiers["rejected"].append(
             {"title": rec.title, "author": rec.author, "note": rec.user_note}
         )
+    if less_like_books:
+        tiers["less_like"] = [{"title": t} for t in less_like_books]
     return tiers
 
 
@@ -186,12 +205,14 @@ def mark_profiled(session, kind: str, user_id: str = LOCAL_USER_ID) -> None:
 def books_changed_since(
     session, since: datetime | None, user_id: str = LOCAL_USER_ID
 ) -> list[Book]:
-    """Rated books and DNF books (of `user_id`) whose in-app feedback changed after `since`.
+    """Rated books, DNF books, and favorited books (of `user_id`) whose in-app feedback
+    changed after `since`.
 
     Includes books toggled to/from `exclude_from_profile` so that those changes
     dirty the profile. `since=None` (never profiled) means every book carrying
-    feedback is 'changed'. Unrated books are excluded — they don't participate
-    in taste analysis.
+    feedback is 'changed'. Unrated books are excluded unless they are favorited —
+    favorites are sent to Claude as positive signal regardless of rating, so toggling
+    a favorite must dirty the profile.
     """
     q = session.query(Book).filter(
         Book.user_id == user_id,
@@ -201,11 +222,190 @@ def books_changed_since(
         q = q.filter(Book.feedback_updated_at > since)
     return [
         b for b in q.all()
-        if b.effective_rating is not None or b.exclusive_shelf == "did-not-finish"
+        if b.effective_rating is not None
+        or b.exclusive_shelf == "did-not-finish"
+        or b.is_favorite
     ]
 
 
-def _build_prompt(tiers: dict[str, list[dict]]) -> str:
+# --- structured feedback (Task 2.1) ----------------------------------------
+#
+# User verdicts on traits (TasteTrait.status / user_weight) and explicit more/less
+# steering (TasteSignal) are durable preferences. The profiler reads them so that a
+# rebuild honors what the user has already told us: confirmed traits are preserved,
+# rejected traits are never re-derived (even as paraphrases), downweighted traits are
+# softened, and more/less-like books are surfaced as strong positive/negative signal.
+
+
+def _feedback_context(session, user_id: str = LOCAL_USER_ID) -> dict:
+    """Collect the user's trait verdicts + more/less book signals for `user_id`.
+
+    Returns the five buckets the profiler injects into its prompts. `more_like` /
+    `less_like` join TasteSignal -> Book to render "{title} by {author}" strings
+    (book-kind signals only; rec-kind snapshots are handled in Phase 2.2).
+    """
+    traits = session.query(TasteTrait).filter(TasteTrait.user_id == user_id).all()
+
+    confirmed = [t.claim for t in traits if t.status == "confirmed"]
+    rejected = [t.claim for t in traits if t.status == "rejected"]
+    downweighted = [
+        {"claim": t.claim, "user_weight": t.user_weight}
+        for t in traits
+        if (t.user_weight is not None and t.user_weight < 1.0 and t.status != "rejected")
+    ]
+
+    def _book_label(book_id: int | None) -> str | None:
+        if book_id is None:
+            return None
+        book = session.query(Book).filter(
+            Book.id == book_id, Book.user_id == user_id
+        ).one_or_none()
+        if book is None:
+            return None
+        if book.author:
+            return f"{book.title} by {book.author}"
+        return book.title
+
+    more_like: list[str] = []
+    less_like: list[str] = []
+    signals = (
+        session.query(TasteSignal)
+        .filter(TasteSignal.user_id == user_id, TasteSignal.target_kind == "book")
+        .all()
+    )
+    for sig in signals:
+        label = _book_label(sig.target_book_id)
+        if label is None:
+            continue
+        if sig.direction == "more":
+            more_like.append(label)
+        elif sig.direction == "less":
+            less_like.append(label)
+
+    favorite_books = (
+        session.query(Book)
+        .filter(Book.user_id == user_id, Book.is_favorite == True)  # noqa: E712
+        .all()
+    )
+    favorites = [
+        f"{b.title} by {b.author}" if b.author else b.title
+        for b in favorite_books
+    ]
+
+    return {
+        "confirmed": confirmed,
+        "rejected": rejected,
+        "downweighted": downweighted,
+        "more_like": more_like,
+        "less_like": less_like,
+        "favorites": favorites,
+    }
+
+
+def _feedback_block(feedback: dict | None) -> str:
+    """Render the `## User Feedback` prompt section, or "" when feedback is empty."""
+    if not feedback:
+        return ""
+    lines: list[str] = []
+    if feedback.get("confirmed"):
+        lines.append(
+            "The following traits have been confirmed by the user — preserve them "
+            "exactly, do not soften or remove: "
+            + "; ".join(feedback["confirmed"])
+        )
+    if feedback.get("rejected"):
+        lines.append(
+            "The following traits were rejected by the user — do NOT re-derive or "
+            "include variants of these: " + "; ".join(feedback["rejected"])
+        )
+    if feedback.get("downweighted"):
+        rendered = "; ".join(
+            f"{d['claim']} (weight {d['user_weight']})"
+            for d in feedback["downweighted"]
+        )
+        lines.append(
+            "The following traits should be softened (user finds them less "
+            "important): " + rendered
+        )
+    if feedback.get("more_like"):
+        lines.append(
+            "The user wants MORE recommendations like: "
+            + "; ".join(feedback["more_like"])
+            + " — treat these as strong positive signal"
+        )
+    if feedback.get("less_like"):
+        lines.append(
+            "The user wants FEWER recommendations like: "
+            + "; ".join(feedback["less_like"])
+            + " — treat these as strong negative signal (aversion)"
+        )
+    if feedback.get("favorites"):
+        lines.append(
+            "The following are the user's all-time favorite books — weight these "
+            "as the strongest possible positive signal when deriving taste traits: "
+            + "; ".join(feedback["favorites"])
+        )
+    if not lines:
+        return ""
+    return "\n\n## User Feedback\n" + "\n".join(f"- {line}" for line in lines) + "\n"
+
+
+_REJECT_STOPWORDS = frozenset(
+    {
+        "a", "an", "the", "and", "or", "of", "to", "in", "on", "for", "with",
+        "above", "all", "over", "under", "this", "that", "these", "those", "its",
+        "it", "is", "are", "be", "as", "than", "but", "not", "no",
+    }
+)
+
+
+def _claim_tokens(text: str) -> set[str]:
+    import re
+
+    return {
+        w
+        for w in re.findall(r"[a-z0-9]+", (text or "").lower())
+        if w not in _REJECT_STOPWORDS
+    }
+
+
+def _remove_rejected_claims(
+    new_traits: list[dict], rejected_claims: list[str]
+) -> list[dict]:
+    """Drop traits whose claim case-insensitively matches a rejected claim.
+
+    Guards against a user-killed trait sneaking back in as a paraphrase. Matching is
+    case-insensitive and covers both a substring hit and a high significant-token
+    overlap (>= 60% of the rejected claim's content words present in the candidate),
+    so a reworded variant of a rejected trait is still filtered.
+    """
+    if not rejected_claims:
+        return new_traits
+    rejected = [r for r in rejected_claims if r and r.strip()]
+    rej_lower = [r.strip().lower() for r in rejected]
+    rej_tokens = [_claim_tokens(r) for r in rejected]
+
+    kept: list[dict] = []
+    for t in new_traits:
+        claim = (t.get("claim") or "").strip()
+        claim_lower = claim.lower()
+        claim_tokens = _claim_tokens(claim)
+        matched = False
+        for r_lower, r_tokens in zip(rej_lower, rej_tokens):
+            if claim_lower and (r_lower in claim_lower or claim_lower in r_lower):
+                matched = True
+                break
+            if r_tokens:
+                overlap = len(r_tokens & claim_tokens) / len(r_tokens)
+                if overlap >= 0.6:
+                    matched = True
+                    break
+        if not matched:
+            kept.append(t)
+    return kept
+
+
+def _build_prompt(tiers: dict[str, list[dict]], feedback: dict | None = None) -> str:
     counts = {k: len(v) for k, v in tiers.items()}
     return (
         "Below is a reader's library, grouped by star rating and status. Each book has "
@@ -261,6 +461,7 @@ def _build_prompt(tiers: dict[str, list[dict]]) -> str:
         "  - Aim for 6-12 traits. Record them with the record_taste_traits tool.\n\n"
         "LIBRARY DATA (JSON):\n"
         + json.dumps(tiers, ensure_ascii=False)
+        + _feedback_block(feedback)
     )
 
 
@@ -286,7 +487,8 @@ def extract_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_I
                 "No rated books found. Run ingest (and enrich) first."
             )
 
-        prompt = _build_prompt(tiers)
+        feedback = _feedback_context(session, user_id)
+        prompt = _build_prompt(tiers, feedback=feedback)
 
         # Imported lazily so ingest/enrich work without the anthropic package present.
         from anthropic import Anthropic
@@ -306,6 +508,9 @@ def extract_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_I
             if getattr(block, "type", None) == "tool_use":
                 traits = block.input.get("traits", [])
                 break
+
+        # Never let a user-rejected trait return (even reworded).
+        traits = _remove_rejected_claims(traits, feedback["rejected"])
 
         valid_ids = {b["id"] for tier in tiers.values() for b in tier}
 
@@ -379,6 +584,7 @@ def _build_update_prompt(
     current_traits: list[dict],
     books_meta: dict[int, dict],
     changed_ids: list[int],
+    feedback: dict | None = None,
 ) -> str:
     return (
         "The reader has updated some ratings and/or written new reviews since this "
@@ -402,6 +608,7 @@ def _build_update_prompt(
         + json.dumps(current_traits, ensure_ascii=False)
         + "\n\nBOOKS (id -> metadata; the only books you may cite) (JSON):\n"
         + json.dumps({str(k): v for k, v in books_meta.items()}, ensure_ascii=False)
+        + _feedback_block(feedback)
     )
 
 
@@ -443,8 +650,36 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
         # If the only changes are exclusion toggles, a full rebuild is required to
         # properly drop their signal from the existing traits.
         changed_ids = [b.id for b in changed if not b.exclude_from_profile]
+
+        # Check whether trait verdicts, taste signals, or rec rejection reasons were
+        # recorded after the last profile build.
+        meta_for_check = get_profile_meta(session, user_id)
+        has_feedback_since = (
+            since is not None
+            and (
+                session.query(TasteTrait)
+                .filter(
+                    TasteTrait.user_id == user_id,
+                    TasteTrait.verdict_updated_at > since,
+                )
+                .first()
+                is not None
+                or session.query(TasteSignal)
+                .filter(
+                    TasteSignal.user_id == user_id,
+                    TasteSignal.created_at > since,
+                )
+                .first()
+                is not None
+                or (
+                    meta_for_check.rec_feedback_updated_at is not None
+                    and meta_for_check.rec_feedback_updated_at > since
+                )
+            )
+        )
+
         if not changed_ids:
-            if not changed:
+            if not changed and not has_feedback_since:
                 return {
                     "mode": "update",
                     "changed_books": 0,
@@ -453,9 +688,13 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
                     "note": "Profile already up to date — no rating/review changes since last build.",
                     "model": settings.model,
                 }
-            # Only exclusion toggles changed; incremental update cannot remove their
-            # signal, so fall back to a full rebuild.
-            return extract_taste_profile(max_tokens=max_tokens, user_id=user_id)
+            if not has_feedback_since:
+                # Only exclusion toggles changed; incremental update cannot remove their
+                # signal, so fall back to a full rebuild.
+                return extract_taste_profile(max_tokens=max_tokens, user_id=user_id)
+            # Feedback-only update: no changed books, but verdicts/signals need incorporation.
+            # Fall through with empty changed_ids so the prompt carries current traits +
+            # feedback context; Claude revises based on the feedback block alone.
 
         # Serialize the current traits and gather the books they cite.
         current_rows = (
@@ -492,7 +731,10 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
             payload["rating"] = b.effective_rating
             books_meta[bid] = payload
 
-        prompt = _build_update_prompt(current_traits, books_meta, changed_ids)
+        feedback = _feedback_context(session, user_id)
+        prompt = _build_update_prompt(
+            current_traits, books_meta, changed_ids, feedback=feedback
+        )
 
         from anthropic import Anthropic
 
@@ -511,6 +753,8 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
             if getattr(block, "type", None) == "tool_use":
                 traits = block.input.get("traits", [])
                 break
+
+        traits = _remove_rejected_claims(traits, feedback["rejected"])
 
         valid_ids = set(books_meta.keys())
 

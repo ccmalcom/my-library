@@ -37,8 +37,10 @@ from .ingest import ingest_csv
 from .library import (
     BookExistsError,
     BookNotFoundError,
+    TasteSignalError,
     add_book,
     profile_status,
+    record_taste_signal,
     remove_book,
     set_book_feedback,
     set_book_shelf,
@@ -67,6 +69,8 @@ from .schemas import (
     RecommendationOut,
     RecommendRequest,
     ShelfRequest,
+    TasteSignalOut,
+    TasteSignalRequest,
     TraitOut,
     TraitUpdateRequest,
     UserProfileOut,
@@ -284,6 +288,8 @@ def _book_out(book: Book) -> BookOut:
         description=enr.description if enr else None,
         confidence_label=enr.confidence_label if enr else None,
         resolution_confidence=enr.resolution_confidence if enr else None,
+        exclude_from_profile=book.exclude_from_profile,
+        is_favorite=book.is_favorite,
     )
 
 
@@ -557,6 +563,7 @@ def rate_or_review_book(book_id: int, req: BookFeedbackRequest, user_id: UserId)
             clear_review=req.clear_review,
             date_read=req.date_read,
             exclude_from_profile=req.exclude_from_profile,
+            is_favorite=req.is_favorite,
             user_id=user_id,
         )
     except BookNotFoundError as e:
@@ -670,15 +677,40 @@ def feedback(rec_id: int, req: FeedbackRequest, user_id: UserId) -> RecFeedbackR
                    and never recommended again; the returned book lets the UI prompt a review.
     rejected     -> marks the rec so the recommender won't re-surface it.
 
+    reject_reasons: optional list of structured reason codes (from feedback_vocab.REJECT_REASONS).
+      Only valid when status == "rejected"; providing it with any other status is a 422 error.
+      Unknown reason codes also return 422.
+
     Returns the affected library book (None for rejected).
     """
+    from .feedback_vocab import REJECT_REASONS, is_valid_reasons
+    from .db import utcnow
+    from .profile import get_profile_meta
+
     valid = {"accepted", "rejected", "already_read"}
     status_provided = "status" in req.model_fields_set
     user_note_provided = "user_note" in req.model_fields_set
+    reject_reasons_provided = req.reject_reasons is not None
     if status_provided and req.status not in valid:
         raise HTTPException(status_code=422, detail=f"status must be one of {valid}")
-    if not status_provided and not user_note_provided:
+    if not status_provided and not user_note_provided and not reject_reasons_provided:
         raise HTTPException(status_code=422, detail="Provide status and/or user_note")
+
+    # reject_reasons is only meaningful on a "rejected" status
+    effective_status_for_validation = req.status if status_provided else None
+    if reject_reasons_provided and effective_status_for_validation != "rejected":
+        raise HTTPException(
+            status_code=422,
+            detail="reject_reasons may only be provided when status is 'rejected'",
+        )
+    if reject_reasons_provided and not is_valid_reasons(req.reject_reasons):
+        if not req.reject_reasons:
+            raise HTTPException(status_code=422, detail=f"reject_reasons must be a non-empty list. Valid codes: {list(REJECT_REASONS)}")
+        unknown = [r for r in req.reject_reasons if r not in REJECT_REASONS]
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown reject_reasons: {unknown}. Valid codes: {list(REJECT_REASONS)}",
+        )
 
     with session_scope() as session:
         rec = session.get(Recommendation, rec_id)
@@ -689,6 +721,11 @@ def feedback(rec_id: int, req: FeedbackRequest, user_id: UserId) -> RecFeedbackR
             rec.status = req.status
         if user_note_provided:
             rec.user_note = req.user_note
+        if reject_reasons_provided:
+            rec.reject_reasons = req.reject_reasons
+            # Bump the profile dirty-state: rejected recs with reasons feed aversion signals.
+            meta = get_profile_meta(session, user_id)
+            meta.rec_feedback_updated_at = utcnow()
 
         book_out: BookOut | None = None
         effective_status = req.status or rec.status
@@ -718,23 +755,52 @@ def get_profile(user_id: UserId) -> list[TraitOut]:
 
 @app.patch("/profile/traits/{trait_id}", response_model=TraitOut)
 def update_trait(trait_id: int, req: TraitUpdateRequest, user_id: UserId) -> TraitOut:
-    """Edit a taste trait's claim text and/or attach a user note.
+    """Edit a taste trait's claim text, user note, status, or weight.
 
     Editing the claim sets status to 'edited' so it's distinguishable from
     Claude-proposed traits. User notes are stored alongside without changing status.
+    Setting status to 'confirmed'/'rejected' or adjusting user_weight stamps
+    verdict_updated_at and marks the profile dirty.
     """
+    from .library import TraitNotFoundError, set_trait_verdict
     from .db import TasteTrait
 
+    if req.claim is None and req.user_note is None and req.status is None and req.user_weight is None:
+        raise HTTPException(status_code=422, detail="at least one field (claim, user_note, status, user_weight) must be provided")
+
     with session_scope() as session:
-        trait = session.get(TasteTrait, trait_id)
-        if trait is None or trait.user_id != user_id:
-            raise HTTPException(status_code=404, detail=f"Trait {trait_id} not found")
-        if req.claim is not None:
-            trait.claim = req.claim.strip()
-            trait.status = "edited"
-        if req.user_note is not None:
-            trait.user_note = req.user_note
-        session.flush()
+        trait: TasteTrait | None = None
+
+        # Handle claim/user_note edits: this path owns the fetch + ownership check.
+        if req.claim is not None or req.user_note is not None:
+            trait = session.get(TasteTrait, trait_id)
+            if trait is None or trait.user_id != user_id:
+                raise HTTPException(status_code=404, detail=f"Trait {trait_id} not found")
+            if req.claim is not None:
+                trait.claim = req.claim.strip()
+                trait.status = "edited"
+            if req.user_note is not None:
+                trait.user_note = req.user_note
+
+        # Handle verdict fields: set_trait_verdict owns its own fetch + ownership check
+        # so we don't duplicate that logic here.
+        if req.status is not None or req.user_weight is not None:
+            try:
+                trait = set_trait_verdict(
+                    session,
+                    trait_id,
+                    status=req.status,
+                    user_weight=req.user_weight,
+                    user_id=user_id,
+                )
+            except TraitNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+        else:
+            session.flush()
+
+        # trait is guaranteed non-None by this point: either the claim/user_note branch
+        # fetched it (and would have raised 404 if missing), or set_trait_verdict returned it.
+        assert trait is not None
         return TraitOut.model_validate(trait)
 
 
@@ -939,3 +1005,34 @@ def post_feedback_dismiss(req: FeedbackDismiss, user_id: UserId) -> None:
         run_id=run_id_norm,
         mode=req.mode,
     )
+
+
+@app.post("/taste-signal", response_model=TasteSignalOut, status_code=201)
+def post_taste_signal(req: TasteSignalRequest, user_id: UserId) -> TasteSignalOut:
+    """Record a more/less-like-this steering signal.
+
+    direction: "more" or "less"
+    target_kind: "book" (requires target_book_id) or "rec" (requires snapshot)
+
+    For book-kind signals, target_book_id must refer to a book in the user's library.
+    For rec-kind signals, snapshot must contain at least basic rec metadata.
+
+    Bumps the profile dirty-state so the next re-profile incorporates this signal.
+    Returns 201 with the persisted TasteSignal row.
+    """
+
+    try:
+        with session_scope() as session:
+            signal = record_taste_signal(
+                session,
+                direction=req.direction,
+                target_kind=req.target_kind,
+                target_book_id=req.target_book_id,
+                snapshot=req.snapshot,
+                user_id=user_id,
+            )
+            return TasteSignalOut.model_validate(signal)
+    except BookNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except TasteSignalError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

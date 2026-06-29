@@ -4,10 +4,11 @@ import { useState, Suspense } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR, { mutate } from 'swr';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Heart } from 'lucide-react';
 import {
   api,
   PROFILE_STATUS_KEY,
+  setFavorite,
   type Book,
   type Recommendation,
   type Shelf,
@@ -218,14 +219,13 @@ function ReadTab({ books }: { books: Book[] }) {
       ) : (
         <ul className='divide-y divide-hairline'>
           {filtered.map((book) => (
-            <li key={book.id}>
+            <li key={book.id} className='flex items-center gap-1 rounded-lg px-2 py-3 hover:bg-elevated transition'>
               <button
                 type='button'
                 onClick={() => setEditing(book)}
                 className={[
-                  'flex w-full items-center gap-4 px-2 py-3 rounded-lg text-left transition',
-                  'hover:bg-elevated',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base',
+                  'flex flex-1 min-w-0 items-center gap-4 text-left',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base rounded',
                 ].join(' ')}
               >
                 <CoverThumb book={book} size='sm' />
@@ -237,6 +237,28 @@ function ReadTab({ books }: { books: Book[] }) {
                   <StarDisplay rating={book.effective_rating} />
                 </div>
               </button>
+              <div className='flex shrink-0 pl-2'>
+                <button
+                  type='button'
+                  aria-label={book.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                  onClick={() => {
+                    const next = !book.is_favorite;
+                    void mutate(READ_KEY, (books: Book[] | undefined) => books?.map((b) => b.id === book.id ? { ...b, is_favorite: next } : b), { revalidate: false });
+                    void setFavorite(book.id, next)
+                      .then(() => { void mutate(READ_KEY); void mutate(PROFILE_STATUS_KEY); })
+                      .catch((e) => { console.error('favorite toggle failed', e); void mutate(READ_KEY); });
+                  }}
+                  className={[
+                    'rounded-full p-1 transition active:scale-95',
+                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                    book.is_favorite
+                      ? 'text-warning'
+                      : 'text-muted hover:text-warning/70',
+                  ].join(' ')}
+                >
+                  <Heart size={18} fill={book.is_favorite ? 'currentColor' : 'none'} aria-hidden />
+                </button>
+              </div>
             </li>
           ))}
         </ul>

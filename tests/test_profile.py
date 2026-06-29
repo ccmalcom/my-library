@@ -80,3 +80,23 @@ def test_books_changed_since_excludes_unreviewed_unrated():
         changed = books_changed_since(session, since=None)
 
     assert changed == []
+
+
+def test_books_changed_since_includes_unrated_favorite():
+    """An unrated, non-DNF book that is favorited must be returned so the profile is dirtied."""
+    with session_scope() as session:
+        session.add(Book(
+            title="Fave Unrated",
+            author="Test Author",
+            goodreads_rating=0,
+            exclusive_shelf="read",
+            app_rating=None,
+            is_favorite=True,
+            feedback_updated_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        ))
+
+    with session_scope() as session:
+        changed = books_changed_since(session, since=None)
+
+    titles = {b.title for b in changed}
+    assert "Fave Unrated" in titles

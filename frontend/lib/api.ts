@@ -38,6 +38,7 @@ export interface Book {
   confidence_label: string | null;
   resolution_confidence: number | null;
   exclude_from_profile: boolean;
+  is_favorite: boolean;
 }
 
 export interface Recommendation {
@@ -72,6 +73,7 @@ export interface Trait {
   contrasts: number[] | null;
   inference_confidence: number;
   status: string;
+  user_weight: number | null;
   user_note: string | null;
   created_at: string;
 }
@@ -119,6 +121,8 @@ export interface BookFeedbackRequest {
   date_read?: string;
   /** Exclude this book from taste profiling/archetype derivation; omit to leave unchanged. */
   exclude_from_profile?: boolean;
+  /** Mark this book as a personal favorite (strongest profiling signal); omit to leave unchanged. */
+  is_favorite?: boolean;
 }
 
 export type Shelf = "to-read" | "currently-reading" | "read" | "did-not-finish";
@@ -499,3 +503,61 @@ export interface EnrichJobOut {
 
 /** Shared SWR key for the user's display name / profile settings. */
 export const USER_PROFILE_KEY = "user-profile";
+
+// ─── Structured feedback (Tasks 3.1–3.3 backend endpoints) ────────────────────
+
+/** Human-readable labels for recommendation reject reason codes. */
+export const REJECT_REASONS: Record<string, string> = {
+  wrong_genre:   "Wrong genre",
+  too_dark:      "Too dark",
+  tried_author:  "Already tried this author",
+  too_long:      "Too long",
+  not_now:       "Not in the mood",
+  overhyped:     "Feels overhyped",
+  wrong_vibe:    "Wrong vibe",
+};
+
+/**
+ * Confirm or reject a taste-profile trait, or adjust its user weight.
+ * PATCH /profile/traits/{trait_id}
+ */
+export function setTraitVerdict(
+  id: number,
+  body: { status?: "confirmed" | "rejected"; user_weight?: number },
+): Promise<Trait> {
+  return patch<Trait>(`/profile/traits/${id}`, body);
+}
+
+/**
+ * Reject a recommendation and attach structured reason codes.
+ * PATCH /recommendations/{rec_id}/feedback
+ */
+export function rejectRecWithReasons(
+  id: number,
+  reasons: string[],
+): Promise<RecFeedbackResult> {
+  const body: Record<string, unknown> = { status: "rejected" };
+  if (reasons.length > 0) body.reject_reasons = reasons;
+  return patch<RecFeedbackResult>(`/recommendations/${id}/feedback`, body);
+}
+
+/**
+ * Record a directional taste signal (more / less of something).
+ * POST /taste-signal
+ */
+export function recordTasteSignal(body: {
+  direction: "more" | "less";
+  target_kind: "book" | "rec";
+  target_book_id?: number;
+  snapshot?: object;
+}): Promise<Record<string, unknown>> {
+  return post<Record<string, unknown>>("/taste-signal", body);
+}
+
+/**
+ * Toggle the favorite flag on a library book.
+ * PATCH /books/{id}/feedback
+ */
+export function setFavorite(id: number, value: boolean): Promise<Record<string, unknown>> {
+  return patch<Record<string, unknown>>(`/books/${id}/feedback`, { is_favorite: value });
+}
