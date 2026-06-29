@@ -321,6 +321,8 @@ def set_trait_verdict(
     if status is not None:
         trait.status = status
     if user_weight is not None:
+        if not (0.0 <= user_weight <= 1.0):
+            raise ValueError("user_weight must be between 0.0 and 1.0.")
         trait.user_weight = user_weight
     trait.verdict_updated_at = utcnow()
     session.flush()
