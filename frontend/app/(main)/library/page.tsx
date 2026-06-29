@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR, { mutate } from 'swr';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Heart } from 'lucide-react';
 import {
   api,
   PROFILE_STATUS_KEY,
@@ -249,14 +249,14 @@ function ReadTab({ books }: { books: Book[] }) {
                       .catch((e) => { console.error('favorite toggle failed', e); void mutate(READ_KEY); });
                   }}
                   className={[
-                    'rounded-full p-1 text-base transition active:scale-95',
+                    'rounded-full p-1 transition active:scale-95',
                     'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
                     book.is_favorite
                       ? 'text-warning'
                       : 'text-muted hover:text-warning/70',
                   ].join(' ')}
                 >
-                  {book.is_favorite ? '♥' : '♡'}
+                  <Heart size={18} fill={book.is_favorite ? 'currentColor' : 'none'} aria-hidden />
                 </button>
               </div>
             </li>

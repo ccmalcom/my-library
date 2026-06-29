@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import useSWR, { mutate } from 'swr';
 import { Inbox, Sparkles } from 'lucide-react';
 import { api, type Book, type Recommendation, type Trait, REJECT_REASONS, rejectRecWithReasons, recordTasteSignal, PROFILE_STATUS_KEY } from '@/lib/api';
-import { Button, Spinner, useToast } from '@/components/ui';
+import { Button, Spinner, useToast, Modal } from '@/components/ui';
 import SwipeCard from '@/components/SwipeCard';
 import BookEditModal from '@/components/BookEditModal';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
@@ -287,39 +287,39 @@ export default function SwipePage() {
       )}
       {recsModal}
       {pendingRejectId !== null && (
-        <div className='fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center'>
-          <div className='w-full max-w-sm rounded-t-2xl sm:rounded-2xl bg-surface p-6 shadow-xl'>
-            <p className='mb-1 text-sm font-semibold text-text'>Why not interested?</p>
-            <p className='mb-4 text-xs text-faint'>Optional -- helps improve recommendations.</p>
-            <div className='flex flex-wrap gap-2'>
-              {Object.entries(REJECT_REASONS).map(([key, label]) => {
-                const active = selectedReasons.has(key);
-                return (
-                  <button
-                    key={key}
-                    onClick={() => toggleReason(key)}
-                    className={[
-                      'rounded-full border px-3 py-1 text-xs font-medium transition',
-                      active
-                        ? 'border-accent bg-accent/20 text-accent'
-                        : 'border-border bg-base text-muted hover:border-accent hover:text-accent',
-                    ].join(' ')}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className='mt-5 flex gap-3 justify-end'>
-              <Button variant='ghost' size='sm' onClick={submitReject}>
-                Skip
-              </Button>
-              <Button size='sm' onClick={submitReject}>
-                {selectedReasons.size > 0 ? 'Submit' : 'Confirm'}
-              </Button>
-            </div>
+        <Modal
+          labelId='reject-reason-title'
+          onClose={() => { setPendingRejectId(null); setSelectedReasons(new Set()); }}
+          className='w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl'
+        >
+          <p id='reject-reason-title' className='mb-1 text-sm font-semibold text-text'>Why not interested?</p>
+          <p className='mb-4 text-xs text-faint'>Optional -- helps improve recommendations.</p>
+          <div className='flex flex-wrap gap-2'>
+            {Object.entries(REJECT_REASONS).map(([key, label]) => {
+              const active = selectedReasons.has(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => toggleReason(key)}
+                  className={[
+                    'rounded-full border px-3 py-1 text-xs font-medium transition',
+                    active
+                      ? 'border-accent bg-accent/20 text-accent'
+                      : 'border-border bg-base text-muted hover:border-accent hover:text-accent',
+                  ].join(' ')}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
-        </div>
+          <div className='mt-5 flex gap-3 justify-end'>
+            <Button variant='ghost' size='sm' onClick={submitReject}>Skip</Button>
+            <Button size='sm' onClick={submitReject}>
+              {selectedReasons.size > 0 ? 'Submit' : 'Confirm'}
+            </Button>
+          </div>
+        </Modal>
       )}
     </>
   );
