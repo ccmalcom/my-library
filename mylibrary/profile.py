@@ -278,12 +278,23 @@ def _feedback_context(session, user_id: str = LOCAL_USER_ID) -> dict:
         elif sig.direction == "less":
             less_like.append(label)
 
+    favorite_books = (
+        session.query(Book)
+        .filter(Book.user_id == user_id, Book.is_favorite == True)  # noqa: E712
+        .all()
+    )
+    favorites = [
+        f"{b.title} by {b.author}" if b.author else b.title
+        for b in favorite_books
+    ]
+
     return {
         "confirmed": confirmed,
         "rejected": rejected,
         "downweighted": downweighted,
         "more_like": more_like,
         "less_like": less_like,
+        "favorites": favorites,
     }
 
 
@@ -323,6 +334,12 @@ def _feedback_block(feedback: dict | None) -> str:
             "The user wants FEWER recommendations like: "
             + "; ".join(feedback["less_like"])
             + " — treat these as strong negative signal (aversion)"
+        )
+    if feedback.get("favorites"):
+        lines.append(
+            "The following are the user's all-time favorite books — weight these "
+            "as the strongest possible positive signal when deriving taste traits: "
+            + "; ".join(feedback["favorites"])
         )
     if not lines:
         return ""
@@ -629,8 +646,30 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
         # If the only changes are exclusion toggles, a full rebuild is required to
         # properly drop their signal from the existing traits.
         changed_ids = [b.id for b in changed if not b.exclude_from_profile]
+
+        # Check whether trait verdicts or taste signals were recorded after the last profile.
+        has_feedback_since = (
+            since is not None
+            and (
+                session.query(TasteTrait)
+                .filter(
+                    TasteTrait.user_id == user_id,
+                    TasteTrait.verdict_updated_at > since,
+                )
+                .first()
+                is not None
+                or session.query(TasteSignal)
+                .filter(
+                    TasteSignal.user_id == user_id,
+                    TasteSignal.created_at > since,
+                )
+                .first()
+                is not None
+            )
+        )
+
         if not changed_ids:
-            if not changed:
+            if not changed and not has_feedback_since:
                 return {
                     "mode": "update",
                     "changed_books": 0,
@@ -639,9 +678,13 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
                     "note": "Profile already up to date — no rating/review changes since last build.",
                     "model": settings.model,
                 }
-            # Only exclusion toggles changed; incremental update cannot remove their
-            # signal, so fall back to a full rebuild.
-            return extract_taste_profile(max_tokens=max_tokens, user_id=user_id)
+            if not has_feedback_since:
+                # Only exclusion toggles changed; incremental update cannot remove their
+                # signal, so fall back to a full rebuild.
+                return extract_taste_profile(max_tokens=max_tokens, user_id=user_id)
+            # Feedback-only update: no changed books, but verdicts/signals need incorporation.
+            # Fall through with empty changed_ids so the prompt carries current traits +
+            # feedback context; Claude revises based on the feedback block alone.
 
         # Serialize the current traits and gather the books they cite.
         current_rows = (

@@ -288,6 +288,8 @@ def _book_out(book: Book) -> BookOut:
         description=enr.description if enr else None,
         confidence_label=enr.confidence_label if enr else None,
         resolution_confidence=enr.resolution_confidence if enr else None,
+        exclude_from_profile=book.exclude_from_profile,
+        is_favorite=book.is_favorite,
     )
 
 
@@ -561,6 +563,7 @@ def rate_or_review_book(book_id: int, req: BookFeedbackRequest, user_id: UserId)
             clear_review=req.clear_review,
             date_read=req.date_read,
             exclude_from_profile=req.exclude_from_profile,
+            is_favorite=req.is_favorite,
             user_id=user_id,
         )
     except BookNotFoundError as e:

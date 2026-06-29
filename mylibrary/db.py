@@ -87,6 +87,7 @@ class Book(Base):
     # Never set by Goodreads import — only by in-app feedback.
     feedback_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
     exclude_from_profile: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    is_favorite: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
     date_read: Mapped[date | None] = mapped_column(Date)
     date_added: Mapped[date | None] = mapped_column(Date)
@@ -483,6 +484,10 @@ def init_db() -> None:
             if "exclude_from_profile" not in book_cols:
                 conn.execute(
                     sa_text("ALTER TABLE books ADD COLUMN exclude_from_profile BOOLEAN NOT NULL DEFAULT 0")
+                )
+            if "is_favorite" not in book_cols:
+                conn.execute(
+                    sa_text("ALTER TABLE books ADD COLUMN is_favorite BOOLEAN NOT NULL DEFAULT 0")
                 )
 
     # Lightweight migration: taste_traits used to be considered fully regenerable by

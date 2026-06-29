@@ -38,6 +38,7 @@ export interface Book {
   confidence_label: string | null;
   resolution_confidence: number | null;
   exclude_from_profile: boolean;
+  is_favorite: boolean;
 }
 
 export interface Recommendation {
@@ -120,6 +121,8 @@ export interface BookFeedbackRequest {
   date_read?: string;
   /** Exclude this book from taste profiling/archetype derivation; omit to leave unchanged. */
   exclude_from_profile?: boolean;
+  /** Mark this book as a personal favorite (strongest profiling signal); omit to leave unchanged. */
+  is_favorite?: boolean;
 }
 
 export type Shelf = "to-read" | "currently-reading" | "read" | "did-not-finish";
@@ -533,10 +536,9 @@ export function rejectRecWithReasons(
   id: number,
   reasons: string[],
 ): Promise<RecFeedbackResult> {
-  return patch<RecFeedbackResult>(`/recommendations/${id}/feedback`, {
-    status: "rejected",
-    reject_reasons: reasons,
-  });
+  const body: Record<string, unknown> = { status: "rejected" };
+  if (reasons.length > 0) body.reject_reasons = reasons;
+  return patch<RecFeedbackResult>(`/recommendations/${id}/feedback`, body);
 }
 
 /**
@@ -550,4 +552,12 @@ export function recordTasteSignal(body: {
   snapshot?: object;
 }): Promise<Record<string, unknown>> {
   return post<Record<string, unknown>>("/taste-signal", body);
+}
+
+/**
+ * Toggle the favorite flag on a library book.
+ * PATCH /books/{id}/feedback
+ */
+export function setFavorite(id: number, value: boolean): Promise<Record<string, unknown>> {
+  return patch<Record<string, unknown>>(`/books/${id}/feedback`, { is_favorite: value });
 }

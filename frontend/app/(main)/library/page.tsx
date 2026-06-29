@@ -8,7 +8,7 @@ import { BookOpen } from 'lucide-react';
 import {
   api,
   PROFILE_STATUS_KEY,
-  recordTasteSignal,
+  setFavorite,
   type Book,
   type Recommendation,
   type Shelf,
@@ -237,38 +237,26 @@ function ReadTab({ books }: { books: Book[] }) {
                   <StarDisplay rating={book.effective_rating} />
                 </div>
               </button>
-              <div className='flex shrink-0 gap-1 pl-2'>
+              <div className='flex shrink-0 pl-2'>
                 <button
                   type='button'
-                  aria-label='More like this'
+                  aria-label={book.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
                   onClick={() => {
-                    void recordTasteSignal({ target_kind: 'book', target_book_id: book.id, direction: 'more' })
-                      .then(() => { void mutate(PROFILE_STATUS_KEY); })
-                      .catch((e) => console.error('taste signal failed', e));
+                    const next = !book.is_favorite;
+                    void mutate(READ_KEY, (books: Book[] | undefined) => books?.map((b) => b.id === book.id ? { ...b, is_favorite: next } : b), { revalidate: false });
+                    void setFavorite(book.id, next)
+                      .then(() => { void mutate(READ_KEY); void mutate(PROFILE_STATUS_KEY); })
+                      .catch((e) => { console.error('favorite toggle failed', e); void mutate(READ_KEY); });
                   }}
                   className={[
-                    'rounded-full border border-border px-2 py-0.5 text-xs text-muted',
-                    'transition hover:border-success/60 hover:text-success active:scale-95',
+                    'rounded-full p-1 text-base transition active:scale-95',
                     'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                    book.is_favorite
+                      ? 'text-warning'
+                      : 'text-muted hover:text-warning/70',
                   ].join(' ')}
                 >
-                  +
-                </button>
-                <button
-                  type='button'
-                  aria-label='Less like this'
-                  onClick={() => {
-                    void recordTasteSignal({ target_kind: 'book', target_book_id: book.id, direction: 'less' })
-                      .then(() => { void mutate(PROFILE_STATUS_KEY); })
-                      .catch((e) => console.error('taste signal failed', e));
-                  }}
-                  className={[
-                    'rounded-full border border-border px-2 py-0.5 text-xs text-muted',
-                    'transition hover:border-danger/60 hover:text-danger active:scale-95',
-                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
-                  ].join(' ')}
-                >
-                  &minus;
+                  {book.is_favorite ? '♥' : '♡'}
                 </button>
               </div>
             </li>
