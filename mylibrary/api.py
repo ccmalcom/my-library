@@ -704,6 +704,8 @@ def feedback(rec_id: int, req: FeedbackRequest, user_id: UserId) -> RecFeedbackR
             detail="reject_reasons may only be provided when status is 'rejected'",
         )
     if reject_reasons_provided and not is_valid_reasons(req.reject_reasons):
+        if not req.reject_reasons:
+            raise HTTPException(status_code=422, detail=f"reject_reasons must be a non-empty list. Valid codes: {list(REJECT_REASONS)}")
         unknown = [r for r in req.reject_reasons if r not in REJECT_REASONS]
         raise HTTPException(
             status_code=422,
