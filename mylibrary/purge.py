@@ -30,10 +30,12 @@ from __future__ import annotations
 from .config import LOCAL_USER_ID
 from .db import (
     Book,
+    EnrichJob,
     Enrichment,
     ProfileMeta,
     ReaderArchetype,
     Recommendation,
+    TasteSignal,
     TasteTrait,
     UserSettings,
     init_db,
@@ -125,9 +127,21 @@ def delete_account(*, user_id: str = LOCAL_USER_ID) -> dict:
             .filter(UserSettings.user_id == user_id)
             .delete(synchronize_session=False)
         )
+        signals_removed = (
+            session.query(TasteSignal)
+            .filter(TasteSignal.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
+        jobs_removed = (
+            session.query(EnrichJob)
+            .filter(EnrichJob.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
         return {
             "books_removed": books,
             **profile,
             "settings_removed": settings_removed,
+            "signals_removed": signals_removed,
+            "jobs_removed": jobs_removed,
             "account_deleted": True,
         }

@@ -205,12 +205,14 @@ def mark_profiled(session, kind: str, user_id: str = LOCAL_USER_ID) -> None:
 def books_changed_since(
     session, since: datetime | None, user_id: str = LOCAL_USER_ID
 ) -> list[Book]:
-    """Rated books and DNF books (of `user_id`) whose in-app feedback changed after `since`.
+    """Rated books, DNF books, and favorited books (of `user_id`) whose in-app feedback
+    changed after `since`.
 
     Includes books toggled to/from `exclude_from_profile` so that those changes
     dirty the profile. `since=None` (never profiled) means every book carrying
-    feedback is 'changed'. Unrated books are excluded — they don't participate
-    in taste analysis.
+    feedback is 'changed'. Unrated books are excluded unless they are favorited —
+    favorites are sent to Claude as positive signal regardless of rating, so toggling
+    a favorite must dirty the profile.
     """
     q = session.query(Book).filter(
         Book.user_id == user_id,
@@ -220,7 +222,9 @@ def books_changed_since(
         q = q.filter(Book.feedback_updated_at > since)
     return [
         b for b in q.all()
-        if b.effective_rating is not None or b.exclusive_shelf == "did-not-finish"
+        if b.effective_rating is not None
+        or b.exclusive_shelf == "did-not-finish"
+        or b.is_favorite
     ]
 
 
