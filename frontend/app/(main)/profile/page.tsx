@@ -177,7 +177,7 @@ function TraitCard({
             <span className='font-mono text-xs text-faint' title='Reduced weight'>
               {`${Math.round(trait.user_weight * 10) / 10}x`}
             </span>
-          )
+          )}
         </div>
       </div>
 
