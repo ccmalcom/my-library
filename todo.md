@@ -2,10 +2,6 @@
 
 ## BUGS
 
-- missing reviews flow-- save and next closed modal
-- do not include in rating toggle still not visually correct-- toggle is centered horizonatally but off vertically with it's container (the pill)
-- in general, saving any row takes a long time. can we speed this up?
-
 ## Shelves & data model
 
 - Make to-read shelf better: should have modal view, description/details, maybe link out to bookstores

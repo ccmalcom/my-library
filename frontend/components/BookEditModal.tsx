@@ -239,14 +239,14 @@ export default function BookEditModal({
           aria-checked={exclude}
           onClick={() => setExclude(!exclude)}
           className={[
-            'relative h-5 w-9 flex-shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+            'inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full px-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
             exclude ? 'bg-accent' : 'bg-border',
           ].join(' ')}
         >
           <span
             className={[
-              'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
-              exclude ? 'translate-x-4' : 'translate-x-0.5',
+              'h-4 w-4 rounded-full bg-white shadow transition-transform',
+              exclude ? 'translate-x-4' : 'translate-x-0',
             ].join(' ')}
           />
         </button>
