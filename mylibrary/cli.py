@@ -509,6 +509,10 @@ def trait(
     elif reject:
         status = "rejected"
 
+    if weight is not None and not (0.0 <= weight <= 1.0):
+        typer.secho("--weight must be between 0.0 and 1.0.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
     init_db()
     try:
         with session_scope() as session:
@@ -519,8 +523,7 @@ def trait(
                 user_weight=weight,
                 user_id=LOCAL_USER_ID,
             )
-            session.commit()
-    except TraitNotFoundError as e:
+    except (TraitNotFoundError, ValueError) as e:
         typer.secho(str(e), fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
