@@ -1015,7 +1015,6 @@ def post_taste_signal(req: TasteSignalRequest, user_id: UserId) -> TasteSignalOu
     Bumps the profile dirty-state so the next re-profile incorporates this signal.
     Returns 201 with the persisted TasteSignal row.
     """
-    from .db import TasteSignal as TasteSignalModel
 
     try:
         with session_scope() as session:
