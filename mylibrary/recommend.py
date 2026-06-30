@@ -46,6 +46,8 @@ _MAX_CANDIDATES = 60  # cap on the pool handed to the reranker (token budget)
 _SEED_RESERVE_SHARE = 0.3  # min share of the cap reserved for Claude-seeded-only candidates
 _LOVED_MIN = 4  # effective rating at/above which a book counts as "loved"
 _LOVED_SAMPLE = 20  # loved books shown to Claude for context
+_MAX_PER_AUTHOR = 2  # cap candidates from any single author
+_MAX_LIBRARY_AUTHOR_SHARE = 0.4  # cap share of candidates from authors already owned
 
 
 # --- Claude stage 1b: propose search queries -------------------------------
@@ -182,6 +184,31 @@ def _client(api_key: str | None = None):
 # --- library signal --------------------------------------------------------
 
 
+def _apply_author_caps(candidates: list[dict], signal: dict) -> list[dict]:
+    """Cap per-author candidates and the overall share from authors already in the
+    library, so small libraries don't return same-author clones. Pure filter."""
+    lib_authors = signal.get("library_authors") or set()
+    per_author: Counter[str] = Counter()
+    kept: list[dict] = []
+    for c in candidates:
+        a = _surname(c.get("author"))
+        if a:
+            if per_author[a] >= _MAX_PER_AUTHOR:
+                continue
+            per_author[a] += 1
+        kept.append(c)
+
+    total = len(kept)
+    if not total:
+        return kept
+    lib = [c for c in kept if _surname(c.get("author")) in lib_authors]
+    non = [c for c in kept if _surname(c.get("author")) not in lib_authors]
+    max_lib = int(total * _MAX_LIBRARY_AUTHOR_SHARE)
+    if len(lib) > max_lib:
+        kept = non + lib[:max_lib]
+    return kept
+
+
 def _dedup_key(title: str | None, author: str | None) -> tuple[str, str]:
     return (_normalize_title(title), _surname(author))
 
@@ -206,6 +233,7 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     library_keys: set[tuple[str, str]] = set()
     library_isbns: set[str] = set()
     library_languages: set[str] = set()
+    library_authors: set[str] = set()
     loved: list[dict] = []
     subject_counts: Counter[str] = Counter()
     author_counts: Counter[str] = Counter()
@@ -217,6 +245,8 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
         enr_lang = b.enrichment.language if b.enrichment else None
         if enr_lang:
             library_languages.add(enr_lang)
+        if b.author:
+            library_authors.add(_surname(b.author))
 
         rating = b.effective_rating
         if rating is None or rating < _LOVED_MIN:
@@ -277,6 +307,7 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
         "library_keys": library_keys,
         "library_isbns": library_isbns,
         "library_languages": library_languages,
+        "library_authors": library_authors,
         "loved": loved,
         "top_subjects": [s for s, _ in subject_counts.most_common(_TOP_SUBJECTS)],
         "top_authors": [a for a, _ in author_counts.most_common(_TOP_AUTHORS)],
@@ -512,6 +543,7 @@ def _assemble(
         pools = c.pop("pools")
         c["retrieval_pool"] = "both" if len(pools) > 1 else next(iter(pools))
         candidates.append(c)
+    candidates = _apply_author_caps(candidates, signal)
     return _cap_pool(candidates, cap=cap)
 
 
