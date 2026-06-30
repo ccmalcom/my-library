@@ -41,6 +41,7 @@ python -m mylibrary.cli add "Title"     # manually add a book (--author, --ratin
 python -m mylibrary.cli rate ID 1-5     # re-rate a book in-app (0 clears the override)
 python -m mylibrary.cli review ID "..." # write/clear (--clear) an in-app review
 python -m mylibrary.cli remove-book ID  # permanently delete a single book
+python -m mylibrary.cli backfill-descriptions  # repair rec-accepted books missing a description (--all-users for deployed DB)
 python -m mylibrary.cli clear-profile   # drop traits + recs; keep books (-y to skip confirm)
 python -m mylibrary.cli clear-library   # drop books + enrichments + profile (clean reset)
 python -m mylibrary.cli delete-account  # drop ALL data incl. stored API key

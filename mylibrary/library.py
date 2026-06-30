@@ -16,7 +16,16 @@ from datetime import date
 from typing import Literal
 
 from .config import LOCAL_USER_ID
-from .db import Book, Enrichment, TasteTrait, TasteSignal, init_db, session_scope, utcnow
+from .db import (
+    Book,
+    Enrichment,
+    Recommendation,
+    TasteTrait,
+    TasteSignal,
+    init_db,
+    session_scope,
+    utcnow,
+)
 from .enrich import _normalize_title, _surname
 from .profile import books_changed_since, get_profile_meta
 
@@ -254,6 +263,57 @@ def remove_book(book_id: int, *, user_id: str = LOCAL_USER_ID) -> dict:
         title = book.title
         session.delete(book)
         return {"id": book_id, "title": title, "removed": True}
+
+
+def backfill_recommendation_descriptions(*, user_id: str | None = LOCAL_USER_ID) -> dict:
+    """Copy `Recommendation.description` onto stub RECOMMENDATION enrichments missing one.
+
+    Books accepted from recommendations before the fix got a stub Enrichment without the
+    description the rec carried (see `api._ensure_library_book`). Because the enrichment
+    row exists, a normal `enrich` run skips the book, so the description never lands —
+    those books show "No description available." forever.
+
+    This one-off repair walks every enrichment with `confidence_label == "RECOMMENDATION"`
+    and a null description, matches it back to a `Recommendation` row by the same dedup the
+    recommender uses (normalized title + author surname, scoped to the book's own user),
+    and copies the description across when the matched rec has one. Idempotent: a second
+    run finds nothing left to fill. Matching is always within a single user's rows, so a
+    user's book can never pick up another user's rec description.
+
+    Pass `user_id=None` to repair every user (operator backfill against the deployed DB);
+    the default repairs only the local CLI user.
+    """
+    init_db()
+    filled = 0
+    scanned = 0
+    with session_scope() as session:
+        q = (
+            session.query(Book, Enrichment)
+            .join(Enrichment, Enrichment.book_id == Book.id)
+            .filter(Enrichment.confidence_label == "RECOMMENDATION")
+            .filter(Enrichment.description.is_(None))
+        )
+        if user_id is not None:
+            q = q.filter(Book.user_id == user_id)
+
+        for book, enr in q.all():
+            scanned += 1
+            norm_title = _normalize_title(book.title)
+            norm_surname = _surname(book.author)
+            recs = session.query(Recommendation).filter(
+                Recommendation.user_id == book.user_id,
+                Recommendation.description.isnot(None),
+            )
+            for rec in recs.all():
+                if (
+                    _normalize_title(rec.title) == norm_title
+                    and _surname(rec.author) == norm_surname
+                ):
+                    enr.description = rec.description
+                    filled += 1
+                    break
+
+    return {"scanned": scanned, "filled": filled}
 
 
 def profile_status(*, user_id: str = LOCAL_USER_ID) -> dict:
