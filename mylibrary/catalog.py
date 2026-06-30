@@ -157,6 +157,29 @@ def _get_json(url: str, *, use_cache: bool = True) -> Any | None:
     return None
 
 
+# --- Language normalization ------------------------------------------------
+
+
+_LANG_MAP = {
+    "eng": "en", "spa": "es", "fre": "fr", "fra": "fr", "ger": "de", "deu": "de",
+    "ita": "it", "por": "pt", "rus": "ru", "jpn": "ja", "chi": "zh", "zho": "zh",
+    "dut": "nl", "nld": "nl", "swe": "sv", "nor": "no", "dan": "da", "pol": "pl",
+}
+
+
+def _norm_lang(code: "str | list | None") -> "str | None":
+    """Normalize a language code (Google 'en' or OL MARC ['eng']) to a short
+    lowercase code. Returns None when absent/unknown-empty."""
+    if isinstance(code, list):
+        code = code[0] if code else None
+    if not code:
+        return None
+    c = str(code).strip().lower()
+    if not c:
+        return None
+    return _LANG_MAP.get(c, c[:2])
+
+
 # --- Open Library ----------------------------------------------------------
 
 
@@ -242,7 +265,7 @@ def openlibrary_query(query: str, *, max_results: int = 8) -> list[dict]:
         {
             "q": query,
             "limit": str(max_results),
-            "fields": "key,title,author_name,first_publish_year,cover_i,isbn,subject",
+            "fields": "key,title,author_name,first_publish_year,cover_i,isbn,subject,language",
         }
     )
     url = f"https://openlibrary.org/search.json?{params}"
@@ -268,6 +291,7 @@ def openlibrary_query(query: str, *, max_results: int = 8) -> list[dict]:
                 ),
                 "year": doc.get("first_publish_year"),
                 "isbn13": isbn13,
+                "language": _norm_lang(doc.get("language")),
                 "raw": doc,
             }
         )
@@ -299,6 +323,7 @@ def openlibrary_search(title: str, author: str | None) -> list[dict]:
                     else None
                 ),
                 "year": doc.get("first_publish_year"),
+                "language": _norm_lang(doc.get("language")),
                 "raw": doc,
             }
         )
@@ -331,6 +356,7 @@ def _google_books_query(q: str, *, max_results: int = 5) -> list[dict]:
                 "description": info.get("description"),
                 "cover_url": (info.get("imageLinks") or {}).get("thumbnail"),
                 "year": _year_from_google(info.get("publishedDate")),
+                "language": _norm_lang(info.get("language")),
                 "raw": item,
             }
         )
@@ -495,7 +521,7 @@ def openlibrary_title(title: str, *, max_results: int = 20) -> list[dict]:
         {
             "title": title,
             "limit": str(max_results),
-            "fields": "key,title,author_name,first_publish_year,cover_i,isbn,subject",
+            "fields": "key,title,author_name,first_publish_year,cover_i,isbn,subject,language",
         }
     )
     url = f"https://openlibrary.org/search.json?{params}"
@@ -520,6 +546,7 @@ def openlibrary_title(title: str, *, max_results: int = 20) -> list[dict]:
                 ),
                 "year": doc.get("first_publish_year"),
                 "isbn13": isbn13,
+                "language": _norm_lang(doc.get("language")),
                 "raw": doc,
             }
         )
