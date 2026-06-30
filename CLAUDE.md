@@ -51,7 +51,8 @@ python -m mylibrary.cli recommend       # --n N; two-stage recs, needs ANTHROPIC
 python -m mylibrary.cli recs            # reprint the latest recommend run
 python -m mylibrary.cli stats
 python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
-python -m pytest                        # ingest + matching + catalog + recommender + feedback
+python -m pytest                        # ingest + matching + catalog + recommender + feedback + admin
+cd frontend && npm install && npm run dev  # Next.js dev server at http://localhost:3000
 ```
 
 ## Recommender behavior
