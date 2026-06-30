@@ -25,6 +25,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 - `/profile` — `TasteHero` archetype card at top; taste traits with inline editing, rating distribution, genre breakdown.
 - `/setup` — CSV import wizard plus a no-CSV "add books manually" branch (`ManualStep`). Now a thin wrapper around `components/SetupWizard.tsx`.
 - `/settings` — API key management + Danger Zone.
+- `/admin` — admin console (invite/revoke users, view roster). Only reachable by users in the `ADMIN_EMAILS` allowlist; in local mode all users can access it.
 
 `layout.tsx` mounts `NavBar` + `ReprofileBanner` + `BottomNav` above/below all pages and wraps `children` in **`LibraryGate`**. The root `app/layout.tsx` `<body>` carries `suppressHydrationWarning` (browser extensions mutate `<body>` pre-hydration — silences benign attribute mismatches only).
 
@@ -39,7 +40,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 - **`BookDetailModal`** — read-only detail view for a To-Read book: cover, description, "find it" links via `lib/bookLinks.ts`, shelf actions. Used by `ToReadTab`.
 - **`AddBookModal`** — manual add: debounced `/catalog/search` → pick a real result → optional shelf + star rating + review text → `POST /books`. Used by Library page and setup wizard manual branch.
 - **`ReprofileBanner`** — app-wide; shows only when `/profile/status` reports `dirty`, runs `/profile/update`.
-- **`NavBar`** — on mobile shows only logo + LogOut icon; full link row is `hidden sm:flex`.
+- **`NavBar`** — on mobile shows only logo + LogOut icon; full link row is `hidden sm:flex`. Conditionally renders an "Admin" link when `me?.is_admin` is true (fetched via `adminMe` SWR call).
 - **`BottomNav`** — fixed bottom nav for mobile (`sm:hidden`); 5 items (Home/Swipe/Library/Profile/Settings); accent color on active route.
 - **`SwipeCard`** — `useReducedMotion()` disables rotation/spring.
 

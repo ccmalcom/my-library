@@ -561,3 +561,44 @@ export function recordTasteSignal(body: {
 export function setFavorite(id: number, value: boolean): Promise<Record<string, unknown>> {
   return patch<Record<string, unknown>>(`/books/${id}/feedback`, { is_favorite: value });
 }
+
+// ── Admin console (Tasks 1-7) ───────────────────────────────────────────────
+
+/** Shared SWR key for the current user's admin status (NavBar + /admin page). */
+export const ADMIN_ME_KEY = "admin-me";
+
+/** Shared SWR key for the invited-user roster (GET /admin/users). */
+export const ADMIN_USERS_KEY = "admin-users";
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  status: string;
+  supabase_user_id: string | null;
+  invited_by: string | null;
+  created_at: string | null;
+  revoked_at: string | null;
+  book_count: number;
+}
+
+/**
+ * Whether the current user is an admin. Degrades to `{ is_admin: false }` on any
+ * non-OK response (e.g. unauthenticated) rather than throwing, since this is polled
+ * unconditionally (NavBar) to decide whether to show admin UI at all.
+ */
+export async function adminMe(): Promise<{ is_admin: boolean }> {
+  const res = await fetch(`${BASE}/admin/me`, { headers: { ...(await authHeaders()) } });
+  if (!res.ok) return { is_admin: false };
+  return res.json() as Promise<{ is_admin: boolean }>;
+}
+
+/** Full invited-user roster (admin-only). GET /admin/users */
+export const listAdminUsers = (): Promise<AdminUser[]> => get<AdminUser[]>("/admin/users");
+
+/** Invite a new user by email (admin-only). POST /admin/invite */
+export const inviteUser = (email: string): Promise<AdminUser> =>
+  post<AdminUser>("/admin/invite", { email });
+
+/** Revoke an invited/active user's access (admin-only). POST /admin/revoke */
+export const revokeUser = (supabaseUserId: string): Promise<{ status: string }> =>
+  post<{ status: string }>("/admin/revoke", { supabase_user_id: supabaseUserId });
