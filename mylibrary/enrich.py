@@ -103,6 +103,7 @@ def _apply(enr: Enrichment, cand: dict, label: str, method: str) -> None:
     enr.subjects = cand.get("subjects") or []
     enr.series = cand.get("series")
     enr.series_position = cand.get("series_position")
+    enr.language = cand.get("language")
     description = cand.get("description")
     # OL Edition records (/books/...) rarely carry descriptions. When one is missing,
     # try the Work record directly — for search candidates the resolved_id is already
