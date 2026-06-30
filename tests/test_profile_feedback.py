@@ -200,3 +200,119 @@ def test_extract_taste_profile_excludes_rejected_paraphrase(monkeypatch):
     claims = [t.claim for t in proposed]
     assert "Rewards dense political world-building." in claims
     assert all("vampire" not in c.lower() for c in claims)
+
+
+def test_feedback_context_buckets_edited():
+    """Edited traits are collected in their own bucket (not confirmed/rejected)."""
+    with session_scope() as session:
+        session.add(
+            TasteTrait(
+                claim="Loves organic LGBTQ+ characters over theme-driven books.",
+                polarity="reward",
+                exhibits=[],
+                contrasts=[],
+                inference_confidence=0.9,
+                status="edited",
+            )
+        )
+    with session_scope() as session:
+        ctx = profile._feedback_context(session, profile.LOCAL_USER_ID)
+    assert ctx["edited"] == ["Loves organic LGBTQ+ characters over theme-driven books."]
+    assert ctx["confirmed"] == []
+    assert ctx["rejected"] == []
+
+
+def test_feedback_block_locked_traits_not_marked_for_reproduction():
+    """The prompt must list confirmed/edited claims as locked, telling Claude NOT to
+    output them — so a rebuild can't echo them into fresh 'proposed' duplicates."""
+    feedback = {
+        "confirmed": ["Rewards dense political world-building."],
+        "edited": ["Loves organic LGBTQ+ characters."],
+        "rejected": [],
+        "downweighted": [],
+        "more_like": [],
+        "less_like": [],
+        "favorites": [],
+    }
+    block = profile._feedback_block(feedback)
+    assert "Rewards dense political world-building." in block
+    assert "Loves organic LGBTQ+ characters." in block
+    assert "do NOT output them" in block
+
+
+def test_extract_taste_profile_no_duplicate_of_confirmed_or_edited(monkeypatch):
+    """Regression: confirming/editing traits then reprofiling must not create a
+    second 'proposed' copy of a confirmed/edited trait when Claude echoes it back."""
+    with session_scope() as session:
+        book = Book(title="Dune", author="Frank Herbert", goodreads_rating=5)
+        session.add(book)
+        session.flush()
+        bid = book.id
+        session.add_all(
+            [
+                TasteTrait(
+                    claim="Rewards dense political world-building.",
+                    polarity="reward",
+                    exhibits=[bid],
+                    contrasts=[],
+                    inference_confidence=0.8,
+                    status="confirmed",
+                ),
+                TasteTrait(
+                    claim="Loves organic LGBTQ+ characters over theme-driven books.",
+                    polarity="reward",
+                    exhibits=[bid],
+                    contrasts=[],
+                    inference_confidence=0.9,
+                    status="edited",
+                ),
+            ]
+        )
+
+    # Claude echoes both locked traits (as the prompt's old wording invited) plus one
+    # genuinely new trait. Only the new one should be saved as 'proposed'.
+    payload = {
+        "traits": [
+            {
+                "claim": "Rewards DENSE political world-building above all.",
+                "polarity": "reward",
+                "exhibits": [bid],
+                "contrasts": [],
+                "inference_confidence": 0.85,
+            },
+            {
+                "claim": "Loves organic LGBTQ+ characters rather than theme-driven books.",
+                "polarity": "reward",
+                "exhibits": [bid],
+                "contrasts": [],
+                "inference_confidence": 0.9,
+            },
+            {
+                "claim": "Rewards propulsive, witty space opera.",
+                "polarity": "reward",
+                "exhibits": [bid],
+                "contrasts": [],
+                "inference_confidence": 0.7,
+            },
+        ]
+    }
+
+    monkeypatch.setattr(profile, "resolve_anthropic_key", lambda uid: "test-key")
+    import anthropic
+
+    monkeypatch.setattr(anthropic, "Anthropic", lambda **kw: _FakeClient(payload))
+
+    profile.extract_taste_profile()
+
+    with session_scope() as session:
+        all_traits = session.query(TasteTrait).all()
+        proposed = [t for t in all_traits if t.status == "proposed"]
+        confirmed = [t for t in all_traits if t.status == "confirmed"]
+        edited = [t for t in all_traits if t.status == "edited"]
+
+    # Locked rows survive untouched, exactly once each.
+    assert len(confirmed) == 1
+    assert len(edited) == 1
+    # The echoed locked traits did NOT become new proposed rows.
+    proposed_claims = [t.claim for t in proposed]
+    assert proposed_claims == ["Rewards propulsive, witty space opera."]
