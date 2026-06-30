@@ -2,13 +2,6 @@
 
 ## BUGS
 
-- search is not super accurate-- if you type series name, it doesn't return all of the books
-  - 'one book I read is 7-8 book series, but when typed in the series name it didn't return the 8th book
-  - typed 'the fault', expected the fault in our stars to come up, did not at all
-    - a bunch of books about faults/geoscience, probably doing keyword searching instead of semantic
-- recommender struggles with smaller sample sizes
-  - Beta tester reports: recommends same books but in different languages, recommends only books from same authors as added to library
-
 ## Shelves & data model
 
 ## Onboarding

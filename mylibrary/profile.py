@@ -240,13 +240,16 @@ def books_changed_since(
 def _feedback_context(session, user_id: str = LOCAL_USER_ID) -> dict:
     """Collect the user's trait verdicts + more/less book signals for `user_id`.
 
-    Returns the five buckets the profiler injects into its prompts. `more_like` /
+    Returns the buckets the profiler injects into its prompts. `confirmed` and
+    `edited` are user-locked traits (preserved as their own rows, never re-emitted).
+    `more_like` /
     `less_like` join TasteSignal -> Book to render "{title} by {author}" strings
     (book-kind signals only; rec-kind snapshots are handled in Phase 2.2).
     """
     traits = session.query(TasteTrait).filter(TasteTrait.user_id == user_id).all()
 
     confirmed = [t.claim for t in traits if t.status == "confirmed"]
+    edited = [t.claim for t in traits if t.status == "edited"]
     rejected = [t.claim for t in traits if t.status == "rejected"]
     downweighted = [
         {"claim": t.claim, "user_weight": t.user_weight}
@@ -294,6 +297,7 @@ def _feedback_context(session, user_id: str = LOCAL_USER_ID) -> dict:
 
     return {
         "confirmed": confirmed,
+        "edited": edited,
         "rejected": rejected,
         "downweighted": downweighted,
         "more_like": more_like,
@@ -307,11 +311,16 @@ def _feedback_block(feedback: dict | None) -> str:
     if not feedback:
         return ""
     lines: list[str] = []
-    if feedback.get("confirmed"):
+    # Confirmed AND edited traits are user-locked: they are stored separately and
+    # survive every rebuild as their own rows. Claude must NOT echo them back into
+    # its output — doing so creates duplicate 'proposed' rows alongside the locked
+    # ones. So we describe them as fixed context to respect, not to reproduce.
+    locked = list(feedback.get("confirmed") or []) + list(feedback.get("edited") or [])
+    if locked:
         lines.append(
-            "The following traits have been confirmed by the user — preserve them "
-            "exactly, do not soften or remove: "
-            + "; ".join(feedback["confirmed"])
+            "The following traits are already locked in by the user and are stored "
+            "separately — do NOT output them (or reworded variants) in your trait "
+            "list, and do not contradict them: " + "; ".join(locked)
         )
     if feedback.get("rejected"):
         lines.append(
@@ -511,6 +520,11 @@ def extract_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_I
 
         # Never let a user-rejected trait return (even reworded).
         traits = _remove_rejected_claims(traits, feedback["rejected"])
+        # User-locked (confirmed/edited) traits persist as their own rows; drop any
+        # echo so the rebuild can't create duplicate 'proposed' copies of them.
+        traits = _remove_rejected_claims(
+            traits, feedback["confirmed"] + feedback["edited"]
+        )
 
         valid_ids = {b["id"] for tier in tiers.values() for b in tier}
 
@@ -755,6 +769,11 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
                 break
 
         traits = _remove_rejected_claims(traits, feedback["rejected"])
+        # User-locked (confirmed/edited) traits persist as their own rows; drop any
+        # echo so the rebuild can't create duplicate 'proposed' copies of them.
+        traits = _remove_rejected_claims(
+            traits, feedback["confirmed"] + feedback["edited"]
+        )
 
         valid_ids = set(books_meta.keys())
 
