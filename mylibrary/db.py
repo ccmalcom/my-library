@@ -491,6 +491,13 @@ def init_db() -> None:
                     sa_text("ALTER TABLE books ADD COLUMN is_favorite BOOLEAN NOT NULL DEFAULT 0")
                 )
 
+    # Lightweight migration: enrichment gets new nullable columns added in place.
+    if "enrichment" in insp.get_table_names():
+        enr_cols = {c["name"] for c in insp.get_columns("enrichment")}
+        with engine.begin() as conn:
+            if "language" not in enr_cols:
+                conn.execute(sa_text("ALTER TABLE enrichment ADD COLUMN language VARCHAR"))
+
     # Lightweight migration: taste_traits used to be considered fully regenerable by
     # `profile`, but user verdicts (confirmed/rejected/edited status + user_weight)
     # are now irreplaceable. Strategy:

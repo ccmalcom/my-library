@@ -217,7 +217,7 @@ def _apply_author_caps(candidates: list[dict], signal: dict) -> list[dict]:
         return kept
     lib = [c for c in kept if _surname(c.get("author")) in lib_authors]
     non = [c for c in kept if _surname(c.get("author")) not in lib_authors]
-    max_lib = int(total * _MAX_LIBRARY_AUTHOR_SHARE)
+    max_lib = max(1, int(total * _MAX_LIBRARY_AUTHOR_SHARE))
     if len(lib) > max_lib:
         # Reorders: new-author candidates first, then trimmed library authors.
         # _cap_pool re-sorts downstream by retrieval_pool, so this ordering is absorbed.
@@ -245,7 +245,8 @@ def _language_ok(lang: str | None, allowed: set[str]) -> bool:
 def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     """Summarize the library: loved books, their top subjects/authors, and the dedup
     keys/ISBNs of everything already on a shelf (so we never re-recommend them)."""
-    books = session.query(Book).filter(Book.user_id == user_id).all()
+    from sqlalchemy.orm import selectinload
+    books = session.query(Book).options(selectinload(Book.enrichment)).filter(Book.user_id == user_id).all()
     library_keys: set[tuple[str, str]] = set()
     library_isbns: set[str] = set()
     library_languages: set[str] = set()
