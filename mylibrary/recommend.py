@@ -205,6 +205,8 @@ def _apply_author_caps(candidates: list[dict], signal: dict) -> list[dict]:
     non = [c for c in kept if _surname(c.get("author")) not in lib_authors]
     max_lib = int(total * _MAX_LIBRARY_AUTHOR_SHARE)
     if len(lib) > max_lib:
+        # Reorders: new-author candidates first, then trimmed library authors.
+        # _cap_pool re-sorts downstream by retrieval_pool, so this ordering is absorbed.
         kept = non + lib[:max_lib]
     return kept
 
