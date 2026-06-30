@@ -186,12 +186,26 @@ def _dedup_key(title: str | None, author: str | None) -> tuple[str, str]:
     return (_normalize_title(title), _surname(author))
 
 
+def _allowed_languages(signal: dict) -> set[str]:
+    langs = signal.get("library_languages") or set()
+    return set(langs) if langs else {"en"}
+
+
+def _language_ok(lang: str | None, allowed: set[str]) -> bool:
+    """Unknown-language candidates are always allowed (never silently dropped);
+    known languages must be in the allowed set."""
+    if not lang:
+        return True
+    return lang in allowed
+
+
 def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     """Summarize the library: loved books, their top subjects/authors, and the dedup
     keys/ISBNs of everything already on a shelf (so we never re-recommend them)."""
     books = session.query(Book).filter(Book.user_id == user_id).all()
     library_keys: set[tuple[str, str]] = set()
     library_isbns: set[str] = set()
+    library_languages: set[str] = set()
     loved: list[dict] = []
     subject_counts: Counter[str] = Counter()
     author_counts: Counter[str] = Counter()
@@ -200,6 +214,9 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
         library_keys.add(_dedup_key(b.title, b.author))
         if b.isbn13:
             library_isbns.add(b.isbn13)
+        enr_lang = b.enrichment.language if b.enrichment else None
+        if enr_lang:
+            library_languages.add(enr_lang)
 
         rating = b.effective_rating
         if rating is None or rating < _LOVED_MIN:
@@ -259,6 +276,7 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     return {
         "library_keys": library_keys,
         "library_isbns": library_isbns,
+        "library_languages": library_languages,
         "loved": loved,
         "top_subjects": [s for s, _ in subject_counts.most_common(_TOP_SUBJECTS)],
         "top_authors": [a for a, _ in author_counts.most_common(_TOP_AUTHORS)],
@@ -442,6 +460,7 @@ def _assemble(
     """Merge both pools, drop library books + duplicates, tag provenance, cap size."""
     library_keys = signal["library_keys"]
     library_isbns = signal["library_isbns"]
+    allowed_langs = _allowed_languages(signal)
     by_key: dict[tuple[str, str], dict] = {}
 
     def add(cand: dict, reason: str, pool_name: str) -> None:
@@ -453,6 +472,8 @@ def _assemble(
             return
         isbn = cand.get("isbn13")
         if isbn and isbn in library_isbns:
+            return
+        if not _language_ok(cand.get("language"), allowed_langs):
             return
         existing = by_key.get(key)
         if existing is None:
@@ -466,6 +487,7 @@ def _assemble(
                 "cover_url": cand.get("cover_url"),
                 "catalog_source": cand.get("source"),
                 "catalog_id": cand.get("resolved_id"),
+                "language": cand.get("language"),
                 "pools": {pool_name},
                 "seed_reason": reason,
             }
@@ -477,6 +499,8 @@ def _assemble(
                 existing["subjects"] = (cand.get("subjects") or [])[:8]
             if not existing.get("description") and cand.get("description"):
                 existing["description"] = cand.get("description")
+            if not existing.get("language") and cand.get("language"):
+                existing["language"] = cand.get("language")
 
     for cand, reason in metadata_pool:
         add(cand, reason, "metadata")
