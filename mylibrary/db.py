@@ -129,6 +129,7 @@ class Enrichment(Base):
     subjects: Mapped[list | None] = mapped_column(JSON)
     series: Mapped[str | None] = mapped_column(String)
     series_position: Mapped[str | None] = mapped_column(String)
+    language: Mapped[str | None] = mapped_column(String)  # ISO-ish code, e.g. 'en'
     description: Mapped[str | None] = mapped_column(Text)
     cover_url: Mapped[str | None] = mapped_column(String)
 
@@ -161,7 +162,7 @@ class TasteTrait(Base):
     user_note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     # Structured-feedback (Task 1.1): user can nudge how strongly a trait influences
-    # recommendations (1.0 = normal, 0.0 = ignore).
+    # recommendations (1.0 = normal, 0.0 = ignore).
     user_weight: Mapped[float] = mapped_column(Float, default=1.0, server_default="1.0")
     # Timestamp of the last time the user confirmed/rejected/edited this trait so
     # the profile can detect stale user verdicts after a bulk re-enrich.
@@ -489,6 +490,13 @@ def init_db() -> None:
                 conn.execute(
                     sa_text("ALTER TABLE books ADD COLUMN is_favorite BOOLEAN NOT NULL DEFAULT 0")
                 )
+
+    # Lightweight migration: enrichment gets new nullable columns added in place.
+    if "enrichment" in insp.get_table_names():
+        enr_cols = {c["name"] for c in insp.get_columns("enrichment")}
+        with engine.begin() as conn:
+            if "language" not in enr_cols:
+                conn.execute(sa_text("ALTER TABLE enrichment ADD COLUMN language VARCHAR"))
 
     # Lightweight migration: taste_traits used to be considered fully regenerable by
     # `profile`, but user verdicts (confirmed/rejected/edited status + user_weight)

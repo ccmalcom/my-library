@@ -52,3 +52,8 @@ python -m mylibrary.cli stats
 python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
 python -m pytest                        # ingest + matching + catalog + recommender + feedback
 ```
+
+## Recommender behavior
+
+`recommend()` now returns a `cold_start: bool` key (True on thin libraries < 8 loved / < 12 rated books).
+Language filtering, same-author caps, and cold-start gating are behavior-shaping additions that refine Stage 1 retrieval without changing the two-stage locked decision — the LLM is still not the recommender.

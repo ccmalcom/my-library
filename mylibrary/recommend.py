@@ -46,6 +46,22 @@ _MAX_CANDIDATES = 60  # cap on the pool handed to the reranker (token budget)
 _SEED_RESERVE_SHARE = 0.3  # min share of the cap reserved for Claude-seeded-only candidates
 _LOVED_MIN = 4  # effective rating at/above which a book counts as "loved"
 _LOVED_SAMPLE = 20  # loved books shown to Claude for context
+_MAX_PER_AUTHOR = 2  # cap candidates from any single author
+_MAX_LIBRARY_AUTHOR_SHARE = 0.4  # cap share of candidates from authors already owned
+_COLD_START_LOVED = 8    # below this many loved books → cold-start strategy
+_COLD_START_RATED = 12   # ...or below this many rated books
+
+
+# --- cold-start detection --------------------------------------------------
+
+
+def _is_cold_start(signal: dict) -> bool:
+    """Thin libraries can't support reliable author/subject inference; switch to a
+    broader, diversity-first retrieval strategy below either threshold."""
+    return (
+        len(signal.get("loved") or []) < _COLD_START_LOVED
+        or (signal.get("rated_count") or 0) < _COLD_START_RATED
+    )
 
 
 # --- Claude stage 1b: propose search queries -------------------------------
@@ -182,24 +198,75 @@ def _client(api_key: str | None = None):
 # --- library signal --------------------------------------------------------
 
 
+def _apply_author_caps(candidates: list[dict], signal: dict) -> list[dict]:
+    """Cap per-author candidates and the overall share from authors already in the
+    library, so small libraries don't return same-author clones. Pure filter."""
+    lib_authors = signal.get("library_authors") or set()
+    per_author: Counter[str] = Counter()
+    kept: list[dict] = []
+    for c in candidates:
+        a = _surname(c.get("author"))
+        if a:
+            if per_author[a] >= _MAX_PER_AUTHOR:
+                continue
+            per_author[a] += 1
+        kept.append(c)
+
+    total = len(kept)
+    if not total:
+        return kept
+    lib = [c for c in kept if _surname(c.get("author")) in lib_authors]
+    non = [c for c in kept if _surname(c.get("author")) not in lib_authors]
+    max_lib = max(1, int(total * _MAX_LIBRARY_AUTHOR_SHARE))
+    if len(lib) > max_lib:
+        # Reorders: new-author candidates first, then trimmed library authors.
+        # _cap_pool re-sorts downstream by retrieval_pool, so this ordering is absorbed.
+        kept = non + lib[:max_lib]
+    return kept
+
+
 def _dedup_key(title: str | None, author: str | None) -> tuple[str, str]:
     return (_normalize_title(title), _surname(author))
+
+
+def _allowed_languages(signal: dict) -> set[str]:
+    langs = signal.get("library_languages") or set()
+    return set(langs) if langs else {"en"}
+
+
+def _language_ok(lang: str | None, allowed: set[str]) -> bool:
+    """Unknown-language candidates are always allowed (never silently dropped);
+    known languages must be in the allowed set."""
+    if not lang:
+        return True
+    return lang in allowed
 
 
 def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     """Summarize the library: loved books, their top subjects/authors, and the dedup
     keys/ISBNs of everything already on a shelf (so we never re-recommend them)."""
-    books = session.query(Book).filter(Book.user_id == user_id).all()
+    from sqlalchemy.orm import selectinload
+    books = session.query(Book).options(selectinload(Book.enrichment)).filter(Book.user_id == user_id).all()
     library_keys: set[tuple[str, str]] = set()
     library_isbns: set[str] = set()
+    library_languages: set[str] = set()
+    library_authors: set[str] = set()
     loved: list[dict] = []
     subject_counts: Counter[str] = Counter()
     author_counts: Counter[str] = Counter()
+    rated_count = 0
 
     for b in books:
         library_keys.add(_dedup_key(b.title, b.author))
         if b.isbn13:
             library_isbns.add(b.isbn13)
+        enr_lang = b.enrichment.language if b.enrichment else None
+        if enr_lang:
+            library_languages.add(enr_lang)
+        if b.author:
+            library_authors.add(_surname(b.author))
+        if b.effective_rating is not None:
+            rated_count += 1
 
         rating = b.effective_rating
         if rating is None or rating < _LOVED_MIN:
@@ -259,7 +326,10 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     return {
         "library_keys": library_keys,
         "library_isbns": library_isbns,
+        "library_languages": library_languages,
+        "library_authors": library_authors,
         "loved": loved,
+        "rated_count": rated_count,
         "top_subjects": [s for s, _ in subject_counts.most_common(_TOP_SUBJECTS)],
         "top_authors": [a for a, _ in author_counts.most_common(_TOP_AUTHORS)],
         # Rejected traits are dead to the reranker — excluded entirely. Each surviving
@@ -334,8 +404,11 @@ def _reject_reason_counts(session, user_id: str = LOCAL_USER_ID) -> dict[str, in
 # --- stage 1: retrieval ----------------------------------------------------
 
 
-def _metadata_pool(signal: dict, *, per_query: int) -> list[tuple[dict, str]]:
-    """Deterministic expansion from the reader's loved subjects/authors."""
+def _metadata_pool(signal: dict, *, per_query: int, cold_start: bool = False) -> list[tuple[dict, str]]:
+    """Deterministic expansion from the reader's loved subjects/authors. In cold-start
+    (thin library), author expansion is skipped — it produces same-author clones — and
+    discovery leans on subjects + Claude-seeded comp queries that reach beyond the
+    library's authors."""
     from . import catalog
 
     pool: list[tuple[dict, str]] = []
@@ -344,9 +417,10 @@ def _metadata_pool(signal: dict, *, per_query: int) -> list[tuple[dict, str]]:
             pool.append((cand, f"subject:{subject}"))
         for cand in catalog.googlebooks_subject(subject, max_results=per_query):
             pool.append((cand, f"subject:{subject}"))
-    for author in signal["top_authors"]:
-        for cand in catalog.googlebooks_author(author, max_results=per_query):
-            pool.append((cand, f"author:{author}"))
+    if not cold_start:
+        for author in signal["top_authors"]:
+            for cand in catalog.googlebooks_author(author, max_results=per_query):
+                pool.append((cand, f"author:{author}"))
     return pool
 
 
@@ -442,6 +516,7 @@ def _assemble(
     """Merge both pools, drop library books + duplicates, tag provenance, cap size."""
     library_keys = signal["library_keys"]
     library_isbns = signal["library_isbns"]
+    allowed_langs = _allowed_languages(signal)
     by_key: dict[tuple[str, str], dict] = {}
 
     def add(cand: dict, reason: str, pool_name: str) -> None:
@@ -453,6 +528,8 @@ def _assemble(
             return
         isbn = cand.get("isbn13")
         if isbn and isbn in library_isbns:
+            return
+        if not _language_ok(cand.get("language"), allowed_langs):
             return
         existing = by_key.get(key)
         if existing is None:
@@ -466,6 +543,7 @@ def _assemble(
                 "cover_url": cand.get("cover_url"),
                 "catalog_source": cand.get("source"),
                 "catalog_id": cand.get("resolved_id"),
+                "language": cand.get("language"),
                 "pools": {pool_name},
                 "seed_reason": reason,
             }
@@ -477,6 +555,8 @@ def _assemble(
                 existing["subjects"] = (cand.get("subjects") or [])[:8]
             if not existing.get("description") and cand.get("description"):
                 existing["description"] = cand.get("description")
+            if not existing.get("language") and cand.get("language"):
+                existing["language"] = cand.get("language")
 
     for cand, reason in metadata_pool:
         add(cand, reason, "metadata")
@@ -488,6 +568,7 @@ def _assemble(
         pools = c.pop("pools")
         c["retrieval_pool"] = "both" if len(pools) > 1 else next(iter(pools))
         candidates.append(c)
+    candidates = _apply_author_caps(candidates, signal)
     return _cap_pool(candidates, cap=cap)
 
 
@@ -695,8 +776,10 @@ def recommend(
                 "reflect your current taste."
             )
 
+        cold_start = _is_cold_start(signal)
         metadata_pool = (
-            _metadata_pool(signal, per_query=_PER_QUERY) if use_metadata else []
+            _metadata_pool(signal, per_query=_PER_QUERY, cold_start=cold_start)
+            if use_metadata else []
         )
         seed_queries: list[str] = []
         seed_pool: list[tuple[dict, str]] = []
@@ -712,6 +795,7 @@ def recommend(
                 "run_id": None,
                 "served": 0,
                 "candidates": 0,
+                "cold_start": cold_start,
                 "note": "Retrieval surfaced no new candidates (catalog empty/offline?).",
                 "recommendations": [],
             }
@@ -763,6 +847,7 @@ def recommend(
         "run_id": run_id,
         "served": len(recs_out),
         "candidates": len(candidates),
+        "cold_start": cold_start,
         "pool_metadata": len(metadata_pool),
         "pool_seed": len(seed_pool),
         "seed_queries": seed_queries,
