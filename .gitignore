@@ -27,7 +27,7 @@ frontend/tsconfig.tsbuildinfo
 frontend/app/ui-test/
 
 #claude docs
-docs/
+docs/superpowers/
 .superpowers/
 .vscode/
 .agents/

@@ -589,6 +589,40 @@ def like(
 
 
 @app.command()
+def backfill_descriptions(
+    all_users: bool = typer.Option(
+        False,
+        "--all-users",
+        help="Repair every user's books (operator backfill against the deployed DB).",
+    ),
+) -> None:
+    """Backfill missing descriptions on recommendation-accepted books.
+
+    Books accepted from recommendations before the fix got a stub enrichment without the
+    description the rec carried, so they show "No description available." This copies the
+    description back from the matching recommendation row. Idempotent — safe to re-run.
+    """
+    from .config import LOCAL_USER_ID
+    from .library import backfill_recommendation_descriptions
+
+    init_db()
+    result = backfill_recommendation_descriptions(
+        user_id=None if all_users else LOCAL_USER_ID
+    )
+    typer.secho(
+        f"✓ Backfilled {result['filled']} of {result['scanned']} description-less "
+        f"recommendation book(s).",
+        fg=typer.colors.GREEN,
+    )
+    if result["scanned"] and result["filled"] < result["scanned"]:
+        typer.echo(
+            f"{result['scanned'] - result['filled']} had no matching rec with a "
+            "description (rec rows may have been cleared) — they stay blank until an "
+            "`enrich --force`."
+        )
+
+
+@app.command()
 def serve(
     host: str = "127.0.0.1",
     port: int = 8000,

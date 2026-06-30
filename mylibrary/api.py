@@ -329,6 +329,7 @@ def _ensure_library_book(session, rec: Recommendation, shelf: str, user_id: str)
             resolved_source=rec.catalog_source,
             resolved_id=rec.catalog_id,
             subjects=rec.subjects,
+            description=rec.description,
             cover_url=rec.cover_url,
             resolution_confidence=1.0,
             confidence_label="RECOMMENDATION",
