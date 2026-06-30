@@ -236,6 +236,8 @@ def test_recommend_persists_ranked_run(monkeypatch):
 
     assert result["served"] >= 2
     assert result["run_id"]
+    assert "cold_start" in result
+    assert isinstance(result["cold_start"], bool)
     with session_scope() as session:
         rows = session.query(Recommendation).order_by(Recommendation.rank).all()
         titles = [r.title for r in rows]

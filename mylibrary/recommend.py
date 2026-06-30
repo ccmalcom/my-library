@@ -48,6 +48,20 @@ _LOVED_MIN = 4  # effective rating at/above which a book counts as "loved"
 _LOVED_SAMPLE = 20  # loved books shown to Claude for context
 _MAX_PER_AUTHOR = 2  # cap candidates from any single author
 _MAX_LIBRARY_AUTHOR_SHARE = 0.4  # cap share of candidates from authors already owned
+_COLD_START_LOVED = 8    # below this many loved books → cold-start strategy
+_COLD_START_RATED = 12   # ...or below this many rated books
+
+
+# --- cold-start detection --------------------------------------------------
+
+
+def _is_cold_start(signal: dict) -> bool:
+    """Thin libraries can't support reliable author/subject inference; switch to a
+    broader, diversity-first retrieval strategy below either threshold."""
+    return (
+        len(signal.get("loved") or []) < _COLD_START_LOVED
+        or (signal.get("rated_count") or 0) < _COLD_START_RATED
+    )
 
 
 # --- Claude stage 1b: propose search queries -------------------------------
@@ -239,6 +253,7 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     loved: list[dict] = []
     subject_counts: Counter[str] = Counter()
     author_counts: Counter[str] = Counter()
+    rated_count = 0
 
     for b in books:
         library_keys.add(_dedup_key(b.title, b.author))
@@ -249,6 +264,8 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
             library_languages.add(enr_lang)
         if b.author:
             library_authors.add(_surname(b.author))
+        if b.effective_rating is not None:
+            rated_count += 1
 
         rating = b.effective_rating
         if rating is None or rating < _LOVED_MIN:
@@ -311,6 +328,7 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
         "library_languages": library_languages,
         "library_authors": library_authors,
         "loved": loved,
+        "rated_count": rated_count,
         "top_subjects": [s for s, _ in subject_counts.most_common(_TOP_SUBJECTS)],
         "top_authors": [a for a, _ in author_counts.most_common(_TOP_AUTHORS)],
         # Rejected traits are dead to the reranker — excluded entirely. Each surviving
@@ -385,8 +403,11 @@ def _reject_reason_counts(session, user_id: str = LOCAL_USER_ID) -> dict[str, in
 # --- stage 1: retrieval ----------------------------------------------------
 
 
-def _metadata_pool(signal: dict, *, per_query: int) -> list[tuple[dict, str]]:
-    """Deterministic expansion from the reader's loved subjects/authors."""
+def _metadata_pool(signal: dict, *, per_query: int, cold_start: bool = False) -> list[tuple[dict, str]]:
+    """Deterministic expansion from the reader's loved subjects/authors. In cold-start
+    (thin library), author expansion is skipped — it produces same-author clones — and
+    discovery leans on subjects + Claude-seeded comp queries that reach beyond the
+    library's authors."""
     from . import catalog
 
     pool: list[tuple[dict, str]] = []
@@ -395,9 +416,10 @@ def _metadata_pool(signal: dict, *, per_query: int) -> list[tuple[dict, str]]:
             pool.append((cand, f"subject:{subject}"))
         for cand in catalog.googlebooks_subject(subject, max_results=per_query):
             pool.append((cand, f"subject:{subject}"))
-    for author in signal["top_authors"]:
-        for cand in catalog.googlebooks_author(author, max_results=per_query):
-            pool.append((cand, f"author:{author}"))
+    if not cold_start:
+        for author in signal["top_authors"]:
+            for cand in catalog.googlebooks_author(author, max_results=per_query):
+                pool.append((cand, f"author:{author}"))
     return pool
 
 
@@ -753,8 +775,10 @@ def recommend(
                 "reflect your current taste."
             )
 
+        cold_start = _is_cold_start(signal)
         metadata_pool = (
-            _metadata_pool(signal, per_query=_PER_QUERY) if use_metadata else []
+            _metadata_pool(signal, per_query=_PER_QUERY, cold_start=cold_start)
+            if use_metadata else []
         )
         seed_queries: list[str] = []
         seed_pool: list[tuple[dict, str]] = []
@@ -770,6 +794,7 @@ def recommend(
                 "run_id": None,
                 "served": 0,
                 "candidates": 0,
+                "cold_start": cold_start,
                 "note": "Retrieval surfaced no new candidates (catalog empty/offline?).",
                 "recommendations": [],
             }
@@ -821,6 +846,7 @@ def recommend(
         "run_id": run_id,
         "served": len(recs_out),
         "candidates": len(candidates),
+        "cold_start": cold_start,
         "pool_metadata": len(metadata_pool),
         "pool_seed": len(seed_pool),
         "seed_queries": seed_queries,
