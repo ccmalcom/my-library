@@ -407,38 +407,184 @@ def _dedup_key(title: str | None, author: str | None) -> tuple[str, str]:
     return norm(title).split(":")[0].strip(), surname
 
 
+def _norm_full(s: str | None) -> str:
+    """Full normalization for the SEARCH path: lowercase, punctuation->space,
+    collapse whitespace. Unlike enrich._normalize_title, it does NOT drop the
+    subtitle after ':' — series volumes must stay distinct."""
+    s = (s or "").lower()
+    s = re.sub(r"[^a-z0-9 ]", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _search_dedup_key(title: str | None, author: str | None) -> tuple[str, str]:
+    surname = _norm_full(author).split(" ")[-1] if author else ""
+    return _norm_full(title), surname
+
+
+def _match_score(query: str, cand: dict) -> int:
+    """Relevance band for a candidate against the raw query. Higher = better."""
+    q = _norm_full(query)
+    title = _norm_full(cand.get("title"))
+    author = _norm_full(cand.get("author"))
+    if not q or not title:
+        return 0
+    if title == q:
+        return 100
+    if title.startswith(q):
+        return 80
+    q_tokens = set(q.split())
+    if q_tokens and q_tokens.issubset(set(title.split())):
+        return 60
+    if q in title:
+        return 40
+    if author and q in author:
+        return 20
+    return 0
+
+
+def _rank_key(query: str, cand: dict) -> tuple:
+    """Sort key (descending) for ranking search hits."""
+    return (
+        _match_score(query, cand),
+        1 if cand.get("cover_url") else 0,
+        1 if cand.get("isbn13") else 0,
+        cand.get("year") or 0,
+    )
+
+
+def _volume_number(title: str | None) -> int | None:
+    """Best-effort volume number from a title ('#7', 'book 7', 'volume 7')."""
+    if not title:
+        return None
+    m = re.search(r"(?:#|book|vol\.?|volume)\s*(\d{1,3})", title.lower())
+    return int(m.group(1)) if m else None
+
+
+def _apply_series_grouping(query: str, ranked: list[dict]) -> list[dict]:
+    """If the query matches a common title prefix across >=3 hits, keep those
+    volumes contiguous and ordered by volume number, anchored at the cluster's
+    best existing rank position. Pure reordering — never drops candidates."""
+    q = _norm_full(query)
+    if not q:
+        return ranked
+    cluster_indices = [i for i, c in enumerate(ranked) if _norm_full(c.get("title")).startswith(q)]
+    if len(cluster_indices) < 3:
+        return ranked
+    cluster = [ranked[i] for i in cluster_indices]
+    cluster_ordered = sorted(
+        cluster, key=lambda c: (_volume_number(c.get("title")) or 10**6, _norm_full(c.get("title")))
+    )
+    anchor = cluster_indices[0]
+    cluster_set = set(cluster_indices)
+    rest = [c for i, c in enumerate(ranked) if i not in cluster_set]
+    return rest[:anchor] + cluster_ordered + rest[anchor:]
+
+
+_SEARCH_FETCH = 25  # internal per-source fetch cap (decoupled from response limit)
+
+
+def openlibrary_title(title: str, *, max_results: int = 20) -> list[dict]:
+    """Title-targeted OL search (the `title=` field) for the manual picker.
+
+    Same candidate shape as `openlibrary_query`, but keyed on the title field so
+    a partial title ('the fault') matches book titles rather than any keyword."""
+    title = (title or "").strip()
+    if not title:
+        return []
+    params = httpx.QueryParams(
+        {
+            "title": title,
+            "limit": str(max_results),
+            "fields": "key,title,author_name,first_publish_year,cover_i,isbn,subject",
+        }
+    )
+    url = f"https://openlibrary.org/search.json?{params}"
+    data = _get_json(url)
+    if not data:
+        return []
+    candidates = []
+    for doc in data.get("docs", [])[:max_results]:
+        cover_id = doc.get("cover_i")
+        isbns = doc.get("isbn") or []
+        isbn13 = next((i for i in isbns if len(i) == 13 and i.isdigit()), None)
+        candidates.append(
+            {
+                "source": "openlibrary",
+                "resolved_id": doc.get("key"),
+                "title": doc.get("title"),
+                "author": (doc.get("author_name") or [None])[0],
+                "subjects": (doc.get("subject") or [])[:25],
+                "cover_url": (
+                    f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg"
+                    if cover_id else None
+                ),
+                "year": doc.get("first_publish_year"),
+                "isbn13": isbn13,
+                "raw": doc,
+            }
+        )
+    return candidates
+
+
 def search_books(query: str, *, max_results: int = 8) -> list[dict]:
     """User-facing book search for the manual add-a-book flow.
 
-    Queries Google Books and Open Library with the same free-text string, normalizes both
-    to the shared candidate shape (with an `isbn13`), de-duplicates across sources, and
-    prefers hits that have a cover so the picker looks right. Network responses are cached
-    by `_get_json`, so repeat searches are cheap.
-    """
+    Fetches a broad free-text query AND a title-targeted query from both Google
+    Books and Open Library, merges to the shared candidate shape, de-duplicates
+    (cross-source ISBN-13 matches collapse; distinct series volumes survive), and
+    ranks by query-match relevance (exact title > startswith > all-tokens >
+    substring > author-only > keyword-only) with cover/ISBN/year tiebreakers.
+    Network responses are disk-cached, so the wider fetch stays cheap."""
     query = (query or "").strip()
     if not query:
         return []
 
     results: list[dict] = []
-    for cand in _google_books_query(query, max_results=max_results):
+
+    # Broad recall (ISBN, author, free text).
+    for cand in _google_books_query(query, max_results=_SEARCH_FETCH):
         cand["isbn13"] = _isbn13_from_google_item(cand.get("raw") or {})
         results.append(cand)
-    results.extend(openlibrary_query(query, max_results=max_results))
+    results.extend(openlibrary_query(query, max_results=_SEARCH_FETCH))
 
-    seen: set[tuple[str, str]] = set()
+    # Title precision (floats the intended title up).
+    for cand in _google_books_query(f'intitle:"{query}"', max_results=_SEARCH_FETCH):
+        cand["isbn13"] = _isbn13_from_google_item(cand.get("raw") or {})
+        results.append(cand)
+    results.extend(openlibrary_title(query, max_results=_SEARCH_FETCH))
+
+    # De-dup: collapse cross-source ISBN-13 matches and same (full-title, surname).
+    by_key: dict[tuple[str, str], dict] = {}
+    by_isbn: dict[str, dict] = {}
     deduped: list[dict] = []
     for cand in results:
         if not cand.get("title"):
             continue
-        key = _dedup_key(cand.get("title"), cand.get("author"))
-        if key in seen:
+        isbn = cand.get("isbn13")
+        if isbn and isbn in by_isbn:
+            _merge_into(by_isbn[isbn], cand)
             continue
-        seen.add(key)
+        key = _search_dedup_key(cand.get("title"), cand.get("author"))
+        if key in by_key:
+            _merge_into(by_key[key], cand)
+            continue
+        by_key[key] = cand
+        if isbn:
+            by_isbn[isbn] = cand
         deduped.append(cand)
 
-    # Stable-sort cover-bearing hits to the front without otherwise reordering.
-    deduped.sort(key=lambda c: c.get("cover_url") is None)
+    deduped.sort(key=lambda c: _rank_key(query, c), reverse=True)
+    deduped = _apply_series_grouping(query, deduped)
     return deduped[:max_results]
+
+
+def _merge_into(keep: dict, extra: dict) -> None:
+    """Fill gaps on the kept candidate from a duplicate (prefer existing values)."""
+    for field in ("cover_url", "isbn13", "author", "description", "year"):
+        if not keep.get(field) and extra.get(field):
+            keep[field] = extra[field]
+    if not keep.get("subjects") and extra.get("subjects"):
+        keep["subjects"] = extra["subjects"]
 
 
 def openlibrary_subject(subject: str, *, max_results: int = 10) -> list[dict]:
