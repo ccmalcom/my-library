@@ -21,8 +21,11 @@
   deduplicates via `_search_dedup_key` (full-title key preserves series volumes; ISBN-13 collapse
   merges cross-source dupes), ranks by `_match_score` (exact/startswith/token/substring/author bands),
   and groups series volumes contiguously via `_apply_series_grouping`. The dedup key uses `_norm_full`
-  (subtitle-preserving) not `_dedup_key` (which truncates at `:`). All catalog candidates now carry
-  a `language` key normalized via `_norm_lang`.
+  (subtitle-preserving) not `_dedup_key` (which truncates at `:`).
+  **Language key coverage:** candidates from Google Books functions and OL catalog-search functions
+  carry a normalized `language` key (via `_norm_lang`). OL-subject browse candidates
+  (`openlibrary_subject`) do not — they enter assembly with `language=None` and always pass the
+  language filter.
   **OL description gap:** OL Edition records (`/api/books?jscmd=data`, `/books/OL...M.json`)
   rarely carry descriptions; the description lives on the Work record (`/works/OL...W.json`).
   `openlibrary_by_isbn` now follows Edition→Work when the edition has no description (via
