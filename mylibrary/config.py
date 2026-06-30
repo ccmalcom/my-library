@@ -58,6 +58,10 @@ class Settings:
     redis_url: str | None       # Redis URL for arq job queue; unset = local BackgroundTask fallback
     cors_origins: tuple[str, ...]  # allowed browser origins for the API (frontend domains)
 
+    # --- admin console ------------------------------------------------------
+    admin_emails: tuple[str, ...]          # lowercased allowlist of admin emails
+    supabase_service_role_key: str | None  # GoTrue admin API key (server-only)
+
     # --- beta feedback -------------------------------------------------------
     feedback_prompts_enabled: bool  # set False post-beta to silence targeted prompts
     feedback_snooze_hours: int      # hours before a snoozed prompt re-surfaces
@@ -87,6 +91,16 @@ class Settings:
     def auth_enabled(self) -> bool:
         """True when any Supabase auth verification is configured (JWKS or HS256 secret)."""
         return bool(self.jwks_url or self.supabase_jwt_secret)
+
+    def is_admin_email(self, email: str | None) -> bool:
+        """True when *email* is in the configured admin allowlist (case-insensitive).
+
+        In local mode the allowlist is usually empty; admin gating there is decided by
+        `admin.is_admin` (which treats the unauthenticated local user as admin), not here.
+        """
+        if not email:
+            return False
+        return email.strip().lower() in self.admin_emails
 
 
 def _env_bool(key: str, default: bool = True) -> bool:
@@ -143,6 +157,8 @@ def get_settings() -> Settings:
         encryption_key=os.getenv("ENCRYPTION_KEY"),
         redis_url=os.getenv("REDIS_URL"),
         cors_origins=_resolve_cors_origins(),
+        admin_emails=_resolve_admin_emails(),
+        supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
         feedback_prompts_enabled=_env_bool("FEEDBACK_PROMPTS_ENABLED", True),
         feedback_snooze_hours=int(os.getenv("FEEDBACK_SNOOZE_HOURS", "72")),
     )
@@ -164,3 +180,10 @@ def _resolve_cors_origins() -> tuple[str, ...]:
         return DEFAULT_CORS_ORIGINS
     origins = tuple(o.strip().rstrip("/") for o in raw.split(",") if o.strip())
     return origins or DEFAULT_CORS_ORIGINS
+
+
+def _resolve_admin_emails() -> tuple[str, ...]:
+    raw = os.getenv("ADMIN_EMAILS")
+    if not raw:
+        return ()
+    return tuple(e.strip().lower() for e in raw.split(",") if e.strip())

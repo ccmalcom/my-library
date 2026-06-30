@@ -22,6 +22,8 @@ Full plan: **`mylibrary-web-distribution-plan.md`**. Deploy runbook: **`mylibrar
 - `MYLIBRARY_DATA_DIR` — base dir for catalog cache + DB (set to `/data` on Railway volume).
 - `ANTHROPIC_API_KEY` — fallback when no per-user key is stored.
 - `GOOGLE_BOOKS_API_KEY` — optional.
+- `ADMIN_EMAILS` — comma-separated allowlist of admin email addresses (lowercased). Unset = no admins. Only checked in hosted multi-tenant mode; local dev always treats the unauthenticated user as admin.
+- `SUPABASE_SERVICE_ROLE_KEY` — GoTrue admin API key for programmatic user invites + deletes (server-only, never sent to frontend). Required to use `/admin/invite` and `/admin/revoke`.
 
 ## Auth (`auth.py`)
 
@@ -73,4 +75,12 @@ Verifies Supabase access tokens and returns `sub` as `user_id`. Supabase signs w
 
 **Baseline gotcha (fixed):** `0001_initial` builds the schema via `Base.metadata.create_all()` from the _live_ models — so as models gained new columns, the baseline started creating them too. On a fresh DB, later migrations tried to add already-existing columns → `duplicate column name`. Fix: **migrations 0002+ are idempotent** — they inspect the bind and skip if the column/table already exists. Any future migration that adds something already in the models' `create_all` baseline must guard the same way.
 
-Migration chain: `0001_initial_multitenant_schema` → `0002_display_name` → `0003_enrich_jobs` → `0004_...` → `0005_reader_archetypes` → `0006_add_exclude_from_profile`.
+Migration chain: `0001_initial_multitenant_schema` → `0002_display_name` → `0003_enrich_jobs` → `0004_...` → `0005_reader_archetypes` → `0006_add_exclude_from_profile` → ... → `0013_invites`.
+
+## Admin console (Phase 6)
+
+- **Admin gating:** Allowlist of admin email addresses via `ADMIN_EMAILS` env var (case-insensitive, comma-separated). Verified against the JWT `email` claim in hosted mode. In local single-user mode (no Supabase auth configured), the unauthenticated local user is treated as admin.
+- **Supabase user management:** `supabase_admin.py` wraps Supabase GoTrue invite/delete APIs using the `SUPABASE_SERVICE_ROLE_KEY` (server-only, never exposed to frontend). Only admin routes call this module.
+- **Invites table:** `invites` table lifecycle: invites are created directly in `active` status when an admin sends an invite. The schema also supports a `pending` status value for potential future use (e.g., before signup completion) but no code path currently sets it. An invite transitions to `revoked` when an admin revokes it. Schema in migration `0013_invites`. Columns: `id`, `email`, `status`, `supabase_user_id` (populated on successful Supabase invite), `invited_by` (admin email), `created_at`, `revoked_at` (NULL until revoked).
+- **Revoke lifecycle:** When revoking, the sequence is: (1) call `delete_user` to remove the Supabase account, (2) mark the `invites` row as `revoked` + set `revoked_at`, (3) call `purge.delete_account` to drop the user's books + profile + encrypted API key. The row is marked revoked before local data cleanup to ensure retries never re-call Supabase delete if a retry is needed.
+- **Routes:** `/admin/me` (get current admin + permissions), `/admin/invite` (create invite), `/admin/users` (list all invites + book count), `/admin/revoke` (delete user + purge).

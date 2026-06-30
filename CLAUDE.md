@@ -9,9 +9,9 @@ Pipeline: `ingest -> enrich -> taste profile -> recommend`. Exposed as a FastAPI
 
 Working name is "MyLibrary" (the original "BetterReads" is taken).
 
-**Current state:** Phase 5 live (deployed 2026-06-26) — Vercel frontend → Railway web → Supabase Postgres/auth.
-Invite-only / free launch. Frontend redesign + mobile optimization are merged to main and deployed.
-Next priorities (see `todo.md`): invite flow / account management, then cost guardrails + `/catalog/search` rate limiting.
+**Current state:** Phase 6 live — Vercel frontend → Railway web → Supabase Postgres/auth.
+Invite-only / free launch. Admin console (invite/revoke users) shipped. Frontend redesign + mobile optimization deployed.
+Next priority (see `todo.md`): cost guardrails + `/catalog/search` rate limiting (spend visibility + abuse control).
 
 ## Sub-documents (load when relevant)
 

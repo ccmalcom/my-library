@@ -28,12 +28,15 @@ from slowapi.errors import RateLimitExceeded
 
 from . import archetype as archetype_module
 from . import catalog
+from .admin import AdminId, is_admin
 from .auth import AuthError, resolve_user_id
 from .config import get_settings
 from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
 from sqlalchemy.orm import joinedload
 from .enrich import _normalize_title, _surname, enrich_library
 from .ingest import ingest_csv
+from .invites import InviteError, create_invite, list_roster, revoke_user
+from .supabase_admin import SupabaseAdminError
 from .library import (
     BookExistsError,
     BookNotFoundError,
@@ -50,6 +53,8 @@ from .purge import clear_library, clear_profile, delete_account
 from .recommend import latest_recommendations, recommend
 from .schemas import (
     AddBookRequest,
+    AdminMeOut,
+    AdminUserOut,
     ApiKeyRequest,
     ApiKeyStatus,
     ArchetypeAxisOut,
@@ -64,10 +69,13 @@ from .schemas import (
     FeedbackRequest,
     FeedbackSubmit,
     IngestRequest,
+    InviteOut,
+    InviteRequest,
     ProfileStatusOut,
     RecFeedbackResult,
     RecommendationOut,
     RecommendRequest,
+    RevokeRequest,
     ShelfRequest,
     TasteSignalOut,
     TasteSignalRequest,
@@ -614,6 +622,41 @@ def delete_profile(user_id: UserId) -> dict:
 def delete_account_route(user_id: UserId) -> dict:
     """Delete all of the current user's app data (library, profile, recs, stored key)."""
     return delete_account(user_id=user_id)
+
+
+# --- Admin console ---------------------------------------------------------
+# /admin/me is open to any authenticated caller so the UI can hide the link for
+# non-admins; the mutating routes require admin via the require_admin dependency.
+
+
+@app.get("/admin/me", response_model=AdminMeOut)
+def admin_me(request: Request, authorization: Annotated[str | None, Header()] = None) -> AdminMeOut:
+    return AdminMeOut(is_admin=is_admin(authorization))
+
+
+@app.post("/admin/invite", response_model=InviteOut, status_code=201)
+def admin_invite(req: InviteRequest, admin_id: AdminId) -> InviteOut:
+    try:
+        return InviteOut(**create_invite(req.email, invited_by=admin_id))
+    except InviteError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except SupabaseAdminError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/admin/users", response_model=list[AdminUserOut])
+def admin_users(admin_id: AdminId) -> list[AdminUserOut]:
+    return [AdminUserOut(**row) for row in list_roster()]
+
+
+@app.post("/admin/revoke")
+def admin_revoke(req: RevokeRequest, admin_id: AdminId) -> dict:
+    try:
+        return revoke_user(supabase_user_id=req.supabase_user_id)
+    except InviteError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except SupabaseAdminError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @app.get("/profile/status", response_model=ProfileStatusOut)

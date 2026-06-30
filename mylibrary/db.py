@@ -314,6 +314,26 @@ class UserSettings(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=utcnow)
 
 
+class Invite(Base):
+    """An admin-issued invitation to join MyLibrary.
+
+    One row per invited email. Lifecycle: pending (invite email sent) -> active
+    (Supabase user exists) -> revoked (user deleted + app data purged). `supabase_user_id`
+    is the GoTrue user id returned by the admin invite call; it's the key revoke uses.
+    """
+
+    __tablename__ = "invites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    invited_by: Mapped[str] = mapped_column(String, nullable=False)  # admin user_id (sub)
+    supabase_user_id: Mapped[str | None] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")  # pending|active|revoked
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
 class Feedback(Base):
     """User-submitted feedback (bug reports, ideas, praise, confusing UX).
 

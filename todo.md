@@ -5,7 +5,6 @@ break or confuse the first wave of invited users, then friction, then growth.
 
 ## Wave 1 — Launch blockers
 
-- Invite flow / account management — actually invite + revoke users (needed to scale invites safely)
 - Cost guardrails + rate limiting (paired; spend/abuse control under multi-user BYO-key)
   - Per-user Anthropic spend visibility/limits so big libraries don't cause a surprise bill
   - `/catalog/search` per-user rate limiting (hits OL + Google Books live per keystroke)
@@ -31,6 +30,7 @@ break or confuse the first wave of invited users, then friction, then growth.
 
 ## Done
 
+- Invite flow / account management — admin console shipped; invite + revoke users + view roster
 - BUGS — cleared
 - No-Anthropic-key error UX — shows error + prompts for key on profile/recommend
 - Onboarding empty state — setup/onboarding wizard shows on home / swipe / my library
