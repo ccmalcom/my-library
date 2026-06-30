@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "type-check": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
@@ -26,9 +30,20 @@
     "autoprefixer": "^10",
     "jest": "^30.4.2",
     "jest-environment-node": "^30.4.1",
-    "postcss": "^8",
+    "postcss": "^8.5.10",
     "tailwindcss": "^3",
     "ts-jest": "^29.4.11",
-    "typescript": "^5"
+    "typescript": "^5",
+    "eslint": "^9",
+    "eslint-config-next": "^16",
+    "@eslint/eslintrc": "^3",
+    "prettier": "^3"
+  },
+  "overrides": {
+    "postcss": "$postcss"
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true,
+    "unrs-resolver@1.12.2": true
   }
 }

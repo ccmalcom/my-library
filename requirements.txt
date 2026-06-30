@@ -21,3 +21,6 @@ cryptography>=42.0          # AES-256-GCM encryption of per-user Anthropic keys
 # --- phase 4: background jobs + rate limiting ---
 arq>=0.26                   # async Redis-backed job queue for long-running enrichment
 slowapi>=0.1.9              # per-user rate limiting on enrichment + catalog search endpoints
+
+# --- dev tooling (linting) ---
+ruff>=0.6

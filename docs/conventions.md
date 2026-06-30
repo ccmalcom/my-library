@@ -80,3 +80,17 @@
 ## Alembic (see also `docs/hosting.md`)
 
 - Any future migration that adds a column/table already present in the models' `create_all` baseline must be idempotent (inspect the bind and skip if already exists).
+
+## Claude Code hooks
+
+- Hooks live in `.claude/settings.json` (checked in) and dispatch to Python scripts in `.claude/hooks/` (stdlib only, so no jq/bash/PowerShell dependency on Windows). They run **in Claude Code only** — not Cowork — so commits there are fine and the hooks don't touch git beyond read-only `git diff` / `git ls-files`.
+- **`pre_bash.py`** (PreToolUse on Bash): blocks shell commands that read the `.env` secrets file (`cat .env`, `source .env`, etc.) while allowing `.env.example` / `.env.local`. Pairs with the `Read(./.env)` + `Edit(./.env)` deny rules in `settings.json` — the deny rules cover the file tools, this covers the shell hole. `.env.example` stays fully readable.
+- **`post_edit.py`** (PostToolUse on Edit/Write/MultiEdit): reminds to add an idempotent Alembic migration when `mylibrary/db.py` changes. Exits 2 to surface the note to Claude.
+- **`on_stop.py`** (Stop): on turn end, inspects uncommitted changes and runs, on the **changed files only** — `tsc --noEmit` (frontend `.ts/.tsx`), `ruff check` (changed `.py`), `eslint` (changed frontend files), `prettier --check` (changed frontend files), and `pytest -q` (any tracked `.py`, via the `.venv` interpreter). It also warns if code changed without a `.md` update. Exits 2 on any finding; honors `stop_hook_active` as a loop guard so it fires at most once per stop cycle. Changed-files scoping means you're never blocked by pre-existing debt in files Claude didn't touch.
+- These run automatically on **your machine** — they assume `python` is on PATH and (for the frontend checks) `frontend/node_modules` is installed. To make any of them personal-only rather than shared, move that block to `.claude/settings.local.json` (gitignored).
+
+## Linting / formatting
+
+- **Python:** `ruff` (config in `ruff.toml`, line-length 100, `E/F/W/I`, `E501` ignored). Run `ruff check .` / `ruff check --fix .` / `ruff format .`. Added to `requirements.txt` — `pip install -r requirements.txt` to activate.
+- **Frontend:** ESLint (flat config `frontend/eslint.config.mjs`, `next/core-web-vitals` + `next/typescript`) and Prettier (`frontend/.prettierrc.json`, **single quotes** — matches the TSX curly-quote guidance above). Scripts: `npm run lint` / `lint:fix` / `format` / `format:check`. `cd frontend && npm install` to pull `eslint`, `eslint-config-next`, `@eslint/eslintrc`, `prettier` and activate.
+- The Stop hook runs all of these on changed files and **skips any tool that isn't installed yet**, so nothing breaks before you run the installs.
