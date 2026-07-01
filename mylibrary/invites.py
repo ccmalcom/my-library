@@ -7,6 +7,8 @@ list_roster   -> every invite, newest first, with a book_count for quick health-
 
 from __future__ import annotations
 
+from sqlalchemy import func
+
 from .db import Book, Invite, session_scope, utcnow
 from .purge import delete_account
 from .supabase_admin import delete_user, invite_user
@@ -57,15 +59,13 @@ def list_roster() -> list[dict]:
     """All invites, newest first, each annotated with the user's current book_count."""
     with session_scope() as session:
         rows = session.query(Invite).order_by(Invite.created_at.desc(), Invite.id.desc()).all()
-        out: list[dict] = []
-        for row in rows:
-            count = 0
-            if row.supabase_user_id:
-                count = (
-                    session.query(Book).filter(Book.user_id == row.supabase_user_id).count()
-                )
-            out.append(_invite_dict(row, book_count=count))
-        return out
+        counts = dict(
+            session.query(Book.user_id, func.count(Book.id)).group_by(Book.user_id).all()
+        )
+        return [
+            _invite_dict(row, book_count=counts.get(row.supabase_user_id, 0))
+            for row in rows
+        ]
 
 
 def revoke_user(*, supabase_user_id: str) -> dict:
@@ -85,7 +85,9 @@ def revoke_user(*, supabase_user_id: str) -> dict:
             .filter(Invite.supabase_user_id == supabase_user_id)
             .one_or_none()
         )
-        already_revoked = row is not None and row.status == "revoked"
+        if row is None:
+            raise InviteError("invite not found for supabase_user_id")
+        already_revoked = row.status == "revoked"
 
     if not already_revoked:
         delete_user(supabase_user_id)  # may raise SupabaseAdminError

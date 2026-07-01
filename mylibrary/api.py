@@ -13,18 +13,27 @@ That's fine for MVP1 / local use; a later phase can move them to a background ta
 
 from __future__ import annotations
 
+import fnmatch
 import shutil
 import tempfile
-
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-import fnmatch
-
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    File,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.orm import joinedload
 
 from . import archetype as archetype_module
 from . import catalog
@@ -32,11 +41,15 @@ from .admin import AdminId, is_admin
 from .auth import AuthError, resolve_user_id
 from .config import get_settings
 from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
-from sqlalchemy.orm import joinedload
 from .enrich import _normalize_title, _surname, enrich_library
+from .feedback import (
+    VALID_CATEGORIES,
+    check_prompt_eligibility,
+    dismiss_prompt,
+    submit_feedback,
+)
 from .ingest import ingest_csv
 from .invites import InviteError, create_invite, list_roster, revoke_user
-from .supabase_admin import SupabaseAdminError
 from .library import (
     BookExistsError,
     BookNotFoundError,
@@ -69,7 +82,6 @@ from .schemas import (
     FeedbackRequest,
     FeedbackSubmit,
     IngestRequest,
-    InviteOut,
     InviteRequest,
     ProfileStatusOut,
     RecFeedbackResult,
@@ -85,13 +97,8 @@ from .schemas import (
     UserProfileOut,
     UserProfileRequest,
 )
-from .feedback import (
-    VALID_CATEGORIES,
-    check_prompt_eligibility,
-    dismiss_prompt,
-    submit_feedback,
-)
 from .stats import dataset_stats
+from .supabase_admin import SupabaseAdminError
 from .usage import cap_status
 from .user_settings import (
     anthropic_key_status,
@@ -101,6 +108,7 @@ from .user_settings import (
     set_display_name,
 )
 from .worker import create_enrich_job, fail_if_stale, recover_orphaned_jobs, run_enrich_job
+
 
 def _rate_limit_key(request: Request) -> str:
     """Rate-limit key: the authenticated user_id (stashed on request.state by
@@ -123,7 +131,8 @@ async def lifespan(_app: FastAPI):
     # Initialise the arq connection pool so routes can enqueue jobs.
     settings = get_settings()
     if settings.redis_url:
-        from arq.connections import RedisSettings as ArqRedisSettings, create_pool
+        from arq.connections import RedisSettings as ArqRedisSettings
+        from arq.connections import create_pool
         _app.state.arq_pool = await create_pool(ArqRedisSettings.from_dsn(settings.redis_url))
     else:
         _app.state.arq_pool = None
@@ -642,10 +651,10 @@ def admin_me(request: Request, authorization: Annotated[str | None, Header()] = 
     return AdminMeOut(is_admin=is_admin(authorization))
 
 
-@app.post("/admin/invite", response_model=InviteOut, status_code=201)
-def admin_invite(req: InviteRequest, admin_id: AdminId) -> InviteOut:
+@app.post("/admin/invite", response_model=AdminUserOut, status_code=201)
+def admin_invite(req: InviteRequest, admin_id: AdminId) -> AdminUserOut:
     try:
-        return InviteOut(**create_invite(req.email, invited_by=admin_id))
+        return AdminUserOut(**create_invite(req.email, invited_by=admin_id))
     except InviteError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except SupabaseAdminError as exc:
@@ -735,8 +744,8 @@ def feedback(rec_id: int, req: FeedbackRequest, user_id: UserId) -> RecFeedbackR
 
     Returns the affected library book (None for rejected).
     """
-    from .feedback_vocab import REJECT_REASONS, is_valid_reasons
     from .db import utcnow
+    from .feedback_vocab import REJECT_REASONS, is_valid_reasons
     from .profile import get_profile_meta
 
     valid = {"accepted", "rejected", "already_read"}
@@ -814,8 +823,8 @@ def update_trait(trait_id: int, req: TraitUpdateRequest, user_id: UserId) -> Tra
     Setting status to 'confirmed'/'rejected' or adjusting user_weight stamps
     verdict_updated_at and marks the profile dirty.
     """
-    from .library import TraitNotFoundError, set_trait_verdict
     from .db import TasteTrait
+    from .library import TraitNotFoundError, set_trait_verdict
 
     if req.claim is None and req.user_note is None and req.status is None and req.user_weight is None:
         raise HTTPException(status_code=422, detail="at least one field (claim, user_note, status, user_weight) must be provided")
@@ -940,7 +949,7 @@ def post_archetype(user_id: UserId) -> ArchetypeOut:
     Requires a taste profile and a usable Anthropic API key.
     """
     try:
-        result = archetype_module.derive_archetype(user_id=user_id)
+        archetype_module.derive_archetype(user_id=user_id)
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

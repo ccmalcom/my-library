@@ -42,8 +42,16 @@ def _request(method: str, path: str, *, json: dict | None, client: httpx.Client 
         if owns:
             client.close()
     if resp.status_code >= 300:
-        # Surface GoTrue's message but never the key.
-        raise SupabaseAdminError(f"Supabase admin {method} {path} -> {resp.status_code}: {resp.text}")
+        # Surface a short GoTrue message but never echo arbitrary response bodies
+        # (which could contain PII) or the key.
+        msg = None
+        try:
+            data = resp.json()
+            msg = data.get("msg") or data.get("message")
+        except Exception:
+            msg = None
+        detail = f": {msg}" if msg else ""
+        raise SupabaseAdminError(f"Supabase admin {method} {path} -> {resp.status_code}{detail}")
     return resp
 
 
