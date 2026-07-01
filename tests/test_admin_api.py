@@ -49,6 +49,23 @@ def test_revoke(monkeypatch, tmp_path):
     assert r.json()["status"] == "revoked"
 
 
+def test_backfill_adds_users_missing_from_roster(monkeypatch, tmp_path):
+    api, client = _client(monkeypatch, tmp_path)
+    import mylibrary.invites as invites
+    monkeypatch.setattr(
+        invites,
+        "list_users",
+        lambda **kw: [{"id": "sb-1", "email": "beta@x.io"}],
+    )
+
+    r = client.post("/admin/backfill")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"added": 1, "total_supabase_users": 1}
+
+    roster = client.get("/admin/users").json()
+    assert any(u["email"] == "beta@x.io" and u["supabase_user_id"] == "sb-1" for u in roster)
+
+
 def test_revoke_unknown_user_is_404(monkeypatch, tmp_path):
     api, client = _client(monkeypatch, tmp_path)
     import mylibrary.invites as invites

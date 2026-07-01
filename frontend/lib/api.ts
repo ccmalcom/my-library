@@ -4,9 +4,9 @@
  * In hosted mode each request carries the Supabase session token (see authHeaders).
  */
 
-import { getSupabaseClient } from "@/utils/supabase/client";
+import { getSupabaseClient } from '@/utils/supabase/client';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────────────
 
@@ -94,7 +94,7 @@ export interface SubjectBreakdown {
 }
 
 export interface FeedbackRequest {
-  status?: "accepted" | "rejected" | "already_read";
+  status?: 'accepted' | 'rejected' | 'already_read';
   user_note?: string | null;
 }
 
@@ -125,7 +125,7 @@ export interface BookFeedbackRequest {
   is_favorite?: boolean;
 }
 
-export type Shelf = "to-read" | "currently-reading" | "read" | "did-not-finish";
+export type Shelf = 'to-read' | 'currently-reading' | 'read' | 'did-not-finish';
 
 /** One hit from the manual add-a-book search (GET /catalog/search). */
 export interface CatalogResult {
@@ -234,10 +234,10 @@ export interface FeedbackPromptResponse {
  * Shared SWR key for the profile-status query, so any mutation (a re-rate/review)
  * can revalidate the re-profile banner via `mutate(PROFILE_STATUS_KEY)`.
  */
-export const PROFILE_STATUS_KEY = "profile-status";
+export const PROFILE_STATUS_KEY = 'profile-status';
 
 /** Shared SWR key for the reader archetype (GET /profile/archetype). */
-export const ARCHETYPE_KEY = "archetype";
+export const ARCHETYPE_KEY = 'archetype';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 
@@ -260,7 +260,7 @@ async function authHeaders(): Promise<Record<string, string>> {
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    cache: "no-store",
+    cache: 'no-store',
     headers: { ...(await authHeaders()) },
   });
   if (!res.ok) throw new Error(`GET ${path} → ${res.status}`);
@@ -269,8 +269,8 @@ async function get<T>(path: string): Promise<T> {
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
@@ -282,8 +282,8 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 
 async function patch<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -295,8 +295,8 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
 
 async function put<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -308,7 +308,7 @@ async function put<T>(path: string, body: unknown): Promise<T> {
 
 async function del<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    method: "DELETE",
+    method: 'DELETE',
     headers: { ...(await authHeaders()) },
   });
   if (!res.ok) {
@@ -321,32 +321,32 @@ async function del<T>(path: string): Promise<T> {
 // ─── API calls ────────────────────────────────────────────────────────────────────────────
 
 export const api = {
-  stats: () => get<Stats>("/stats"),
+  stats: () => get<Stats>('/stats'),
 
-  health: () => get<{ status: string; books: number; anthropic_key_set: boolean }>("/health"),
+  health: () => get<{ status: string; books: number; anthropic_key_set: boolean }>('/health'),
 
   books: (params?: { shelf?: string; limit?: number; offset?: number }) => {
     const qs = new URLSearchParams();
-    if (params?.shelf) qs.set("shelf", params.shelf);
-    if (params?.limit !== undefined) qs.set("limit", String(params.limit));
-    if (params?.offset !== undefined) qs.set("offset", String(params.offset));
+    if (params?.shelf) qs.set('shelf', params.shelf);
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
     const query = qs.toString();
-    return get<Book[]>(query ? `/books?${query}` : "/books");
+    return get<Book[]>(query ? `/books?${query}` : '/books');
   },
 
-  recommendations: () => get<Recommendation[]>("/recommendations"),
+  recommendations: () => get<Recommendation[]>('/recommendations'),
 
-  profile: () => get<Trait[]>("/profile"),
+  profile: () => get<Trait[]>('/profile'),
 
   updateTrait: (traitId: number, req: TraitUpdateRequest) =>
     patch<Trait>(`/profile/traits/${traitId}`, req),
 
-  profileSubjects: () => get<SubjectBreakdown>("/profile/subjects"),
+  profileSubjects: () => get<SubjectBreakdown>('/profile/subjects'),
 
-  runRecommend: (n = 10) => post<Record<string, unknown>>("/recommend", { n }),
+  runRecommend: (n = 10) => post<Record<string, unknown>>('/recommend', { n }),
 
   /** Build the initial taste profile (required before first recommendations). */
-  runProfile: () => post<Record<string, unknown>>("/profile"),
+  runProfile: () => post<Record<string, unknown>>('/profile'),
 
   feedback: (recId: number, req: FeedbackRequest) =>
     patch<RecFeedbackResult>(`/recommendations/${recId}/feedback`, req),
@@ -364,27 +364,27 @@ export const api = {
     get<CatalogResult[]>(`/catalog/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 
   /** Manually add a book to the library (from a picked catalog result). */
-  addBook: (req: AddBookRequest) => post<Book>("/books", req),
+  addBook: (req: AddBookRequest) => post<Book>('/books', req),
 
   /** Permanently remove a book from the library. */
   removeBook: (bookId: number) =>
     del<{ id: number; title: string; removed: boolean }>(`/books/${bookId}`),
 
   /** Is the taste profile stale relative to recent rating/review edits? */
-  profileStatus: () => get<ProfileStatus>("/profile/status"),
+  profileStatus: () => get<ProfileStatus>('/profile/status'),
 
   /** Incrementally refresh the taste profile from recent edits only. */
-  updateProfile: () => post<Record<string, unknown>>("/profile/update"),
+  updateProfile: () => post<Record<string, unknown>>('/profile/update'),
 
   /** All recommendations the user has rejected, newest first. */
-  rejectedRecs: () => get<Recommendation[]>("/recommendations/rejected"),
+  rejectedRecs: () => get<Recommendation[]>('/recommendations/rejected'),
 
   /** Upload a Goodreads CSV and run ingest. Used by the setup wizard. */
   ingestUpload: async (file: File): Promise<Record<string, unknown>> => {
     const form = new FormData();
-    form.append("file", file);
+    form.append('file', file);
     const res = await fetch(`${BASE}/ingest/upload`, {
-      method: "POST",
+      method: 'POST',
       body: form,
       headers: { ...(await authHeaders()) }, // no Content-Type — the browser sets the multipart boundary
     });
@@ -397,14 +397,14 @@ export const api = {
 
   /** Kick off library enrichment (Open Library + Google Books). Slow — can take minutes. */
   runEnrich: (opts?: { limit?: number }) =>
-    post<Record<string, unknown>>("/enrich", { limit: opts?.limit ?? null }),
+    post<Record<string, unknown>>('/enrich', { limit: opts?.limit ?? null }),
 
   /**
    * Start a background enrichment job. Returns immediately with a job_id.
    * Poll enrichStatus(job_id) until status is 'done' or 'error'.
    */
   enrichStart: (opts?: { force?: boolean; limit?: number }) =>
-    post<EnrichJobOut>("/enrich/start", {
+    post<EnrichJobOut>('/enrich/start', {
       force: opts?.force ?? false,
       limit: opts?.limit ?? null,
     }),
@@ -413,21 +413,19 @@ export const api = {
   enrichStatus: (jobId: string) => get<EnrichJobOut>(`/enrich/status/${jobId}`),
 
   /** Whether a usable Anthropic key is configured (stored or env fallback). Never the key. */
-  apiKeyStatus: () => get<ApiKeyStatus>("/settings/api-key/status"),
+  apiKeyStatus: () => get<ApiKeyStatus>('/settings/api-key/status'),
 
   /** Store the user's Anthropic key (encrypted server-side). */
-  setApiKey: (apiKey: string) =>
-    put<ApiKeyStatus>("/settings/api-key", { api_key: apiKey }),
+  setApiKey: (apiKey: string) => put<ApiKeyStatus>('/settings/api-key', { api_key: apiKey }),
 
   /** Remove the user's stored key (reverts to env fallback / unconfigured). */
-  clearApiKey: () => del<ApiKeyStatus>("/settings/api-key"),
+  clearApiKey: () => del<ApiKeyStatus>('/settings/api-key'),
 
   /** Get the user's display name. */
-  getProfile: () => get<UserProfile>("/settings/profile"),
+  getProfile: () => get<UserProfile>('/settings/profile'),
 
   /** Set / update the user's display name. */
-  setProfile: (display_name: string) =>
-    put<UserProfile>("/settings/profile", { display_name }),
+  setProfile: (display_name: string) => put<UserProfile>('/settings/profile', { display_name }),
 
   // ── Reader archetype ──────────────────────────────────────────────────────
   /** Derive (or re-derive) the reader archetype from the current taste profile. */
@@ -448,8 +446,7 @@ export const api = {
 
   // ── Feedback ──────────────────────────────────────────────────────────────
   /** Submit general feedback (bug, idea, etc.). */
-  submitFeedback: (payload: FeedbackSubmit): Promise<void> =>
-    post<void>('/feedback', payload),
+  submitFeedback: (payload: FeedbackSubmit): Promise<void> => post<void>('/feedback', payload),
 
   /** Check whether a feedback prompt should be shown. */
   feedbackPrompt: (trigger: string, runId?: string): Promise<FeedbackPromptResponse> => {
@@ -474,17 +471,17 @@ export const api = {
 
   // ── Destructive data removal ──────────────────────────────────────────────
   /** Drop the entire library (books + enrichments) and the derived taste profile/recs. */
-  clearLibrary: () => del<Record<string, number | boolean>>("/library"),
+  clearLibrary: () => del<Record<string, number | boolean>>('/library'),
 
   /** Reset the taste profile (traits + recommendations); keeps the library. */
-  clearProfile: () => del<Record<string, number | boolean>>("/profile"),
+  clearProfile: () => del<Record<string, number | boolean>>('/profile'),
 
   /** Delete ALL of the current user's app data (library, profile, recs, stored key). */
-  deleteAccount: () => del<Record<string, number | boolean>>("/account"),
+  deleteAccount: () => del<Record<string, number | boolean>>('/account'),
 };
 
 /** Shared SWR key for the API-key status (settings page + any gating UI). */
-export const API_KEY_STATUS_KEY = "api-key-status";
+export const API_KEY_STATUS_KEY = 'api-key-status';
 
 // ─── Enrich job types ────────────────────────────────────────────────────────
 
@@ -502,19 +499,19 @@ export interface EnrichJobOut {
 }
 
 /** Shared SWR key for the user's display name / profile settings. */
-export const USER_PROFILE_KEY = "user-profile";
+export const USER_PROFILE_KEY = 'user-profile';
 
 // ─── Structured feedback (Tasks 3.1–3.3 backend endpoints) ────────────────────
 
 /** Human-readable labels for recommendation reject reason codes. */
 export const REJECT_REASONS: Record<string, string> = {
-  wrong_genre:   "Wrong genre",
-  too_dark:      "Too dark",
-  tried_author:  "Already tried this author",
-  too_long:      "Too long",
-  not_now:       "Not in the mood",
-  overhyped:     "Feels overhyped",
-  wrong_vibe:    "Wrong vibe",
+  wrong_genre: 'Wrong genre',
+  too_dark: 'Too dark',
+  tried_author: 'Already tried this author',
+  too_long: 'Too long',
+  not_now: 'Not in the mood',
+  overhyped: 'Feels overhyped',
+  wrong_vibe: 'Wrong vibe',
 };
 
 /**
@@ -523,7 +520,7 @@ export const REJECT_REASONS: Record<string, string> = {
  */
 export function setTraitVerdict(
   id: number,
-  body: { status?: "confirmed" | "rejected"; user_weight?: number },
+  body: { status?: 'confirmed' | 'rejected'; user_weight?: number }
 ): Promise<Trait> {
   return patch<Trait>(`/profile/traits/${id}`, body);
 }
@@ -532,11 +529,8 @@ export function setTraitVerdict(
  * Reject a recommendation and attach structured reason codes.
  * PATCH /recommendations/{rec_id}/feedback
  */
-export function rejectRecWithReasons(
-  id: number,
-  reasons: string[],
-): Promise<RecFeedbackResult> {
-  const body: Record<string, unknown> = { status: "rejected" };
+export function rejectRecWithReasons(id: number, reasons: string[]): Promise<RecFeedbackResult> {
+  const body: Record<string, unknown> = { status: 'rejected' };
   if (reasons.length > 0) body.reject_reasons = reasons;
   return patch<RecFeedbackResult>(`/recommendations/${id}/feedback`, body);
 }
@@ -546,12 +540,12 @@ export function rejectRecWithReasons(
  * POST /taste-signal
  */
 export function recordTasteSignal(body: {
-  direction: "more" | "less";
-  target_kind: "book" | "rec";
+  direction: 'more' | 'less';
+  target_kind: 'book' | 'rec';
   target_book_id?: number;
   snapshot?: object;
 }): Promise<Record<string, unknown>> {
-  return post<Record<string, unknown>>("/taste-signal", body);
+  return post<Record<string, unknown>>('/taste-signal', body);
 }
 
 /**
@@ -565,10 +559,10 @@ export function setFavorite(id: number, value: boolean): Promise<Record<string, 
 // ── Admin console (Tasks 1-7) ───────────────────────────────────────────────
 
 /** Shared SWR key for the current user's admin status (NavBar + /admin page). */
-export const ADMIN_ME_KEY = "admin-me";
+export const ADMIN_ME_KEY = 'admin-me';
 
 /** Shared SWR key for the invited-user roster (GET /admin/users). */
-export const ADMIN_USERS_KEY = "admin-users";
+export const ADMIN_USERS_KEY = 'admin-users';
 
 export interface AdminUser {
   id: number;
@@ -593,20 +587,30 @@ export async function adminMe(): Promise<{ is_admin: boolean }> {
 }
 
 /** Full invited-user roster (admin-only). GET /admin/users */
-export const listAdminUsers = (): Promise<AdminUser[]> => get<AdminUser[]>("/admin/users");
+export const listAdminUsers = (): Promise<AdminUser[]> => get<AdminUser[]>('/admin/users');
 
 /** Invite a new user by email (admin-only). POST /admin/invite */
 export const inviteUser = (email: string): Promise<AdminUser> =>
-  post<AdminUser>("/admin/invite", { email });
+  post<AdminUser>('/admin/invite', { email });
 
 /** Revoke an invited/active user's access (admin-only). POST /admin/revoke */
 export const revokeUser = (supabaseUserId: string): Promise<{ status: string }> =>
-  post<{ status: string }>("/admin/revoke", { supabase_user_id: supabaseUserId });
+  post<{ status: string }>('/admin/revoke', { supabase_user_id: supabaseUserId });
+
+/**
+ * Create roster rows for any Supabase auth user missing one — e.g. beta testers added
+ * directly in the Supabase dashboard rather than through the Invite form (admin-only).
+ * POST /admin/backfill
+ */
+export const backfillAdminUsers = (): Promise<{
+  added: number;
+  total_supabase_users: number;
+}> => post<{ added: number; total_supabase_users: number }>('/admin/backfill', {});
 
 // ── Spend guardrails ────────────────────────────────────────────────────────
 
 /** Shared SWR key for the month-to-date Anthropic spend (settings panel + warning banner). */
-export const USAGE_KEY = "settings-usage";
+export const USAGE_KEY = 'settings-usage';
 
 /** Month-to-date Anthropic spend for the caller + a soft-warn flag. Read-only; never blocks. */
 export interface Usage {
@@ -618,4 +622,4 @@ export interface Usage {
 }
 
 /** Get the caller's month-to-date Anthropic spend. GET /settings/usage */
-export const getUsage = (): Promise<Usage> => get<Usage>("/settings/usage");
+export const getUsage = (): Promise<Usage> => get<Usage>('/settings/usage');

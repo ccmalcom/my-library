@@ -49,7 +49,13 @@ from .feedback import (
     submit_feedback,
 )
 from .ingest import ingest_csv
-from .invites import InviteError, create_invite, list_roster, revoke_user
+from .invites import (
+    InviteError,
+    backfill_from_supabase,
+    create_invite,
+    list_roster,
+    revoke_user,
+)
 from .library import (
     BookExistsError,
     BookNotFoundError,
@@ -664,6 +670,16 @@ def admin_invite(req: InviteRequest, admin_id: AdminId) -> AdminUserOut:
 @app.get("/admin/users", response_model=list[AdminUserOut])
 def admin_users(admin_id: AdminId) -> list[AdminUserOut]:
     return [AdminUserOut(**row) for row in list_roster()]
+
+
+@app.post("/admin/backfill")
+def admin_backfill(admin_id: AdminId) -> dict:
+    """Create `invites` rows for any Supabase auth user missing one (e.g. added directly
+    in the Supabase dashboard rather than through /admin/invite)."""
+    try:
+        return backfill_from_supabase(invited_by=admin_id)
+    except SupabaseAdminError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @app.post("/admin/revoke")

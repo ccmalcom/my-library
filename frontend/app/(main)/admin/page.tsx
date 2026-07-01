@@ -7,6 +7,7 @@ import {
   listAdminUsers,
   inviteUser,
   revokeUser,
+  backfillAdminUsers,
   ADMIN_ME_KEY,
   ADMIN_USERS_KEY,
   type AdminUser,
@@ -19,7 +20,8 @@ const inputClass = [
   'focus-visible:ring-1 focus-visible:ring-accent',
 ].join(' ');
 
-const labelClass = 'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
+const labelClass =
+  'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
 
 const STATUS_VARIANT: Record<string, 'default' | 'success' | 'danger' | 'warning'> = {
   invited: 'warning',
@@ -38,19 +40,20 @@ export default function AdminPage() {
 
   const [email, setEmail] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
 
   if (meLoading) {
     return (
-      <div className='mx-auto flex max-w-2xl justify-center px-4 py-16'>
-        <Spinner label='Loading' />
+      <div className="mx-auto flex max-w-2xl justify-center px-4 py-16">
+        <Spinner label="Loading" />
       </div>
     );
   }
 
   if (!me?.is_admin) {
     return (
-      <div className='mx-auto max-w-2xl px-4 py-8'>
-        <Card className='text-sm text-text'>Not authorized.</Card>
+      <div className="mx-auto max-w-2xl px-4 py-8">
+        <Card className="text-sm text-text">Not authorized.</Card>
       </div>
     );
   }
@@ -72,27 +75,51 @@ export default function AdminPage() {
     }
   }
 
-  return (
-    <div className='mx-auto max-w-2xl px-4 py-8'>
-      <h1 className='mb-1 font-display text-3xl font-bold tracking-tight text-text'>Admin</h1>
-      <p className='mb-8 text-sm text-muted'>Invite new users and manage access.</p>
+  async function handleBackfill() {
+    setBackfilling(true);
+    try {
+      const result = await backfillAdminUsers();
+      toast.success(
+        result.added > 0
+          ? `Added ${result.added} user${result.added !== 1 ? 's' : ''} from Supabase.`
+          : 'Already in sync — no new users found.'
+      );
+      await mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Sync failed.');
+    } finally {
+      setBackfilling(false);
+    }
+  }
 
-      <section className='mb-6'>
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className="mb-8 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="mb-1 font-display text-3xl font-bold tracking-tight text-text">Admin</h1>
+          <p className="text-sm text-muted">Invite new users and manage access.</p>
+        </div>
+        <Button variant="secondary" size="sm" loading={backfilling} onClick={handleBackfill}>
+          {backfilling ? 'Syncing...' : 'Sync from Supabase'}
+        </Button>
+      </div>
+
+      <section className="mb-6">
         <Card>
-          <h2 className='mb-4 font-display text-lg font-semibold text-text'>Invite a user</h2>
-          <form onSubmit={handleInvite} className='space-y-3'>
+          <h2 className="mb-4 font-display text-lg font-semibold text-text">Invite a user</h2>
+          <form onSubmit={handleInvite} className="space-y-3">
             <div>
               <label className={labelClass}>Email</label>
               <input
-                type='email'
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder='invite@example.com'
+                placeholder="invite@example.com"
                 required
                 className={inputClass}
               />
             </div>
-            <Button type='submit' loading={inviting} disabled={inviting || !email.trim()}>
+            <Button type="submit" loading={inviting} disabled={inviting || !email.trim()}>
               {inviting ? 'Sending...' : 'Invite'}
             </Button>
           </form>
@@ -100,16 +127,16 @@ export default function AdminPage() {
       </section>
 
       <section>
-        <Card className='p-0'>
-          <h2 className='px-5 pt-5 font-display text-lg font-semibold text-text'>Users</h2>
+        <Card className="p-0">
+          <h2 className="px-5 pt-5 font-display text-lg font-semibold text-text">Users</h2>
           {usersLoading ? (
-            <div className='flex justify-center p-8'>
-              <Spinner label='Loading users' />
+            <div className="flex justify-center p-8">
+              <Spinner label="Loading users" />
             </div>
           ) : !users || users.length === 0 ? (
-            <p className='p-5 text-sm text-faint'>No invited users yet.</p>
+            <p className="p-5 text-sm text-faint">No invited users yet.</p>
           ) : (
-            <div className='mt-4 divide-y divide-border'>
+            <div className="mt-4 divide-y divide-border">
               {users.map((u) => (
                 <UserRow key={u.id} user={u} onRevoked={() => mutate()} />
               ))}
@@ -148,24 +175,28 @@ function UserRow({ user, onRevoked }: { user: AdminUser; onRevoked: () => void }
   const canRevoke = user.status !== 'revoked';
 
   return (
-    <div className='flex items-center justify-between gap-3 px-5 py-3'>
-      <div className='min-w-0'>
-        <p className='truncate text-sm font-medium text-text'>{user.email}</p>
-        <p className='font-mono text-xs text-faint'>{user.book_count} books</p>
+    <div className="flex items-center justify-between gap-3 px-5 py-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-text">{user.email}</p>
+        <p className="font-mono text-xs text-faint">{user.book_count} books</p>
       </div>
-      <div className='flex shrink-0 items-center gap-2'>
+      <div className="flex shrink-0 items-center gap-2">
         <Badge variant={STATUS_VARIANT[user.status] ?? 'default'}>{user.status}</Badge>
-        {canRevoke && (
-          confirming ? (
-            <Button variant='danger' size='sm' loading={revoking} onClick={handleRevoke}>
+        {canRevoke &&
+          (confirming ? (
+            <Button variant="danger" size="sm" loading={revoking} onClick={handleRevoke}>
               {revoking ? 'Revoking...' : 'Confirm'}
             </Button>
           ) : (
-            <Button variant='ghost' size='sm' onClick={() => setConfirming(true)} disabled={revoking}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirming(true)}
+              disabled={revoking}
+            >
               Revoke
             </Button>
-          )
-        )}
+          ))}
       </div>
     </div>
   );
