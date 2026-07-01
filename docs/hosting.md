@@ -24,6 +24,8 @@ Full plan: **`mylibrary-web-distribution-plan.md`**. Deploy runbook: **`mylibrar
 - `GOOGLE_BOOKS_API_KEY` — optional.
 - `ADMIN_EMAILS` — comma-separated allowlist of admin email addresses (lowercased). Unset = no admins. Only checked in hosted multi-tenant mode; local dev always treats the unauthenticated user as admin.
 - `SUPABASE_SERVICE_ROLE_KEY` — GoTrue admin API key for programmatic user invites + deletes (server-only, never sent to frontend). Required to use `/admin/invite` and `/admin/revoke`.
+- `MYLIBRARY_MONTHLY_SOFT_CAP_USD` — per-user month-to-date soft spend cap in USD. Default `5.0`. Warn-only; never blocks a call.
+- `MYLIBRARY_USAGE_WARN_THRESHOLD` — fraction of the cap (0..1) at which the soft-warn flag turns on. Default `0.8`.
 
 ## Auth (`auth.py`)
 
@@ -76,6 +78,16 @@ Verifies Supabase access tokens and returns `sub` as `user_id`. Supabase signs w
 **Baseline gotcha (fixed):** `0001_initial` builds the schema via `Base.metadata.create_all()` from the _live_ models — so as models gained new columns, the baseline started creating them too. On a fresh DB, later migrations tried to add already-existing columns → `duplicate column name`. Fix: **migrations 0002+ are idempotent** — they inspect the bind and skip if the column/table already exists. Any future migration that adds something already in the models' `create_all` baseline must guard the same way.
 
 Migration chain: `0001_initial_multitenant_schema` → `0002_display_name` → `0003_enrich_jobs` → `0004_...` → `0005_reader_archetypes` → `0006_add_exclude_from_profile` → ... → `0013_invites`.
+
+## Spend tracking (soft-warn)
+
+- **`usage_events` table** (`UsageEvent` model, `mylibrary/db.py`): one append-only row per Claude call — `user_id`, `model`, `operation`, token counts (`input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`), computed `cost_usd`, `created_at`. Migration `0014_usage_events` (idempotent, chains after `0013_invites`).
+- **`usage.tracked_create(client, *, user_id, operation, **create_kwargs)`** wraps `client.messages.create(...)` and records usage after the call. All 5 Claude call sites route through it: `profile.extract_taste_profile` (`profile_full`), `profile.update_taste_profile` (`profile_update`), `recommend._claude_seed_queries` (`recommend_seed`), `recommend._claude_rerank` (`recommend_rerank`), `archetype.derive_archetype` (`archetype`).
+- **`cost_usd(model, usage)`** prices a call from `MODEL_PRICING` (USD per 1M tokens: input/output/cache-write/cache-read), keyed by model name. `claude-sonnet-5` is priced separately via `_sonnet_5_pricing()` (time-boxed promo rate through 2026-08-31, reverting to the Sonnet 4.6 list rate after). Any unlisted model falls back to `DEFAULT_PRICING` (the most expensive tier, so cost is never under-reported). **These are list prices — re-verify against Anthropic's pricing page whenever the model lineup or rates change.**
+- **Recording is best-effort**: `record_usage` swallows any DB failure and logs a warning — a usage-tracking bug can never break a profile/recommend/archetype call.
+- **`cap_status(user_id)`** sums `cost_usd` for the current UTC calendar month (+ a per-operation breakdown) and compares against `monthly_soft_cap_usd`, returning `{spent_usd, cap_usd, pct, warn, by_operation}`. `warn` flips true at `usage_warn_threshold` fraction of the cap.
+- **`GET /settings/usage`** (`UsageOut` schema) exposes `cap_status` to the frontend — powers the `/settings` usage panel and the `UsageWarningBanner`.
+- **Soft-warn only — never blocks.** Nothing in `usage.py` or the cap-status flow prevents a profile/recommend/archetype call from running; it is spend visibility, not spend enforcement.
 
 ## Admin console (Phase 6)
 

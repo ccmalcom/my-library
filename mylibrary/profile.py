@@ -18,6 +18,8 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+from anthropic import Anthropic
+
 from .config import LOCAL_USER_ID, get_settings
 from .db import (
     Book,
@@ -29,6 +31,7 @@ from .db import (
     session_scope,
     utcnow,
 )
+from .usage import tracked_create
 from .user_settings import resolve_anthropic_key
 
 _TOOL = {
@@ -499,11 +502,11 @@ def extract_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_I
         feedback = _feedback_context(session, user_id)
         prompt = _build_prompt(tiers, feedback=feedback)
 
-        # Imported lazily so ingest/enrich work without the anthropic package present.
-        from anthropic import Anthropic
-
         client = Anthropic(api_key=api_key)
-        message = client.messages.create(
+        message = tracked_create(
+            client,
+            user_id=user_id,
+            operation="profile_full",
             model=settings.model,
             max_tokens=max_tokens,
             system=_SYSTEM,
@@ -750,10 +753,11 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
             current_traits, books_meta, changed_ids, feedback=feedback
         )
 
-        from anthropic import Anthropic
-
         client = Anthropic(api_key=api_key)
-        message = client.messages.create(
+        message = tracked_create(
+            client,
+            user_id=user_id,
+            operation="profile_update",
             model=settings.model,
             max_tokens=max_tokens,
             system=_REVISE_SYSTEM,

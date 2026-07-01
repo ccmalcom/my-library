@@ -81,6 +81,7 @@ from .schemas import (
     TasteSignalRequest,
     TraitOut,
     TraitUpdateRequest,
+    UsageOut,
     UserProfileOut,
     UserProfileRequest,
 )
@@ -91,6 +92,7 @@ from .feedback import (
     submit_feedback,
 )
 from .stats import dataset_stats
+from .usage import cap_status
 from .user_settings import (
     anthropic_key_status,
     clear_anthropic_key,
@@ -273,6 +275,12 @@ def put_profile_settings(req: UserProfileRequest, user_id: UserId) -> UserProfil
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return UserProfileOut(display_name=get_display_name(user_id=user_id))
+
+
+@app.get("/settings/usage", response_model=UsageOut)
+def get_usage(user_id: UserId) -> UsageOut:
+    """Month-to-date Anthropic spend for the caller + a soft-warn flag (never blocks)."""
+    return UsageOut(**cap_status(user_id))
 
 
 def _book_out(book: Book) -> BookOut:

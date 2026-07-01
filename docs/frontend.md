@@ -24,10 +24,14 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 - `/library` — rated books; click a row to re-rate/review; "N books missing reviews" button steps through unrated read books; **+ Add book** button opens `AddBookModal`.
 - `/profile` — `TasteHero` archetype card at top; taste traits with inline editing, rating distribution, genre breakdown.
 - `/setup` — CSV import wizard plus a no-CSV "add books manually" branch (`ManualStep`). Now a thin wrapper around `components/SetupWizard.tsx`.
-- `/settings` — API key management + Danger Zone.
+- `/settings` — API key management, **Claude usage this month** panel, + Danger Zone.
+  The usage panel (`getUsage` / `USAGE_KEY` SWR call) shows month-to-date spend vs. the
+  soft cap as a progress bar, a per-operation cost breakdown (`by_operation`), an
+  "Approaching cap" badge when `usage.warn` is true, and a footnote clarifying it's a
+  soft cap for visibility only — recommendations/profiling never stop running.
 - `/admin` — admin console (invite/revoke users, view roster). Only reachable by users in the `ADMIN_EMAILS` allowlist; in local mode all users can access it.
 
-`layout.tsx` mounts `NavBar` + `ReprofileBanner` + `BottomNav` above/below all pages and wraps `children` in **`LibraryGate`**. The root `app/layout.tsx` `<body>` carries `suppressHydrationWarning` (browser extensions mutate `<body>` pre-hydration — silences benign attribute mismatches only).
+`layout.tsx` mounts `NavBar` + `ReprofileBanner` + `UsageWarningBanner` + `FeedbackLauncher` + `BottomNav` above/below all pages and wraps `children` in **`LibraryGate`**. The root `app/layout.tsx` `<body>` carries `suppressHydrationWarning` (browser extensions mutate `<body>` pre-hydration — silences benign attribute mismatches only).
 
 ## Components
 
@@ -40,6 +44,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 - **`BookDetailModal`** — read-only detail view for a To-Read book: cover, description, "find it" links via `lib/bookLinks.ts`, shelf actions. Used by `ToReadTab`.
 - **`AddBookModal`** — manual add: debounced `/catalog/search` → pick a real result → optional shelf + star rating + review text → `POST /books`. Used by Library page and setup wizard manual branch.
 - **`ReprofileBanner`** — app-wide; shows only when `/profile/status` reports `dirty`, runs `/profile/update`.
+- **`UsageWarningBanner`** — app-wide, mounted in `(main)/layout.tsx` above the page content. Reads `GET /settings/usage` (`getUsage` / `USAGE_KEY`); renders nothing until `usage.warn` is true. Shows spend-vs-cap copy + a "Details" link to `/settings` and a **Dismiss** button (local `useState`, no persistence — reappears on next page load while `warn` stays true). Purely informational; never blocks any action.
 - **`NavBar`** — on mobile shows only logo + LogOut icon; full link row is `hidden sm:flex`. Conditionally renders an "Admin" link when `me?.is_admin` is true (fetched via `adminMe` SWR call).
 - **`BottomNav`** — fixed bottom nav for mobile (`sm:hidden`); 5 items (Home/Swipe/Library/Profile/Settings); accent color on active route.
 - **`SwipeCard`** — `useReducedMotion()` disables rotation/spring.

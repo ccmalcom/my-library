@@ -11,7 +11,10 @@ Working name is "MyLibrary" (the original "BetterReads" is taken).
 
 **Current state:** Phase 6 live — Vercel frontend → Railway web → Supabase Postgres/auth.
 Invite-only / free launch. Admin console (invite/revoke users) shipped. Frontend redesign + mobile optimization deployed.
-Next priority (see `todo.md`): cost guardrails + `/catalog/search` rate limiting (spend visibility + abuse control).
+Per-user Anthropic spend tracking (soft-warn only, never blocks) shipped: `usage_events` table,
+`/settings` usage panel, `UsageWarningBanner`. `/catalog/search` rate limiting was already
+satisfied by the existing 30/min per-user SlowAPI limit — closed with no code change. Wave 1
+(`todo.md`) is done; next priority is Wave 2 (onboarding friction / custom imports).
 
 ## Sub-documents (load when relevant)
 

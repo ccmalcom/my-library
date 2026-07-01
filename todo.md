@@ -5,9 +5,9 @@ break or confuse the first wave of invited users, then friction, then growth.
 
 ## Wave 1 — Launch blockers
 
-- Cost guardrails + rate limiting (paired; spend/abuse control under multi-user BYO-key)
-  - Per-user Anthropic spend visibility/limits so big libraries don't cause a surprise bill
-  - `/catalog/search` per-user rate limiting (hits OL + Google Books live per keystroke)
+- Cost guardrails + rate limiting (paired; spend/abuse control under multi-user BYO-key) — **done**
+  - Per-user Anthropic spend visibility/limits so big libraries don't cause a surprise bill — **done**: soft-warn spend tracking shipped (`usage_events` table, `/settings` usage panel, `UsageWarningBanner`; never blocks a call)
+  - `/catalog/search` per-user rate limiting (hits OL + Google Books live per keystroke) — **already satisfied**, no code change: the existing 30/min per-user SlowAPI limit on `/catalog/search` already covers this
 
 ## Wave 2 — Onboarding friction
 
@@ -30,6 +30,7 @@ break or confuse the first wave of invited users, then friction, then growth.
 
 ## Done
 
+- Cost guardrails + rate limiting — soft-warn per-user spend tracking shipped (`usage_events`, `/settings` usage panel, `UsageWarningBanner`); `/catalog/search` rate limiting was already satisfied by the existing 30/min SlowAPI limit, closed with no code change
 - Invite flow / account management — admin console shipped; invite + revoke users + view roster
 - BUGS — cleared
 - No-Anthropic-key error UX — shows error + prompts for key on profile/recommend

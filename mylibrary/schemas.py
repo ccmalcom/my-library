@@ -242,6 +242,16 @@ class UserProfileOut(BaseModel):
     display_name: str | None
 
 
+class UsageOut(BaseModel):
+    """Month-to-date Anthropic spend for the caller + a soft-warn flag. Read-only; never blocks."""
+
+    spent_usd: float
+    cap_usd: float
+    pct: float
+    warn: bool
+    by_operation: dict[str, float]
+
+
 class ArchetypeAxisOut(BaseModel):
     """One axis score for the reader archetype (lens / engine / range / resonance)."""
 

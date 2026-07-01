@@ -602,3 +602,20 @@ export const inviteUser = (email: string): Promise<AdminUser> =>
 /** Revoke an invited/active user's access (admin-only). POST /admin/revoke */
 export const revokeUser = (supabaseUserId: string): Promise<{ status: string }> =>
   post<{ status: string }>("/admin/revoke", { supabase_user_id: supabaseUserId });
+
+// ── Spend guardrails ────────────────────────────────────────────────────────
+
+/** Shared SWR key for the month-to-date Anthropic spend (settings panel + warning banner). */
+export const USAGE_KEY = "settings-usage";
+
+/** Month-to-date Anthropic spend for the caller + a soft-warn flag. Read-only; never blocks. */
+export interface Usage {
+  spent_usd: number;
+  cap_usd: number;
+  pct: number;
+  warn: boolean;
+  by_operation: Record<string, number>;
+}
+
+/** Get the caller's month-to-date Anthropic spend. GET /settings/usage */
+export const getUsage = (): Promise<Usage> => get<Usage>("/settings/usage");

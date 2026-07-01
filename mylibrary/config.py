@@ -21,7 +21,7 @@ load_dotenv(_PROJECT_ROOT / ".env")
 # here (the root of the import graph) so db.py and auth.py share it without an import cycle.
 LOCAL_USER_ID = "local"
 
-DEFAULT_MODEL = "claude-sonnet-4-6"
+DEFAULT_MODEL = "claude-sonnet-5"
 # Default catalog request rate. ~3/s was very gentle; 8/s is faster and, in practice,
 # does not provoke 429s from Open Library / Google Books. Tune via MYLIBRARY_REQ_PER_SEC
 # or `enrich --rps`; the enrich summary's http block flags any rate-limiting.
@@ -65,6 +65,10 @@ class Settings:
     # --- beta feedback -------------------------------------------------------
     feedback_prompts_enabled: bool  # set False post-beta to silence targeted prompts
     feedback_snooze_hours: int      # hours before a snoozed prompt re-surfaces
+
+    # --- spend guardrails (soft-warn) ---------------------------------------
+    monthly_soft_cap_usd: float   # per-user month-to-date soft cap (warn, never block)
+    usage_warn_threshold: float   # fraction of cap at which the warning turns on (0..1)
 
     @property
     def db_url(self) -> str:
@@ -161,6 +165,8 @@ def get_settings() -> Settings:
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
         feedback_prompts_enabled=_env_bool("FEEDBACK_PROMPTS_ENABLED", True),
         feedback_snooze_hours=int(os.getenv("FEEDBACK_SNOOZE_HOURS", "72")),
+        monthly_soft_cap_usd=float(os.getenv("MYLIBRARY_MONTHLY_SOFT_CAP_USD", "5.0")),
+        usage_warn_threshold=float(os.getenv("MYLIBRARY_USAGE_WARN_THRESHOLD", "0.8")),
     )
 
 
