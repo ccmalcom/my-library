@@ -285,7 +285,7 @@ function UploadStep({
   function handleFile(f: File | null | undefined) {
     if (!f) return;
     if (!f.name.toLowerCase().endsWith('.csv')) {
-      setError('Please select a .csv file exported from Goodreads.');
+      setError('Please select a .csv file exported from Goodreads or The StoryGraph.');
       return;
     }
     setFile(f);
