@@ -12,6 +12,7 @@ import {
 } from '@/lib/api';
 import { Button, Card, useToast } from '@/components/ui';
 import { getSupabaseClient, authEnabled } from '@/utils/supabase/client';
+import ImportModal from '@/components/ImportModal';
 
 function DangerAction({
   title,
@@ -122,6 +123,8 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const [showImport, setShowImport] = useState(false);
 
   async function handleSaveName(e: React.FormEvent) {
     e.preventDefault();
@@ -443,6 +446,17 @@ export default function SettingsPage() {
         </Card>
       </section>
 
+      {/* Import books */}
+      <section className='mb-6'>
+        <Card>
+          <h2 className='mb-1 font-display text-lg font-semibold text-text'>Import books</h2>
+          <p className='mb-4 text-sm text-muted'>
+            Bring in your library from Goodreads, StoryGraph, a MyLibrary backup, or any CSV.
+          </p>
+          <Button onClick={() => setShowImport(true)}>Import from a file</Button>
+        </Card>
+      </section>
+
       {/* Danger zone */}
       <section className='rounded-2xl border border-danger/40 bg-surface p-6'>
         <h2 className='font-display text-lg font-semibold text-danger'>Danger zone</h2>
@@ -486,6 +500,16 @@ export default function SettingsPage() {
           />
         </div>
       </section>
+
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => {
+            setShowImport(false);
+            void mutate('stats');
+          }}
+        />
+      )}
     </div>
   );
 }
