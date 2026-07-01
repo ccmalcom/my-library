@@ -11,11 +11,22 @@ from mylibrary.importers.core import (
     normalize_shelf,
     parse_rating,
 )
-from mylibrary.importers.formats import SOURCE_FOR, detect_format, parse_goodreads, parse_storygraph
+from mylibrary.importers.formats import (
+    SOURCE_FOR,
+    detect_format,
+    import_text,
+    parse_canonical,
+    parse_generic,
+    parse_goodreads,
+    parse_storygraph,
+    suggest_mapping,
+)
 
 from .conftest import SAMPLE_CSV
 
 STORYGRAPH_CSV = os.path.join(os.path.dirname(__file__), "sample_storygraph.csv")
+CANONICAL_CSV = os.path.join(os.path.dirname(__file__), "sample_canonical.csv")
+GENERIC_CSV = os.path.join(os.path.dirname(__file__), "sample_generic.csv")
 
 
 def test_parse_goodreads_matches_legacy_counts():
@@ -137,3 +148,43 @@ def test_detect_format_sniffs_headers():
     assert detect_format(["Title", "Authors", "Read Status", "Star Rating"]) == "storygraph"
     assert detect_format(["title", "author", "shelf", "rating", "review"]) == "canonical"
     assert detect_format(["Book Title", "My Stars", "Notes"]) == "unknown"
+
+
+def test_parse_canonical_roundtrip_fields():
+    parsed = parse_canonical(open(CANONICAL_CSV, encoding="utf-8-sig").read())
+    assert parsed.format == "canonical" and parsed.total_rows == 2
+    dune = next(r for r in parsed.rows if r.title == "Dune")
+    assert dune.rating == 5 and dune.review == "Sweeping."
+    assert dune.page_count == 412 and dune.year_published == 1965
+
+
+def test_suggest_mapping_guesses_headers():
+    m = suggest_mapping(["Book Title", "Writer", "My Stars", "Notes", "Status"])
+    assert m["title"] == "Book Title"
+    assert m["rating"] == "My Stars"
+    assert m["review"] == "Notes"
+    assert m["shelf"] == "Status"
+
+
+def test_parse_generic_with_mapping():
+    text = open(GENERIC_CSV, encoding="utf-8-sig").read()
+    mapping = {"title": "Book Title", "author": "Writer", "rating": "My Stars",
+               "review": "Notes", "shelf": "Status"}
+    parsed = parse_generic(text, mapping)
+    assert parsed.format == "generic" and parsed.total_rows == 2
+    dune = next(r for r in parsed.rows if r.title == "Dune")
+    assert dune.rating == 5 and dune.shelf == "read"
+    fifth = next(r for r in parsed.rows if r.title == "The Fifth Season")
+    assert fifth.shelf == "to-read"      # 'Want to read' normalized
+
+
+def test_import_text_auto_detects_and_imports():
+    out = import_text(open(STORYGRAPH_CSV, encoding="utf-8-sig").read(), fmt="auto")
+    assert out["format"] == "storygraph"
+    assert out["inserted"] == 4
+
+
+def test_import_text_unknown_without_mapping_raises():
+    import pytest
+    with pytest.raises(ValueError):
+        import_text(open(GENERIC_CSV, encoding="utf-8-sig").read(), fmt="auto")

@@ -1,17 +1,30 @@
-"""Multi-format library import (Wave 2).
-
-Note: only `.core` is re-exported here. Task A2 adds `.formats` (parsers for
-Goodreads/StoryGraph/canonical/generic CSV + format detection) and will extend
-this file's imports/__all__ accordingly.
-"""
+"""Multi-format library import (Wave 2)."""
 from __future__ import annotations
 
 from .core import ImportRow, clean_isbn, import_rows, normalize_shelf, parse_rating
+from .formats import (
+    ParsedImport,
+    detect_format,
+    import_text,
+    parse_canonical,
+    parse_generic,
+    parse_goodreads,
+    parse_storygraph,
+    suggest_mapping,
+)
 
 __all__ = [
     "ImportRow",
+    "ParsedImport",
     "clean_isbn",
+    "detect_format",
     "import_rows",
+    "import_text",
     "normalize_shelf",
+    "parse_canonical",
+    "parse_generic",
+    "parse_goodreads",
     "parse_rating",
+    "parse_storygraph",
+    "suggest_mapping",
 ]
