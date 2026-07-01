@@ -18,6 +18,7 @@ import shutil
 import tempfile
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Annotated
 
 import fnmatch
@@ -34,6 +35,7 @@ from .config import get_settings
 from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
 from sqlalchemy.orm import joinedload
 from .enrich import _normalize_title, _surname, enrich_library
+from .exporters import export_csv, export_json
 from .importers import csv_headers, detect_format, import_text, sample_rows, suggest_mapping
 from .ingest import ingest_csv
 from .library import (
@@ -439,6 +441,31 @@ async def import_library(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return ImportSummaryOut(**result)
+
+
+@app.get("/export")
+def export_library_endpoint(user_id: UserId, format: str = "csv") -> Response:
+    """Download the caller's library as a re-importable CSV or a full JSON backup."""
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+    if format == "csv":
+        body = export_csv(user_id)
+        filename = f"mylibrary-backup-{stamp}.csv"
+        return Response(
+            content=body,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
+        )
+    if format == "json":
+        body = json.dumps(export_json(user_id), indent=2)
+        filename = f"mylibrary-backup-{stamp}.json"
+        return Response(
+            content=body,
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
+        )
+    raise HTTPException(
+        status_code=422, detail="format must be 'csv' or 'json'."
+    )
 
 
 @app.post("/enrich/start", response_model=EnrichJobOut)

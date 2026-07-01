@@ -58,3 +58,28 @@ def test_csv_export_roundtrips_through_import():
     assert out["inserted"] == 2
     with session_scope() as session:
         assert session.query(Book).filter(Book.title == "Dune").one().goodreads_rating == 4
+
+
+def test_export_endpoint_csv_download():
+    from fastapi.testclient import TestClient
+    from mylibrary.api import app
+
+    _seed()
+    client = TestClient(app)
+    r = client.get("/export?format=csv")
+    assert r.status_code == 200
+    assert "attachment" in r.headers["content-disposition"]
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "title,author" in r.text
+
+    rj = client.get("/export?format=json")
+    assert rj.status_code == 200
+    assert rj.json()["version"] == 1
+
+
+def test_export_endpoint_rejects_bad_format():
+    from fastapi.testclient import TestClient
+    from mylibrary.api import app
+
+    r = TestClient(app).get("/export?format=xml")
+    assert r.status_code == 422
