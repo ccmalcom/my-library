@@ -48,6 +48,22 @@ def _reader(text: str) -> csv.DictReader:
     return csv.DictReader(io.StringIO(text))
 
 
+def csv_headers(text: str) -> list[str]:
+    """Public helper: the header row of a CSV, for the import-preview API."""
+    return list(_reader(text).fieldnames or [])
+
+
+def sample_rows(text: str, n: int = 5) -> list[dict[str, str]]:
+    """Public helper: the first n data rows of a CSV as plain dicts (empty string for
+    missing/None cells), for the import-preview API."""
+    out: list[dict[str, str]] = []
+    for i, row in enumerate(_reader(text)):
+        if i >= n:
+            break
+        out.append({k: (v or "") for k, v in row.items()})
+    return out
+
+
 def _first_author(raw: str | None) -> tuple[str | None, str | None]:
     """Split a possibly multi-author string -> (primary, additional-joined)."""
     if not raw:

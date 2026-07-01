@@ -13,6 +13,7 @@ That's fine for MVP1 / local use; a later phase can move them to a background ta
 
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 
@@ -21,7 +22,7 @@ from typing import Annotated
 
 import fnmatch
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -33,6 +34,7 @@ from .config import get_settings
 from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
 from sqlalchemy.orm import joinedload
 from .enrich import _normalize_title, _surname, enrich_library
+from .importers import csv_headers, detect_format, import_text, sample_rows, suggest_mapping
 from .ingest import ingest_csv
 from .library import (
     BookExistsError,
@@ -63,6 +65,8 @@ from .schemas import (
     FeedbackDismiss,
     FeedbackRequest,
     FeedbackSubmit,
+    ImportPreviewOut,
+    ImportSummaryOut,
     IngestRequest,
     ProfileStatusOut,
     RecFeedbackResult,
@@ -382,6 +386,59 @@ async def ingest_upload(user_id: UserId, file: UploadFile = File(...)) -> dict:
         except OSError:
             pass
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def _decode_upload(file: UploadFile) -> str:
+    """Validate + decode an uploaded CSV file to text (utf-8-sig aware)."""
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=422, detail="Uploaded file must be a .csv")
+    raw = file.file.read()
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=422, detail="File must be UTF-8 encoded CSV.")
+
+
+@app.post("/import/preview", response_model=ImportPreviewOut)
+async def import_preview(user_id: UserId, file: UploadFile = File(...)) -> ImportPreviewOut:
+    """Sniff an uploaded CSV: detected format, headers, a few sample rows, a guessed mapping.
+
+    No data is written — this backs the import mapping UI. No network calls.
+    """
+    text = _decode_upload(file)
+    headers = csv_headers(text)
+    return ImportPreviewOut(
+        format=detect_format(headers),
+        headers=headers,
+        sample_rows=sample_rows(text),
+        suggested_mapping=suggest_mapping(headers),
+    )
+
+
+@app.post("/import", response_model=ImportSummaryOut)
+async def import_library(
+    user_id: UserId,
+    file: UploadFile = File(...),
+    format: str = Form("auto"),
+    mapping: str | None = Form(None),
+) -> ImportSummaryOut:
+    """Import books from a CSV (Goodreads / StoryGraph / canonical / generic-with-mapping).
+
+    format='auto' auto-detects; format='generic' requires a `mapping` JSON string
+    ({field: csv_header}). Imports write only Book rows — enrichment runs separately.
+    """
+    text = _decode_upload(file)
+    parsed_mapping: dict[str, str] | None = None
+    if mapping:
+        try:
+            parsed_mapping = json.loads(mapping)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=422, detail="mapping must be valid JSON.")
+    try:
+        result = import_text(text, fmt=format, mapping=parsed_mapping, user_id=user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return ImportSummaryOut(**result)
 
 
 @app.post("/enrich/start", response_model=EnrichJobOut)
