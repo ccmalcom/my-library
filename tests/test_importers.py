@@ -9,6 +9,22 @@ from mylibrary.importers.core import (
     normalize_shelf,
     parse_rating,
 )
+from mylibrary.importers.formats import SOURCE_FOR, parse_goodreads
+
+from .conftest import SAMPLE_CSV
+
+
+def test_parse_goodreads_matches_legacy_counts():
+    text = open(SAMPLE_CSV, encoding="utf-8-sig").read()
+    parsed = parse_goodreads(text)
+    assert parsed.format == "goodreads"
+    assert parsed.total_rows == 6
+    assert parsed.skipped == 0
+    assert len(parsed.rows) == 6
+    dune = next(r for r in parsed.rows if r.title == "Dune")
+    assert dune.isbn13 == "9780441172719"
+    assert dune.external_id  # Goodreads Book Id preserved
+    assert SOURCE_FOR["goodreads"] == "goodreads_import"
 
 
 def test_parse_rating_rounds_half_up_and_clamps():
