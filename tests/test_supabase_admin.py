@@ -1,7 +1,8 @@
+import importlib
+
 import httpx
 import pytest
 
-import importlib
 import mylibrary.config as config
 import mylibrary.supabase_admin as sa_admin
 
@@ -51,7 +52,8 @@ def test_delete_user_calls_admin_endpoint(monkeypatch):
 def test_missing_config_raises(monkeypatch):
     monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
     monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
-    importlib.reload(config); importlib.reload(sa_admin)
+    importlib.reload(config)
+    importlib.reload(sa_admin)
     with pytest.raises(sa_admin.SupabaseAdminError):
         sa_admin.invite_user("x@x.io")
 
@@ -64,3 +66,20 @@ def test_non_2xx_raises(monkeypatch):
 
     with pytest.raises(sa_admin.SupabaseAdminError):
         sa_admin.invite_user("dupe@x.io", client=_client(handler))
+
+
+def test_list_users_paginates(monkeypatch):
+    _configure(monkeypatch)
+    pages = {
+        1: [{"id": f"uuid-{i}", "email": f"u{i}@x.io"} for i in range(200)],
+        2: [{"id": "uuid-200", "email": "u200@x.io"}],
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        page = int(request.url.params["page"])
+        return httpx.Response(200, json={"users": pages[page]})
+
+    out = sa_admin.list_users(client=_client(handler))
+    assert len(out) == 201
+    assert out[0] == {"id": "uuid-0", "email": "u0@x.io"}
+    assert out[-1] == {"id": "uuid-200", "email": "u200@x.io"}

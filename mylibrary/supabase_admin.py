@@ -65,3 +65,31 @@ def invite_user(email: str, *, client: httpx.Client | None = None) -> dict:
 def delete_user(supabase_user_id: str, *, client: httpx.Client | None = None) -> None:
     """Permanently delete a Supabase auth user (GoTrue admin)."""
     _request("DELETE", f"/admin/users/{supabase_user_id}", json=None, client=client)
+
+
+def list_users(*, client: httpx.Client | None = None) -> list[dict]:
+    """All Supabase auth users (GoTrue admin), paginated. Returns [{'id', 'email'}, ...].
+
+    Used to reconcile users created outside the app's invite flow (e.g. added directly
+    in the Supabase dashboard) with the local `invites` roster.
+    """
+    owns = client is None
+    client = client or httpx.Client(timeout=_TIMEOUT)
+    try:
+        users: list[dict] = []
+        page = 1
+        per_page = 200
+        while True:
+            resp = _request(
+                "GET", f"/admin/users?page={page}&per_page={per_page}", json=None, client=client
+            )
+            data = resp.json()
+            batch = data.get("users", [])
+            users.extend({"id": u.get("id"), "email": u.get("email")} for u in batch)
+            if len(batch) < per_page:
+                break
+            page += 1
+        return users
+    finally:
+        if owns:
+            client.close()

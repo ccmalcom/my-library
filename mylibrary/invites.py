@@ -11,7 +11,7 @@ from sqlalchemy import func
 
 from .db import Book, Invite, session_scope, utcnow
 from .purge import delete_account
-from .supabase_admin import delete_user, invite_user
+from .supabase_admin import delete_user, invite_user, list_users
 
 
 class InviteError(Exception):
@@ -66,6 +66,35 @@ def list_roster() -> list[dict]:
             _invite_dict(row, book_count=counts.get(row.supabase_user_id, 0))
             for row in rows
         ]
+
+
+def backfill_from_supabase(*, invited_by: str) -> dict:
+    """Reconcile Supabase auth users with no local `invites` row (e.g. added directly in
+    the Supabase dashboard instead of via /admin/invite) by creating an "active" row for
+    each one. Matches by supabase_user_id; existing rows are left untouched.
+    """
+    sb_users = list_users()  # may raise SupabaseAdminError
+
+    with session_scope() as session:
+        known_ids = {
+            sid for (sid,) in session.query(Invite.supabase_user_id).all() if sid is not None
+        }
+        added = 0
+        for u in sb_users:
+            sb_id = u.get("id")
+            if not sb_id or sb_id in known_ids:
+                continue
+            session.add(
+                Invite(
+                    email=(u.get("email") or "").strip().lower(),
+                    invited_by=invited_by,
+                    supabase_user_id=sb_id,
+                    status="active",
+                )
+            )
+            known_ids.add(sb_id)
+            added += 1
+        return {"added": added, "total_supabase_users": len(sb_users)}
 
 
 def revoke_user(*, supabase_user_id: str) -> dict:
