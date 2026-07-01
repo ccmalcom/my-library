@@ -531,6 +531,16 @@ export const api = {
 
   /** Delete ALL of the current user's app data (library, profile, recs, stored key). */
   deleteAccount: () => del<Record<string, number | boolean>>("/account"),
+
+  // ── Export ────────────────────────────────────────────────────────────────
+  /** Download the library as a CSV or JSON blob (auth-attached). */
+  exportLibrary: async (format: 'csv' | 'json'): Promise<Blob> => {
+    const res = await fetch(`${BASE}/export?format=${format}`, {
+      headers: { ...(await authHeaders()) },
+    });
+    if (!res.ok) throw new Error(`Export failed (${res.status}): ${await res.text()}`);
+    return res.blob();
+  },
 };
 
 /** Shared SWR key for the API-key status (settings page + any gating UI). */
@@ -610,4 +620,16 @@ export function recordTasteSignal(body: {
  */
 export function setFavorite(id: number, value: boolean): Promise<Record<string, unknown>> {
   return patch<Record<string, unknown>>(`/books/${id}/feedback`, { is_favorite: value });
+}
+
+/** Trigger a browser download of a Blob (used for library export/backup). */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
