@@ -39,8 +39,10 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
   const [hover, setHover]           = useState(0);
   const [review, setReview]         = useState('');
   const [saving, setSaving]         = useState(false);
+  const [addedCount, setAddedCount] = useState(0);
 
   const reqId = useRef(0);
+  const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const q = query.trim();
     if (selected) return;
@@ -83,6 +85,15 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
       });
       toast.success(`${selected.title} added to library.`);
       onAdded(book);
+      // Keep the modal open for rapid successive adds: reset the form and refocus search.
+      setSelected(null);
+      setQuery('');
+      setResults([]);
+      setRating(0);
+      setReview('');
+      setSaving(false);
+      setAddedCount((n) => n + 1);
+      requestAnimationFrame(() => searchRef.current?.focus());
     } catch (e) {
       const raw = e instanceof Error ? e.message : 'Failed to add book.';
       const msg = raw.includes('409') ? 'That book is already in your library.' : raw;
@@ -108,6 +119,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
         <>
           <input
             autoFocus
+            ref={searchRef}
             type='search'
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -170,8 +182,13 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
             </ul>
           </div>
 
-          <div className='mt-4 flex justify-end'>
-            <Button variant='ghost' onClick={onClose}>Cancel</Button>
+          <div className='mt-4 flex items-center justify-between'>
+            <span className='text-xs text-faint'>
+              {addedCount > 0 ? `Added ${addedCount} book${addedCount > 1 ? 's' : ''}` : ''}
+            </span>
+            <Button variant='ghost' onClick={onClose}>
+              {addedCount > 0 ? 'Done' : 'Cancel'}
+            </Button>
           </div>
         </>
       ) : (

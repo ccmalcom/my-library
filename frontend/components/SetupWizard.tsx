@@ -479,7 +479,6 @@ function ManualStep({ onDone }: { onDone: () => void }) {
           onClose={() => setAdding(false)}
           onAdded={(book) => {
             setBooks((prev) => [...prev, book]);
-            setAdding(false);
           }}
         />
       )}
