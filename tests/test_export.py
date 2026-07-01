@@ -62,6 +62,7 @@ def test_csv_export_roundtrips_through_import():
 
 def test_export_endpoint_csv_download():
     from fastapi.testclient import TestClient
+
     from mylibrary.api import app
 
     _seed()
@@ -79,6 +80,7 @@ def test_export_endpoint_csv_download():
 
 def test_export_endpoint_rejects_bad_format():
     from fastapi.testclient import TestClient
+
     from mylibrary.api import app
 
     r = TestClient(app).get("/export?format=xml")
