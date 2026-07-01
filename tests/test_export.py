@@ -85,3 +85,15 @@ def test_export_endpoint_rejects_bad_format():
 
     r = TestClient(app).get("/export?format=xml")
     assert r.status_code == 422
+
+
+def test_cli_export_writes_file(tmp_path):
+    from typer.testing import CliRunner
+
+    from mylibrary.cli import app as cli_app
+
+    _seed()
+    out = tmp_path / "backup.csv"
+    result = CliRunner().invoke(cli_app, ["export", "--format", "csv", "--out", str(out)])
+    assert result.exit_code == 0
+    assert out.exists() and "title,author" in out.read_text(encoding="utf-8")

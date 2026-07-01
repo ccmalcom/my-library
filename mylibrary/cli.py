@@ -19,8 +19,9 @@ import typer
 from .config import get_settings
 from .db import init_db
 from .enrich import enrich_library
-from .ingest import ingest_csv
+from .exporters import export_csv, export_json
 from .importers import import_text
+from .ingest import ingest_csv
 from .profile import extract_taste_profile
 from .recommend import recommend as run_recommend
 from .stats import dataset_stats
@@ -645,6 +646,28 @@ def backfill_descriptions(
             "description (rec rows may have been cleared) — they stay blank until an "
             "`enrich --force`."
         )
+
+
+@app.command()
+def export(
+    format: str = typer.Option("csv", help="csv | json"),
+    out: str = typer.Option(None, "--out", help="Output file (default: stdout)."),
+) -> None:
+    """Export the library as a re-importable CSV or a full JSON backup."""
+    from pathlib import Path
+
+    if format == "csv":
+        body = export_csv()
+    elif format == "json":
+        body = json.dumps(export_json(), indent=2)
+    else:
+        typer.echo("format must be 'csv' or 'json'.")
+        raise typer.Exit(1)
+    if out:
+        Path(out).write_text(body, encoding="utf-8")
+        typer.echo(f"Wrote {out}")
+    else:
+        typer.echo(body)
 
 
 @app.command()
