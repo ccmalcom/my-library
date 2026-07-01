@@ -12,8 +12,10 @@ from dataclasses import dataclass
 from .core import (
     ImportRow,
     clean_isbn,
+    normalize_shelf,
     parse_date,
     parse_int,
+    parse_rating,
 )
 
 SOURCE_FOR = {
@@ -86,5 +88,52 @@ def parse_goodreads(text: str) -> ParsedImport:
     return ParsedImport(rows=rows, total_rows=total, skipped=skipped, format="goodreads")
 
 
-# parse_storygraph / parse_canonical / parse_generic / detect_format / suggest_mapping /
-# import_text are added in Tasks A3 and A4.
+def _isbn13_only(raw: str | None) -> str | None:
+    """StoryGraph's ISBN/UID column may hold an internal UID. Keep only a 13-digit ISBN."""
+    s = clean_isbn(raw)
+    if s and len(s) == 13 and s.isdigit():
+        return s
+    return None
+
+
+def parse_storygraph(text: str) -> ParsedImport:
+    rows: list[ImportRow] = []
+    total = skipped = 0
+    for row in _reader(text):
+        total += 1
+        title = (row.get("Title") or "").strip()
+        if not title:
+            skipped += 1
+            continue
+        primary, extra = _first_author(row.get("Authors"))
+        contributors = (row.get("Contributors") or "").strip() or None
+        additional = ", ".join(x for x in (extra, contributors) if x) or None
+        rows.append(
+            ImportRow(
+                title=title,
+                author=primary,
+                additional_authors=additional,
+                isbn13=_isbn13_only(row.get("ISBN/UID")),
+                shelf=normalize_shelf(row.get("Read Status")),
+                rating=parse_rating(row.get("Star Rating")),
+                review=(row.get("Review") or "").strip() or None,
+                date_read=parse_date(row.get("Last Date Read")),
+                date_added=parse_date(row.get("Date Added")),
+            )
+        )
+    return ParsedImport(rows=rows, total_rows=total, skipped=skipped, format="storygraph")
+
+
+def detect_format(headers: list[str]) -> str:
+    hset = {h.strip() for h in headers}
+    lower = {h.strip().lower() for h in headers}
+    if "Book Id" in hset and "Exclusive Shelf" in hset:
+        return "goodreads"
+    if "Read Status" in hset and "Star Rating" in hset:
+        return "storygraph"
+    if {"title", "shelf", "rating"} <= lower:
+        return "canonical"
+    return "unknown"
+
+
+# parse_canonical / parse_generic / suggest_mapping / import_text are added in Task A4.

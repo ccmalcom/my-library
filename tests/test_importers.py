@@ -1,6 +1,8 @@
 """Wave 2 — multi-format import core + parsers."""
 from __future__ import annotations
 
+import os
+
 from mylibrary.db import Book, session_scope
 from mylibrary.importers.core import (
     ImportRow,
@@ -9,9 +11,11 @@ from mylibrary.importers.core import (
     normalize_shelf,
     parse_rating,
 )
-from mylibrary.importers.formats import SOURCE_FOR, parse_goodreads
+from mylibrary.importers.formats import SOURCE_FOR, detect_format, parse_goodreads, parse_storygraph
 
 from .conftest import SAMPLE_CSV
+
+STORYGRAPH_CSV = os.path.join(os.path.dirname(__file__), "sample_storygraph.csv")
 
 
 def test_parse_goodreads_matches_legacy_counts():
@@ -109,3 +113,27 @@ def test_import_rows_dedups_duplicate_external_id_within_batch():
     with session_scope() as session:
         book = session.query(Book).filter(Book.goodreads_book_id == "42").one()
         assert book.exclusive_shelf == "read"  # second row's import-owned field applied
+
+
+def test_parse_storygraph_maps_fields():
+    text = open(STORYGRAPH_CSV, encoding="utf-8-sig").read()
+    parsed = parse_storygraph(text)
+    assert parsed.format == "storygraph"
+    assert parsed.total_rows == 4 and parsed.skipped == 0
+    dune = next(r for r in parsed.rows if r.title == "Dune")
+    assert dune.rating == 5              # 4.5 rounds half-up
+    assert dune.review == "Sweeping and strange."
+    assert dune.shelf == "read"
+    assert dune.isbn13 == "9780441172719"
+    assert dune.external_id is None
+    fifth = next(r for r in parsed.rows if r.title == "The Fifth Season")
+    assert fifth.rating is None          # empty Star Rating
+    assert fifth.shelf == "to-read"
+    assert fifth.isbn13 is None          # non-ISBN UID dropped
+
+
+def test_detect_format_sniffs_headers():
+    assert detect_format(["Book Id", "Title", "Exclusive Shelf", "My Rating"]) == "goodreads"
+    assert detect_format(["Title", "Authors", "Read Status", "Star Rating"]) == "storygraph"
+    assert detect_format(["title", "author", "shelf", "rating", "review"]) == "canonical"
+    assert detect_format(["Book Title", "My Stars", "Notes"]) == "unknown"
