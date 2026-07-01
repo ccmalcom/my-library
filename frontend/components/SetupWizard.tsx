@@ -298,11 +298,16 @@ function UploadStep({
     setLoading(true);
     setError(null);
     try {
-      const result = await api.ingestUpload(file);
+      const result = await api.importLibrary(file, { format: 'auto' });
       await mutate('stats', api.stats(), { revalidate: false });
       onDone(result as unknown as IngestResult);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed.');
+      const msg = err instanceof Error ? err.message : 'Upload failed.';
+      setError(
+        msg.includes('422')
+          ? 'We could not detect that file format. After setup, use Settings > Import to map columns manually.'
+          : msg,
+      );
       setLoading(false);
     }
   }
@@ -310,19 +315,10 @@ function UploadStep({
   return (
     <div className='space-y-6'>
       <div>
-        <h2 className='mb-1 text-xl font-semibold text-text'>Upload your Goodreads export</h2>
+        <h2 className='mb-1 text-xl font-semibold text-text'>Import your library</h2>
         <p className='text-sm text-muted'>
-          In Goodreads, go to{' '}
-          <strong className='text-text'>My Books &rsaquo; Import/Export &rsaquo; Export Library</strong>.
-          Download the CSV, then drop it here.{' '}
-          <a
-            href='https://help.goodreads.com/s/article/How-do-I-import-or-export-my-books-1553870934590'
-            target='_blank'
-            rel='noreferrer'
-            className='text-accent hover:underline'
-          >
-            Need help?
-          </a>
+          Export a CSV from Goodreads (My Books &rsaquo; Import/Export) or The StoryGraph
+          (Manage Account &rsaquo; Export), then drop it here.
         </p>
       </div>
 
