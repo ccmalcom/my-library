@@ -53,3 +53,13 @@ def test_import_generic_with_mapping():
     r = _upload(GENERIC_CSV, "/import", {"format": "generic", "mapping": mapping})
     assert r.status_code == 200
     assert r.json()["inserted"] == 2
+
+
+def test_cli_import_storygraph():
+    from typer.testing import CliRunner
+    from mylibrary.cli import app as cli_app
+
+    result = CliRunner().invoke(cli_app, ["import", STORYGRAPH_CSV, "--format", "auto"])
+    assert result.exit_code == 0
+    with session_scope() as session:
+        assert session.query(Book).count() == 4

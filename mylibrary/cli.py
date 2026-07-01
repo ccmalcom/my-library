@@ -20,6 +20,7 @@ from .config import get_settings
 from .db import init_db
 from .enrich import enrich_library
 from .ingest import ingest_csv
+from .importers import import_text
 from .profile import extract_taste_profile
 from .recommend import recommend as run_recommend
 from .stats import dataset_stats
@@ -43,6 +44,30 @@ def ingest(path: str = typer.Argument(None, help="Path to the Goodreads CSV expo
     """Import a Goodreads export (idempotent)."""
     csv_path = path or str(get_settings().csv_path)
     _echo(ingest_csv(csv_path))
+
+
+@app.command(name="import")
+def import_books(
+    path: str = typer.Argument(..., help="Path to a CSV export."),
+    format: str = typer.Option(
+        "auto", help="auto | goodreads | storygraph | canonical | generic"
+    ),
+    map: list[str] = typer.Option(
+        None, "--map", help="field:header pair for generic import (repeatable)."
+    ),
+) -> None:
+    """Import books from Goodreads / StoryGraph / a canonical or generic CSV."""
+    from pathlib import Path
+
+    text = Path(path).read_text(encoding="utf-8-sig")
+    mapping = None
+    if map:
+        mapping = {}
+        for pair in map:
+            field, _, header = pair.partition(":")
+            if header:
+                mapping[field.strip()] = header.strip()
+    _echo(import_text(text, fmt=format, mapping=mapping))
 
 
 @app.command()
