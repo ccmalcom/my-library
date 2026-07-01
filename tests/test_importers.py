@@ -188,3 +188,23 @@ def test_import_text_unknown_without_mapping_raises():
     import pytest
     with pytest.raises(ValueError):
         import_text(open(GENERIC_CSV, encoding="utf-8-sig").read(), fmt="auto")
+
+
+def test_reimport_with_blanked_rating_preserves_goodreads_rating():
+    # Intentional Wave 2 behavior (sparse imports never null existing data): a re-import
+    # whose rating is blank/absent must NOT zero the previously-imported goodreads_rating.
+    import_rows(
+        [ImportRow(title="Dune", author="Frank Herbert", rating=5,
+                   external_id="1")],
+        source="goodreads_import",
+    )
+    out = import_rows(
+        [ImportRow(title="Dune", author="Frank Herbert", rating=None,
+                   external_id="1")],
+        source="goodreads_import",
+    )
+    assert out["inserted"] == 0 and out["updated"] == 1
+    with session_scope() as session:
+        dune = session.query(Book).filter(
+            Book.goodreads_book_id == "1").one()
+        assert dune.goodreads_rating == 5  # preserved, not zeroed
