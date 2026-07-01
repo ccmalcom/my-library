@@ -9,9 +9,12 @@ Pipeline: `ingest -> enrich -> taste profile -> recommend`. Exposed as a FastAPI
 
 Working name is "MyLibrary" (the original "BetterReads" is taken).
 
-**Current state:** Phase 5 live (deployed 2026-06-26) — Vercel frontend → Railway web → Supabase Postgres/auth.
-Invite-only / free launch. Frontend redesign + mobile optimization are merged to main and deployed.
-Next priorities (see `todo.md`): invite flow / account management, then cost guardrails + `/catalog/search` rate limiting.
+**Current state:** Phase 6 live — Vercel frontend → Railway web → Supabase Postgres/auth.
+Invite-only / free launch. Admin console (invite/revoke users) shipped. Frontend redesign + mobile optimization deployed.
+Per-user Anthropic spend tracking (soft-warn only, never blocks) shipped: `usage_events` table,
+`/settings` usage panel, `UsageWarningBanner`. `/catalog/search` rate limiting was already
+satisfied by the existing 30/min per-user SlowAPI limit — closed with no code change. Wave 1
+(`todo.md`) is done; next priority is Wave 2 (onboarding friction / custom imports).
 
 ## Sub-documents (load when relevant)
 
@@ -51,7 +54,8 @@ python -m mylibrary.cli recommend       # --n N; two-stage recs, needs ANTHROPIC
 python -m mylibrary.cli recs            # reprint the latest recommend run
 python -m mylibrary.cli stats
 python -m mylibrary.cli serve           # FastAPI at http://127.0.0.1:8000/docs
-python -m pytest                        # ingest + matching + catalog + recommender + feedback
+python -m pytest                        # ingest + matching + catalog + recommender + feedback + admin
+cd frontend && npm install && npm run dev  # Next.js dev server at http://localhost:3000
 ```
 
 ## Recommender behavior

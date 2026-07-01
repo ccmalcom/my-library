@@ -188,7 +188,7 @@ def test_rerank_drops_bad_indices_and_ungrounded_ids(monkeypatch):
     monkeypatch.setattr(
         recommend, "_client", lambda *a, **k: (_FakeClient(payload), get_settings())
     )
-    out = recommend._claude_rerank(candidates, signal, n=10)
+    out = recommend._claude_rerank(candidates, signal, n=10, user_id="local")
     assert len(out) == 1
     assert out[0]["title"] == "Hyperion"
     assert out[0]["grounded_trait_ids"] == [1]

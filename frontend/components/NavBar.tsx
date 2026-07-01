@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut } from 'lucide-react';
+import useSWR from 'swr';
 import { authEnabled, getSupabaseClient } from '@/utils/supabase/client';
+import { adminMe, ADMIN_ME_KEY } from '@/lib/api';
 
 const links = [
   { href: '/', label: 'Home' },
@@ -18,6 +20,7 @@ const focusRing =
 
 export default function NavBar() {
   const pathname = usePathname();
+  const { data: me } = useSWR(ADMIN_ME_KEY, adminMe);
 
   async function handleSignOut() {
     const supabase = getSupabaseClient();
@@ -52,6 +55,21 @@ export default function NavBar() {
               </Link>
             );
           })}
+          {me?.is_admin && (
+            <Link
+              href='/admin'
+              aria-current={pathname === '/admin' ? 'page' : undefined}
+              className={[
+                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                focusRing,
+                pathname === '/admin'
+                  ? 'bg-elevated text-text'
+                  : 'text-muted hover:bg-elevated hover:text-text',
+              ].join(' ')}
+            >
+              Admin
+            </Link>
+          )}
           {authEnabled && (
             <button
               type='button'

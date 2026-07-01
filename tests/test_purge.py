@@ -16,6 +16,7 @@ from mylibrary.db import (
     Recommendation,
     TasteSignal,
     TasteTrait,
+    UsageEvent,
     UserSettings,
     session_scope,
 )
@@ -39,6 +40,7 @@ def _seed(user_id: str) -> None:
         s.add(UserSettings(user_id=user_id, anthropic_api_key_encrypted="enc-blob"))
         s.add(TasteSignal(user_id=user_id, direction="more", target_kind="book", target_book_id=1))
         s.add(EnrichJob(user_id=user_id, job_id=f"job-{user_id}", status="done"))
+        s.add(UsageEvent(user_id=user_id, model="claude-sonnet-5", operation="recommend_rerank"))
 
 
 def _counts(user_id: str) -> dict:
@@ -57,6 +59,7 @@ def _counts(user_id: str) -> dict:
             "settings": s.query(UserSettings).filter(UserSettings.user_id == user_id).count(),
             "signals": s.query(TasteSignal).filter(TasteSignal.user_id == user_id).count(),
             "jobs": s.query(EnrichJob).filter(EnrichJob.user_id == user_id).count(),
+            "usage_events": s.query(UsageEvent).filter(UsageEvent.user_id == user_id).count(),
         }
 
 
@@ -65,7 +68,7 @@ def test_seed_is_complete():
     c = _counts("local")
     assert c == {
         "books": 2, "enrich": 2, "traits": 1, "recs": 1, "meta": 1, "settings": 1,
-        "signals": 1, "jobs": 1,
+        "signals": 1, "jobs": 1, "usage_events": 1,
     }
 
 
@@ -78,8 +81,8 @@ def test_clear_profile_keeps_books():
     assert c["traits"] == 0 and c["recs"] == 0 and c["meta"] == 0
     # Library + settings untouched.
     assert c["books"] == 2 and c["enrich"] == 2 and c["settings"] == 1
-    # TasteSignal and EnrichJob are durable — clear_profile must not remove them.
-    assert c["signals"] == 1 and c["jobs"] == 1
+    # TasteSignal, EnrichJob, and UsageEvent are durable — clear_profile must not remove them.
+    assert c["signals"] == 1 and c["jobs"] == 1 and c["usage_events"] == 1
 
 
 def test_clear_library_cascades_to_profile():
@@ -90,18 +93,19 @@ def test_clear_library_cascades_to_profile():
     # Books, enrichments, and all derived taste data gone…
     assert c["books"] == 0 and c["enrich"] == 0
     assert c["traits"] == 0 and c["recs"] == 0 and c["meta"] == 0
-    # …but the stored API key and durable signals/jobs survive a library clear.
+    # …but the stored API key and durable signals/jobs/usage survive a library clear.
     assert c["settings"] == 1
-    assert c["signals"] == 1 and c["jobs"] == 1
+    assert c["signals"] == 1 and c["jobs"] == 1 and c["usage_events"] == 1
 
 
 def test_clear_library_keeps_taste_signal_and_jobs():
-    """TasteSignal and EnrichJob are durable — clear_library must not remove them."""
+    """TasteSignal, EnrichJob, and UsageEvent are durable — clear_library must not remove them."""
     _seed("local")
     purge.clear_library()
     c = _counts("local")
     assert c["signals"] == 1
     assert c["jobs"] == 1
+    assert c["usage_events"] == 1
 
 
 def test_delete_account_removes_everything():
@@ -110,9 +114,10 @@ def test_delete_account_removes_everything():
     assert result["settings_removed"] == 1
     assert result["signals_removed"] == 1
     assert result["jobs_removed"] == 1
+    assert result["usage_events_removed"] == 1
     assert _counts("local") == {
         "books": 0, "enrich": 0, "traits": 0, "recs": 0, "meta": 0, "settings": 0,
-        "signals": 0, "jobs": 0,
+        "signals": 0, "jobs": 0, "usage_events": 0,
     }
 
 
@@ -126,5 +131,5 @@ def test_purge_is_user_scoped():
     assert _counts("local")["books"] == 0
     assert _counts("other-user") == {
         "books": 2, "enrich": 2, "traits": 1, "recs": 1, "meta": 1, "settings": 1,
-        "signals": 1, "jobs": 1,
+        "signals": 1, "jobs": 1, "usage_events": 1,
     }

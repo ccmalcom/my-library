@@ -7,10 +7,13 @@ import {
   API_KEY_STATUS_KEY,
   PROFILE_STATUS_KEY,
   USER_PROFILE_KEY,
+  USAGE_KEY,
+  getUsage,
   type ApiKeyStatus,
   type UserProfile,
+  type Usage,
 } from '@/lib/api';
-import { Button, Card, useToast } from '@/components/ui';
+import { Button, Card, Badge, useToast } from '@/components/ui';
 import { getSupabaseClient, authEnabled } from '@/utils/supabase/client';
 
 function DangerAction({
@@ -105,6 +108,7 @@ export default function SettingsPage() {
     USER_PROFILE_KEY,
     () => api.getProfile()
   );
+  const { data: usage } = useSWR<Usage>(USAGE_KEY, getUsage);
 
   const [key, setKey] = useState('');
   const [saving, setSaving] = useState(false);
@@ -440,6 +444,56 @@ export default function SettingsPage() {
               )}
             </div>
           </form>
+        </Card>
+      </section>
+
+      {/* Claude spend */}
+      <section className='mb-6'>
+        <Card>
+          <div className='mb-4 flex items-center justify-between'>
+            <h2 className='font-display text-lg font-semibold text-text'>Claude usage this month</h2>
+            {usage?.warn && <Badge variant='warning'>Approaching cap</Badge>}
+          </div>
+
+          {usage ? (
+            <>
+              <p className='mb-3 text-sm text-muted'>
+                <span className='font-medium text-text'>${usage.spent_usd.toFixed(2)}</span> of $
+                {usage.cap_usd.toFixed(2)} this month
+              </p>
+
+              <div className='relative h-2 overflow-hidden rounded-full bg-elevated'>
+                <div
+                  className={[
+                    'absolute h-2 rounded-full',
+                    usage.warn ? 'bg-accent' : 'bg-user',
+                  ].join(' ')}
+                  style={{ width: `${Math.min(100, Math.max(0, usage.pct * 100))}%` }}
+                />
+              </div>
+
+              {usage.warn && (
+                <p className='mt-2 text-xs text-accent'>Approaching your monthly soft cap.</p>
+              )}
+
+              {Object.keys(usage.by_operation).length > 0 && (
+                <div className='mt-4 space-y-1.5 border-t border-border pt-3'>
+                  {Object.entries(usage.by_operation).map(([op, amount]) => (
+                    <div key={op} className='flex items-center justify-between text-xs'>
+                      <span className='capitalize text-faint'>{op.replace(/_/g, ' ')}</span>
+                      <span className='font-mono text-muted'>${amount.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className='mt-4 text-xs text-faint'>
+                This is a soft cap for spend visibility only — recommendations and profiling never stop running.
+              </p>
+            </>
+          ) : (
+            <p className='text-sm text-faint'>Loading usage…</p>
+          )}
         </Card>
       </section>
 

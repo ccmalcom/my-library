@@ -33,6 +33,7 @@ from .config import LOCAL_USER_ID, get_settings
 from .db import Book, Recommendation, TasteSignal, TasteTrait, init_db, session_scope
 from .enrich import _normalize_title, _surname
 from .profile import books_changed_since, get_profile_meta
+from .usage import tracked_create
 from .user_settings import resolve_anthropic_key
 
 _REJECTED_STATUS = "rejected"
@@ -425,7 +426,7 @@ def _metadata_pool(signal: dict, *, per_query: int, cold_start: bool = False) ->
 
 
 def _claude_seed_queries(
-    signal: dict, *, n_queries: int, api_key: str | None = None
+    signal: dict, *, n_queries: int, api_key: str | None = None, user_id: str
 ) -> list[str]:
     """Ask Claude for catalog search terms (stage 1b). Returns query strings only."""
     client, _settings = _client(api_key)
@@ -454,7 +455,10 @@ def _claude_seed_queries(
         "would surface books they are likely to rate highly. Chase their distinguishing "
         "traits, cover their range, and avoid generic bestseller terms." + steering
     )
-    message = client.messages.create(
+    message = tracked_create(
+        client,
+        user_id=user_id,
+        operation="recommend_seed",
         model="claude-haiku-4-5-20251001",
         max_tokens=1500,
         system=_SEED_SYSTEM,
@@ -477,11 +481,11 @@ def _claude_seed_queries(
 
 
 def _seed_pool(
-    signal: dict, *, n_queries: int, per_query: int, api_key: str | None = None
+    signal: dict, *, n_queries: int, per_query: int, api_key: str | None = None, user_id: str
 ) -> tuple[list[tuple[dict, str]], list[str]]:
     from . import catalog
 
-    queries = _claude_seed_queries(signal, n_queries=n_queries, api_key=api_key)
+    queries = _claude_seed_queries(signal, n_queries=n_queries, api_key=api_key, user_id=user_id)
     pool: list[tuple[dict, str]] = []
     for q in queries:
         for cand in catalog.googlebooks_query(q, max_results=per_query):
@@ -641,7 +645,7 @@ def _user_steering_block(signal: dict) -> str:
 
 
 def _claude_rerank(
-    candidates: list[dict], signal: dict, *, n: int, api_key: str | None = None
+    candidates: list[dict], signal: dict, *, n: int, api_key: str | None = None, user_id: str
 ) -> list[dict]:
     client, settings = _client(api_key)
     indexed = [
@@ -681,7 +685,10 @@ def _claude_rerank(
         "CANDIDATES (JSON):\n"
         + json.dumps(indexed, ensure_ascii=False)
     )
-    message = client.messages.create(
+    message = tracked_create(
+        client,
+        user_id=user_id,
+        operation="recommend_rerank",
         model=settings.model,
         max_tokens=4000,
         system=_RANK_SYSTEM,
@@ -785,7 +792,8 @@ def recommend(
         seed_pool: list[tuple[dict, str]] = []
         if use_claude_seeds:
             seed_pool, seed_queries = _seed_pool(
-                signal, n_queries=_SEED_QUERIES, per_query=_PER_QUERY, api_key=api_key
+                signal, n_queries=_SEED_QUERIES, per_query=_PER_QUERY, api_key=api_key,
+                user_id=user_id,
             )
 
         candidates = _assemble(metadata_pool, seed_pool, signal, cap=_MAX_CANDIDATES)
@@ -800,7 +808,7 @@ def recommend(
                 "recommendations": [],
             }
 
-        ranked = _claude_rerank(candidates, signal, n=n, api_key=api_key)
+        ranked = _claude_rerank(candidates, signal, n=n, api_key=api_key, user_id=user_id)
 
         run_id = uuid.uuid4().hex[:12]
         recs_out = []

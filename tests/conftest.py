@@ -10,6 +10,25 @@ import pytest
 SAMPLE_CSV = Path(__file__).parent / "sample_goodreads.csv"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _disable_dotenv_for_tests():
+    # mylibrary.config calls load_dotenv() at import time. Several tests
+    # monkeypatch.delenv() a var (e.g. DATABASE_URL, SUPABASE_URL) and then
+    # importlib.reload(config) to exercise env-driven branches -- but reload()
+    # re-executes config.py's own `from dotenv import load_dotenv` + load_dotenv()
+    # call, and python-dotenv repopulates any var that's currently unset from the
+    # developer's real .env. That silently undoes the delenv and can point a test
+    # at a real Postgres/Supabase project (a "DATABASE_URL" resurrection has been
+    # observed to attempt a real INSERT). No-op load_dotenv for the whole session;
+    # every test sets the env vars it needs explicitly via monkeypatch.setenv.
+    import dotenv
+
+    original = dotenv.load_dotenv
+    dotenv.load_dotenv = lambda *a, **k: False
+    yield
+    dotenv.load_dotenv = original
+
+
 @pytest.fixture(autouse=True)
 def isolated_db(tmp_path, monkeypatch):
     # Point the engine at a temp data dir BEFORE it's created.

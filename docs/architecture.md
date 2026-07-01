@@ -55,6 +55,9 @@
   trait that matches a user-rejected claim (case-insensitive substring or high token
   overlap) so a killed trait can't return as a paraphrase. `build_tiers` accepts an
   optional `less_like_books` param to surface those titles in aversion reasoning.
+  **Spend tracking:** both Claude calls (`extract_taste_profile` → `profile_full`,
+  `update_taste_profile` → `profile_update`) go through `usage.tracked_create` instead of
+  calling `client.messages.create` directly, so every call records tokens + computed cost.
 
 - `library.py` — in-app library edits. `set_book_feedback` sets `app_rating` / `app_review`
   and bumps `feedback_updated_at`; `profile_status` reports whether the profile is stale
@@ -96,6 +99,7 @@
   (fetch stored; 404 if none). `_archetype_out()` in `api.py` maps the DB row to `ArchetypeOut` —
   it normalises empty-string rationales to `None` via `rationale or None` so the frontend's
   truthiness check is reliable. `is_stale` is `True` when `derived_at < last_profiled_at`.
+  The Claude call goes through `usage.tracked_create` (`archetype` operation), recording tokens + cost.
 
 - `recommend.py` — two-stage recommender. Stage 1 retrieval = metadata expansion
   (`catalog.openlibrary_subject` / `googlebooks_subject` / `googlebooks_author`) +
@@ -112,6 +116,10 @@
   (Sonnet). Both calls share a cacheable prefix (traits + top 20 loved books, marked
   `ephemeral` with extended-TTL beta) so repeated runs within ~1 hour get a cache hit
   on the large data payload. `_LOVED_SAMPLE = 20` (top by rating/recency).
+  **Default model is `claude-sonnet-5`** (`config.DEFAULT_MODEL`, overridable via
+  `MYLIBRARY_MODEL`) — the haiku call sites (`archetype.py`'s trait scoring, and this
+  module's seed-query generation above) are unchanged by that swap; it only affects
+  taste-profile extraction/update (`profile.py`) and this module's Stage-2 rerank.
   **Structured feedback (Task 2.2):** `_build_signal` now carries user feedback into both
   stages. Each trait dict gains `user_weight` (float, default 1.0) and `status` (default
   `proposed`); traits with `status == "rejected"` are excluded from `signal["traits"]`
@@ -129,6 +137,8 @@
   share to `_MAX_LIBRARY_AUTHOR_SHARE=0.4`. **Cold-start gate:** `_is_cold_start` returns True
   when loved < 8 or rated < 12; in cold-start mode, `_metadata_pool` skips author expansion and
   `recommend()` returns `cold_start: true`.
+  **Spend tracking:** both Claude calls (`_claude_seed_queries` → `recommend_seed`,
+  `_claude_rerank` → `recommend_rerank`) go through `usage.tracked_create`, recording tokens + cost.
 
 - **`TasteSignal` / `taste_signal` table** — durable, append-only steering signals that express
   "more like this" or "less like this" for a specific book or recommendation. Columns:
@@ -152,6 +162,13 @@
   `unrated`, `mean_rating`, `by_star`, `shelves` — matching the TypeScript `Stats`
   interface. Do not rename these back to the old `books_total` / `rating_distribution`
   style; the frontend depends on the current names.
+
+- `usage.py` — per-user Anthropic spend tracking (soft-warn only). `tracked_create` wraps
+  `client.messages.create`, recording token usage + computed cost (`cost_usd`, via
+  `MODEL_PRICING`) to the `usage_events` table after every Claude call. `cap_status(user_id)`
+  reports month-to-date spend + a soft-warn flag. Recording is best-effort — a failure here
+  never breaks the calling profile/recommend/archetype call. See `docs/hosting.md` for the
+  full breakdown.
 
 - `worker.py` — Phase 4 background job engine. Contains `enrich_books` (arq async task),
   `run_enrich_job` (blocking core shared by arq and BackgroundTask fallback), `create_enrich_job`

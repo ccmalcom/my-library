@@ -242,6 +242,16 @@ class UserProfileOut(BaseModel):
     display_name: str | None
 
 
+class UsageOut(BaseModel):
+    """Month-to-date Anthropic spend for the caller + a soft-warn flag. Read-only; never blocks."""
+
+    spent_usd: float
+    cap_usd: float
+    pct: float
+    warn: bool
+    by_operation: dict[str, float]
+
+
 class ArchetypeAxisOut(BaseModel):
     """One axis score for the reader archetype (lens / engine / range / resonance)."""
 
@@ -310,6 +320,32 @@ class TasteSignalOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class InviteRequest(BaseModel):
+    email: str
+
+
+class InviteOut(BaseModel):
+    id: int
+    email: str
+    status: str
+    supabase_user_id: str | None = None
+    invited_by: str | None = None
+    created_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+
+class AdminUserOut(InviteOut):
+    book_count: int = 0
+
+
+class RevokeRequest(BaseModel):
+    supabase_user_id: str
+
+
+class AdminMeOut(BaseModel):
+    is_admin: bool
 
 
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.

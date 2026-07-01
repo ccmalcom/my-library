@@ -23,7 +23,7 @@ from .config import LOCAL_USER_ID, get_settings
 
 # Re-exported from config (canonical definition there) so existing `from .auth import
 # LOCAL_USER_ID` imports keep working. Sentinel owner for all rows in local (no-auth) mode.
-__all__ = ["LOCAL_USER_ID", "AuthError", "resolve_user_id", "current_user_id"]
+__all__ = ["LOCAL_USER_ID", "AuthError", "resolve_user_id", "resolve_claims", "current_user_id"]
 
 _SUPABASE_AUDIENCE = "authenticated"
 
@@ -45,8 +45,8 @@ def _jwks_client(jwks_url: str):
     return client
 
 
-def _verify_es256(token: str, jwks_url: str) -> str:
-    """Verify an ES256 Supabase token against the project JWKS; return its `sub`."""
+def _verify_es256(token: str, jwks_url: str) -> dict:
+    """Verify an ES256 Supabase token against the project JWKS; return its claims."""
     import jwt
 
     try:
@@ -60,11 +60,11 @@ def _verify_es256(token: str, jwks_url: str) -> str:
         )
     except jwt.PyJWTError as exc:  # expired, bad signature, wrong audience, no matching kid…
         raise AuthError(f"invalid token: {exc}") from exc
-    return _require_sub(claims)
+    return claims
 
 
-def _verify_hs256(token: str, secret: str) -> str:
-    """Legacy fallback: verify an HS256 Supabase token with the shared secret."""
+def _verify_hs256(token: str, secret: str) -> dict:
+    """Legacy fallback: verify an HS256 Supabase token with the shared secret; return claims."""
     import jwt
 
     try:
@@ -77,7 +77,7 @@ def _verify_hs256(token: str, secret: str) -> str:
         )
     except jwt.PyJWTError as exc:
         raise AuthError(f"invalid token: {exc}") from exc
-    return _require_sub(claims)
+    return claims
 
 
 def _require_sub(claims: dict) -> str:
@@ -87,25 +87,30 @@ def _require_sub(claims: dict) -> str:
     return str(sub)
 
 
-def resolve_user_id(authorization_header: str | None) -> str:
-    """Core resolver, framework-agnostic so it's unit-testable without a request.
+def resolve_claims(authorization_header: str | None) -> dict:
+    """Verified JWT claims for the request. Framework-agnostic (unit-testable).
 
-    Returns the user_id. In local mode (no Supabase auth configured) this is always
-    LOCAL_USER_ID and the header is ignored. Otherwise it verifies the bearer token
-    (ES256 via JWKS, or HS256 if only a legacy secret is set).
+    Local mode (no Supabase auth configured): returns the local sentinel claims,
+    ignoring the header. Hosted mode: verifies the bearer token (ES256 via JWKS, else
+    HS256) and returns the decoded claims (includes `sub` and, for Supabase, `email`).
     """
     settings = get_settings()
     if not settings.auth_enabled:
-        return LOCAL_USER_ID
+        return {"sub": LOCAL_USER_ID, "email": None}
 
     if not authorization_header or not authorization_header.lower().startswith("bearer "):
         raise AuthError("missing bearer token")
     token = authorization_header.split(" ", 1)[1].strip()
 
     jwks_url = settings.jwks_url
-    if jwks_url:
-        return _verify_es256(token, jwks_url)
-    return _verify_hs256(token, settings.supabase_jwt_secret)
+    claims = _verify_es256(token, jwks_url) if jwks_url else _verify_hs256(token, settings.supabase_jwt_secret)
+    _require_sub(claims)  # raise if no sub
+    return claims
+
+
+def resolve_user_id(authorization_header: str | None) -> str:
+    """The user_id (`sub`) for the request. Behavior unchanged from before."""
+    return _require_sub(resolve_claims(authorization_header))
 
 
 # --- FastAPI dependency ----------------------------------------------------
