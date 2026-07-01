@@ -78,3 +78,18 @@ def test_import_rows_dedups_by_isbn():
     out = import_rows([ImportRow(title="Different Title", isbn13="9780441172719", rating=4)],
                       source="canonical_import")
     assert out["updated"] == 1 and out["inserted"] == 0
+
+
+def test_import_rows_dedups_duplicate_external_id_within_batch():
+    out = import_rows(
+        [
+            ImportRow(title="Dune", author="Frank Herbert", rating=5, external_id="42"),
+            ImportRow(title="Dune (reshelved)", author="Frank Herbert", shelf="read",
+                      external_id="42"),
+        ],
+        source="goodreads_import",
+    )
+    assert out["inserted"] == 1 and out["updated"] == 1
+    with session_scope() as session:
+        book = session.query(Book).filter(Book.goodreads_book_id == "42").one()
+        assert book.exclusive_shelf == "read"  # second row's import-owned field applied

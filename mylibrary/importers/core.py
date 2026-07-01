@@ -207,6 +207,8 @@ def import_rows(rows: list[ImportRow], *, user_id: str = LOCAL_USER_ID, source: 
                 by_titlekey.setdefault(
                     (_normalize_title(row.title), _surname(row.author)), book
                 )
+                if book.goodreads_book_id:
+                    by_grid.setdefault(book.goodreads_book_id, book)
                 inserted += 1
             else:
                 for field in _UPDATE_FIELDS:
