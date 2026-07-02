@@ -1003,7 +1003,6 @@ function LibraryInner() {
   }
 
   async function handleAdded(book: Book) {
-    setAdding(false);
     setTab((book.exclusive_shelf as Tab) ?? 'read');
     await Promise.all([
       mutate(READ_KEY),

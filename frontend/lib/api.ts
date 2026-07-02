@@ -139,6 +139,25 @@ export interface CatalogResult {
   subjects: string[] | null;
 }
 
+/** Fields the generic importer can map to (mirrors backend MAPPING_FIELDS). */
+export type MappingField = 'title' | 'author' | 'isbn13' | 'rating' | 'review' | 'shelf' | 'date_read';
+
+export interface ImportPreview {
+  format: 'goodreads' | 'storygraph' | 'canonical' | 'unknown';
+  headers: string[];
+  sample_rows: Record<string, string>[];
+  suggested_mapping: Record<MappingField, string | null>;
+}
+
+export interface ImportSummary {
+  format: string;
+  total_rows: number;
+  skipped: number;
+  inserted: number;
+  updated: number;
+  rated: number;
+}
+
 /** Manually add a book to the library (POST /books). */
 export interface AddBookRequest {
   title: string;
@@ -395,6 +414,37 @@ export const api = {
     return res.json() as Promise<Record<string, unknown>>;
   },
 
+  /** Sniff an uploaded CSV: detected format, headers, sample rows, guessed mapping. */
+  importPreview: async (file: File): Promise<ImportPreview> => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${BASE}/import/preview`, {
+      method: 'POST',
+      body: form,
+      headers: { ...(await authHeaders()) },
+    });
+    if (!res.ok) throw new Error(`Preview failed (${res.status}): ${await res.text()}`);
+    return res.json() as Promise<ImportPreview>;
+  },
+
+  /** Import a CSV. format='auto' auto-detects; 'generic' needs a mapping. */
+  importLibrary: async (
+    file: File,
+    opts?: { format?: string; mapping?: Record<string, string> },
+  ): Promise<ImportSummary> => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('format', opts?.format ?? 'auto');
+    if (opts?.mapping) form.append('mapping', JSON.stringify(opts.mapping));
+    const res = await fetch(`${BASE}/import`, {
+      method: 'POST',
+      body: form,
+      headers: { ...(await authHeaders()) },
+    });
+    if (!res.ok) throw new Error(`Import failed (${res.status}): ${await res.text()}`);
+    return res.json() as Promise<ImportSummary>;
+  },
+
   /** Kick off library enrichment (Open Library + Google Books). Slow — can take minutes. */
   runEnrich: (opts?: { limit?: number }) =>
     post<Record<string, unknown>>('/enrich', { limit: opts?.limit ?? null }),
@@ -478,6 +528,16 @@ export const api = {
 
   /** Delete ALL of the current user's app data (library, profile, recs, stored key). */
   deleteAccount: () => del<Record<string, number | boolean>>('/account'),
+
+  // ── Export ────────────────────────────────────────────────────────────────
+  /** Download the library as a CSV or JSON blob (auth-attached). */
+  exportLibrary: async (format: 'csv' | 'json'): Promise<Blob> => {
+    const res = await fetch(`${BASE}/export?format=${format}`, {
+      headers: { ...(await authHeaders()) },
+    });
+    if (!res.ok) throw new Error(`Export failed (${res.status}): ${await res.text()}`);
+    return res.blob();
+  },
 };
 
 /** Shared SWR key for the API-key status (settings page + any gating UI). */
@@ -554,6 +614,18 @@ export function recordTasteSignal(body: {
  */
 export function setFavorite(id: number, value: boolean): Promise<Record<string, unknown>> {
   return patch<Record<string, unknown>>(`/books/${id}/feedback`, { is_favorite: value });
+}
+
+/** Trigger a browser download of a Blob (used for library export/backup). */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // ── Admin console (Tasks 1-7) ───────────────────────────────────────────────

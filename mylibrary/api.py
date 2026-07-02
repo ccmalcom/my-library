@@ -14,9 +14,11 @@ That's fine for MVP1 / local use; a later phase can move them to a background ta
 from __future__ import annotations
 
 import fnmatch
+import json
 import shutil
 import tempfile
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import (
@@ -24,6 +26,7 @@ from fastapi import (
     Depends,
     FastAPI,
     File,
+    Form,
     Header,
     HTTPException,
     Query,
@@ -42,12 +45,14 @@ from .auth import AuthError, resolve_user_id
 from .config import get_settings
 from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
 from .enrich import _normalize_title, _surname, enrich_library
+from .exporters import export_csv, export_json
 from .feedback import (
     VALID_CATEGORIES,
     check_prompt_eligibility,
     dismiss_prompt,
     submit_feedback,
 )
+from .importers import csv_headers, detect_format, import_text, sample_rows, suggest_mapping
 from .ingest import ingest_csv
 from .invites import (
     InviteError,
@@ -87,6 +92,8 @@ from .schemas import (
     FeedbackDismiss,
     FeedbackRequest,
     FeedbackSubmit,
+    ImportPreviewOut,
+    ImportSummaryOut,
     IngestRequest,
     InviteRequest,
     ProfileStatusOut,
@@ -413,6 +420,92 @@ async def ingest_upload(user_id: UserId, file: UploadFile = File(...)) -> dict:
         except OSError:
             pass
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def _decode_upload(file: UploadFile) -> str:
+    """Validate + decode an uploaded CSV file to text (utf-8-sig aware)."""
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=422, detail="Uploaded file must be a .csv")
+    raw = file.file.read()
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=422, detail="File must be UTF-8 encoded CSV.")
+
+
+@app.post("/import/preview", response_model=ImportPreviewOut)
+async def import_preview(user_id: UserId, file: UploadFile = File(...)) -> ImportPreviewOut:
+    """Sniff an uploaded CSV: detected format, headers, a few sample rows, a guessed mapping.
+
+    No data is written — this backs the import mapping UI. No network calls.
+    """
+    text = _decode_upload(file)
+    headers = csv_headers(text)
+    return ImportPreviewOut(
+        format=detect_format(headers),
+        headers=headers,
+        sample_rows=sample_rows(text),
+        suggested_mapping=suggest_mapping(headers),
+    )
+
+
+@app.post("/import", response_model=ImportSummaryOut)
+async def import_library(
+    user_id: UserId,
+    file: UploadFile = File(...),
+    format: str = Form("auto"),
+    mapping: str | None = Form(None),
+) -> ImportSummaryOut:
+    """Import books from a CSV (Goodreads / StoryGraph / canonical / generic-with-mapping).
+
+    format='auto' auto-detects; format='generic' requires a `mapping` JSON string
+    ({field: csv_header}). Imports write only Book rows — enrichment runs separately.
+    """
+    text = _decode_upload(file)
+    parsed_mapping: dict[str, str] | None = None
+    if mapping:
+        try:
+            raw_mapping = json.loads(mapping)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=422, detail="mapping must be valid JSON.")
+        if not isinstance(raw_mapping, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in raw_mapping.items()
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="mapping must be a JSON object of string keys and values.",
+            )
+        parsed_mapping = raw_mapping
+    try:
+        result = import_text(text, fmt=format, mapping=parsed_mapping, user_id=user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return ImportSummaryOut(**result)
+
+
+@app.get("/export")
+def export_library_endpoint(user_id: UserId, format: str = "csv") -> Response:
+    """Download the caller's library as a re-importable CSV or a full JSON backup."""
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+    if format == "csv":
+        body = export_csv(user_id)
+        filename = f"mylibrary-backup-{stamp}.csv"
+        return Response(
+            content=body,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
+        )
+    if format == "json":
+        body = json.dumps(export_json(user_id), indent=2)
+        filename = f"mylibrary-backup-{stamp}.json"
+        return Response(
+            content=body,
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
+        )
+    raise HTTPException(
+        status_code=422, detail="format must be 'csv' or 'json'."
+    )
 
 
 @app.post("/enrich/start", response_model=EnrichJobOut)

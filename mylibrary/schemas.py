@@ -322,6 +322,24 @@ class TasteSignalOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ImportPreviewOut(BaseModel):
+    """Detected format + headers + sample rows for the import mapping UI."""
+
+    format: str  # goodreads | storygraph | canonical | unknown
+    headers: list[str]
+    sample_rows: list[dict[str, str]]
+    suggested_mapping: dict[str, str | None]
+
+
+class ImportSummaryOut(BaseModel):
+    format: str
+    total_rows: int
+    skipped: int
+    inserted: int
+    updated: int
+    rated: int
+
+
 class InviteRequest(BaseModel):
     email: str
 

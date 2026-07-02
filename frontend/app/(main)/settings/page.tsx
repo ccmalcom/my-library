@@ -7,6 +7,7 @@ import {
   API_KEY_STATUS_KEY,
   PROFILE_STATUS_KEY,
   USER_PROFILE_KEY,
+  downloadBlob,
   USAGE_KEY,
   getUsage,
   type ApiKeyStatus,
@@ -15,6 +16,7 @@ import {
 } from '@/lib/api';
 import { Button, Card, Badge, useToast } from '@/components/ui';
 import { getSupabaseClient, authEnabled } from '@/utils/supabase/client';
+import ImportModal from '@/components/ImportModal';
 
 function DangerAction({
   title,
@@ -126,6 +128,24 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const [showImport, setShowImport] = useState(false);
+
+  const [exporting, setExporting] = useState<'csv' | 'json' | null>(null);
+
+  async function handleExport(format: 'csv' | 'json') {
+    setExporting(format);
+    try {
+      const blob = await api.exportLibrary(format);
+      const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      downloadBlob(blob, `mylibrary-backup-${stamp}.${format}`);
+      toast.success('Backup downloaded.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Export failed.');
+    } finally {
+      setExporting(null);
+    }
+  }
 
   async function handleSaveName(e: React.FormEvent) {
     e.preventDefault();
@@ -447,6 +467,46 @@ export default function SettingsPage() {
         </Card>
       </section>
 
+      {/* Import books */}
+      <section className='mb-6'>
+        <Card>
+          <h2 className='mb-1 font-display text-lg font-semibold text-text'>Import books</h2>
+          <p className='mb-4 text-sm text-muted'>
+            Bring in your library from Goodreads, StoryGraph, a MyLibrary backup, or any CSV.
+          </p>
+          <Button onClick={() => setShowImport(true)}>Import from a file</Button>
+        </Card>
+      </section>
+
+      {/* Export / backup */}
+      <section className='mb-6'>
+        <Card>
+          <h2 className='mb-1 font-display text-lg font-semibold text-text'>Backup your library</h2>
+          <p className='mb-4 text-sm text-muted'>
+            Download everything you have rated and reviewed. CSV re-imports into MyLibrary;
+            JSON is a complete backup.
+          </p>
+          <div className='flex gap-2'>
+            <Button
+              variant='ghost'
+              loading={exporting === 'csv'}
+              disabled={exporting !== null}
+              onClick={() => handleExport('csv')}
+            >
+              Download CSV
+            </Button>
+            <Button
+              variant='ghost'
+              loading={exporting === 'json'}
+              disabled={exporting !== null}
+              onClick={() => handleExport('json')}
+            >
+              Download JSON
+            </Button>
+          </div>
+        </Card>
+      </section>
+
       {/* Claude spend */}
       <section className='mb-6'>
         <Card>
@@ -540,6 +600,15 @@ export default function SettingsPage() {
           />
         </div>
       </section>
+
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => {
+            setShowImport(false);
+          }}
+        />
+      )}
     </div>
   );
 }
