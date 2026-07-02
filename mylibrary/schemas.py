@@ -344,7 +344,7 @@ class InviteRequest(BaseModel):
     # Beta launch: the admin supplies the Anthropic key, so it's convenient to pre-provision it
     # (and the user's display name) at invite time rather than making them do it in setup.
     display_name: str | None = None
-    anthropic_api_key: str | None = None
+    anthropic_api_key: str | None = Field(default=None, repr=False)
 
 
 class InviteOut(BaseModel):
