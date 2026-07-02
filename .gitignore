@@ -32,3 +32,4 @@ docs/superpowers/
 .vscode/
 .agents/
 # .claude/
+.worktrees/

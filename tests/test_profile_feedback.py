@@ -185,9 +185,7 @@ def test_extract_taste_profile_excludes_rejected_paraphrase(monkeypatch):
     }
 
     monkeypatch.setattr(profile, "resolve_anthropic_key", lambda uid: "test-key")
-    import anthropic
-
-    monkeypatch.setattr(anthropic, "Anthropic", lambda **kw: _FakeClient(payload))
+    monkeypatch.setattr(profile, "Anthropic", lambda **kw: _FakeClient(payload))
 
     profile.extract_taste_profile()
 
@@ -298,9 +296,7 @@ def test_extract_taste_profile_no_duplicate_of_confirmed_or_edited(monkeypatch):
     }
 
     monkeypatch.setattr(profile, "resolve_anthropic_key", lambda uid: "test-key")
-    import anthropic
-
-    monkeypatch.setattr(anthropic, "Anthropic", lambda **kw: _FakeClient(payload))
+    monkeypatch.setattr(profile, "Anthropic", lambda **kw: _FakeClient(payload))
 
     profile.extract_taste_profile()
 

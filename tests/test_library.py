@@ -21,6 +21,7 @@ from mylibrary.library import (
     set_book_feedback,
     set_book_shelf,
 )
+from mylibrary import profile as profile_module
 from mylibrary.profile import books_changed_since, get_profile_meta, mark_profiled
 
 from .conftest import SAMPLE_CSV
@@ -249,7 +250,7 @@ def _install_fake_anthropic(monkeypatch, captured, traits):
         def __init__(self, api_key=None):
             self.messages = _FakeMessages()
 
-    monkeypatch.setattr("anthropic.Anthropic", _FakeAnthropic)
+    monkeypatch.setattr(profile_module, "Anthropic", _FakeAnthropic)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
 

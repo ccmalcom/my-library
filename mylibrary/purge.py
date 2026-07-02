@@ -37,6 +37,7 @@ from .db import (
     Recommendation,
     TasteSignal,
     TasteTrait,
+    UsageEvent,
     UserSettings,
     init_db,
     session_scope,
@@ -137,11 +138,17 @@ def delete_account(*, user_id: str = LOCAL_USER_ID) -> dict:
             .filter(EnrichJob.user_id == user_id)
             .delete(synchronize_session=False)
         )
+        usage_events_removed = (
+            session.query(UsageEvent)
+            .filter(UsageEvent.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
         return {
             "books_removed": books,
             **profile,
             "settings_removed": settings_removed,
             "signals_removed": signals_removed,
             "jobs_removed": jobs_removed,
+            "usage_events_removed": usage_events_removed,
             "account_deleted": True,
         }

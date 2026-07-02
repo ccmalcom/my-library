@@ -12,7 +12,7 @@ Personal AI-powered book-analysis engine built on a Goodreads CSV export. Pipeli
 |---|---|
 | Backend | Python 3.14, FastAPI 0.138, SQLAlchemy 2.0, Pydantic 2, Typer CLI |
 | DB | SQLite (local dev) / Postgres via psycopg v3 (hosted — `postgresql+psycopg://`) |
-| AI | Anthropic SDK (`claude-sonnet-4-6` default; haiku for cheap tasks) |
+| AI | Anthropic SDK (`claude-sonnet-5` default; haiku for cheap tasks) |
 | Frontend | Next.js 16, React 18, TypeScript 5, Tailwind CSS 3, SWR 2, Supabase SSR |
 | Migrations | `init_db()` self-migrate (SQLite local); Alembic (Postgres hosted, `alembic/versions/`) |
 

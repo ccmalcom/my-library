@@ -143,7 +143,7 @@ def test_rerank_context_includes_steering(monkeypatch):
         "less_like": ["Neuromancer by William Gibson"],
         "reject_reason_counts": {"too_dark": 3},
     }
-    recommend._claude_rerank(candidates, signal, n=5)
+    recommend._claude_rerank(candidates, signal, n=5, user_id="local")
 
     # The cached prefix (first content block) carries the steering.
     blocks = sink["messages"][0]["content"]
@@ -167,7 +167,7 @@ def test_seed_queries_prompt_includes_more_like(monkeypatch):
         "less_like": ["Neuromancer by William Gibson"],
         "reject_reason_counts": {},
     }
-    recommend._claude_seed_queries(signal, n_queries=5)
+    recommend._claude_seed_queries(signal, n_queries=5, user_id="local")
 
     blocks = sink["messages"][0]["content"]
     joined = " ".join(b["text"] for b in blocks)

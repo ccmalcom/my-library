@@ -4,6 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from anthropic import Anthropic
+
+from .usage import tracked_create
+
 # ---------------------------------------------------------------------------
 # Axis metadata
 # ---------------------------------------------------------------------------
@@ -218,11 +222,13 @@ def derive_archetype(*, user_id: str | None = None) -> "ArchetypeResult":
                 "No taste profile found. Build your taste profile first."
             )
 
-        from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
 
         prompt = _build_prompt(traits)
-        message = client.messages.create(
+        message = tracked_create(
+            client,
+            user_id=user_id,
+            operation="archetype",
             model=_MODEL,
             max_tokens=512,
             system=_SYSTEM,

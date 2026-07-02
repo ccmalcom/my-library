@@ -314,6 +314,51 @@ class UserSettings(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=utcnow)
 
 
+class UsageEvent(Base):
+    """One Anthropic API call's token usage + computed cost, for per-user spend tracking.
+
+    Append-only. Written best-effort by `usage.tracked_create` after each Claude call;
+    a failure to write here never affects the call's result. `operation` is one of
+    profile_full | profile_update | recommend_seed | recommend_rerank | archetype.
+    """
+
+    __tablename__ = "usage_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String, index=True, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
+    model: Mapped[str] = mapped_column(String, nullable=False)
+    operation: Mapped[str] = mapped_column(String, nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cache_creation_input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cache_read_input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, index=True, server_default=func.now())
+
+
+class Invite(Base):
+    """An admin-issued invitation to join MyLibrary.
+
+    One row per invited email. Lifecycle: pending (invite email sent) -> active
+    (Supabase user exists) -> revoked (user deleted + app data purged). `supabase_user_id`
+    is the GoTrue user id returned by the admin invite call; it's the key revoke uses.
+    """
+
+    __tablename__ = "invites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    invited_by: Mapped[str] = mapped_column(String, nullable=False)  # admin user_id (sub)
+    supabase_user_id: Mapped[str | None] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")  # pending|active|revoked
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
 class Feedback(Base):
     """User-submitted feedback (bug reports, ideas, praise, confusing UX).
 
