@@ -57,9 +57,15 @@ def create_invite(
 
     if sb_id:
         if display_name and display_name.strip():
-            set_display_name(display_name, user_id=sb_id)
+            try:
+                set_display_name(display_name, user_id=sb_id)
+            except ValueError as exc:
+                raise InviteError(str(exc)) from exc
         if anthropic_api_key and anthropic_api_key.strip():
-            set_anthropic_key(anthropic_api_key, user_id=sb_id)
+            try:
+                set_anthropic_key(anthropic_api_key, user_id=sb_id)
+            except (ValueError, RuntimeError) as exc:
+                raise InviteError(str(exc)) from exc
 
     with session_scope() as session:
         row = session.query(Invite).filter(Invite.email == email).one_or_none()
