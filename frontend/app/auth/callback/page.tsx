@@ -37,11 +37,22 @@ export default function AuthCallbackPage() {
       return;
     }
 
+    const clearHash = () => {
+      if (window.location.hash) {
+        window.history.replaceState(
+          null,
+          '',
+          window.location.pathname + window.location.search
+        );
+      }
+    };
+
     let settled = false;
     const { data: sub } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         if (session && !settled) {
           settled = true;
+          clearHash();
           setPhase('set-password');
         }
       }
@@ -51,6 +62,7 @@ export default function AuthCallbackPage() {
       const { session } = res.data;
       if (session && !settled) {
         settled = true;
+        clearHash();
         setPhase('set-password');
       }
     });
