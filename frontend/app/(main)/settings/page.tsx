@@ -606,7 +606,6 @@ export default function SettingsPage() {
           onClose={() => setShowImport(false)}
           onImported={() => {
             setShowImport(false);
-            void mutate('stats');
           }}
         />
       )}

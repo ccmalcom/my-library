@@ -465,9 +465,17 @@ async def import_library(
     parsed_mapping: dict[str, str] | None = None
     if mapping:
         try:
-            parsed_mapping = json.loads(mapping)
+            raw_mapping = json.loads(mapping)
         except json.JSONDecodeError:
             raise HTTPException(status_code=422, detail="mapping must be valid JSON.")
+        if not isinstance(raw_mapping, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in raw_mapping.items()
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="mapping must be a JSON object of string keys and values.",
+            )
+        parsed_mapping = raw_mapping
     try:
         result = import_text(text, fmt=format, mapping=parsed_mapping, user_id=user_id)
     except ValueError as e:
