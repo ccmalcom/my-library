@@ -39,6 +39,9 @@ export default function AdminPage() {
   const toast = useToast();
 
   const [email, setEmail] = useState('');
+  const [showExtra, setShowExtra] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [inviting, setInviting] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
 
@@ -64,8 +67,14 @@ export default function AdminPage() {
     if (!trimmed) return;
     setInviting(true);
     try {
-      await inviteUser(trimmed);
+      await inviteUser(trimmed, {
+        displayName: displayName.trim(),
+        anthropicApiKey: apiKey.trim(),
+      });
       setEmail('');
+      setDisplayName('');
+      setApiKey('');
+      setShowExtra(false);
       toast.success('Invite sent.');
       await mutate();
     } catch (err) {
@@ -119,6 +128,42 @@ export default function AdminPage() {
                 className={inputClass}
               />
             </div>
+            {showExtra ? (
+              <>
+                <div>
+                  <label className={labelClass}>Name (optional)</label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Alex"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Anthropic API key (optional)</label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-ant-..."
+                    autoComplete="off"
+                    className={[inputClass, 'font-mono'].join(' ')}
+                  />
+                  <p className="mt-1 text-xs text-faint">
+                    Pre-fills their key and name so setup skips those steps.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowExtra(true)}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                + Set name / API key for them
+              </button>
+            )}
             <Button type="submit" loading={inviting} disabled={inviting || !email.trim()}>
               {inviting ? 'Sending...' : 'Invite'}
             </Button>
