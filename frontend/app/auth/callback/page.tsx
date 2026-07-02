@@ -140,7 +140,7 @@ export default function AuthCallbackPage() {
                   setErrorMsg(null);
                 }}
                 className={inputClass}
-                placeholder={'••••••••'}
+                placeholder={'\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'}
               />
             </div>
             <div>
