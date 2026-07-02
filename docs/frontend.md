@@ -7,7 +7,7 @@ Pure HTTP client of the FastAPI engine — no DB access, no migrations.
 
 Supabase is used purely to get a session — never to query tables (the FastAPI backend owns data). `utils/supabase/client.ts` is the singleton browser client; `authEnabled` is false when the `NEXT_PUBLIC_SUPABASE_*` env vars are absent, so **local dev runs unauthenticated exactly as before**. `lib/api.ts` `authHeaders()` attaches the session's `access_token` as `Authorization: Bearer` on every request (the backend verifies it via JWKS). `middleware.ts` refreshes the session and redirects unauthenticated users to `/login` (no-op in local mode); `app/login` is the email+password sign-in (invite-only, no sign-up form). Supabase publishable key env var is `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
-**Auth boundaries do a FULL document load, not client-side nav** (`window.location.assign`): sign-in, sign-out, and destructive clear-library / delete-account actions all hard-reload. The SWR cache + component state (notably `LibraryGate`'s latch) are in-memory and global, so a client-side `router.push` after these leaks previous user's state until a manual refresh. Don't revert these to `router.push`/`replace`.
+**Auth boundaries do a FULL document load, not client-side nav** (`window.location.assign`): sign-in, sign-out, and destructive clear-library / delete-account actions all hard-reload. The SWR cache + component state (notably `LibraryGate`'s latch) are in-memory and global, so a client-side `router.push` after these leaks previous user's state until a manual refresh. Don't revert these to `router.push`/`replace`. `app/auth/callback` (invite-link landing page — see `docs/hosting.md` Admin console notes) follows the same rule for its post-password-set and error-state navigations.
 
 ## Key files
 
@@ -30,6 +30,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
   "Approaching cap" badge when `usage.warn` is true, and a footnote clarifying it's a
   soft cap for visibility only — recommendations/profiling never stop running.
 - `/admin` — admin console (invite/revoke users, view roster). Only reachable by users in the `ADMIN_EMAILS` allowlist; in local mode all users can access it.
+- `/auth/callback` — public (middleware's `PUBLIC_PREFIXES` includes `/auth`) landing page for Supabase invite links. Client-only: consumes the session tokens Supabase puts in the URL hash, then prompts the invited user (no password yet) to set one before hard-reloading into `/`.
 
 `layout.tsx` mounts `NavBar` + `ReprofileBanner` + `UsageWarningBanner` + `FeedbackLauncher` + `BottomNav` above/below all pages and wraps `children` in **`LibraryGate`**. The root `app/layout.tsx` `<body>` carries `suppressHydrationWarning` (browser extensions mutate `<body>` pre-hydration — silences benign attribute mismatches only).
 

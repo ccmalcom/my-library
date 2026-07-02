@@ -140,7 +140,8 @@ export interface CatalogResult {
 }
 
 /** Fields the generic importer can map to (mirrors backend MAPPING_FIELDS). */
-export type MappingField = 'title' | 'author' | 'isbn13' | 'rating' | 'review' | 'shelf' | 'date_read';
+export type MappingField =
+  'title' | 'author' | 'isbn13' | 'rating' | 'review' | 'shelf' | 'date_read';
 
 export interface ImportPreview {
   format: 'goodreads' | 'storygraph' | 'canonical' | 'unknown';
@@ -430,7 +431,7 @@ export const api = {
   /** Import a CSV. format='auto' auto-detects; 'generic' needs a mapping. */
   importLibrary: async (
     file: File,
-    opts?: { format?: string; mapping?: Record<string, string> },
+    opts?: { format?: string; mapping?: Record<string, string> }
   ): Promise<ImportSummary> => {
     const form = new FormData();
     form.append('file', file);
@@ -661,9 +662,22 @@ export async function adminMe(): Promise<{ is_admin: boolean }> {
 /** Full invited-user roster (admin-only). GET /admin/users */
 export const listAdminUsers = (): Promise<AdminUser[]> => get<AdminUser[]>('/admin/users');
 
-/** Invite a new user by email (admin-only). POST /admin/invite */
-export const inviteUser = (email: string): Promise<AdminUser> =>
-  post<AdminUser>('/admin/invite', { email });
+/**
+ * Invite a new user by email (admin-only). POST /admin/invite
+ *
+ * `displayName` / `anthropicApiKey` are optional — beta launch convenience since the admin is
+ * supplying the Anthropic key; pre-provisioning them here lets the invited user skip those
+ * SetupWizard steps entirely.
+ */
+export const inviteUser = (
+  email: string,
+  opts?: { displayName?: string; anthropicApiKey?: string }
+): Promise<AdminUser> =>
+  post<AdminUser>('/admin/invite', {
+    email,
+    display_name: opts?.displayName || undefined,
+    anthropic_api_key: opts?.anthropicApiKey || undefined,
+  });
 
 /** Revoke an invited/active user's access (admin-only). POST /admin/revoke */
 export const revokeUser = (supabaseUserId: string): Promise<{ status: string }> =>

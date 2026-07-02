@@ -57,6 +57,7 @@ class Settings:
     encryption_key: str | None  # base64 32-byte key for AES-256-GCM of per-user API keys
     redis_url: str | None       # Redis URL for arq job queue; unset = local BackgroundTask fallback
     cors_origins: tuple[str, ...]  # allowed browser origins for the API (frontend domains)
+    frontend_url: str | None   # deployed frontend origin; used as the invite-email redirect target
 
     # --- admin console ------------------------------------------------------
     admin_emails: tuple[str, ...]          # lowercased allowlist of admin emails
@@ -129,6 +130,10 @@ def _normalize_pg_url(url: str) -> str:
     return url
 
 
+def _normalize_frontend_url(raw: str | None) -> str | None:
+    return raw.strip().rstrip("/") if raw and raw.strip() else None
+
+
 def _resolve_data_dir() -> Path:
     raw = os.getenv("MYLIBRARY_DATA_DIR")
     if raw:
@@ -161,6 +166,7 @@ def get_settings() -> Settings:
         encryption_key=os.getenv("ENCRYPTION_KEY"),
         redis_url=os.getenv("REDIS_URL"),
         cors_origins=_resolve_cors_origins(),
+        frontend_url=_normalize_frontend_url(os.getenv("FRONTEND_URL")),
         admin_emails=_resolve_admin_emails(),
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
         feedback_prompts_enabled=_env_bool("FEEDBACK_PROMPTS_ENABLED", True),

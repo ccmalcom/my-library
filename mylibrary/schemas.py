@@ -7,7 +7,6 @@ These define the JSON contract the future TypeScript frontend will consume over 
 from __future__ import annotations
 
 from datetime import date, datetime
-
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -342,6 +341,10 @@ class ImportSummaryOut(BaseModel):
 
 class InviteRequest(BaseModel):
     email: str
+    # Beta launch: the admin supplies the Anthropic key, so it's convenient to pre-provision it
+    # (and the user's display name) at invite time rather than making them do it in setup.
+    display_name: str | None = None
+    anthropic_api_key: str | None = None
 
 
 class InviteOut(BaseModel):

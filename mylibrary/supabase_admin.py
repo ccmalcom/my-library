@@ -7,6 +7,8 @@ the secret is never included in the error text.
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import httpx
 
 from .config import get_settings
@@ -56,8 +58,18 @@ def _request(method: str, path: str, *, json: dict | None, client: httpx.Client 
 
 
 def invite_user(email: str, *, client: httpx.Client | None = None) -> dict:
-    """Send a Supabase invite email; returns {'id', 'email'} of the created/known user."""
-    resp = _request("POST", "/invite", json={"email": email}, client=client)
+    """Send a Supabase invite email; returns {'id', 'email'} of the created/known user.
+
+    Points the invite link's redirect at our own `/auth/callback` (via `redirect_to`) rather
+    than falling back to the project's dashboard-configured Site URL, so the invited user lands
+    somewhere that actually establishes their session and prompts for a password — not `/login`.
+    """
+    settings = get_settings()
+    path = "/invite"
+    if settings.frontend_url:
+        redirect_to = f"{settings.frontend_url}/auth/callback"
+        path += f"?redirect_to={quote(redirect_to, safe='')}"
+    resp = _request("POST", path, json={"email": email}, client=client)
     data = resp.json()
     return {"id": data.get("id"), "email": data.get("email", email)}
 

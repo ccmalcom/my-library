@@ -12,6 +12,7 @@ from sqlalchemy import func
 from .db import Book, Invite, session_scope, utcnow
 from .purge import delete_account
 from .supabase_admin import delete_user, invite_user, list_users
+from .user_settings import set_anthropic_key, set_display_name
 
 
 class InviteError(Exception):
@@ -33,14 +34,32 @@ def _invite_dict(row: Invite, *, book_count: int | None = None) -> dict:
     return d
 
 
-def create_invite(email: str, *, invited_by: str) -> dict:
-    """Invite *email* via Supabase and record an active invite row (idempotent on email)."""
+def create_invite(
+    email: str,
+    *,
+    invited_by: str,
+    display_name: str | None = None,
+    anthropic_api_key: str | None = None,
+) -> dict:
+    """Invite *email* via Supabase and record an active invite row (idempotent on email).
+
+    `display_name` / `anthropic_api_key` are optional pre-provisioning for the beta, where the
+    admin is supplying the Anthropic key: they're written under the Supabase user id returned by
+    the invite call, so they're already in place — skipping those SetupWizard steps — the first
+    time the invited user actually logs in.
+    """
     email = (email or "").strip().lower()
     if not email:
         raise InviteError("email must not be empty")
 
     result = invite_user(email)  # may raise SupabaseAdminError
     sb_id = result.get("id")
+
+    if sb_id:
+        if display_name and display_name.strip():
+            set_display_name(display_name, user_id=sb_id)
+        if anthropic_api_key and anthropic_api_key.strip():
+            set_anthropic_key(anthropic_api_key, user_id=sb_id)
 
     with session_scope() as session:
         row = session.query(Invite).filter(Invite.email == email).one_or_none()

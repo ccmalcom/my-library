@@ -753,7 +753,14 @@ def admin_me(request: Request, authorization: Annotated[str | None, Header()] = 
 @app.post("/admin/invite", response_model=AdminUserOut, status_code=201)
 def admin_invite(req: InviteRequest, admin_id: AdminId) -> AdminUserOut:
     try:
-        return AdminUserOut(**create_invite(req.email, invited_by=admin_id))
+        return AdminUserOut(
+            **create_invite(
+                req.email,
+                invited_by=admin_id,
+                display_name=req.display_name,
+                anthropic_api_key=req.anthropic_api_key,
+            )
+        )
     except InviteError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except SupabaseAdminError as exc:
