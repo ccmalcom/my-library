@@ -3,14 +3,14 @@
 Prioritized for the invite-only / free launch. Organizing question: what would
 break or confuse the first wave of invited users, then friction, then growth.
 
-## Wave 1 — Launch blockers
+## Wave 1 — Launch blockers - COMPLETE
 
 - Invite flow / account management — actually invite + revoke users (needed to scale invites safely)
 - Cost guardrails + rate limiting (paired; spend/abuse control under multi-user BYO-key)
   - Per-user Anthropic spend visibility/limits so big libraries don't cause a surprise bill
   - `/catalog/search` per-user rate limiting (hits OL + Google Books live per keystroke)
 
-## Wave 2 — Onboarding friction
+## Wave 2 — Onboarding friction - COMPLETE
 
 - Custom imports — biggest adoption lever (Goodreads is import-once)
   - StoryGraph, Google Play Books, Apple Books, generic CSV / other library managers
