@@ -607,7 +607,11 @@ def _book_facet_queries(
         tool_choice={"type": "tool", "name": "propose_search_queries"},
         messages=[{
             "role": "user",
-            "content": [{"type": "text", "text": book_context + "\n\n" + task_prompt}],
+            "content": [
+                {"type": "text", "text": book_context,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": task_prompt},
+            ],
         }],
     )
     for block in message.content:
