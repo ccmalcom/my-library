@@ -205,6 +205,13 @@ export default function HomePage() {
           </Button>
 
           {recBlockMsg && <p className="mt-4 text-sm text-warning">{recBlockMsg}</p>}
+
+          <Link
+            href="/discover"
+            className="mt-4 block text-sm text-muted transition-colors hover:text-text"
+          >
+            Or ask for something specific &rarr;
+          </Link>
         </div>
       </Card>
     </div>
