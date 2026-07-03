@@ -100,7 +100,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
       requestAnimationFrame(() => searchRef.current?.focus());
     } catch (e) {
       const raw = e instanceof Error ? e.message : 'Failed to add book.';
-      const msg = raw.includes('409') ? 'That book is already in your library.' : raw;
+      const msg = raw.includes('409') ? "Already shelved \u2014 that one's in your library." : raw;
       toast.error(msg);
       setSaving(false);
     }
@@ -132,7 +132,9 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
           />
 
           <div className="mt-4 min-h-[120px] flex-1 overflow-y-auto">
-            {searching && <p className="py-8 text-center text-sm text-muted">Searching...</p>}
+            {searching && (
+              <p className="py-8 text-center text-sm text-muted">Searching the catalogs…</p>
+            )}
             {searchError && <p className="py-4 text-sm text-danger">{searchError}</p>}
             {!searching && !searchError && query.trim().length >= 2 && results.length === 0 && (
               <p className="py-8 text-center text-sm text-muted">
@@ -310,7 +312,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
             />
             {reviewWithoutRating && (
               <p className="mt-1 text-xs text-warning">
-                Add a star rating above to save your review.
+                A review needs a rating to anchor it — add stars first.
               </p>
             )}
           </div>
@@ -320,7 +322,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
               Cancel
             </Button>
             <Button onClick={handleAdd} loading={saving} disabled={saving || reviewWithoutRating}>
-              {saving ? 'Adding...' : 'Add to library'}
+              {saving ? 'Adding\u2026' : 'Add to library'}
             </Button>
           </div>
         </>

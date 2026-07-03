@@ -57,7 +57,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
     try {
       await api.updateTrait(trait.id, { claim: trimmed });
       await mutate(TRAITS_KEY);
-      toast.success('Trait saved.');
+      toast.success('Noted \u2014 your profile just got sharper.');
       setEditing(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Save failed.');
@@ -81,7 +81,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
         { revalidate: false }
       );
       await mutate(PROFILE_STATUS_KEY);
-      toast.success('Trait updated.');
+      toast.success("Updated \u2014 we'll recommend accordingly.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Update failed.');
     } finally {
@@ -185,7 +185,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
       {editing && (
         <div className="flex items-center gap-2 pl-14">
           <Button size="sm" loading={saving} onClick={() => void save()}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? 'Saving\u2026' : 'Save'}
           </Button>
           <Button size="sm" variant="ghost" onClick={cancel}>
             Cancel
@@ -202,7 +202,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
             variant={isConfirmed ? 'primary' : 'ghost'}
             disabled={verdicting}
             onClick={() => void handleVerdict('confirmed')}
-            title="Confirm this trait"
+            title="That's me"
           >
             Confirm
           </Button>
@@ -211,7 +211,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
             variant={isRejected ? 'danger' : 'ghost'}
             disabled={verdicting}
             onClick={() => void handleVerdict('rejected')}
-            title="This trait does not describe me"
+            title="Not me"
           >
             Not me
           </Button>
@@ -220,7 +220,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
             variant="ghost"
             disabled={verdicting}
             onClick={() => void handleVerdict(undefined, 0.5)}
-            title="Reduce influence of this trait"
+            title="Turn this down"
           >
             Apply less
           </Button>
@@ -266,7 +266,11 @@ function BuildProfileCTA({ onBuild }: { onBuild: () => Promise<void> }) {
     try {
       await onBuild();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Build failed.');
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'The profile build failed — your books are untouched. Try again.'
+      );
       setRunning(false);
     }
   }
@@ -279,7 +283,7 @@ function BuildProfileCTA({ onBuild }: { onBuild: () => Promise<void> }) {
         seconds and needs your Anthropic API key.
       </p>
       <Button loading={running} onClick={handle}>
-        {running ? 'Building profile...' : 'Build Profile'}
+        {running ? 'Building profile…' : 'Build profile'}
       </Button>
       {error && <p className="text-sm text-danger">{error}</p>}
     </Card>
@@ -315,7 +319,7 @@ function TraitsSection({
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-lg font-semibold text-text">Taste Traits</h2>
+          <h2 className="font-display text-lg font-semibold text-text">Taste traits</h2>
           <p className="mt-0.5 text-xs text-faint">
             Claude inferred these from your ratings. Click any trait to reword it.
           </p>
@@ -336,7 +340,7 @@ function TraitsSection({
       {traits.length === 0 ? (
         <BuildProfileCTA onBuild={onBuildProfile} />
       ) : visible.length === 0 ? (
-        <p className="py-10 text-center text-faint">No traits match this filter.</p>
+        <p className="py-10 text-center text-faint">Nothing under this filter.</p>
       ) : (
         <div className="space-y-3">
           {visible.map((t) => (
@@ -357,7 +361,7 @@ function RatingSection({ stats }: { stats: Stats }) {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="font-display text-lg font-semibold text-text">Rating Distribution</h2>
+        <h2 className="font-display text-lg font-semibold text-text">Rating distribution</h2>
         <p className="mt-0.5 text-xs text-faint">
           {total} rated book{total !== 1 ? 's' : ''}{' '}
           {stats.mean_rating != null ? `· mean ${stats.mean_rating.toFixed(2)}` : ''}
@@ -411,7 +415,7 @@ function GenreSection({ subjects }: { subjects: SubjectBreakdown }) {
     <section className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-lg font-semibold text-text">Genre Breakdown</h2>
+          <h2 className="font-display text-lg font-semibold text-text">Genre breakdown</h2>
           <p className="mt-0.5 text-xs text-faint">
             Subjects from enriched catalog data across your rated books.
           </p>

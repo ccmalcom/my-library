@@ -68,7 +68,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
   return (
     <input
       type="search"
-      placeholder="Search title or author..."
+      placeholder="Search title or author\u2026"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={[
@@ -179,7 +179,7 @@ function ReadTab({ books }: { books: Book[] }) {
         </p>
         {unrated.length > 0 && (
           <Button variant="secondary" size="sm" onClick={startReviewQueue} className="mt-3">
-            {unrated.length} book{unrated.length !== 1 ? 's' : ''} missing reviews
+            {unrated.length} book{unrated.length !== 1 ? 's' : ''} waiting on a rating
           </Button>
         )}
       </div>
@@ -209,7 +209,7 @@ function ReadTab({ books }: { books: Book[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="py-12 text-center text-faint">No books match your filters.</p>
+        <p className="py-12 text-center text-faint">Nothing matches those filters.</p>
       ) : (
         <ul className="divide-y divide-hairline">
           {filtered.map((book) => (
@@ -356,7 +356,7 @@ function ToReadTab({ books }: { books: Book[] }) {
       void mutate(DNF_KEY);
       if (thenReview) setReviewing(book);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Failed to move book.');
+      setActionError(e instanceof Error ? e.message : "Couldn't move that book. Try again.");
     } finally {
       setBusyId(null);
     }
@@ -369,7 +369,7 @@ function ToReadTab({ books }: { books: Book[] }) {
       await api.removeBook(book.id);
       await mutate(TO_READ_KEY);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Failed to remove book.');
+      setActionError(e instanceof Error ? e.message : "Couldn't remove it. Try again.");
     } finally {
       setBusyId(null);
     }
@@ -378,7 +378,7 @@ function ToReadTab({ books }: { books: Book[] }) {
   if (books.length === 0) {
     return (
       <div className="py-16 text-center text-faint">
-        Your to-read shelf is empty. Accept some recommendations to fill it!
+        Your to-read shelf is empty. Swipe right on something.
       </div>
     );
   }
@@ -393,7 +393,9 @@ function ToReadTab({ books }: { books: Book[] }) {
       {actionError && <p className="text-sm text-danger">{actionError}</p>}
 
       {filtered.length === 0 ? (
-        <p className="py-12 text-center text-faint">No books match your search.</p>
+        <p className="py-12 text-center text-faint">
+          No matches. Check the spelling, or add it with + Add book.
+        </p>
       ) : (
         <ul className="space-y-3">
           {filtered.map((book) => {
@@ -511,7 +513,7 @@ function CurrentlyReadingTab({ books }: { books: Book[] }) {
       void mutate(DNF_KEY);
       if (thenReview) setReviewing(book);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Failed to move book.');
+      setActionError(e instanceof Error ? e.message : "Couldn't move that book. Try again.");
     } finally {
       setBusyId(null);
     }
@@ -535,7 +537,9 @@ function CurrentlyReadingTab({ books }: { books: Book[] }) {
       {actionError && <p className="text-sm text-danger">{actionError}</p>}
 
       {filtered.length === 0 ? (
-        <p className="py-12 text-center text-faint">No books match your search.</p>
+        <p className="py-12 text-center text-faint">
+          No matches. Check the spelling, or add it with + Add book.
+        </p>
       ) : (
         <ul className="space-y-3">
           {filtered.map((book) => {
@@ -661,7 +665,7 @@ function DnfTab({ books }: { books: Book[] }) {
       void mutate(CURRENTLY_READING_KEY);
       if (thenReview) setReviewing(book);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Failed to move book.');
+      setActionError(e instanceof Error ? e.message : "Couldn't move that book. Try again.");
     } finally {
       setBusyId(null);
     }
@@ -674,7 +678,7 @@ function DnfTab({ books }: { books: Book[] }) {
       await api.removeBook(book.id);
       await mutate(DNF_KEY);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Failed to remove book.');
+      setActionError(e instanceof Error ? e.message : "Couldn't remove it. Try again.");
     } finally {
       setBusyId(null);
       setRemoveArmed(null);
@@ -684,7 +688,8 @@ function DnfTab({ books }: { books: Book[] }) {
   if (books.length === 0) {
     return (
       <div className="py-16 text-center text-faint">
-        No abandoned books yet. Move a book here from Currently Reading or To Read.
+        Nothing abandoned yet. When a book isn&apos;t working, shelve it here guilt-free — quitting
+        is data too.
       </div>
     );
   }
@@ -699,7 +704,9 @@ function DnfTab({ books }: { books: Book[] }) {
       {actionError && <p className="text-sm text-danger">{actionError}</p>}
 
       {filtered.length === 0 ? (
-        <p className="py-12 text-center text-faint">No books match your search.</p>
+        <p className="py-12 text-center text-faint">
+          No matches. Check the spelling, or add it with + Add book.
+        </p>
       ) : (
         <ul className="space-y-3">
           {filtered.map((book) => {
@@ -771,7 +778,7 @@ function DnfTab({ books }: { books: Book[] }) {
                           'transition hover:bg-danger/20 disabled:opacity-50',
                         ].join(' ')}
                       >
-                        {busy ? 'Removing...' : 'Confirm remove'}
+                        {busy ? 'Removing\u2026' : 'Confirm remove'}
                       </button>
                     ) : (
                       <button
@@ -852,7 +859,7 @@ function RejectedTab({ recs }: { recs: Recommendation[] }) {
       await mutate(REJECTED_KEY);
       setEditingNote(null);
     } catch (e) {
-      setNoteError(e instanceof Error ? e.message : 'Failed to save note.');
+      setNoteError(e instanceof Error ? e.message : "That note didn't save. Try again.");
     } finally {
       setSavingNote(false);
     }
@@ -875,7 +882,11 @@ function RejectedTab({ recs }: { recs: Recommendation[] }) {
     });
 
   if (recs.length === 0) {
-    return <div className="py-16 text-center text-faint">No rejected recommendations yet.</div>;
+    return (
+      <div className="py-16 text-center text-faint">
+        No skipped picks yet. When you swipe left, they land here.
+      </div>
+    );
   }
 
   return (
@@ -949,8 +960,9 @@ function RejectedTab({ recs }: { recs: Recommendation[] }) {
               {editingNote.user_note ? 'Edit rejection note' : 'Add rejection note'}
             </h2>
             <p className="text-sm text-muted">
-              Why did you skip <span className="font-semibold text-text">{editingNote.title}</span>?
-              This helps the recommender learn your taste.
+              Why&apos;d you skip{' '}
+              <span className="font-semibold text-text">{editingNote.title}</span>? Your reason
+              feeds the next batch directly.
             </p>
             <textarea
               aria-label="Rejection note"
@@ -961,7 +973,7 @@ function RejectedTab({ recs }: { recs: Recommendation[] }) {
                 'resize-none',
               ].join(' ')}
               rows={3}
-              placeholder="e.g. Not a fan of this genre, already read something similar..."
+              placeholder="e.g. Not my genre · read three of these already · author fatigue"
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               autoFocus
@@ -1034,9 +1046,9 @@ function LibraryInner() {
 
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: 'read', label: 'Read', count: readBooks.length },
-    { id: 'currently-reading', label: 'Currently Reading', count: currentlyReadingBooks.length },
-    { id: 'to-read', label: 'To Read', count: toReadBooks.length },
-    { id: 'did-not-finish', label: 'Did Not Finish', count: dnfBooks.length },
+    { id: 'currently-reading', label: 'Currently reading', count: currentlyReadingBooks.length },
+    { id: 'to-read', label: 'To read', count: toReadBooks.length },
+    { id: 'did-not-finish', label: 'Did not finish', count: dnfBooks.length },
     { id: 'rejected', label: 'Rejected', count: rejectedRecs.length },
   ];
 
@@ -1050,7 +1062,7 @@ function LibraryInner() {
   return (
     <div className="fade-in space-y-6 py-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-text">My Library</h1>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-text">My library</h1>
         <Button onClick={() => setAdding(true)}>+ Add book</Button>
       </div>
 
@@ -1115,7 +1127,7 @@ export default function LibraryPage() {
     <Suspense
       fallback={
         <div className="fade-in space-y-6 py-6">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-text">My Library</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-text">My library</h1>
           <div className="space-y-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div

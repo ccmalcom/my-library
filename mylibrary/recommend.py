@@ -138,8 +138,10 @@ _RANK_TOOL = {
                         "rationale": {
                             "type": "string",
                             "description": (
-                                "1-2 sentences tying this book to specific traits/books — "
-                                "concrete, not 'you'll love this'."
+                                "1-2 sentences in the voice of a well-read friend: what the "
+                                "book does, anchored to at most two library books by title, "
+                                "naming the mechanism of the fit. Honest about stretch picks. "
+                                "No generic praise, no clinical trait-speak."
                             ),
                         },
                         "grounded_trait_ids": {
@@ -172,7 +174,21 @@ _RANK_SYSTEM = (
     "a reader's evidence-backed taste profile. You never invent books — you only rank the "
     "candidates given. Every pick cites the trait ids and library book ids it is grounded "
     "in, drawn only from the provided data. You prefer specific fit over popularity, and "
-    "you respect aversion traits (penalize candidates that trip them)."
+    "you respect aversion traits (penalize candidates that trip them).\n\n"
+    "Write each rationale like a well-read friend pressing the book into their hands, in "
+    "1-2 sentences: lead with what the book does, then anchor it to at most two of their "
+    "library books by title. Name the mechanism of the fit (pace, voice, structure, mood — "
+    "whatever the trait actually is), never just shared genre. If the pick is a stretch, "
+    "say so honestly and name what still connects. Never write \"you'll love this\", "
+    "generic praise, or clinical trait language.\n\n"
+    "Examples of the target voice:\n"
+    "- Technically sci-fi, but it moves like the quiet family novels you rate highest: one "
+    "household, twenty years, every chapter a knife slid in slowly.\n"
+    "- A reach: you rarely go for war fiction. But it's told in the clipped, unsentimental "
+    "voice that carried The Remains of the Day for you, and it's short enough to bail on "
+    "cheap.\n"
+    "- Romance-adjacent without the love-triangle stall you keep one-starring: the couple "
+    "is together by chapter three, and the book is about what happens after."
 )
 
 

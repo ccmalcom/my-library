@@ -25,14 +25,14 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 - `/` — dashboard: greeting "Hey, {displayName}." with `text-user`; compact archetype callout badge+name linking to `/profile`; stats strip with numbers in `text-user`; ratings bars in `bg-user`; run-recommend CTA. `--user-accent` is set on the outer wrapper so all `text-user`/`bg-user` tokens pick up the archetype color.
 - `/swipe` — rec swiping. `already_read` lands the book on the read shelf then prompts a review.
 - `/to-read` — per-book: start reading / mark finished → review / remove.
-- `/library` — rated books; click a row to re-rate/review; "N books missing reviews" button steps through unrated read books; **+ Add book** button opens `AddBookModal`.
+- `/library` — rated books; click a row to re-rate/review; "N books waiting on a rating" button steps through unrated read books; **+ Add book** button opens `AddBookModal`.
 - `/profile` — `TasteHero` archetype card at top; taste traits with inline editing, rating distribution, genre breakdown.
 - `/setup` — CSV import wizard plus a no-CSV "add books manually" branch (`ManualStep`). Now a thin wrapper around `components/SetupWizard.tsx`.
 - `/settings` — API key management, **Claude usage this month** panel, + Danger Zone.
   The usage panel (`getUsage` / `USAGE_KEY` SWR call) shows month-to-date spend vs. the
   soft cap as a progress bar, a per-operation cost breakdown (`by_operation`), an
   "Approaching cap" badge when `usage.warn` is true, and a footnote clarifying it's a
-  soft cap for visibility only — recommendations/profiling never stop running.
+  soft cap for visibility only — recommendations and profiling never stop running.
 - `/admin` — admin console (invite/revoke users, view roster). Only reachable by users in the `ADMIN_EMAILS` allowlist; in local mode all users can access it.
 - `/auth/callback` — public (middleware's `PUBLIC_PREFIXES` includes `/auth`) landing page for Supabase invite links. Client-only: parses the session tokens Supabase puts in the URL hash (`lib/authCallback.ts`) and establishes the session via `supabase.auth.setSession(...)`, then prompts the invited user (no password yet) to set one before hard-reloading into `/`. **It must call `setSession` itself and cannot rely on the client auto-detecting the hash:** `@supabase/ssr` hardcodes `flowType: 'pkce'`, and invite/recovery links use the implicit grant (tokens in the hash), which auth-js refuses to auto-consume under PKCE (`_getSessionFromURL` throws "Not a valid PKCE flow url"). `setSession` ignores `flowType` and persists to the same cookie storage so middleware sees the session. `/login` forwards any invite/recovery hash here as a fallback (see Auth section).
 
