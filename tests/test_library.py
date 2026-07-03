@@ -193,6 +193,108 @@ def test_review_requires_rating():
     assert out["app_review"] == "Loved it."
 
 
+# --- enrichment correction (Wave 3c) ----------------------------------------
+
+
+def test_correct_enrichment_replaces_catalog_fields_only():
+    ingest_csv(SAMPLE_CSV)
+    bid = _book_id("Dune")
+    with session_scope() as session:
+        session.add(Enrichment(
+            book_id=bid, subjects=["Wrong genre"], cover_url="http://wrong/cover.jpg",
+            description="A totally different book's synopsis.",
+            resolution_confidence=0.30, confidence_label="LOW",
+        ))
+
+    from mylibrary.library import correct_enrichment
+
+    correct_enrichment(
+        bid,
+        catalog_source="openlibrary",
+        catalog_id="/works/OL1W",
+        cover_url="http://correct/cover.jpg",
+        subjects=["Science fiction", "Politics"],
+        description="Paul Atreides on the desert planet Arrakis.",
+    )
+
+    with session_scope() as session:
+        book = session.get(Book, bid)
+        enr = book.enrichment
+        assert enr.confidence_label == "CORRECTED"
+        assert enr.resolution_confidence == 1.0
+        assert enr.resolved_source == "openlibrary"
+        assert enr.resolved_id == "/works/OL1W"
+        assert enr.subjects == ["Science fiction", "Politics"]
+        assert enr.cover_url == "http://correct/cover.jpg"
+        assert enr.description == "Paul Atreides on the desert planet Arrakis."
+        # The book's own title/author (the user's data) are untouched.
+        assert book.title == "Dune"
+
+
+def test_correct_enrichment_clears_stale_description_when_pick_has_none():
+    ingest_csv(SAMPLE_CSV)
+    bid = _book_id("Dune")
+    with session_scope() as session:
+        session.add(Enrichment(
+            book_id=bid, description="Wrong synopsis.",
+            resolution_confidence=0.30, confidence_label="LOW",
+        ))
+
+    from mylibrary.library import correct_enrichment
+
+    # The picked Open Library candidate has no description available.
+    correct_enrichment(bid, catalog_source="openlibrary", catalog_id="/works/OL1W")
+
+    with session_scope() as session:
+        assert session.get(Book, bid).enrichment.description is None
+
+
+def test_correct_enrichment_creates_enrichment_row_if_missing():
+    ingest_csv(SAMPLE_CSV)
+    bid = _book_id("Recursion")  # sample CSV rows have no Enrichment row by default
+    from mylibrary.library import correct_enrichment
+
+    correct_enrichment(bid, catalog_source="googlebooks", catalog_id="gb123")
+
+    with session_scope() as session:
+        enr = session.get(Book, bid).enrichment
+        assert enr is not None
+        assert enr.resolved_source == "googlebooks"
+        assert enr.confidence_label == "CORRECTED"
+
+
+def test_correct_enrichment_requires_catalog_source_and_id():
+    ingest_csv(SAMPLE_CSV)
+    bid = _book_id("Dune")
+    from mylibrary.library import correct_enrichment
+
+    with pytest.raises(ValueError):
+        correct_enrichment(bid, catalog_source="", catalog_id="/works/OL1W")
+    with pytest.raises(ValueError):
+        correct_enrichment(bid, catalog_source="openlibrary", catalog_id="")
+
+
+def test_correct_enrichment_missing_book_raises():
+    ingest_csv(SAMPLE_CSV)
+    from mylibrary.library import correct_enrichment
+
+    with pytest.raises(BookNotFoundError):
+        correct_enrichment(999999, catalog_source="openlibrary", catalog_id="/works/OL1W")
+
+
+def test_correct_enrichment_dirties_profile():
+    ingest_csv(SAMPLE_CSV)
+    bid = _book_id("Dune")
+    with session_scope() as session:
+        mark_profiled(session, "full")
+    assert profile_status()["dirty"] is False
+
+    from mylibrary.library import correct_enrichment
+
+    correct_enrichment(bid, catalog_source="openlibrary", catalog_id="/works/OL1W")
+    assert profile_status()["dirty"] is True
+
+
 # --- recommender signal (regression) ---------------------------------------
 
 
