@@ -2,6 +2,16 @@
 
 Trust these instructions. Only search when the information here is incomplete or appears incorrect.
 
+## Suggesting & reviewing changes — do no harm (read first)
+
+A code suggestion that breaks the build is worse than no suggestion. Past review suggestions have silently broken this repo; hold every proposed edit to these rules:
+
+- **Keep suggested edits minimal and syntactically self-contained.** When you touch an object/array literal, config file, or multi-line construct, include the *whole* structure — never drop a key, an opening `[`/`{`, or a closing bracket. (A prior suggestion deleted the `collectCoverageFrom: [` line from `frontend/jest.config.js`, leaving an orphaned array that broke the entire jest suite.) If you can't show a complete, parseable replacement, describe the change in prose instead of emitting a broken patch.
+- **A suggestion is only "done" when it leaves all four validations green** (see Build and validate): `pytest`, `npm run type-check`, `npm test`, `npm run format:check`. If you cannot verify one, say so explicitly — do not assert the change is safe.
+- **Match existing formatting** (Prettier for TS/TSX, the surrounding style for Python). A change that fails `prettier --check` fails the commit via a Stop hook.
+- **Not every bug is a code bug.** Some failures are rooted in deployment env (Railway vars) or the Supabase dashboard (e.g. invite links need `FRONTEND_URL` set *and* `…/auth/callback` on the Auth → Redirect URLs allowlist — no code change fixes a missing allowlist entry). When the root cause is config/infra, flag the config; don't propose a code edit that can't address it.
+- **Prefer surgical over clever.** Don't bundle refactors, renames, or "while I'm here" cleanups into a fix — they widen the blast radius of a wrong suggestion.
+
 ## What this repo is
 
 Personal AI-powered book-analysis engine built on a Goodreads CSV export. Pipeline: ingest → enrich → taste profile → recommend. Exposed as a FastAPI service + Next.js frontend. Deployed: Vercel frontend → Railway (uvicorn) → Supabase Postgres/auth. Local dev uses SQLite with no auth.
@@ -41,11 +51,15 @@ pip install -r requirements.txt
 cd frontend
 npm install          # always before build/type-check
 npm run type-check   # tsc --noEmit — run this to validate TS changes
+npm test             # jest (ts-jest, node env) — pure-logic unit tests in lib/__tests__/
+npm run format:check # prettier — a Stop hook FAILS the turn if this is not clean
 npm run build        # next build
 npm run dev          # dev server at http://localhost:3000
 ```
 
-### No CI/CD workflows exist. Validation = Python tests + TypeScript type-check.
+Put pure, testable logic in a `lib/*.ts` helper with a `lib/__tests__/*.test.ts` beside it (the jest env is `node`, so there is **no DOM** — don't import React/components into tests). `jest.config.js` must stay valid JS or the **entire** suite fails to load.
+
+### No CI/CD workflows exist. Validation = `pytest` + `npm run type-check` + `npm test` + `npm run format:check`. Run all four before proposing a change is complete.
 
 ## Project layout
 
