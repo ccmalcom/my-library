@@ -52,7 +52,7 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
   }
 
   const desc = rec.description;
-  const descShort = desc && desc.length > 180 ? desc.slice(0, 177) + '...' : desc;
+  const descShort = desc && desc.length > 180 ? desc.slice(0, 177) + '…' : desc;
 
   return (
     <motion.div
@@ -146,14 +146,12 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
         )}
 
         {/* Rationale (why for you) */}
-        {rec.rationale && (
-          <div>
-            <p className="mb-1 font-mono text-xs uppercase tracking-widest text-faint">
-              Why for you
-            </p>
-            <p className="text-sm leading-relaxed text-text">{rec.rationale}</p>
-          </div>
-        )}
+        <div>
+          <p className="mb-1 font-mono text-xs uppercase tracking-widest text-faint">Why for you</p>
+          <p className="text-sm leading-relaxed text-text">
+            {rec.rationale || 'Retrieved from your taste profile — no note from the reranker.'}
+          </p>
+        </div>
 
         {/* Matched taste traits */}
         {matchedTraits.length > 0 && (
@@ -164,7 +162,7 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
             <div className="flex flex-wrap gap-1.5">
               {matchedTraits.map((t) => (
                 <Badge key={t.id} variant={t.polarity === 'reward' ? 'accent' : 'warning'}>
-                  {t.claim.length > 40 ? t.claim.slice(0, 38) + '...' : t.claim}
+                  {t.claim.length > 40 ? t.claim.slice(0, 38) + '…' : t.claim}
                 </Badge>
               ))}
             </div>

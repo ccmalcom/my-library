@@ -131,7 +131,7 @@ export default function ImportModal({
           />
           <BookOpen className="mx-auto mb-2 h-10 w-10 text-faint" />
           <p className="font-medium text-text">Drop a CSV here, or click to browse</p>
-          <p className="mt-1 text-xs text-faint">StoryGraph, Calibre, LibraryThing, ...</p>
+          <p className="mt-1 text-xs text-faint">StoryGraph, Calibre, LibraryThing, …</p>
         </label>
       )}
 
@@ -139,7 +139,7 @@ export default function ImportModal({
         <div className="flex-1 overflow-y-auto">
           <p className="mb-3 text-sm text-muted">
             Detected: <span className="font-medium text-text">{FORMAT_LABEL[preview.format]}</span>
-            {' - '}
+            {' — '}
             {preview.headers.length} columns.
           </p>
 
@@ -159,7 +159,7 @@ export default function ImportModal({
                     onChange={(e) => setMapping((m) => ({ ...m, [field]: e.target.value }))}
                     className={selectClass}
                   >
-                    <option value="">- none -</option>
+                    <option value="">— none —</option>
                     {preview.headers.map((h) => (
                       <option key={h} value={h}>
                         {h}
@@ -181,7 +181,7 @@ export default function ImportModal({
         </Button>
         {preview && (
           <Button onClick={handleImport} loading={busy} disabled={!canImport || busy}>
-            {busy ? 'Importing...' : 'Import'}
+            {busy ? 'Importing…' : 'Import'}
           </Button>
         )}
       </div>

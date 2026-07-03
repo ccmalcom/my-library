@@ -27,7 +27,7 @@ function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
       <div className="rounded-2xl border border-border bg-surface p-6 space-y-5">
         <div>
           <h2 id={titleId} className="font-display text-xl font-bold text-text">
-            Your Reader Type
+            Your reader type
           </h2>
           <p className="mt-1 text-sm text-muted">
             A personality system for readers, based on four reading axes.
@@ -69,7 +69,7 @@ function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
                   {letters}
                 </span>
                 <div>
-                  <span className="font-semibold text-text">{name} -- </span>
+                  <span className="font-semibold text-text">{name} — </span>
                   <span className="text-muted">{desc}</span>
                 </div>
               </div>
@@ -77,13 +77,14 @@ function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <p className="text-muted">
-            The four letters combine into one of 16 named archetypes -- from The Wandering Escapist
+            The four letters combine into one of 16 named archetypes — from The Wandering Escapist
             to The Cerebral Architect. Your code is derived from your actual rated books and taste
             traits, so it should feel like you.
           </p>
 
           <p className="text-faint text-xs">
-            Not feeling it? Re-derive after updating your taste profile and it may shift.
+            Doesn&apos;t feel like you? Correct your traits and re-derive — the code follows the
+            evidence.
           </p>
         </div>
 
@@ -185,7 +186,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       const result = await api.deriveArchetype();
       await mutate(ARCHETYPE_KEY, result, { revalidate: false });
     } catch {
-      toast.error('Failed to derive archetype');
+      toast.error("Couldn't derive your archetype. Try again in a moment.");
     } finally {
       setDeriving(false);
     }
@@ -197,7 +198,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       const result = await api.deriveArchetype();
       await mutate(ARCHETYPE_KEY, result, { revalidate: false });
     } catch {
-      toast.error('Could not re-derive archetype');
+      toast.error("Re-derive didn't take. Try again.");
     } finally {
       setRederiving(false);
     }
@@ -232,7 +233,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       >
         {explainerOpen && <ArchetypeExplainerModal onClose={() => setExplainerOpen(false)} />}
         <div className="flex items-center gap-3 mb-3">
-          <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader Type</p>
+          <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader type</p>
           <button
             type="button"
             onClick={() => setExplainerOpen(true)}
@@ -250,7 +251,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
           MyLibrary doesn&apos;t know you yet.
         </h1>
         <p className="mt-4 text-muted text-sm max-w-sm mx-auto">
-          Build your taste profile and discover your reader type.
+          Build your taste profile and find out what your shelf says about you.
         </p>
         <Link
           href="/profile"
@@ -276,7 +277,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       >
         {explainerOpen && <ArchetypeExplainerModal onClose={() => setExplainerOpen(false)} />}
         <div className="flex items-center gap-3 mb-3">
-          <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader Type</p>
+          <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader type</p>
           <button
             type="button"
             onClick={() => setExplainerOpen(true)}
@@ -294,8 +295,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
           What kind of reader are you?
         </h1>
         <p className="mt-4 text-muted text-sm max-w-sm mx-auto">
-          We&apos;ll analyze your taste profile to place you on four reading axes and find your
-          archetype.
+          Four axes, sixteen archetypes. Your rated books already know the answer.
         </p>
         <Button variant="primary" loading={deriving} onClick={handleDiscover} className="mt-6">
           Discover your reader type
@@ -311,7 +311,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       className={['rounded-2xl border border-border bg-surface', padClass].join(' ')}
     >
       <div className="flex items-center gap-3 mb-3">
-        <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader Type</p>
+        <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader type</p>
         <button
           type="button"
           onClick={() => setExplainerOpen(true)}
@@ -348,7 +348,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
           {chipTraits.map((t) => {
             const truncated = t.claim.length > 60;
             const isExpanded = expandedChip === t.id;
-            const chipLabel = truncated && !isExpanded ? t.claim.slice(0, 57) + '...' : t.claim;
+            const chipLabel = truncated && !isExpanded ? t.claim.slice(0, 57) + '…' : t.claim;
             return (
               <button
                 key={t.id}
@@ -409,7 +409,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
         <div>
           {archetype.is_stale && (
             <span className="text-xs text-warning">
-              Profile updated -- archetype may be outdated.
+              Profile changed — this archetype may be stale. Re-derive when ready.
             </span>
           )}
         </div>

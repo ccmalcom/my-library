@@ -85,7 +85,7 @@ export default function LoginPage() {
           {error && <p className="text-sm text-danger">{error}</p>}
 
           <Button type="submit" size="lg" loading={loading} className="w-full">
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
 

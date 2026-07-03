@@ -21,20 +21,23 @@ export default function ReprofileBanner() {
       await api.updateProfile();
       await mutate();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Re-profile failed.');
+      setError(
+        e instanceof Error
+          ? e.message
+          : "The update didn't finish. Your current profile still stands — try again."
+      );
     } finally {
       setRunning(false);
     }
   }
 
-  const n = status.changed_books;
-
   return (
     <div className="border-b border-warning/30 bg-warning/10">
       <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-2.5">
         <p className="text-sm text-warning">
-          <span className="font-semibold">Taste profile out of date.</span> {n} book
-          {n !== 1 ? 's' : ''} changed since the last build.
+          <span className="font-semibold">Your taste has new evidence.</span> Ratings and edits
+          since the last build aren&apos;t in your profile yet. Re-profile to fold them in — one
+          Claude call, when you choose.
           {error && <span className="ml-2 text-danger">{error}</span>}
         </p>
         <button
@@ -50,7 +53,7 @@ export default function ReprofileBanner() {
           ].join(' ')}
         >
           {running && <Spinner size="sm" />}
-          {running ? 'Re-profiling...' : 'Re-profile'}
+          {running ? 'Updating…' : 'Update profile'}
         </button>
       </div>
     </div>

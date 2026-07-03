@@ -26,7 +26,7 @@ interface IngestResult {
 
 const CSV_STEPS: { key: Step; label: string }[] = [
   { key: 'name', label: 'Your name' },
-  { key: 'api-key', label: 'API Key' },
+  { key: 'api-key', label: 'API key' },
   { key: 'upload', label: 'Upload' },
   { key: 'enrich', label: 'Enrich' },
   { key: 'profile', label: 'Profile' },
@@ -34,7 +34,7 @@ const CSV_STEPS: { key: Step; label: string }[] = [
 ];
 const MANUAL_STEPS: { key: Step; label: string }[] = [
   { key: 'name', label: 'Your name' },
-  { key: 'api-key', label: 'API Key' },
+  { key: 'api-key', label: 'API key' },
   { key: 'manual', label: 'Add books' },
   { key: 'profile', label: 'Profile' },
   { key: 'done', label: 'Done' },
@@ -147,9 +147,7 @@ function NameStep({ onDone }: { onDone: () => void }) {
     <div className="space-y-6">
       <div>
         <h2 className="mb-1 text-xl font-semibold text-text">What should we call you?</h2>
-        <p className="text-sm text-muted">
-          Your name personalizes the app. You can change it anytime in Settings.
-        </p>
+        <p className="text-sm text-muted">Just for the greeting. Change it anytime in settings.</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-4">
@@ -175,7 +173,7 @@ function NameStep({ onDone }: { onDone: () => void }) {
           disabled={saving || !name.trim()}
           className="w-full"
         >
-          {saving ? 'Saving...' : 'Continue'}
+          {saving ? 'Saving…' : 'Continue'}
         </Button>
       </form>
     </div>
@@ -232,13 +230,13 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
       <div>
         <h2 className="mb-1 text-xl font-semibold text-text">Add your Anthropic API key</h2>
         <p className="text-sm text-muted">
-          MyLibrary uses Claude to build your taste profile and generate recommendations. An API key
-          is required before you can complete setup.
+          MyLibrary runs on Claude — it reads your ratings to build a taste profile and find your
+          next books. That takes an API key.
         </p>
       </div>
 
       <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning space-y-1">
-        <p>Profile and recommendations will not work without a key.</p>
+        <p>Without a key, MyLibrary can shelve your books but can&apos;t think about them.</p>
         <p>
           Get one at{' '}
           <a
@@ -268,11 +266,11 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
             className={[inputClass, 'font-mono'].join(' ')}
           />
           <p className="mt-1 text-xs text-faint">
-            Stored encrypted on the server and never shown again. Manage it later in Settings.
+            Encrypted on the server, never shown again. Manage it in settings.
           </p>
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}
-        {saved && <p className="text-sm text-success">Key saved - continuing...</p>}
+        {saved && <p className="text-sm text-success">Key saved — moving on.</p>}
         <Button
           type="submit"
           size="lg"
@@ -280,7 +278,7 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
           disabled={saving || !key.trim() || saved}
           className="w-full"
         >
-          {saving ? 'Saving...' : 'Save key & continue'}
+          {saving ? 'Saving…' : 'Save key & continue'}
         </Button>
       </form>
     </div>
@@ -304,7 +302,10 @@ function UploadStep({
   function handleFile(f: File | null | undefined) {
     if (!f) return;
     if (!f.name.toLowerCase().endsWith('.csv')) {
-      setError('Please select a .csv file exported from Goodreads or The StoryGraph.');
+      setError(
+        "That's not a .csv — export one from Goodreads (My Books › Import/Export) or The " +
+          'StoryGraph and try again.'
+      );
       return;
     }
     setFile(f);
@@ -324,7 +325,7 @@ function UploadStep({
       const msg = err instanceof Error ? err.message : 'Upload failed.';
       setError(
         msg.includes('422')
-          ? 'We could not detect that file format. After setup, use Settings > Import to map columns manually.'
+          ? "We couldn't read that format. Finish setup, then use Settings → Import to map the columns yourself."
           : msg
       );
       setLoading(false);
@@ -366,7 +367,7 @@ function UploadStep({
           <div className="space-y-1">
             <p className="font-medium text-success">{file.name}</p>
             <p className="text-xs text-faint">
-              {(file.size / 1024).toFixed(0)} KB - click to change
+              {(file.size / 1024).toFixed(0)} KB — click to change
             </p>
           </div>
         ) : (
@@ -388,7 +389,7 @@ function UploadStep({
           disabled={!file || loading}
           className="w-full"
         >
-          {loading ? 'Importing...' : 'Import Library'}
+          {loading ? 'Importing…' : 'Import library'}
         </Button>
       </form>
 
@@ -407,7 +408,7 @@ function UploadStep({
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base',
         ].join(' ')}
       >
-        I don&apos;t have a Goodreads export - add books manually
+        No export? Add books by hand
       </button>
     </div>
   );
@@ -431,15 +432,17 @@ function ManualStep({ onDone }: { onDone: () => void }) {
       <div>
         <h2 className="mb-1 text-xl font-semibold text-text">Build your starter library</h2>
         <p className="text-sm text-muted">
-          Add a few books you&apos;ve read and rate them. Even five or six rated favorites give the
-          taste profile enough to work with - you can always add more later.
+          Add a handful of books you&apos;ve read and rate them. Five or six favorites are enough to
+          start reading you — add the rest whenever.
         </p>
       </div>
 
       {books.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-elevated/40 p-8 text-center">
           <BookOpen className="mb-2 h-8 w-8 text-faint" />
-          <p className="text-sm text-muted">No books yet. Add your first one to get started.</p>
+          <p className="text-sm text-muted">
+            Empty shelf. Add the first book — the one you&apos;d make everyone read.
+          </p>
         </div>
       ) : (
         <ul className="space-y-2">
@@ -557,24 +560,24 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
 
   const running = status === 'pending' || status === 'running';
   const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
-  const progressLabel = total > 0 ? `${progress} / ${total} books (${pct}%)` : 'Starting...';
+  const progressLabel = total > 0 ? `${progress} / ${total} books (${pct}%)` : 'Starting…';
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="mb-1 text-xl font-semibold text-text">Enrich your library</h2>
         <p className="text-sm text-muted">
-          Imported <strong className="text-text">{ingestResult.inserted}</strong> books
-          {ingestResult.skipped > 0 && ` (${ingestResult.skipped} already existed)`}. Enrichment
-          fetches covers, page counts, and genres from Open Library and Google Books. Takes{' '}
-          <strong className="text-text">5-10 minutes</strong> for a typical library.
+          <strong className="text-text">{ingestResult.inserted}</strong> books in
+          {ingestResult.skipped > 0 && ` (${ingestResult.skipped} already existed)`}. Now we fetch
+          what the CSV left out — covers, page counts, genres — from Open Library and Google Books.
+          About <strong className="text-text">5–10 minutes</strong> for a typical library.
         </p>
       </div>
 
       <div className="rounded-xl border border-border bg-elevated p-4 text-sm text-muted space-y-1.5">
-        <p>Finds book covers and metadata from public catalogs</p>
-        <p>Required before running AI recommendations</p>
-        <p>Resumable - if interrupted, re-runs pick up where they left off</p>
+        <p>Pulls covers and metadata from public catalogs</p>
+        <p>Recommendations need this done first</p>
+        <p>Safe to interrupt — it resumes where it stopped</p>
       </div>
 
       {running && (
@@ -583,8 +586,8 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
             <Spinner size="sm" className="mt-0.5 shrink-0" />
             <span>
               {status === 'pending'
-                ? 'Job queued - starting shortly...'
-                : 'Fetching metadata from Open Library and Google Books...'}
+                ? 'Queued — starting shortly…'
+                : 'Fetching covers and metadata… your shelf is getting dressed.'}
             </span>
           </div>
           {total > 0 && (
@@ -608,7 +611,7 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
 
       {!running && !jobId && (
         <Button size="lg" className="w-full" onClick={() => void handleEnrich()}>
-          Enrich Now
+          Enrich now
         </Button>
       )}
 
@@ -623,7 +626,7 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
             void handleEnrich();
           }}
         >
-          Retry Enrichment
+          Retry enrichment
         </Button>
       )}
     </div>
@@ -657,8 +660,8 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
       <div>
         <h2 className="mb-1 text-xl font-semibold text-text">Build your taste profile</h2>
         <p className="text-sm text-muted">
-          Claude analyzes your rated books to create taste traits that power recommendations.
-          Usually takes 30-60 seconds.
+          This is the good part: Claude reads every rating and review you just imported and works
+          out what you actually like. 30–60 seconds.
         </p>
       </div>
 
@@ -671,7 +674,7 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
       {loading && (
         <div className="flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-quiet p-4 text-sm text-accent">
           <Spinner size="sm" className="mt-0.5 shrink-0" />
-          <span>Analyzing your ratings and building your profile...</span>
+          <span>Reading between your ratings…</span>
         </div>
       )}
 
@@ -684,7 +687,7 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
         className="w-full"
         onClick={handleProfile}
       >
-        {loading ? 'Building profile...' : 'Build Profile'}
+        {loading ? 'Building profile…' : 'Build my profile'}
       </Button>
     </div>
   );
@@ -709,24 +712,23 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
   return (
     <>
       <div className="space-y-6 text-center">
-        <div className="text-6xl">&#x1F389;</div>
         <div>
-          <h2 className="mb-2 text-2xl font-bold text-text">You&apos;re all set!</h2>
+          <h2 className="mb-2 text-2xl font-bold text-text">Your library is in.</h2>
           <p className="text-sm text-muted">
             {profiled
-              ? 'Your library is ready and your taste profile is built. Head to the dashboard to run your first AI recommendations.'
-              : 'Your library is ready. Build your taste profile before requesting recommendations.'}
+              ? 'Books shelved, taste profiled. Time to see what it found for you.'
+              : 'Books are shelved. Build your taste profile next — recommendations need it.'}
           </p>
         </div>
 
         {!profiled && (
           <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning text-left">
-            Recommendations need a taste profile first. Go to My Profile to build it.
+            Recommendations need a taste profile first. Go to My profile to build it.
           </div>
         )}
 
         <Button size="lg" className="w-full" onClick={handleFinish}>
-          Go to Dashboard
+          Take me home
         </Button>
       </div>
       {modal}
@@ -753,7 +755,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
           </h1>
           <p className="mt-1 text-sm text-muted">
             {step === 'name' || step === 'api-key'
-              ? 'A few quick steps to get you started.'
+              ? 'Five minutes, and it starts knowing your taste.'
               : path === 'manual'
                 ? "Let's build your starter library."
                 : "Let's get your reading history imported."}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { api } from '@/lib/api';
 import { Button, Modal, useToast } from '@/components/ui';
@@ -51,10 +51,10 @@ function TargetedModal({ trigger, runId, heading, onClose }: TargetedModalProps)
         page: typeof window !== 'undefined' ? window.location.pathname : null,
         app_version: process.env.NEXT_PUBLIC_APP_VERSION ?? 'unknown',
       });
-      toast.success('Thanks for your feedback!');
+      toast.success('Got it — thank you. This is exactly how the beta gets better.');
       onClose();
     } catch {
-      toast.error('Failed to submit - please try again.');
+      toast.error("That didn't send. Try again in a moment.");
       setSubmitting(false);
     }
   }
@@ -111,7 +111,7 @@ function TargetedModal({ trigger, runId, heading, onClose }: TargetedModalProps)
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={5}
-          placeholder="Please share your thoughts..."
+          placeholder="Rough edges, wrong recommendations, small joys — all useful."
           disabled={submitting}
           className={[inputClass, 'resize-y disabled:opacity-50 disabled:cursor-not-allowed'].join(
             ' '
@@ -164,10 +164,12 @@ export function useFeedbackPrompt(trigger: string, runId?: string): UseFeedbackP
   const [open, setOpen] = useState(false);
 
   // Reset guard when runId changes (new rec run)
-  if (runId !== lastRunId.current) {
-    lastRunId.current = runId;
-    firedRef.current = false;
-  }
+  useEffect(() => {
+    if (runId !== lastRunId.current) {
+      lastRunId.current = runId;
+      firedRef.current = false;
+    }
+  }, [runId]);
 
   const fire = useCallback(() => {
     if (firedRef.current) return;

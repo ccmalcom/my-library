@@ -66,7 +66,7 @@ export default function SwipePage() {
           setReviewing(result.book);
         }
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Failed to save decision.');
+        toast.error(e instanceof Error ? e.message : "That verdict didn't save. Try it again.");
         setDismissed((prev) => {
           const next = new Set(prev);
           next.delete(recId);
@@ -129,7 +129,7 @@ export default function SwipePage() {
       <div className="fade-in flex items-center justify-center py-24">
         <div className="text-center space-y-3">
           <Spinner size="lg" />
-          <p className="text-muted text-sm">Loading recommendations...</p>
+          <p className="text-muted text-sm">Fetching your picks…</p>
         </div>
       </div>
     );
@@ -138,7 +138,7 @@ export default function SwipePage() {
   if (recsError) {
     return (
       <div className="fade-in py-12 text-center">
-        <p className="text-danger">Failed to load recommendations.</p>
+        <p className="text-danger">Your picks didn&apos;t load. Refresh to retry.</p>
         <p className="mt-1 text-sm text-faint">{String(recsError)}</p>
       </div>
     );
@@ -148,9 +148,9 @@ export default function SwipePage() {
     return (
       <div className="fade-in py-20 text-center space-y-4">
         <Inbox className="mx-auto h-12 w-12 text-faint" />
-        <h2 className="text-xl font-display font-semibold text-text">No recommendations yet</h2>
-        <p className="text-muted">Go to the home page and run a recommendation batch first.</p>
-        <Button onClick={() => router.push('/')}>Back to Home</Button>
+        <h2 className="text-xl font-display font-semibold text-text">Nothing to swipe yet</h2>
+        <p className="text-muted">Run a batch from the home page and come back.</p>
+        <Button onClick={() => router.push('/')}>Back to home</Button>
       </div>
     );
   }
@@ -160,9 +160,13 @@ export default function SwipePage() {
       <>
         <div className="fade-in py-20 text-center space-y-4">
           <Sparkles className="mx-auto h-12 w-12 text-accent" />
-          <h2 className="text-xl font-display font-semibold text-text">All done!</h2>
-          <p className="text-muted">You reviewed all {total.length} recommendations.</p>
-          <Button onClick={() => router.push('/library?tab=to-read')}>View To-Read Shelf</Button>
+          <h2 className="text-xl font-display font-semibold text-text">That&apos;s the batch.</h2>
+          <p className="text-muted">
+            All {total.length} picks reviewed — your verdicts are already sharpening the next run.
+          </p>
+          <Button onClick={() => router.push('/library?tab=to-read')}>
+            See your to-read shelf
+          </Button>
         </div>
         {reviewing && (
           <BookEditModal
@@ -316,9 +320,11 @@ export default function SwipePage() {
           className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl"
         >
           <p id="reject-reason-title" className="mb-1 text-sm font-semibold text-text">
-            Why not interested?
+            What missed?
           </p>
-          <p className="mb-4 text-xs text-faint">Optional -- helps improve recommendations.</p>
+          <p className="mb-4 text-xs text-faint">
+            Optional — every reason makes the next batch smarter.
+          </p>
           <div className="flex flex-wrap gap-2">
             {Object.entries(REJECT_REASONS).map(([key, label]) => {
               const active = selectedReasons.has(key);

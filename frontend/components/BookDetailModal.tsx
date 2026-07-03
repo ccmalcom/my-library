@@ -97,7 +97,7 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
           {book.description ? (
             <p className="text-sm leading-relaxed text-muted">{book.description}</p>
           ) : (
-            <p className="text-sm text-faint italic">No description available.</p>
+            <p className="text-sm text-faint italic">No description on file for this one.</p>
           )}
         </div>
 
@@ -170,7 +170,7 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
                 'transition hover:bg-danger/20 disabled:opacity-50',
               ].join(' ')}
             >
-              {busy ? 'Removing...' : 'Confirm remove'}
+              {busy ? 'Removing…' : 'Confirm remove'}
             </button>
           ) : (
             <button

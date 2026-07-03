@@ -40,7 +40,9 @@ function DangerAction({
       await onRun();
       setConfirming(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong.');
+      setError(
+        e instanceof Error ? e.message : 'Something went wrong. Nothing was changed — try again.'
+      );
     } finally {
       setRunning(false);
     }
@@ -65,7 +67,7 @@ function DangerAction({
               Cancel
             </Button>
             <Button variant="danger" size="sm" loading={running} onClick={handleConfirm}>
-              {running ? 'Working...' : 'Yes, do it'}
+              {running ? 'Working…' : "I'm sure — do it"}
             </Button>
           </>
         ) : (
@@ -131,7 +133,7 @@ export default function SettingsPage() {
       const blob = await api.exportLibrary(format);
       const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       downloadBlob(blob, `mylibrary-backup-${stamp}.${format}`);
-      toast.success('Backup downloaded.');
+      toast.success('Backup downloaded — your ratings and reviews are in it.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Export failed.');
     } finally {
@@ -286,7 +288,7 @@ export default function SettingsPage() {
               />
             </div>
             <Button type="submit" loading={nameSaving} disabled={nameSaving || !nameInput.trim()}>
-              {nameSaving ? 'Saving...' : 'Save name'}
+              {nameSaving ? 'Saving…' : 'Save name'}
             </Button>
           </form>
         </Card>
@@ -333,7 +335,7 @@ export default function SettingsPage() {
                 loading={emailSaving}
                 disabled={emailSaving || !emailCurrentPassword || !newEmail.trim()}
               >
-                {emailSaving ? 'Saving...' : 'Update email'}
+                {emailSaving ? 'Saving…' : 'Update email'}
               </Button>
             </form>
           </Card>
@@ -400,7 +402,7 @@ export default function SettingsPage() {
                   newPassword !== confirmPassword
                 }
               >
-                {passwordSaving ? 'Saving...' : 'Update password'}
+                {passwordSaving ? 'Saving…' : 'Update password'}
               </Button>
             </form>
           </Card>
@@ -451,7 +453,7 @@ export default function SettingsPage() {
 
             <div className="flex items-center gap-2">
               <Button type="submit" loading={saving} disabled={saving || !key.trim()}>
-                {saving ? 'Saving...' : 'Save key'}
+                {saving ? 'Saving…' : 'Save key'}
               </Button>
               {configured && (
                 <Button type="button" variant="ghost" onClick={handleRemove} disabled={saving}>
@@ -546,8 +548,7 @@ export default function SettingsPage() {
               )}
 
               <p className="mt-4 text-xs text-faint">
-                This is a soft cap for spend visibility only — recommendations and profiling never
-                stop running.
+                A soft cap for visibility only — recommendations and profiling never stop running.
               </p>
             </>
           ) : (
@@ -566,7 +567,7 @@ export default function SettingsPage() {
         <div className="space-y-3">
           <DangerAction
             title="Reset taste profile"
-            description="Deletes your taste traits and recommendations. Your books stay - rebuild the profile anytime."
+            description="Deletes your taste traits and recommendations. Your books stay put — rebuild anytime."
             buttonLabel="Reset profile"
             onRun={async () => {
               await api.clearProfile();
@@ -580,7 +581,7 @@ export default function SettingsPage() {
 
           <DangerAction
             title="Clear library"
-            description="Deletes every book, its enrichment, and your taste profile - back to a clean first-setup state."
+            description="Deletes every book, all enrichment, and your taste profile — a factory reset for your library."
             buttonLabel="Clear library"
             onRun={async () => {
               await api.clearLibrary();
