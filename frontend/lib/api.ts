@@ -189,6 +189,7 @@ export interface CatalogResult {
   isbn13: string | null;
   cover_url: string | null;
   subjects: string[] | null;
+  description: string | null;
 }
 
 /** Fields the generic importer can map to (mirrors backend MAPPING_FIELDS). */
@@ -226,6 +227,15 @@ export interface AddBookRequest {
   subjects?: string[] | null;
   catalog_source?: string | null;
   catalog_id?: string | null;
+}
+
+/** Re-point a book's enrichment at a user-picked catalog match (PATCH /books/{id}/enrichment). */
+export interface EnrichmentCorrectionRequest {
+  catalog_source: string;
+  catalog_id: string;
+  cover_url?: string | null;
+  subjects?: string[] | null;
+  description?: string | null;
 }
 
 /** Summary returned by the book mutation endpoints (not a full Book). */
@@ -444,6 +454,13 @@ export const api = {
 
   /** Manually add a book to the library (from a picked catalog result). */
   addBook: (req: AddBookRequest) => post<Book>('/books', req),
+
+  /**
+   * Re-point a book's enrichment at a user-picked catalog match — fixes a
+   * mis-resolved (typically LOW-confidence) match. Wave 3c "fix match" queue.
+   */
+  correctEnrichment: (bookId: number, req: EnrichmentCorrectionRequest) =>
+    patch<Book>(`/books/${bookId}/enrichment`, req),
 
   /** Permanently remove a book from the library. */
   removeBook: (bookId: number) =>
