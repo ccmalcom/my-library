@@ -65,6 +65,32 @@ export interface Recommendation {
   created_at: string;
 }
 
+export interface SimilarBook {
+  rank: number;
+  title: string;
+  author: string | null;
+  year: number | null;
+  isbn13: string | null;
+  cover_url: string | null;
+  subjects: string[] | null;
+  description?: string | null;
+  catalog_source: string | null;
+  catalog_id: string | null;
+  retrieval_pool: string | null;
+  seed_reason: string | null;
+  score: number;
+  rationale: string | null;
+}
+
+export interface SimilarBooksResult {
+  anchor_book_id: number;
+  anchor_title: string;
+  count: number;
+  model: string;
+  seed_queries: string[];
+  recommendations: SimilarBook[];
+}
+
 export interface Trait {
   id: number;
   claim: string;
@@ -355,6 +381,10 @@ export const api = {
   },
 
   recommendations: () => get<Recommendation[]>('/recommendations'),
+
+  /** Ephemeral "more books like this" for one library book (Wave 3a). */
+  similarBooks: (bookId: number, n = 8) =>
+    post<SimilarBooksResult>(`/books/${bookId}/similar`, { n }),
 
   profile: () => get<Trait[]>('/profile'),
 
