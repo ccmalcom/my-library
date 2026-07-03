@@ -99,7 +99,8 @@ class CatalogResult(BaseModel):
     """One hit from the manual add-a-book search (GET /catalog/search).
 
     A real catalog candidate the user can pick; its fields are passed straight back into
-    POST /books so the added book carries the cover/subjects/isbn from the chosen result.
+    POST /books so the added book carries the cover/subjects/isbn from the chosen result,
+    or into PATCH /books/{id}/enrichment to fix a mis-resolved match (Wave 3c).
     """
 
     source: str  # openlibrary | googlebooks
@@ -110,6 +111,7 @@ class CatalogResult(BaseModel):
     isbn13: str | None = None
     cover_url: str | None = None
     subjects: list[str] | None = None
+    description: str | None = None
 
 
 class AddBookRequest(BaseModel):
@@ -131,6 +133,24 @@ class AddBookRequest(BaseModel):
     subjects: list[str] | None = None
     catalog_source: str | None = None
     catalog_id: str | None = None
+
+
+class EnrichmentCorrectionRequest(BaseModel):
+    """Body for PATCH /books/{book_id}/enrichment — re-point a mis-resolved
+    enrichment at a user-picked catalog match (Wave 3c "fix match" queue).
+
+    catalog_source/catalog_id must come from a real GET /catalog/search hit
+    (locked decision: no invented titles) — both are required. The book's own
+    title/author/rating/review are untouched; only catalog-derived enrichment
+    fields are replaced. description is always applied, even None, so a stale
+    wrong synopsis never survives a correction.
+    """
+
+    catalog_source: str
+    catalog_id: str
+    cover_url: str | None = None
+    subjects: list[str] | None = None
+    description: str | None = None
 
 
 class TraitUpdateRequest(BaseModel):

@@ -66,6 +66,7 @@ from .library import (
     BookNotFoundError,
     TasteSignalError,
     add_book,
+    correct_enrichment,
     profile_status,
     record_taste_signal,
     remove_book,
@@ -89,6 +90,7 @@ from .schemas import (
     DiscoverRequest,
     DiscoverResult,
     EnrichJobOut,
+    EnrichmentCorrectionRequest,
     EnrichRequest,
     EnrichStartRequest,
     FeedbackDismiss,
@@ -640,6 +642,7 @@ def search_catalog(
             isbn13=h.get("isbn13"),
             cover_url=h.get("cover_url"),
             subjects=h.get("subjects"),
+            description=h.get("description"),
         )
         for h in hits
         if h.get("title")
@@ -710,6 +713,32 @@ def move_book_shelf(book_id: int, req: ShelfRequest, user_id: UserId) -> dict:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.patch("/books/{book_id}/enrichment", response_model=BookOut)
+def patch_book_enrichment(
+    book_id: int, req: EnrichmentCorrectionRequest, user_id: UserId
+) -> BookOut:
+    """Re-point a mis-resolved (typically LOW-confidence) book's enrichment at a
+    user-picked catalog match. The book's own title/author/rating/review are
+    untouched. Wave 3c "fix match" queue."""
+    try:
+        correct_enrichment(
+            book_id,
+            catalog_source=req.catalog_source,
+            catalog_id=req.catalog_id,
+            cover_url=req.cover_url,
+            subjects=req.subjects,
+            description=req.description,
+            user_id=user_id,
+        )
+    except BookNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    with session_scope() as session:
+        return _book_out(session.get(Book, book_id))
 
 
 @app.delete("/books/{book_id}")
