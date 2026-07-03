@@ -172,7 +172,7 @@ export default function DiscoverPage() {
                       ) : (
                         <>
                           <Plus className="h-3 w-3" />
-                          {addingRank === rec.rank ? 'Adding…' : 'Add to to-read'}
+                          {addingRank === rec.rank ? 'Adding...' : 'Add to to-read'}
                         </>
                       )}
                     </button>
