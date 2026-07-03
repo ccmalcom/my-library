@@ -8,10 +8,10 @@ import { type ArchetypeOut } from '@/lib/api';
 import { tasteAccent } from '@/lib/tasteAccent';
 
 const AXIS_LABELS = [
-  { left: 'Immersive',  right: 'Reflective'      },
-  { left: 'Plot-first', right: 'Character-first'  },
-  { left: 'Broad',      right: 'Deep'             },
-  { left: 'Heart',      right: 'Mind'             },
+  { left: 'Immersive', right: 'Reflective' },
+  { left: 'Plot-first', right: 'Character-first' },
+  { left: 'Broad', right: 'Deep' },
+  { left: 'Heart', right: 'Mind' },
 ];
 
 interface Props {
@@ -20,23 +20,23 @@ interface Props {
 }
 
 export function ArchetypeShareModal({ archetype, onClose }: Props) {
-  const toast    = useToast();
-  const titleId  = 'archetype-share-title';
-  const cardRef  = useRef<HTMLDivElement>(null);
+  const toast = useToast();
+  const titleId = 'archetype-share-title';
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const accentColor = tasteAccent(archetype.code);
 
   // Axis label pairs for the small row below the code
   const axisPairs = AXIS_LABELS.map((a, i) => {
     const letters = [archetype.lens, archetype.engine, archetype.range, archetype.resonance];
-    const letter  = letters[i]!.letter;
-    const label   = letter === a.left[0] ? a.left : a.right;
+    const letter = letters[i]!.letter;
+    const label = letter === a.left[0] ? a.left : a.right;
     return label;
   }).join('  |  ');
 
   async function handleCopyImage() {
     const canvas = document.createElement('canvas');
-    canvas.width  = 800;
+    canvas.width = 800;
     canvas.height = 560;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -107,53 +107,48 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
   }
 
   return (
-    <Modal labelId={titleId} onClose={onClose} className='w-full max-w-md'>
-      <div className='rounded-2xl border border-border bg-surface p-6 space-y-5'>
-        <h2
-          id={titleId}
-          className='font-display text-lg font-bold text-text'
-        >
+    <Modal labelId={titleId} onClose={onClose} className="w-full max-w-md">
+      <div className="rounded-2xl border border-border bg-surface p-6 space-y-5">
+        <h2 id={titleId} className="font-display text-lg font-bold text-text">
           Share your reader type
         </h2>
 
         {/* Share card preview */}
         <div
           ref={cardRef}
-          className='relative overflow-hidden rounded-xl bg-elevated border border-border p-6 text-center'
+          className="relative overflow-hidden rounded-xl bg-elevated border border-border p-6 text-center"
           style={{ minHeight: '220px' }}
         >
           {/* Accent wash */}
           <div
-            className='absolute inset-x-0 top-0 h-16 opacity-[0.14]'
+            className="absolute inset-x-0 top-0 h-16 opacity-[0.14]"
             style={{ background: accentColor }}
-            aria-hidden='true'
+            aria-hidden="true"
           />
-          <p className='relative font-mono text-xs text-muted mb-3'>MyLibrary</p>
+          <p className="relative font-mono text-xs text-muted mb-3">MyLibrary</p>
           <p
-            className='relative font-mono text-5xl font-bold tracking-widest mb-2'
+            className="relative font-mono text-5xl font-bold tracking-widest mb-2"
             style={{ color: accentColor }}
           >
             {archetype.code}
           </p>
-          <p className='relative font-display text-xl font-bold text-text mb-1'>
-            {archetype.name}
-          </p>
-          <p className='relative text-sm text-muted italic mb-4'>{archetype.tagline}</p>
-          <p className='relative font-mono text-xs text-faint'>{axisPairs}</p>
+          <p className="relative font-display text-xl font-bold text-text mb-1">{archetype.name}</p>
+          <p className="relative text-sm text-muted italic mb-4">{archetype.tagline}</p>
+          <p className="relative font-mono text-xs text-faint">{axisPairs}</p>
         </div>
 
         {/* Actions */}
-        <div className='flex flex-col gap-2'>
-          <Button variant='secondary' size='md' onClick={handleCopyImage} className='w-full'>
+        <div className="flex flex-col gap-2">
+          <Button variant="secondary" size="md" onClick={handleCopyImage} className="w-full">
             Copy as image
           </Button>
-          <Button variant='ghost' size='md' onClick={handleCopyText} className='w-full'>
+          <Button variant="ghost" size="md" onClick={handleCopyText} className="w-full">
             Copy text
           </Button>
         </div>
 
-        <div className='flex justify-end'>
-          <Button variant='ghost' size='sm' onClick={onClose}>
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>
         </div>

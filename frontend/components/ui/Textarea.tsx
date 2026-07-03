@@ -14,11 +14,7 @@ const baseClasses = [
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className = '', ...props }, ref) => (
-    <textarea
-      ref={ref}
-      className={[baseClasses, className].join(' ')}
-      {...props}
-    />
+    <textarea ref={ref} className={[baseClasses, className].join(' ')} {...props} />
   )
 );
 Textarea.displayName = 'Textarea';

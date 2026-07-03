@@ -1,4 +1,4 @@
-import SetupWizard from "@/components/SetupWizard";
+import SetupWizard from '@/components/SetupWizard';
 
 // The wizard lives in components/SetupWizard.tsx so it can also be rendered inline by
 // <LibraryGate> on /, /swipe, /library when a logged-in user has no library yet. This route

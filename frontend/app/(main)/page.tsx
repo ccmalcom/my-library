@@ -36,9 +36,7 @@ function StatsStrip({ stats }: { stats: Stats }) {
         {items.map(({ label, value }) => (
           <div key={label} className="px-4 text-center">
             <p className="font-mono text-xl font-semibold text-text">{value}</p>
-            <p className="mt-0.5 font-mono text-xs uppercase tracking-widest text-faint">
-              {label}
-            </p>
+            <p className="mt-0.5 font-mono text-xs uppercase tracking-widest text-faint">{label}</p>
           </div>
         ))}
       </div>
@@ -50,7 +48,7 @@ function StatsStripSkeleton() {
   return (
     <Card>
       <div className="grid grid-cols-2 gap-y-4 sm:gap-y-0 sm:grid-cols-4 sm:divide-x sm:divide-border sm:-mx-1">
-        {[1, 2, 3, 4].map(i => (
+        {[1, 2, 3, 4].map((i) => (
           <div key={i} className="px-4 text-center space-y-2">
             <div className="h-6 w-12 mx-auto rounded bg-elevated motion-safe:animate-pulse" />
             <div className="h-3 w-16 mx-auto rounded bg-elevated motion-safe:animate-pulse" />
@@ -72,9 +70,9 @@ function RatingsBreakdown({ stats }: { stats: Stats }) {
         Ratings breakdown
       </p>
       <div className="space-y-2">
-        {[5, 4, 3, 2, 1].map(star => {
+        {[5, 4, 3, 2, 1].map((star) => {
           const count = stats.by_star[String(star)] ?? 0;
-          const pct   = stats.rated > 0 ? (count / stats.rated) * 100 : 0;
+          const pct = stats.rated > 0 ? (count / stats.rated) * 100 : 0;
           return (
             <div key={star} className="flex items-center gap-3">
               <span className="w-8 text-right font-mono text-sm text-muted">
@@ -99,8 +97,8 @@ function RatingsBreakdown({ stats }: { stats: Stats }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const router  = useRouter();
-  const toast   = useToast();
+  const router = useRouter();
+  const toast = useToast();
   const [running, setRunning] = useState(false);
 
   const {
@@ -109,26 +107,25 @@ export default function HomePage() {
     error: statsError,
   } = useSWR<Stats>('stats', () => api.stats());
 
-  const { data: profileStatus } = useSWR<ProfileStatus>(
-    PROFILE_STATUS_KEY,
-    () => api.profileStatus()
+  const { data: profileStatus } = useSWR<ProfileStatus>(PROFILE_STATUS_KEY, () =>
+    api.profileStatus()
   );
 
   const { data: userProfile } = useSWR<UserProfile>('user-profile', () => api.getProfile());
-  const { data: archetype }   = useSWR<ArchetypeOut | null>(ARCHETYPE_KEY, () => api.getArchetype());
+  const { data: archetype } = useSWR<ArchetypeOut | null>(ARCHETYPE_KEY, () => api.getArchetype());
 
-  const noProfile  = profileStatus != null && profileStatus.last_profiled_at === null;
-  const isDirty    = profileStatus?.dirty ?? false;
+  const noProfile = profileStatus != null && profileStatus.last_profiled_at === null;
+  const isDirty = profileStatus?.dirty ?? false;
   const recBlocked = noProfile || isDirty;
 
   const recBlockMsg = noProfile
     ? 'No taste profile yet - head to My Profile to build one first.'
     : isDirty
-    ? 'Your library has changed since the last profile build - head to My Profile to update it.'
-    : null;
+      ? 'Your library has changed since the last profile build - head to My Profile to update it.'
+      : null;
 
   const displayName = userProfile?.display_name ?? null;
-  const accentHsl   = tasteAccent(archetype ? archetype.code : null);
+  const accentHsl = tasteAccent(archetype ? archetype.code : null);
 
   async function handleRun() {
     setRunning(true);
@@ -142,15 +139,14 @@ export default function HomePage() {
   }
 
   return (
-    <div
-      className="fade-in space-y-6 py-6"
-      style={{ ['--user-accent' as string]: accentHsl }}
-    >
+    <div className="fade-in space-y-6 py-6" style={{ ['--user-accent' as string]: accentHsl }}>
       {/* 1. Greeting + archetype callout */}
       <div>
         <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-text leading-tight">
           {displayName ? (
-            <>Hey, <span className="text-user">{displayName}.</span></>
+            <>
+              Hey, <span className="text-user">{displayName}.</span>
+            </>
           ) : (
             'Hey there.'
           )}
@@ -168,13 +164,15 @@ export default function HomePage() {
               {archetype.name}
             </span>
           </Link>
-        ) : !noProfile && (
-          <Link
-            href="/profile"
-            className="mt-3 inline-block text-sm text-user opacity-60 hover:opacity-100 transition-opacity"
-          >
-            Discover your reader type &rarr;
-          </Link>
+        ) : (
+          !noProfile && (
+            <Link
+              href="/profile"
+              className="mt-3 inline-block text-sm text-user opacity-60 hover:opacity-100 transition-opacity"
+            >
+              Discover your reader type &rarr;
+            </Link>
+          )
         )}
       </div>
 
@@ -197,22 +195,15 @@ export default function HomePage() {
             Ready for new picks?
           </h2>
           <p className="mb-5 text-sm text-muted">
-            Claude will analyze your taste profile and find 10 books matched to you.
-            This takes 30 - 60 seconds.
+            Claude will analyze your taste profile and find 10 books matched to you. This takes 30 -
+            60 seconds.
           </p>
 
-          <Button
-            size="lg"
-            loading={running}
-            disabled={running || recBlocked}
-            onClick={handleRun}
-          >
+          <Button size="lg" loading={running} disabled={running || recBlocked} onClick={handleRun}>
             {running ? 'Running...' : 'Run Recommendations'}
           </Button>
 
-          {recBlockMsg && (
-            <p className="mt-4 text-sm text-warning">{recBlockMsg}</p>
-          )}
+          {recBlockMsg && <p className="mt-4 text-sm text-warning">{recBlockMsg}</p>}
         </div>
       </Card>
     </div>

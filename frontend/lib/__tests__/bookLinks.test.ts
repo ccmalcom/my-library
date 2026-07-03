@@ -1,7 +1,7 @@
 import { bookLinks } from '../bookLinks';
 
 const withIsbn = { title: 'Dune', author: 'Frank Herbert', isbn13: '9780441013593' };
-const noIsbn   = { title: 'Dune', author: 'Frank Herbert', isbn13: null };
+const noIsbn = { title: 'Dune', author: 'Frank Herbert', isbn13: null };
 
 describe('bookLinks', () => {
   it('returns three links', () => {

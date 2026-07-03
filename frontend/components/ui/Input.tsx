@@ -14,11 +14,7 @@ const baseClasses = [
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className = '', ...props }, ref) => (
-    <input
-      ref={ref}
-      className={[baseClasses, className].join(' ')}
-      {...props}
-    />
+    <input ref={ref} className={[baseClasses, className].join(' ')} {...props} />
   )
 );
 Input.displayName = 'Input';

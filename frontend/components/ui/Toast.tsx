@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useMemo,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -40,8 +33,8 @@ export function useToast(): ToastControls {
 
 const COLORS: Record<ToastType, string> = {
   success: 'border-success/40 bg-success/10 text-success',
-  error:   'border-danger/40  bg-danger/10  text-danger',
-  info:    'border-border     bg-elevated   text-text',
+  error: 'border-danger/40  bg-danger/10  text-danger',
+  info: 'border-border     bg-elevated   text-text',
 };
 
 function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: string) => void }) {
@@ -53,14 +46,14 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: string) =
         COLORS[item.type],
       ].join(' ')}
     >
-      <p className='flex-1 text-sm leading-snug'>{item.message}</p>
+      <p className="flex-1 text-sm leading-snug">{item.message}</p>
       <button
-        type='button'
+        type="button"
         onClick={() => onDismiss(item.id)}
-        aria-label='Dismiss'
-        className='mt-0.5 shrink-0 opacity-60 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current rounded'
+        aria-label="Dismiss"
+        className="mt-0.5 shrink-0 opacity-60 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current rounded"
       >
-        <X className='h-4 w-4' />
+        <X className="h-4 w-4" />
       </button>
     </div>
   );
@@ -83,24 +76,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       setToasts((prev) => [...prev, { id, message, type }]);
       setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
     },
-    [dismiss],
+    [dismiss]
   );
 
   const controls = useMemo<ToastControls>(
     () => ({
       success: (msg) => add(msg, 'success'),
-      error:   (msg) => add(msg, 'error'),
-      info:    (msg) => add(msg, 'info'),
+      error: (msg) => add(msg, 'error'),
+      info: (msg) => add(msg, 'info'),
     }),
-    [add],
+    [add]
   );
 
   return (
     <ToastContext.Provider value={controls}>
       {children}
       <div
-        className='pointer-events-none fixed bottom-4 right-4 z-[200] flex flex-col-reverse gap-2'
-        aria-label='Notifications'
+        className="pointer-events-none fixed bottom-4 right-4 z-[200] flex flex-col-reverse gap-2"
+        aria-label="Notifications"
       >
         {toasts.map((t) => (
           <Toast key={t.id} item={t} onDismiss={dismiss} />

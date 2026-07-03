@@ -47,35 +47,30 @@ function DangerAction({
   }
 
   return (
-    <div className='flex flex-col gap-3 rounded-lg border border-danger/30 bg-danger/5 p-4 sm:flex-row sm:items-center sm:justify-between'>
-      <div className='min-w-0'>
-        <p className='text-sm font-medium text-text'>{title}</p>
-        <p className='text-xs text-faint'>{description}</p>
-        {error && <p className='mt-1 text-xs text-danger'>{error}</p>}
+    <div className="flex flex-col gap-3 rounded-lg border border-danger/30 bg-danger/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-text">{title}</p>
+        <p className="text-xs text-faint">{description}</p>
+        {error && <p className="mt-1 text-xs text-danger">{error}</p>}
       </div>
-      <div className='flex shrink-0 items-center gap-2'>
+      <div className="flex shrink-0 items-center gap-2">
         {confirming ? (
           <>
             <Button
-              variant='ghost'
-              size='sm'
+              variant="ghost"
+              size="sm"
               onClick={() => setConfirming(false)}
               disabled={running}
             >
               Cancel
             </Button>
-            <Button
-              variant='danger'
-              size='sm'
-              loading={running}
-              onClick={handleConfirm}
-            >
+            <Button variant="danger" size="sm" loading={running} onClick={handleConfirm}>
               {running ? 'Working...' : 'Yes, do it'}
             </Button>
           </>
         ) : (
           <button
-            type='button'
+            type="button"
             onClick={() => setConfirming(true)}
             className={[
               'rounded-lg border border-danger/60 px-3 py-2 text-sm font-medium text-danger',
@@ -97,19 +92,16 @@ const inputClass = [
   'focus-visible:ring-1 focus-visible:ring-accent',
 ].join(' ');
 
-const labelClass = 'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
+const labelClass =
+  'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
 
 export default function SettingsPage() {
   const toast = useToast();
 
-  const { data: status, isLoading } = useSWR<ApiKeyStatus>(
-    API_KEY_STATUS_KEY,
-    () => api.apiKeyStatus()
+  const { data: status, isLoading } = useSWR<ApiKeyStatus>(API_KEY_STATUS_KEY, () =>
+    api.apiKeyStatus()
   );
-  const { data: userProfile } = useSWR<UserProfile>(
-    USER_PROFILE_KEY,
-    () => api.getProfile()
-  );
+  const { data: userProfile } = useSWR<UserProfile>(USER_PROFILE_KEY, () => api.getProfile());
   const { data: usage } = useSWR<Usage>(USAGE_KEY, getUsage);
 
   const [key, setKey] = useState('');
@@ -189,9 +181,11 @@ export default function SettingsPage() {
     if (!supabase) return;
     setEmailSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user?.email) throw new Error('Could not get current user.');
-       const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: currentPassword,
       });
@@ -222,7 +216,9 @@ export default function SettingsPage() {
     if (!supabase) return;
     setPasswordSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user?.email) throw new Error('Could not get current user.');
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
@@ -259,41 +255,37 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className='mx-auto max-w-2xl px-4 py-8'>
-      <h1 className='mb-1 font-display text-3xl font-bold tracking-tight text-text'>Settings</h1>
-      <p className='mb-8 text-sm text-muted'>
+    <div className="mx-auto max-w-2xl px-4 py-8">
+      <h1 className="mb-1 font-display text-3xl font-bold tracking-tight text-text">Settings</h1>
+      <p className="mb-8 text-sm text-muted">
         MyLibrary uses your own Anthropic API key for the taste profile and recommendations.
       </p>
 
       {/* Display name */}
-      <section className='mb-6'>
+      <section className="mb-6">
         <Card>
-          <h2 className='mb-4 font-display text-lg font-semibold text-text'>Display name</h2>
+          <h2 className="mb-4 font-display text-lg font-semibold text-text">Display name</h2>
 
           {userProfile?.display_name && (
-            <p className='mb-3 text-sm text-muted'>
-              Currently: <span className='font-medium text-text'>{userProfile.display_name}</span>
+            <p className="mb-3 text-sm text-muted">
+              Currently: <span className="font-medium text-text">{userProfile.display_name}</span>
             </p>
           )}
 
-          <form onSubmit={handleSaveName} className='space-y-3'>
+          <form onSubmit={handleSaveName} className="space-y-3">
             <div>
               <label className={labelClass}>
                 {userProfile?.display_name ? 'Update name' : 'Set your name'}
               </label>
               <input
-                type='text'
+                type="text"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 placeholder={userProfile?.display_name ?? 'e.g. Alex'}
                 className={inputClass}
               />
             </div>
-            <Button
-              type='submit'
-              loading={nameSaving}
-              disabled={nameSaving || !nameInput.trim()}
-            >
+            <Button type="submit" loading={nameSaving} disabled={nameSaving || !nameInput.trim()}>
               {nameSaving ? 'Saving...' : 'Save name'}
             </Button>
           </form>
@@ -302,36 +294,42 @@ export default function SettingsPage() {
 
       {/* Change email */}
       {authEnabled && (
-        <section className='mb-6'>
+        <section className="mb-6">
           <Card>
-            <h2 className='mb-4 font-display text-lg font-semibold text-text'>Change email</h2>
-            <form onSubmit={handleChangeEmail} className='space-y-3'>
+            <h2 className="mb-4 font-display text-lg font-semibold text-text">Change email</h2>
+            <form onSubmit={handleChangeEmail} className="space-y-3">
               <div>
                 <label className={labelClass}>Current password</label>
                 <input
-                  type='password'
+                  type="password"
                   value={emailCurrentPassword}
-                  onChange={(e) => { setEmailCurrentPassword(e.target.value); setEmailError(null); }}
-                  autoComplete='current-password'
+                  onChange={(e) => {
+                    setEmailCurrentPassword(e.target.value);
+                    setEmailError(null);
+                  }}
+                  autoComplete="current-password"
                   className={inputClass}
                 />
               </div>
               <div>
                 <label className={labelClass}>New email</label>
                 <input
-                  type='email'
+                  type="email"
                   value={newEmail}
-                  onChange={(e) => { setNewEmail(e.target.value); setEmailError(null); }}
-                  placeholder='new@example.com'
+                  onChange={(e) => {
+                    setNewEmail(e.target.value);
+                    setEmailError(null);
+                  }}
+                  placeholder="new@example.com"
                   className={inputClass}
                 />
               </div>
-              {emailError && <p className='text-xs text-danger'>{emailError}</p>}
-              <p className='text-xs text-faint'>
+              {emailError && <p className="text-xs text-danger">{emailError}</p>}
+              <p className="text-xs text-faint">
                 A confirmation link will be sent to your new address.
               </p>
               <Button
-                type='submit'
+                type="submit"
                 loading={emailSaving}
                 disabled={emailSaving || !emailCurrentPassword || !newEmail.trim()}
               >
@@ -344,46 +342,55 @@ export default function SettingsPage() {
 
       {/* Change password */}
       {authEnabled && (
-        <section className='mb-6'>
+        <section className="mb-6">
           <Card>
-            <h2 className='mb-4 font-display text-lg font-semibold text-text'>Change password</h2>
-            <form onSubmit={handleChangePassword} className='space-y-3'>
+            <h2 className="mb-4 font-display text-lg font-semibold text-text">Change password</h2>
+            <form onSubmit={handleChangePassword} className="space-y-3">
               <div>
                 <label className={labelClass}>Current password</label>
                 <input
-                  type='password'
+                  type="password"
                   value={currentPassword}
-                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(null); }}
-                  autoComplete='current-password'
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  autoComplete="current-password"
                   className={inputClass}
                 />
               </div>
               <div>
                 <label className={labelClass}>New password</label>
                 <input
-                  type='password'
+                  type="password"
                   value={newPassword}
-                  onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
-                  autoComplete='new-password'
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  autoComplete="new-password"
                   className={inputClass}
                 />
               </div>
               <div>
                 <label className={labelClass}>Confirm new password</label>
                 <input
-                  type='password'
+                  type="password"
                   value={confirmPassword}
-                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
-                  autoComplete='new-password'
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  autoComplete="new-password"
                   className={inputClass}
                 />
                 {confirmPassword && newPassword !== confirmPassword && (
-                  <p className='mt-1 text-xs text-danger'>Passwords don&apos;t match.</p>
+                  <p className="mt-1 text-xs text-danger">Passwords don&apos;t match.</p>
                 )}
               </div>
-              {passwordError && <p className='text-xs text-danger'>{passwordError}</p>}
+              {passwordError && <p className="text-xs text-danger">{passwordError}</p>}
               <Button
-                type='submit'
+                type="submit"
                 loading={passwordSaving}
                 disabled={
                   passwordSaving ||
@@ -401,17 +408,15 @@ export default function SettingsPage() {
       )}
 
       {/* API key */}
-      <section className='mb-6'>
+      <section className="mb-6">
         <Card>
-          <div className='mb-4 flex items-center justify-between'>
-            <h2 className='font-display text-lg font-semibold text-text'>Anthropic API key</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-lg font-semibold text-text">Anthropic API key</h2>
             {!isLoading && (
               <span
                 className={[
                   'rounded-full px-2.5 py-0.5 font-mono text-xs font-semibold',
-                  configured
-                    ? 'bg-success/20 text-success'
-                    : 'bg-elevated text-muted',
+                  configured ? 'bg-success/20 text-success' : 'bg-elevated text-muted',
                 ].join(' ')}
               >
                 {configured ? 'Configured' : 'Not set'}
@@ -419,24 +424,24 @@ export default function SettingsPage() {
             )}
           </div>
 
-          <form onSubmit={handleSave} className='space-y-3'>
+          <form onSubmit={handleSave} className="space-y-3">
             <div>
               <label className={labelClass}>{configured ? 'Replace key' : 'Add your key'}</label>
               <input
-                type='password'
+                type="password"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                placeholder='sk-ant-...'
-                autoComplete='off'
+                placeholder="sk-ant-..."
+                autoComplete="off"
                 className={[inputClass, 'font-mono'].join(' ')}
               />
-              <p className='mt-2 text-xs text-faint'>
+              <p className="mt-2 text-xs text-faint">
                 Stored encrypted on the server and never shown again. Get one at{' '}
                 <a
-                  href='https://console.anthropic.com/'
-                  target='_blank'
-                  rel='noreferrer'
-                  className='text-accent hover:underline'
+                  href="https://console.anthropic.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent hover:underline"
                 >
                   console.anthropic.com
                 </a>
@@ -444,21 +449,12 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className='flex items-center gap-2'>
-              <Button
-                type='submit'
-                loading={saving}
-                disabled={saving || !key.trim()}
-              >
+            <div className="flex items-center gap-2">
+              <Button type="submit" loading={saving} disabled={saving || !key.trim()}>
                 {saving ? 'Saving...' : 'Save key'}
               </Button>
               {configured && (
-                <Button
-                  type='button'
-                  variant='ghost'
-                  onClick={handleRemove}
-                  disabled={saving}
-                >
+                <Button type="button" variant="ghost" onClick={handleRemove} disabled={saving}>
                   Remove key
                 </Button>
               )}
@@ -468,10 +464,10 @@ export default function SettingsPage() {
       </section>
 
       {/* Import books */}
-      <section className='mb-6'>
+      <section className="mb-6">
         <Card>
-          <h2 className='mb-1 font-display text-lg font-semibold text-text'>Import books</h2>
-          <p className='mb-4 text-sm text-muted'>
+          <h2 className="mb-1 font-display text-lg font-semibold text-text">Import books</h2>
+          <p className="mb-4 text-sm text-muted">
             Bring in your library from Goodreads, StoryGraph, a MyLibrary backup, or any CSV.
           </p>
           <Button onClick={() => setShowImport(true)}>Import from a file</Button>
@@ -479,16 +475,16 @@ export default function SettingsPage() {
       </section>
 
       {/* Export / backup */}
-      <section className='mb-6'>
+      <section className="mb-6">
         <Card>
-          <h2 className='mb-1 font-display text-lg font-semibold text-text'>Backup your library</h2>
-          <p className='mb-4 text-sm text-muted'>
-            Download everything you have rated and reviewed. CSV re-imports into MyLibrary;
-            JSON is a complete backup.
+          <h2 className="mb-1 font-display text-lg font-semibold text-text">Backup your library</h2>
+          <p className="mb-4 text-sm text-muted">
+            Download everything you have rated and reviewed. CSV re-imports into MyLibrary; JSON is
+            a complete backup.
           </p>
-          <div className='flex gap-2'>
+          <div className="flex gap-2">
             <Button
-              variant='ghost'
+              variant="ghost"
               loading={exporting === 'csv'}
               disabled={exporting !== null}
               onClick={() => handleExport('csv')}
@@ -496,7 +492,7 @@ export default function SettingsPage() {
               Download CSV
             </Button>
             <Button
-              variant='ghost'
+              variant="ghost"
               loading={exporting === 'json'}
               disabled={exporting !== null}
               onClick={() => handleExport('json')}
@@ -508,21 +504,23 @@ export default function SettingsPage() {
       </section>
 
       {/* Claude spend */}
-      <section className='mb-6'>
+      <section className="mb-6">
         <Card>
-          <div className='mb-4 flex items-center justify-between'>
-            <h2 className='font-display text-lg font-semibold text-text'>Claude usage this month</h2>
-            {usage?.warn && <Badge variant='warning'>Approaching cap</Badge>}
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-lg font-semibold text-text">
+              Claude usage this month
+            </h2>
+            {usage?.warn && <Badge variant="warning">Approaching cap</Badge>}
           </div>
 
           {usage ? (
             <>
-              <p className='mb-3 text-sm text-muted'>
-                <span className='font-medium text-text'>${usage.spent_usd.toFixed(2)}</span> of $
+              <p className="mb-3 text-sm text-muted">
+                <span className="font-medium text-text">${usage.spent_usd.toFixed(2)}</span> of $
                 {usage.cap_usd.toFixed(2)} this month
               </p>
 
-              <div className='relative h-2 overflow-hidden rounded-full bg-elevated'>
+              <div className="relative h-2 overflow-hidden rounded-full bg-elevated">
                 <div
                   className={[
                     'absolute h-2 rounded-full',
@@ -533,42 +531,43 @@ export default function SettingsPage() {
               </div>
 
               {usage.warn && (
-                <p className='mt-2 text-xs text-accent'>Approaching your monthly soft cap.</p>
+                <p className="mt-2 text-xs text-accent">Approaching your monthly soft cap.</p>
               )}
 
               {Object.keys(usage.by_operation).length > 0 && (
-                <div className='mt-4 space-y-1.5 border-t border-border pt-3'>
+                <div className="mt-4 space-y-1.5 border-t border-border pt-3">
                   {Object.entries(usage.by_operation).map(([op, amount]) => (
-                    <div key={op} className='flex items-center justify-between text-xs'>
-                      <span className='capitalize text-faint'>{op.replace(/_/g, ' ')}</span>
-                      <span className='font-mono text-muted'>${amount.toFixed(2)}</span>
+                    <div key={op} className="flex items-center justify-between text-xs">
+                      <span className="capitalize text-faint">{op.replace(/_/g, ' ')}</span>
+                      <span className="font-mono text-muted">${amount.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
               )}
 
-              <p className='mt-4 text-xs text-faint'>
-                This is a soft cap for spend visibility only — recommendations and profiling never stop running.
+              <p className="mt-4 text-xs text-faint">
+                This is a soft cap for spend visibility only — recommendations and profiling never
+                stop running.
               </p>
             </>
           ) : (
-            <p className='text-sm text-faint'>Loading usage…</p>
+            <p className="text-sm text-faint">Loading usage…</p>
           )}
         </Card>
       </section>
 
       {/* Danger zone */}
-      <section className='rounded-2xl border border-danger/40 bg-surface p-6'>
-        <h2 className='font-display text-lg font-semibold text-danger'>Danger zone</h2>
-        <p className='mb-4 mt-1 text-sm text-muted'>
+      <section className="rounded-2xl border border-danger/40 bg-surface p-6">
+        <h2 className="font-display text-lg font-semibold text-danger">Danger zone</h2>
+        <p className="mb-4 mt-1 text-sm text-muted">
           These permanently delete your data and can&apos;t be undone.
         </p>
 
-        <div className='space-y-3'>
+        <div className="space-y-3">
           <DangerAction
-            title='Reset taste profile'
-            description='Deletes your taste traits and recommendations. Your books stay - rebuild the profile anytime.'
-            buttonLabel='Reset profile'
+            title="Reset taste profile"
+            description="Deletes your taste traits and recommendations. Your books stay - rebuild the profile anytime."
+            buttonLabel="Reset profile"
             onRun={async () => {
               await api.clearProfile();
               await Promise.all([
@@ -580,9 +579,9 @@ export default function SettingsPage() {
           />
 
           <DangerAction
-            title='Clear library'
-            description='Deletes every book, its enrichment, and your taste profile - back to a clean first-setup state.'
-            buttonLabel='Clear library'
+            title="Clear library"
+            description="Deletes every book, its enrichment, and your taste profile - back to a clean first-setup state."
+            buttonLabel="Clear library"
             onRun={async () => {
               await api.clearLibrary();
               window.location.assign('/');
@@ -590,9 +589,9 @@ export default function SettingsPage() {
           />
 
           <DangerAction
-            title='Delete account data'
-            description='Deletes ALL your data: library, profile, recommendations, and your stored Anthropic key.'
-            buttonLabel='Delete everything'
+            title="Delete account data"
+            description="Deletes ALL your data: library, profile, recommendations, and your stored Anthropic key."
+            buttonLabel="Delete everything"
             onRun={async () => {
               await api.deleteAccount();
               window.location.assign('/');

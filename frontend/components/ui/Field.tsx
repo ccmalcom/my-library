@@ -17,8 +17,7 @@ export function Field({ label, error, hint, required, children }: FieldProps) {
   const baseId = useId();
   const errorId = error ? `${baseId}-error` : undefined;
   const hintId = hint && !error ? `${baseId}-hint` : undefined;
-  const describedBy =
-    [errorId, hintId].filter(Boolean).join(' ') || undefined;
+  const describedBy = [errorId, hintId].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className="flex flex-col gap-1.5">

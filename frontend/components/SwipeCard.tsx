@@ -72,9 +72,9 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
       {/* Accept overlay */}
       <motion.div
         style={{ opacity: acceptOpacity }}
-        className='pointer-events-none absolute inset-0 z-10 flex items-start justify-end rounded-2xl border-4 border-success p-4'
+        className="pointer-events-none absolute inset-0 z-10 flex items-start justify-end rounded-2xl border-4 border-success p-4"
       >
-        <span className='rotate-12 rounded-lg bg-success px-3 py-1 text-lg font-bold text-base'>
+        <span className="rotate-12 rounded-lg bg-success px-3 py-1 text-lg font-bold text-base">
           LIKE
         </span>
       </motion.div>
@@ -82,36 +82,36 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
       {/* Reject overlay */}
       <motion.div
         style={{ opacity: rejectOpacity }}
-        className='pointer-events-none absolute inset-0 z-10 flex items-start justify-start rounded-2xl border-4 border-danger p-4'
+        className="pointer-events-none absolute inset-0 z-10 flex items-start justify-start rounded-2xl border-4 border-danger p-4"
       >
-        <span className='-rotate-12 rounded-lg bg-danger px-3 py-1 text-lg font-bold text-base'>
+        <span className="-rotate-12 rounded-lg bg-danger px-3 py-1 text-lg font-bold text-base">
           NOPE
         </span>
       </motion.div>
 
       {/* Cover image */}
-      <div className='relative h-56 w-full bg-elevated'>
+      <div className="relative h-56 w-full bg-elevated">
         {rec.cover_url ? (
           <Image
             src={rec.cover_url}
             alt={`Cover of ${rec.title}`}
             fill
-            className='object-contain'
+            className="object-contain"
             draggable={false}
             unoptimized
           />
         ) : (
-          <div className='flex h-full items-center justify-center text-faint'>
-            <BookOpen className='h-12 w-12' />
+          <div className="flex h-full items-center justify-center text-faint">
+            <BookOpen className="h-12 w-12" />
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className='flex-1 overflow-y-auto p-5 space-y-3'>
+      <div className="flex-1 overflow-y-auto p-5 space-y-3">
         <div>
-          <h2 className='text-lg font-display font-bold leading-tight text-text'>{rec.title}</h2>
-          <p className='text-sm text-muted'>
+          <h2 className="text-lg font-display font-bold leading-tight text-text">{rec.title}</h2>
+          <p className="text-sm text-muted">
             {rec.author ?? 'Unknown author'}
             {rec.year ? ` · ${rec.year}` : ''}
           </p>
@@ -119,9 +119,11 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
 
         {/* Subjects */}
         {rec.subjects && rec.subjects.length > 0 && (
-          <div className='flex flex-wrap gap-1'>
+          <div className="flex flex-wrap gap-1">
             {rec.subjects.slice(0, 4).map((s) => (
-              <Badge key={s} variant='mono'>{s}</Badge>
+              <Badge key={s} variant="mono">
+                {s}
+              </Badge>
             ))}
           </div>
         )}
@@ -129,15 +131,13 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
         {/* Description (what the book is about) */}
         {desc && (
           <div>
-            <p className='mb-1 font-mono text-xs uppercase tracking-widest text-faint'>About</p>
-            <p className='text-sm leading-relaxed text-muted'>
-              {descExpanded ? desc : descShort}
-            </p>
+            <p className="mb-1 font-mono text-xs uppercase tracking-widest text-faint">About</p>
+            <p className="text-sm leading-relaxed text-muted">{descExpanded ? desc : descShort}</p>
             {desc.length > 180 && (
               <button
-                type='button'
+                type="button"
                 onClick={() => setDescExpanded((v) => !v)}
-                className='mt-1 rounded text-xs text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base'
+                className="mt-1 rounded text-xs text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base"
               >
                 {descExpanded ? 'Show less' : 'Show more'}
               </button>
@@ -148,23 +148,22 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
         {/* Rationale (why for you) */}
         {rec.rationale && (
           <div>
-            <p className='mb-1 font-mono text-xs uppercase tracking-widest text-faint'>Why for you</p>
-            <p className='text-sm leading-relaxed text-text'>{rec.rationale}</p>
+            <p className="mb-1 font-mono text-xs uppercase tracking-widest text-faint">
+              Why for you
+            </p>
+            <p className="text-sm leading-relaxed text-text">{rec.rationale}</p>
           </div>
         )}
 
         {/* Matched taste traits */}
         {matchedTraits.length > 0 && (
           <div>
-            <p className='mb-1.5 font-mono text-xs uppercase tracking-widest text-faint'>
+            <p className="mb-1.5 font-mono text-xs uppercase tracking-widest text-faint">
               Matched taste
             </p>
-            <div className='flex flex-wrap gap-1.5'>
+            <div className="flex flex-wrap gap-1.5">
               {matchedTraits.map((t) => (
-                <Badge
-                  key={t.id}
-                  variant={t.polarity === 'reward' ? 'accent' : 'warning'}
-                >
+                <Badge key={t.id} variant={t.polarity === 'reward' ? 'accent' : 'warning'}>
                   {t.claim.length > 40 ? t.claim.slice(0, 38) + '...' : t.claim}
                 </Badge>
               ))}

@@ -1,4 +1,4 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from '@supabase/ssr';
 
 // Supabase is used for AUTH ONLY in this app: it provides the session + access token, which
 // lib/api.ts forwards to the FastAPI backend as `Authorization: Bearer`. We never query

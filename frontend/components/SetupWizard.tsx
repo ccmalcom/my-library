@@ -5,7 +5,13 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { BookOpen } from 'lucide-react';
 import { mutate } from 'swr';
-import { api, API_KEY_STATUS_KEY, PROFILE_STATUS_KEY, USER_PROFILE_KEY, type Book } from '@/lib/api';
+import {
+  api,
+  API_KEY_STATUS_KEY,
+  PROFILE_STATUS_KEY,
+  USER_PROFILE_KEY,
+  type Book,
+} from '@/lib/api';
 import { Button, Spinner } from '@/components/ui';
 import AddBookModal from '@/components/AddBookModal';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
@@ -19,19 +25,19 @@ interface IngestResult {
 }
 
 const CSV_STEPS: { key: Step; label: string }[] = [
-  { key: 'name',    label: 'Your name' },
-  { key: 'api-key', label: 'API Key'   },
-  { key: 'upload',  label: 'Upload'    },
-  { key: 'enrich',  label: 'Enrich'    },
-  { key: 'profile', label: 'Profile'   },
-  { key: 'done',    label: 'Done'      },
+  { key: 'name', label: 'Your name' },
+  { key: 'api-key', label: 'API Key' },
+  { key: 'upload', label: 'Upload' },
+  { key: 'enrich', label: 'Enrich' },
+  { key: 'profile', label: 'Profile' },
+  { key: 'done', label: 'Done' },
 ];
 const MANUAL_STEPS: { key: Step; label: string }[] = [
-  { key: 'name',    label: 'Your name' },
-  { key: 'api-key', label: 'API Key'   },
-  { key: 'manual',  label: 'Add books' },
-  { key: 'profile', label: 'Profile'   },
-  { key: 'done',    label: 'Done'      },
+  { key: 'name', label: 'Your name' },
+  { key: 'api-key', label: 'API Key' },
+  { key: 'manual', label: 'Add books' },
+  { key: 'profile', label: 'Profile' },
+  { key: 'done', label: 'Done' },
 ];
 
 // ── Shared styles ──────────────────────────────────────────────────────────────
@@ -42,7 +48,8 @@ const inputClass = [
   'focus-visible:ring-1 focus-visible:ring-accent',
 ].join(' ');
 
-const labelClass = 'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
+const labelClass =
+  'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
 
 // ── Step indicator ─────────────────────────────────────────────────────────────
 
@@ -57,18 +64,20 @@ function StepIndicator({
   const currentIdx = order.indexOf(current);
 
   return (
-    <div className='mb-8 flex flex-wrap items-center gap-2'>
+    <div className="mb-8 flex flex-wrap items-center gap-2">
       {steps.map(({ key, label }, i) => {
-        const done   = order.indexOf(key) < currentIdx;
+        const done = order.indexOf(key) < currentIdx;
         const active = key === current;
         return (
-          <div key={key} className='flex items-center gap-2'>
+          <div key={key} className="flex items-center gap-2">
             <div
               className={[
                 'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors',
-                done   ? 'bg-success text-base'
-                : active ? 'bg-accent text-base'
-                :          'bg-elevated text-faint',
+                done
+                  ? 'bg-success text-base'
+                  : active
+                    ? 'bg-accent text-base'
+                    : 'bg-elevated text-faint',
               ].join(' ')}
             >
               {done ? '✓' : i + 1}
@@ -76,9 +85,7 @@ function StepIndicator({
             <span
               className={[
                 'text-sm',
-                active ? 'font-medium text-text'
-                : done  ? 'text-success'
-                :         'text-faint',
+                active ? 'font-medium text-text' : done ? 'text-success' : 'text-faint',
               ].join(' ')}
             >
               {label}
@@ -97,15 +104,18 @@ function StepIndicator({
 
 function NameStep({ onDone }: { onDone: () => void }) {
   const [checking, setChecking] = useState(true);
-  const [name, setName]         = useState('');
-  const [saving, setSaving]     = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getProfile().then((profile) => {
-      if (profile.display_name) onDone();
-      else setChecking(false);
-    }).catch(() => setChecking(false));
+    api
+      .getProfile()
+      .then((profile) => {
+        if (profile.display_name) onDone();
+        else setChecking(false);
+      })
+      .catch(() => setChecking(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -127,40 +137,43 @@ function NameStep({ onDone }: { onDone: () => void }) {
 
   if (checking) {
     return (
-      <div className='flex justify-center py-8'>
-        <Spinner size='md' />
+      <div className="flex justify-center py-8">
+        <Spinner size="md" />
       </div>
     );
   }
 
   return (
-    <div className='space-y-6'>
+    <div className="space-y-6">
       <div>
-        <h2 className='mb-1 text-xl font-semibold text-text'>What should we call you?</h2>
-        <p className='text-sm text-muted'>
+        <h2 className="mb-1 text-xl font-semibold text-text">What should we call you?</h2>
+        <p className="text-sm text-muted">
           Your name personalizes the app. You can change it anytime in Settings.
         </p>
       </div>
 
-      <form onSubmit={handleSave} className='space-y-4'>
+      <form onSubmit={handleSave} className="space-y-4">
         <div>
           <label className={labelClass}>Your name</label>
           <input
-            type='text'
+            type="text"
             value={name}
-            onChange={(e) => { setName(e.target.value); setError(null); }}
-            placeholder='e.g. Alex'
+            onChange={(e) => {
+              setName(e.target.value);
+              setError(null);
+            }}
+            placeholder="e.g. Alex"
             autoFocus
             className={inputClass}
           />
-          {error && <p className='mt-1 text-xs text-danger'>{error}</p>}
+          {error && <p className="mt-1 text-xs text-danger">{error}</p>}
         </div>
         <Button
-          type='submit'
-          size='lg'
+          type="submit"
+          size="lg"
           loading={saving}
           disabled={saving || !name.trim()}
-          className='w-full'
+          className="w-full"
         >
           {saving ? 'Saving...' : 'Continue'}
         </Button>
@@ -173,16 +186,19 @@ function NameStep({ onDone }: { onDone: () => void }) {
 
 function ApiKeyStep({ onDone }: { onDone: () => void }) {
   const [checking, setChecking] = useState(true);
-  const [key, setKey]           = useState('');
-  const [saving, setSaving]     = useState(false);
-  const [saved, setSaved]       = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [key, setKey] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.apiKeyStatus().then((status) => {
-      if (status.configured) onDone();
-      else setChecking(false);
-    }).catch(() => setChecking(false));
+    api
+      .apiKeyStatus()
+      .then((status) => {
+        if (status.configured) onDone();
+        else setChecking(false);
+      })
+      .catch(() => setChecking(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -205,31 +221,31 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
 
   if (checking) {
     return (
-      <div className='flex items-center justify-center py-12'>
-        <Spinner size='md' />
+      <div className="flex items-center justify-center py-12">
+        <Spinner size="md" />
       </div>
     );
   }
 
   return (
-    <div className='space-y-6'>
+    <div className="space-y-6">
       <div>
-        <h2 className='mb-1 text-xl font-semibold text-text'>Add your Anthropic API key</h2>
-        <p className='text-sm text-muted'>
-          MyLibrary uses Claude to build your taste profile and generate recommendations.
-          An API key is required before you can complete setup.
+        <h2 className="mb-1 text-xl font-semibold text-text">Add your Anthropic API key</h2>
+        <p className="text-sm text-muted">
+          MyLibrary uses Claude to build your taste profile and generate recommendations. An API key
+          is required before you can complete setup.
         </p>
       </div>
 
-      <div className='rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning space-y-1'>
+      <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning space-y-1">
         <p>Profile and recommendations will not work without a key.</p>
         <p>
           Get one at{' '}
           <a
-            href='https://console.anthropic.com/'
-            target='_blank'
-            rel='noreferrer'
-            className='text-accent hover:underline'
+            href="https://console.anthropic.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="text-accent hover:underline"
           >
             console.anthropic.com
           </a>
@@ -237,29 +253,32 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
         </p>
       </div>
 
-      <form onSubmit={handleSave} className='space-y-4'>
+      <form onSubmit={handleSave} className="space-y-4">
         <div>
           <label className={labelClass}>API key</label>
           <input
-            type='password'
+            type="password"
             value={key}
-            onChange={(e) => { setKey(e.target.value); setSaved(false); }}
-            placeholder='sk-ant-...'
-            autoComplete='off'
+            onChange={(e) => {
+              setKey(e.target.value);
+              setSaved(false);
+            }}
+            placeholder="sk-ant-..."
+            autoComplete="off"
             className={[inputClass, 'font-mono'].join(' ')}
           />
-          <p className='mt-1 text-xs text-faint'>
+          <p className="mt-1 text-xs text-faint">
             Stored encrypted on the server and never shown again. Manage it later in Settings.
           </p>
         </div>
-        {error && <p className='text-sm text-danger'>{error}</p>}
-        {saved && <p className='text-sm text-success'>Key saved - continuing...</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
+        {saved && <p className="text-sm text-success">Key saved - continuing...</p>}
         <Button
-          type='submit'
-          size='lg'
+          type="submit"
+          size="lg"
           loading={saving}
           disabled={saving || !key.trim() || saved}
-          className='w-full'
+          className="w-full"
         >
           {saving ? 'Saving...' : 'Save key & continue'}
         </Button>
@@ -278,9 +297,9 @@ function UploadStep({
   onManual: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile]       = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function handleFile(f: File | null | undefined) {
     if (!f) return;
@@ -306,25 +325,25 @@ function UploadStep({
       setError(
         msg.includes('422')
           ? 'We could not detect that file format. After setup, use Settings > Import to map columns manually.'
-          : msg,
+          : msg
       );
       setLoading(false);
     }
   }
 
   return (
-    <div className='space-y-6'>
+    <div className="space-y-6">
       <div>
-        <h2 className='mb-1 text-xl font-semibold text-text'>Import your library</h2>
-        <p className='text-sm text-muted'>
-          Export a CSV from Goodreads (My Books &rsaquo; Import/Export) or The StoryGraph
-          (Manage Account &rsaquo; Export), then drop it here.
+        <h2 className="mb-1 text-xl font-semibold text-text">Import your library</h2>
+        <p className="text-sm text-muted">
+          Export a CSV from Goodreads (My Books &rsaquo; Import/Export) or The StoryGraph (Manage
+          Account &rsaquo; Export), then drop it here.
         </p>
       </div>
 
       {/* Drop zone — <label> so the whole area activates the file input */}
       <label
-        htmlFor='csv-upload'
+        htmlFor="csv-upload"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -332,55 +351,55 @@ function UploadStep({
         }}
         className={[
           'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 sm:p-10 text-center transition-colors',
-          file
-            ? 'border-success bg-success/5'
-            : 'border-border hover:border-muted bg-elevated/40',
+          file ? 'border-success bg-success/5' : 'border-border hover:border-muted bg-elevated/40',
         ].join(' ')}
       >
         <input
-          id='csv-upload'
+          id="csv-upload"
           ref={inputRef}
-          type='file'
-          accept='.csv'
-          className='sr-only'
+          type="file"
+          accept=".csv"
+          className="sr-only"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
         {file ? (
-          <div className='space-y-1'>
-            <p className='font-medium text-success'>{file.name}</p>
-            <p className='text-xs text-faint'>{(file.size / 1024).toFixed(0)} KB - click to change</p>
+          <div className="space-y-1">
+            <p className="font-medium text-success">{file.name}</p>
+            <p className="text-xs text-faint">
+              {(file.size / 1024).toFixed(0)} KB - click to change
+            </p>
           </div>
         ) : (
-          <div className='space-y-2'>
-            <BookOpen className='mx-auto h-10 w-10 text-faint' />
-            <p className='font-medium text-text'>Drop your CSV here, or click to browse</p>
-            <p className='text-xs text-faint'>goodreads_library_export.csv</p>
+          <div className="space-y-2">
+            <BookOpen className="mx-auto h-10 w-10 text-faint" />
+            <p className="font-medium text-text">Drop your CSV here, or click to browse</p>
+            <p className="text-xs text-faint">goodreads_library_export.csv</p>
           </div>
         )}
       </label>
 
-      {error && <p className='text-sm text-danger'>{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <form onSubmit={handleSubmit}>
         <Button
-          type='submit'
-          size='lg'
+          type="submit"
+          size="lg"
           loading={loading}
           disabled={!file || loading}
-          className='w-full'
+          className="w-full"
         >
           {loading ? 'Importing...' : 'Import Library'}
         </Button>
       </form>
 
-      <div className='flex items-center gap-3 text-xs text-faint'>
-        <div className='h-px flex-1 bg-border' />
+      <div className="flex items-center gap-3 text-xs text-faint">
+        <div className="h-px flex-1 bg-border" />
         or
-        <div className='h-px flex-1 bg-border' />
+        <div className="h-px flex-1 bg-border" />
       </div>
 
       <button
-        type='button'
+        type="button"
         onClick={onManual}
         className={[
           'w-full rounded-lg border border-border py-3 text-sm font-medium text-muted transition',
@@ -397,8 +416,8 @@ function UploadStep({
 // ── Step: Manual ──────────────────────────────────────────────────────────────
 
 function ManualStep({ onDone }: { onDone: () => void }) {
-  const [books, setBooks]       = useState<Book[]>([]);
-  const [adding, setAdding]     = useState(false);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [adding, setAdding] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
   async function handleFinish() {
@@ -408,65 +427,64 @@ function ManualStep({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className='space-y-6'>
+    <div className="space-y-6">
       <div>
-        <h2 className='mb-1 text-xl font-semibold text-text'>Build your starter library</h2>
-        <p className='text-sm text-muted'>
-          Add a few books you&apos;ve read and rate them. Even five or six rated favorites give
-          the taste profile enough to work with - you can always add more later.
+        <h2 className="mb-1 text-xl font-semibold text-text">Build your starter library</h2>
+        <p className="text-sm text-muted">
+          Add a few books you&apos;ve read and rate them. Even five or six rated favorites give the
+          taste profile enough to work with - you can always add more later.
         </p>
       </div>
 
       {books.length === 0 ? (
-        <div className='flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-elevated/40 p-8 text-center'>
-          <BookOpen className='mb-2 h-8 w-8 text-faint' />
-          <p className='text-sm text-muted'>No books yet. Add your first one to get started.</p>
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-elevated/40 p-8 text-center">
+          <BookOpen className="mb-2 h-8 w-8 text-faint" />
+          <p className="text-sm text-muted">No books yet. Add your first one to get started.</p>
         </div>
       ) : (
-        <ul className='space-y-2'>
+        <ul className="space-y-2">
           {books.map((b) => (
             <li
               key={b.id}
-              className='flex items-center gap-3 rounded-lg border border-border bg-base p-2.5'
+              className="flex items-center gap-3 rounded-lg border border-border bg-base p-2.5"
             >
-              <div className='relative h-12 w-9 shrink-0 overflow-hidden rounded bg-elevated'>
+              <div className="relative h-12 w-9 shrink-0 overflow-hidden rounded bg-elevated">
                 {b.cover_url ? (
-                  <Image src={b.cover_url} alt='' fill className='object-cover' unoptimized />
+                  <Image src={b.cover_url} alt="" fill className="object-cover" unoptimized />
                 ) : (
-                  <div className='flex h-full items-center justify-center text-faint'>
-                    <BookOpen className='h-4 w-4' />
+                  <div className="flex h-full items-center justify-center text-faint">
+                    <BookOpen className="h-4 w-4" />
                   </div>
                 )}
               </div>
-              <div className='min-w-0 flex-1'>
-                <p className='truncate text-sm font-medium text-text'>{b.title}</p>
-                <p className='truncate text-xs text-faint'>{b.author ?? 'Unknown author'}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-text">{b.title}</p>
+                <p className="truncate text-xs text-faint">{b.author ?? 'Unknown author'}</p>
               </div>
               {b.effective_rating ? (
-                <span className='shrink-0 text-sm text-accent' aria-label={`${b.effective_rating} stars`}>
+                <span
+                  className="shrink-0 text-sm text-accent"
+                  aria-label={`${b.effective_rating} stars`}
+                >
                   {'\u2605'.repeat(b.effective_rating)}
                 </span>
               ) : (
-                <span className='shrink-0 text-xs text-faint'>unrated</span>
+                <span className="shrink-0 text-xs text-faint">unrated</span>
               )}
             </li>
           ))}
         </ul>
       )}
 
-      <Button
-        variant='secondary'
-        className='w-full'
-        onClick={() => setAdding(true)}
-      >
+      <Button variant="secondary" className="w-full" onClick={() => setAdding(true)}>
         + Add a book
       </Button>
 
       <Button
-        size='lg'
+        size="lg"
         loading={finishing}
         disabled={books.length === 0 || finishing}
-        className='w-full'
+        className="w-full"
         onClick={handleFinish}
       >
         {books.length === 0
@@ -490,22 +508,18 @@ function ManualStep({ onDone }: { onDone: () => void }) {
 
 const ENRICH_POLL_MS = 2000;
 
-function EnrichStep({
-  ingestResult,
-  onDone,
-}: {
-  ingestResult: IngestResult;
-  onDone: () => void;
-}) {
-  const [jobId, setJobId]     = useState<string | null>(null);
-  const [status, setStatus]   = useState('idle');
+function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDone: () => void }) {
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
-  const [total, setTotal]     = useState(0);
-  const [error, setError]     = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    return () => { if (pollRef.current) clearTimeout(pollRef.current); };
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
   }, []);
 
   async function pollStatus(id: string) {
@@ -546,29 +560,27 @@ function EnrichStep({
   const progressLabel = total > 0 ? `${progress} / ${total} books (${pct}%)` : 'Starting...';
 
   return (
-    <div className='space-y-6'>
+    <div className="space-y-6">
       <div>
-        <h2 className='mb-1 text-xl font-semibold text-text'>Enrich your library</h2>
-        <p className='text-sm text-muted'>
-          Imported{' '}
-          <strong className='text-text'>{ingestResult.inserted}</strong> books
-          {ingestResult.skipped > 0 && ` (${ingestResult.skipped} already existed)`}
-          . Enrichment fetches covers, page counts, and genres from Open Library and Google
-          Books. Takes{' '}
-          <strong className='text-text'>5-10 minutes</strong> for a typical library.
+        <h2 className="mb-1 text-xl font-semibold text-text">Enrich your library</h2>
+        <p className="text-sm text-muted">
+          Imported <strong className="text-text">{ingestResult.inserted}</strong> books
+          {ingestResult.skipped > 0 && ` (${ingestResult.skipped} already existed)`}. Enrichment
+          fetches covers, page counts, and genres from Open Library and Google Books. Takes{' '}
+          <strong className="text-text">5-10 minutes</strong> for a typical library.
         </p>
       </div>
 
-      <div className='rounded-xl border border-border bg-elevated p-4 text-sm text-muted space-y-1.5'>
+      <div className="rounded-xl border border-border bg-elevated p-4 text-sm text-muted space-y-1.5">
         <p>Finds book covers and metadata from public catalogs</p>
         <p>Required before running AI recommendations</p>
         <p>Resumable - if interrupted, re-runs pick up where they left off</p>
       </div>
 
       {running && (
-        <div className='space-y-3'>
-          <div className='flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-quiet p-4 text-sm text-accent'>
-            <Spinner size='sm' className='mt-0.5 shrink-0' />
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-quiet p-4 text-sm text-accent">
+            <Spinner size="sm" className="mt-0.5 shrink-0" />
             <span>
               {status === 'pending'
                 ? 'Job queued - starting shortly...'
@@ -576,14 +588,14 @@ function EnrichStep({
             </span>
           </div>
           {total > 0 && (
-            <div className='space-y-1'>
-              <div className='flex justify-between text-xs text-muted'>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-muted">
                 <span>{progressLabel}</span>
                 <span>{pct}%</span>
               </div>
-              <div className='h-2 w-full overflow-hidden rounded-full bg-elevated'>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-elevated">
                 <div
-                  className='h-full rounded-full bg-accent transition-all duration-500'
+                  className="h-full rounded-full bg-accent transition-all duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -592,19 +604,24 @@ function EnrichStep({
         </div>
       )}
 
-      {error && <p className='text-sm text-danger'>{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {!running && !jobId && (
-        <Button size='lg' className='w-full' onClick={() => void handleEnrich()}>
+        <Button size="lg" className="w-full" onClick={() => void handleEnrich()}>
           Enrich Now
         </Button>
       )}
 
       {error && jobId && (
         <Button
-          size='lg'
-          className='w-full'
-          onClick={() => { setJobId(null); setStatus('idle'); setError(null); void handleEnrich(); }}
+          size="lg"
+          className="w-full"
+          onClick={() => {
+            setJobId(null);
+            setStatus('idle');
+            setError(null);
+            void handleEnrich();
+          }}
         >
           Retry Enrichment
         </Button>
@@ -617,7 +634,7 @@ function EnrichStep({
 
 function ProfileStep({ onDone }: { onDone: () => void }) {
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleProfile() {
     setLoading(true);
@@ -636,35 +653,35 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className='space-y-6'>
+    <div className="space-y-6">
       <div>
-        <h2 className='mb-1 text-xl font-semibold text-text'>Build your taste profile</h2>
-        <p className='text-sm text-muted'>
+        <h2 className="mb-1 text-xl font-semibold text-text">Build your taste profile</h2>
+        <p className="text-sm text-muted">
           Claude analyzes your rated books to create taste traits that power recommendations.
           Usually takes 30-60 seconds.
         </p>
       </div>
 
-      <div className='rounded-xl border border-border bg-elevated p-4 text-sm text-muted space-y-1.5'>
+      <div className="rounded-xl border border-border bg-elevated p-4 text-sm text-muted space-y-1.5">
         <p>Creates your initial taste traits from your library</p>
         <p>Required before running recommendations</p>
         <p>Uses your configured Anthropic API key</p>
       </div>
 
       {loading && (
-        <div className='flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-quiet p-4 text-sm text-accent'>
-          <Spinner size='sm' className='mt-0.5 shrink-0' />
+        <div className="flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-quiet p-4 text-sm text-accent">
+          <Spinner size="sm" className="mt-0.5 shrink-0" />
           <span>Analyzing your ratings and building your profile...</span>
         </div>
       )}
 
-      {error && <p className='text-sm text-danger'>{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <Button
-        size='lg'
+        size="lg"
         loading={loading}
         disabled={loading}
-        className='w-full'
+        className="w-full"
         onClick={handleProfile}
       >
         {loading ? 'Building profile...' : 'Build Profile'}
@@ -691,13 +708,11 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
 
   return (
     <>
-      <div className='space-y-6 text-center'>
-        <div className='text-6xl'>
-          &#x1F389;
-        </div>
+      <div className="space-y-6 text-center">
+        <div className="text-6xl">&#x1F389;</div>
         <div>
-          <h2 className='mb-2 text-2xl font-bold text-text'>You&apos;re all set!</h2>
-          <p className='text-sm text-muted'>
+          <h2 className="mb-2 text-2xl font-bold text-text">You&apos;re all set!</h2>
+          <p className="text-sm text-muted">
             {profiled
               ? 'Your library is ready and your taste profile is built. Head to the dashboard to run your first AI recommendations.'
               : 'Your library is ready. Build your taste profile before requesting recommendations.'}
@@ -705,12 +720,12 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
         </div>
 
         {!profiled && (
-          <div className='rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning text-left'>
+          <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning text-left">
             Recommendations need a taste profile first. Go to My Profile to build it.
           </div>
         )}
 
-        <Button size='lg' className='w-full' onClick={handleFinish}>
+        <Button size="lg" className="w-full" onClick={handleFinish}>
           Go to Dashboard
         </Button>
       </div>
@@ -722,56 +737,59 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
 // ── Wizard ────────────────────────────────────────────────────────────────────
 
 export default function SetupWizard({ onComplete }: { onComplete?: () => void }) {
-  const [step, setStep]               = useState<Step>('name');
-  const [path, setPath]               = useState<'csv' | 'manual'>('csv');
+  const [step, setStep] = useState<Step>('name');
+  const [path, setPath] = useState<'csv' | 'manual'>('csv');
   const [ingestResult, setIngestResult] = useState<IngestResult | null>(null);
-  const [profiled, setProfiled]       = useState(false);
+  const [profiled, setProfiled] = useState(false);
 
   const rail = path === 'manual' ? MANUAL_STEPS : CSV_STEPS;
 
   return (
-    <div className='fade-in flex min-h-[60vh] flex-col items-center justify-center py-6 sm:py-12'>
-      <div className='w-full max-w-lg'>
-        <div className='mb-8 text-center'>
-          <h1 className='font-display text-3xl font-bold tracking-tight text-text'>
+    <div className="fade-in flex min-h-[60vh] flex-col items-center justify-center py-6 sm:py-12">
+      <div className="w-full max-w-lg">
+        <div className="mb-8 text-center">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-text">
             Welcome to MyLibrary
           </h1>
-          <p className='mt-1 text-sm text-muted'>
+          <p className="mt-1 text-sm text-muted">
             {step === 'name' || step === 'api-key'
               ? 'A few quick steps to get you started.'
               : path === 'manual'
-              ? "Let's build your starter library."
-              : "Let's get your reading history imported."}
+                ? "Let's build your starter library."
+                : "Let's get your reading history imported."}
           </p>
         </div>
 
         <StepIndicator current={step} steps={rail} />
 
-        <div className='rounded-2xl border border-border bg-surface p-6'>
-          {step === 'name' && (
-            <NameStep onDone={() => setStep('api-key')} />
-          )}
-          {step === 'api-key' && (
-            <ApiKeyStep onDone={() => setStep('upload')} />
-          )}
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          {step === 'name' && <NameStep onDone={() => setStep('api-key')} />}
+          {step === 'api-key' && <ApiKeyStep onDone={() => setStep('upload')} />}
           {step === 'upload' && (
             <UploadStep
-              onDone={(result) => { setIngestResult(result); setStep('enrich'); }}
-              onManual={() => { setPath('manual'); setStep('manual'); }}
+              onDone={(result) => {
+                setIngestResult(result);
+                setStep('enrich');
+              }}
+              onManual={() => {
+                setPath('manual');
+                setStep('manual');
+              }}
             />
           )}
           {step === 'enrich' && ingestResult && (
             <EnrichStep ingestResult={ingestResult} onDone={() => setStep('profile')} />
           )}
-          {step === 'manual' && (
-            <ManualStep onDone={() => setStep('profile')} />
-          )}
+          {step === 'manual' && <ManualStep onDone={() => setStep('profile')} />}
           {step === 'profile' && (
-            <ProfileStep onDone={() => { setProfiled(true); setStep('done'); }} />
+            <ProfileStep
+              onDone={() => {
+                setProfiled(true);
+                setStep('done');
+              }}
+            />
           )}
-          {step === 'done' && (
-            <DoneStep profiled={profiled} onComplete={onComplete} />
-          )}
+          {step === 'done' && <DoneStep profiled={profiled} onComplete={onComplete} />}
         </div>
       </div>
     </div>

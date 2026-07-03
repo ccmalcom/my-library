@@ -57,13 +57,13 @@ export function Modal({ labelId, onClose, children, className }: ModalProps) {
 
   return (
     <div
-      className='fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4'
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
     >
       <div
         ref={dialogRef}
-        role='dialog'
-        aria-modal='true'
+        role="dialog"
+        aria-modal="true"
         aria-labelledby={labelId}
         tabIndex={-1}
         onKeyDown={handleKeyDown}

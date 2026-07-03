@@ -12,7 +12,11 @@ const sizeClasses: Record<string, string> = {
 
 export function Spinner({ size = 'md', label = 'Loading', className }: SpinnerProps) {
   return (
-    <span role="status" aria-label={label} className={['inline-flex', className].filter(Boolean).join(' ')}>
+    <span
+      role="status"
+      aria-label={label}
+      className={['inline-flex', className].filter(Boolean).join(' ')}
+    >
       <svg
         className={['motion-safe:animate-spin text-accent', sizeClasses[size]].join(' ')}
         xmlns="http://www.w3.org/2000/svg"
