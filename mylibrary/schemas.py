@@ -252,6 +252,43 @@ class SimilarBooksOut(BaseModel):
     recommendations: list[SimilarBookOut]
 
 
+class DiscoverRequest(BaseModel):
+    """Body for POST /discover — a natural-language book request."""
+
+    query: str = Field(min_length=1, max_length=500)
+    n: int = Field(default=10, ge=1, le=20)
+
+
+class DiscoverBookOut(BaseModel):
+    """One ephemeral NL-discovery result (not persisted)."""
+
+    rank: int
+    title: str
+    author: str | None = None
+    year: int | None = None
+    isbn13: str | None = None
+    cover_url: str | None = None
+    subjects: list[str] | None = None
+    description: str | None = None
+    catalog_source: str | None = None
+    catalog_id: str | None = None
+    retrieval_pool: str | None = None
+    seed_reason: str | None = None
+    score: float
+    rationale: str | None = None
+
+
+class DiscoverResult(BaseModel):
+    """Response for POST /discover — an ephemeral ranked list answering the request."""
+
+    query: str
+    interpretation: str
+    count: int
+    model: str
+    queries: list[str]
+    recommendations: list[DiscoverBookOut]
+
+
 class ApiKeyRequest(BaseModel):
     """Body for setting the per-user Anthropic key. The key is encrypted at rest and
     never read back — there is no field that returns it."""
