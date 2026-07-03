@@ -1605,6 +1605,98 @@ def recommend_similar(
         }
 
 
+def discover(query: str, *, n: int = 10, user_id: str = LOCAL_USER_ID) -> dict:
+    """Ephemeral natural-language discovery: 'find me a book like X'.
+
+    Two-stage and request-anchored: Stage A (Claude Haiku) interprets the NL request into
+    catalog search queries + hard constraints; retrieval resolves them against the live
+    catalog; Stage B (rerank model) ranks the real candidates by fit to the request (the
+    taste profile is only secondary tie-break context). Results are NOT persisted — no
+    `recommendations` rows — so the main recs feed / swipe deck are untouched, and discovery
+    works without a taste profile (no profile-missing/stale gate)."""
+    query = (query or "").strip()
+    if not query:
+        raise RuntimeError("Enter something to search for.")
+
+    init_db()
+    api_key = resolve_anthropic_key(user_id)
+
+    with session_scope() as session:
+        # Full signal: library exclusion sets (keys/isbns/authors/languages) + traits/loved
+        # as secondary context. _build_signal never raises on a thin/profile-less library.
+        signal = _build_signal(session, user_id)
+        interp = _interpret_query(query, signal, api_key=api_key, user_id=user_id)
+        queries = interp["queries"]
+        constraints = interp["constraints"]
+        model = get_settings().model
+
+        if not queries:
+            return {
+                "query": query,
+                "interpretation": interp["interpretation"],
+                "count": 0,
+                "model": model,
+                "queries": [],
+                "recommendations": [],
+            }
+
+        # A stated language constraint overrides the reader's library languages for this run
+        # (people ask for other-language books on purpose). _assemble reads library_languages
+        # via _allowed_languages, so overriding it here is enough.
+        if constraints.get("languages"):
+            signal = {**signal, "library_languages": set(constraints["languages"])}
+
+        pool = _discovery_pool(queries, per_query=_PER_QUERY)
+        pool = _apply_discovery_constraints(pool, constraints)
+        # Discovery is purely query-driven: no metadata_pool. The interpreted queries ARE the
+        # seed pool; _assemble dedups, drops owned/rejected books, language-filters, caps authors.
+        candidates = _assemble([], pool, signal, cap=_MAX_CANDIDATES)
+        _fill_ol_descriptions(candidates)
+
+        if not candidates:
+            return {
+                "query": query,
+                "interpretation": interp["interpretation"],
+                "count": 0,
+                "model": model,
+                "queries": queries,
+                "recommendations": [],
+            }
+
+        ranked = _rerank_discovery(
+            candidates, query, interp["interpretation"], signal,
+            n=n, api_key=api_key, user_id=user_id,
+        )
+
+        recs_out = []
+        for rank, c in enumerate(ranked, 1):
+            recs_out.append({
+                "rank": rank,
+                "title": c["title"],
+                "author": c.get("author"),
+                "year": c.get("year"),
+                "isbn13": c.get("isbn13"),
+                "cover_url": c.get("cover_url"),
+                "subjects": c.get("subjects") or [],
+                "description": c.get("description"),
+                "catalog_source": c.get("catalog_source"),
+                "catalog_id": c.get("catalog_id"),
+                "retrieval_pool": c.get("retrieval_pool"),
+                "seed_reason": c.get("seed_reason"),
+                "score": round(c["score"], 2),
+                "rationale": c.get("rationale"),
+            })
+
+        return {
+            "query": query,
+            "interpretation": interp["interpretation"],
+            "count": len(recs_out),
+            "model": model,
+            "queries": queries,
+            "recommendations": recs_out,
+        }
+
+
 def latest_recommendations(
     session, user_id: str = LOCAL_USER_ID
 ) -> list[Recommendation]:
