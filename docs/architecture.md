@@ -152,6 +152,23 @@
   `recommendations` rows are written, so the main recs feed and swipe deck are untouched.
   Surfaced at `POST /books/{book_id}/similar`.
 
+  ### Natural-language discovery (`discover`)
+
+  `discover(query)` is the Wave 3b "find me a book like X" path — a request-anchored sibling
+  of `recommend_similar`. Stage A (`_interpret_query`, Claude Haiku, op `discover_interpret`)
+  turns the free-text request into catalog search queries + a constraints object + a
+  one-sentence interpretation echo (never titles). Retrieval runs those queries against Google
+  Books + Open Library (`_discovery_pool`), applies the stated constraints
+  (`_apply_discovery_constraints`), and reuses `_assemble` (dedup, owned/rejected exclusion,
+  language filter, author caps). Stage B (`_rerank_discovery`, op `discover_rerank`) ranks the
+  real candidates by fit to the request, profile secondary. Results are **ephemeral** — no
+  `recommendations` rows — so the main recs feed / swipe deck are untouched, and discovery works
+  without a taste profile. **Filterable constraints are limited to what catalog candidates
+  carry**: language, era (`min_year`/`max_year`), and `exclude_subjects`. Page-count and
+  standalone/series constraints are deliberately unsupported (candidates carry no page-count or
+  series field) and are stripped in `_clean_constraints`. Surfaced at `POST /discover`
+  (rate-limited 30/min, mirroring `/catalog/search`).
+
 - **`TasteSignal` / `taste_signal` table** — durable, append-only steering signals that express
   "more like this" or "less like this" for a specific book or recommendation. Columns:
   `direction` (`more` | `less`), `target_kind` (`book` | `rec`), `target_book_id` (FK to user's

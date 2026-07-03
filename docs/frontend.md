@@ -24,6 +24,12 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 
 - `/` — dashboard: greeting "Hey, {displayName}." with `text-user`; compact archetype callout badge+name linking to `/profile`; stats strip with numbers in `text-user`; ratings bars in `bg-user`; run-recommend CTA. `--user-accent` is set on the outer wrapper so all `text-user`/`bg-user` tokens pick up the archetype color.
 - `/swipe` — rec swiping. `already_read` lands the book on the read shelf then prompts a review.
+- `/discover` — natural-language discovery ("find me a book like X"). A search box posts
+  `POST /discover`; renders the interpretation echo ("Looking for: …"), a ranked list of real
+  catalog matches with a per-result rationale, and "Add to to-read" per result (routes through
+  the existing `POST /books`). **Ephemeral** — results are not persisted and never touch the
+  recommendations feed / swipe deck. Reachable from a NavBar "Discover" link and a home-page CTA
+  (not in `BottomNav`, which stays at 5 items — the home CTA covers mobile).
 - `/to-read` — per-book: start reading / mark finished → review / remove.
 - `/library` — rated books; click a row to re-rate/review; "N books waiting on a rating" button steps through unrated read books; **+ Add book** button opens `AddBookModal`.
 - `/profile` — `TasteHero` archetype card at top; taste traits with inline editing, rating distribution, genre breakdown.
