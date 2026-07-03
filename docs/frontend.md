@@ -17,6 +17,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 - `app/providers.tsx` — client component wrapping `(main)` layout children with a global `SWRConfig` (`revalidateOnFocus: false`, `dedupingInterval: 30_000`). Prevents refetch thrash when switching browser tabs; per-page `useSWR` keys are unchanged.
 - `lib/bookLinks.ts` — pure function `bookLinks(book)` returning `{ label, href }[]` for Amazon, Bookshop.org, and WorldCat. Uses ISBN13 when present, falls back to title+author search query.
 - `lib/authRedirect.ts` — pure `inviteCallbackRedirect(hash)`: returns the `/auth/callback` URL (hash preserved) when a URL hash carries Supabase invite/recovery tokens or an auth error, else `null`. Used by `app/login` to rescue misdirected invite links (see Auth section).
+- `lib/authCallback.ts` — pure `parseAuthCallbackHash(hash)`: classifies the callback hash as `error` (reused/expired link), `tokens` (implicit-grant `access_token`+`refresh_token`), or `none`. Used by `app/auth/callback` to consume the tokens itself (see Auth section for why the SSR client can't).
 - `lib/tasteAccent.ts` — maps 4-letter archetype code to one of 16 curated HSL colors (warm for Immersive types, cool for Reflective); falls back to hash-derived color.
 
 ## Routes (`app/`)
@@ -33,7 +34,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
   "Approaching cap" badge when `usage.warn` is true, and a footnote clarifying it's a
   soft cap for visibility only — recommendations/profiling never stop running.
 - `/admin` — admin console (invite/revoke users, view roster). Only reachable by users in the `ADMIN_EMAILS` allowlist; in local mode all users can access it.
-- `/auth/callback` — public (middleware's `PUBLIC_PREFIXES` includes `/auth`) landing page for Supabase invite links. Client-only: consumes the session tokens Supabase puts in the URL hash, then prompts the invited user (no password yet) to set one before hard-reloading into `/`. `/login` forwards any invite/recovery hash here as a fallback (see Auth section).
+- `/auth/callback` — public (middleware's `PUBLIC_PREFIXES` includes `/auth`) landing page for Supabase invite links. Client-only: parses the session tokens Supabase puts in the URL hash (`lib/authCallback.ts`) and establishes the session via `supabase.auth.setSession(...)`, then prompts the invited user (no password yet) to set one before hard-reloading into `/`. **It must call `setSession` itself and cannot rely on the client auto-detecting the hash:** `@supabase/ssr` hardcodes `flowType: 'pkce'`, and invite/recovery links use the implicit grant (tokens in the hash), which auth-js refuses to auto-consume under PKCE (`_getSessionFromURL` throws "Not a valid PKCE flow url"). `setSession` ignores `flowType` and persists to the same cookie storage so middleware sees the session. `/login` forwards any invite/recovery hash here as a fallback (see Auth section).
 
 `layout.tsx` mounts `NavBar` + `ReprofileBanner` + `UsageWarningBanner` + `FeedbackLauncher` + `BottomNav` above/below all pages and wraps `children` in **`LibraryGate`**. The root `app/layout.tsx` `<body>` carries `suppressHydrationWarning` (browser extensions mutate `<body>` pre-hydration — silences benign attribute mismatches only).
 

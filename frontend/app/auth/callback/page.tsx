@@ -1,16 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/utils/supabase/client';
+import { parseAuthCallbackHash } from '@/lib/authCallback';
 import { Button, Spinner } from '@/components/ui';
 
 // Landing spot for Supabase invite (and password-recovery) links. Supabase puts the session
 // tokens in the URL *hash* fragment, which never reaches the server — so this must be a plain
-// client page, not something middleware can gate or redirect before the JS runs. Once the
-// Supabase client consumes the hash and establishes a session, we ask the user to set a
-// password (invited accounts start with none) before sending them into the app.
+// client page, not something middleware can gate or redirect before the JS runs.
+//
+// These links use the IMPLICIT grant (tokens in the hash), but @supabase/ssr hardcodes
+// flowType: 'pkce', so the client refuses to auto-consume the hash ("Not a valid PKCE flow
+// url"). We therefore parse the tokens ourselves (lib/authCallback) and call setSession —
+// which ignores flowType — then ask the user to set a password (invited accounts start with
+// none) before sending them into the app.
 const SESSION_TIMEOUT_MS = 6000;
+const EXPIRED_MSG = 'This invite link is invalid or has expired. Ask your admin to resend it.';
 
 export default function AuthCallbackPage() {
   const [phase, setPhase] = useState<'loading' | 'set-password' | 'error'>('loading');
@@ -26,16 +31,7 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    const hashError = hashParams.get('error_description');
-    if (hashError) {
-      // Defer: setState must not run synchronously in the effect body itself.
-      queueMicrotask(() => {
-        setErrorMsg(hashError.replace(/\+/g, ' '));
-        setPhase('error');
-      });
-      return;
-    }
+    const parsed = parseAuthCallbackHash(window.location.hash);
 
     const clearHash = () => {
       if (window.location.hash) {
@@ -44,36 +40,50 @@ export default function AuthCallbackPage() {
     };
 
     let settled = false;
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, session: Session | null) => {
-        if (session && !settled) {
-          settled = true;
-          clearHash();
-          setPhase('set-password');
-        }
-      }
-    );
-
-    supabase.auth.getSession().then((res: { data: { session: Session | null } }) => {
-      const { session } = res.data;
-      if (session && !settled) {
-        settled = true;
-        clearHash();
-        setPhase('set-password');
-      }
-    });
-
-    const timeout = setTimeout(() => {
-      if (!settled) {
-        setErrorMsg('This invite link is invalid or has expired. Ask your admin to resend it.');
-        setPhase('error');
-      }
-    }, SESSION_TIMEOUT_MS);
-
-    return () => {
-      sub.subscription.unsubscribe();
+    const succeed = () => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timeout);
+      clearHash();
+      setPhase('set-password');
     };
+    const fail = (message: string) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      setErrorMsg(message);
+      setPhase('error');
+    };
+
+    // Guards against a hung network call while establishing the session.
+    const timeout = setTimeout(() => fail(EXPIRED_MSG), SESSION_TIMEOUT_MS);
+
+    if (parsed.kind === 'error') {
+      fail(parsed.message);
+      return () => clearTimeout(timeout);
+    }
+
+    (async () => {
+      try {
+        if (parsed.kind === 'tokens') {
+          // Consume the implicit-grant tokens the SSR client won't (see file header).
+          const { error } = await supabase.auth.setSession({
+            access_token: parsed.accessToken,
+            refresh_token: parsed.refreshToken,
+          });
+          if (error) return fail(EXPIRED_MSG);
+        } else {
+          // No tokens in the hash — only proceed if a session already exists.
+          const { data } = await supabase.auth.getSession();
+          if (!data.session) return fail(EXPIRED_MSG);
+        }
+        succeed();
+      } catch {
+        fail(EXPIRED_MSG);
+      }
+    })();
+
+    return () => clearTimeout(timeout);
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
