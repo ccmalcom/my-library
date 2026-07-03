@@ -24,7 +24,7 @@ export default function ReprofileBanner() {
       setError(
         e instanceof Error
           ? e.message
-          : "The update didn't finish. Your current profile still stands — try again."
+          : "The update didn't finish. Your current profile still stands \u2014 try again."
       );
     } finally {
       setRunning(false);
@@ -53,7 +53,7 @@ export default function ReprofileBanner() {
           ].join(' ')}
         >
           {running && <Spinner size="sm" />}
-          {running ? 'Updating…' : 'Update profile'}
+          {running ? 'Updating\u2026' : 'Update profile'}
         </button>
       </div>
     </div>

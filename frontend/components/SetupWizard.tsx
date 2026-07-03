@@ -173,7 +173,7 @@ function NameStep({ onDone }: { onDone: () => void }) {
           disabled={saving || !name.trim()}
           className="w-full"
         >
-          {saving ? 'Saving…' : 'Continue'}
+          {saving ? 'Saving\u2026' : 'Continue'}
         </Button>
       </form>
     </div>
@@ -278,7 +278,7 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
           disabled={saving || !key.trim() || saved}
           className="w-full"
         >
-          {saving ? 'Saving…' : 'Save key & continue'}
+          {saving ? 'Saving\u2026' : 'Save key & continue'}
         </Button>
       </form>
     </div>
@@ -303,7 +303,7 @@ function UploadStep({
     if (!f) return;
     if (!f.name.toLowerCase().endsWith('.csv')) {
       setError(
-        "That's not a .csv — export one from Goodreads (My Books › Import/Export) or The " +
+        "That's not a .csv \u2014 export one from Goodreads (My Books \u203A Import/Export) or The " +
           'StoryGraph and try again.'
       );
       return;
@@ -325,7 +325,7 @@ function UploadStep({
       const msg = err instanceof Error ? err.message : 'Upload failed.';
       setError(
         msg.includes('422')
-          ? "We couldn't read that format. Finish setup, then use Settings → Import to map the columns yourself."
+          ? "We couldn't read that format. Finish setup, then use Settings \u2192 Import to map the columns yourself."
           : msg
       );
       setLoading(false);
@@ -389,7 +389,7 @@ function UploadStep({
           disabled={!file || loading}
           className="w-full"
         >
-          {loading ? 'Importing…' : 'Import library'}
+          {loading ? 'Importing\u2026' : 'Import library'}
         </Button>
       </form>
 
@@ -560,7 +560,7 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
 
   const running = status === 'pending' || status === 'running';
   const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
-  const progressLabel = total > 0 ? `${progress} / ${total} books (${pct}%)` : 'Starting…';
+  const progressLabel = total > 0 ? `${progress} / ${total} books (${pct}%)` : 'Starting\u2026';
 
   return (
     <div className="space-y-6">
@@ -587,7 +587,7 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
             <span>
               {status === 'pending'
                 ? 'Queued — starting shortly…'
-                : 'Fetching covers and metadata… your shelf is getting dressed.'}
+                : 'Fetching covers and metadata\u2026 your shelf is getting dressed.'}
             </span>
           </div>
           {total > 0 && (
@@ -687,7 +687,7 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
         className="w-full"
         onClick={handleProfile}
       >
-        {loading ? 'Building profile…' : 'Build my profile'}
+        {loading ? 'Building profile\u2026' : 'Build my profile'}
       </Button>
     </div>
   );

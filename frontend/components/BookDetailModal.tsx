@@ -170,7 +170,7 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
                 'transition hover:bg-danger/20 disabled:opacity-50',
               ].join(' ')}
             >
-              {busy ? 'Removing…' : 'Confirm remove'}
+              {busy ? 'Removing\u2026' : 'Confirm remove'}
             </button>
           ) : (
             <button

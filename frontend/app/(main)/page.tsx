@@ -119,7 +119,7 @@ export default function HomePage() {
   const recBlocked = noProfile || isDirty;
 
   const recBlockMsg = noProfile
-    ? 'No taste profile yet — build one on your profile page first.'
+    ? 'No taste profile yet \u2014 build one on your profile page first.'
     : isDirty
       ? 'Your library changed since the last profile build — update it on your profile page.'
       : null;
@@ -201,7 +201,7 @@ export default function HomePage() {
           </p>
 
           <Button size="lg" loading={running} disabled={running || recBlocked} onClick={handleRun}>
-            {running ? 'Choosing carefully…' : 'Find my next books'}
+            {running ? 'Choosing carefully\u2026' : 'Find my next books'}
           </Button>
 
           {recBlockMsg && <p className="mt-4 text-sm text-warning">{recBlockMsg}</p>}

@@ -109,7 +109,7 @@ export default function AdminPage() {
           <p className="text-sm text-muted">Invite new users and manage access.</p>
         </div>
         <Button variant="secondary" size="sm" loading={backfilling} onClick={handleBackfill}>
-          {backfilling ? 'Syncing…' : 'Sync from Supabase'}
+          {backfilling ? 'Syncing\u2026' : 'Sync from Supabase'}
         </Button>
       </div>
 
@@ -165,7 +165,7 @@ export default function AdminPage() {
               </button>
             )}
             <Button type="submit" loading={inviting} disabled={inviting || !email.trim()}>
-              {inviting ? 'Sending…' : 'Invite'}
+              {inviting ? 'Sending\u2026' : 'Invite'}
             </Button>
           </form>
         </Card>
@@ -230,7 +230,7 @@ function UserRow({ user, onRevoked }: { user: AdminUser; onRevoked: () => void }
         {canRevoke &&
           (confirming ? (
             <Button variant="danger" size="sm" loading={revoking} onClick={handleRevoke}>
-              {revoking ? 'Revoking…' : 'Confirm'}
+              {revoking ? 'Revoking\u2026' : 'Confirm'}
             </Button>
           ) : (
             <Button

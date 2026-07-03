@@ -100,7 +100,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
       requestAnimationFrame(() => searchRef.current?.focus());
     } catch (e) {
       const raw = e instanceof Error ? e.message : 'Failed to add book.';
-      const msg = raw.includes('409') ? "Already shelved — that one's in your library." : raw;
+      const msg = raw.includes('409') ? "Already shelved \u2014 that one's in your library." : raw;
       toast.error(msg);
       setSaving(false);
     }
@@ -322,7 +322,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
               Cancel
             </Button>
             <Button onClick={handleAdd} loading={saving} disabled={saving || reviewWithoutRating}>
-              {saving ? 'Adding…' : 'Add to library'}
+              {saving ? 'Adding\u2026' : 'Add to library'}
             </Button>
           </div>
         </>

@@ -52,7 +52,7 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
   }
 
   const desc = rec.description;
-  const descShort = desc && desc.length > 180 ? desc.slice(0, 177) + '…' : desc;
+  const descShort = desc && desc.length > 180 ? desc.slice(0, 177) + '\u2026' : desc;
 
   return (
     <motion.div
@@ -149,7 +149,7 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
         <div>
           <p className="mb-1 font-mono text-xs uppercase tracking-widest text-faint">Why for you</p>
           <p className="text-sm leading-relaxed text-text">
-            {rec.rationale || 'Retrieved from your taste profile — no note from the reranker.'}
+            {rec.rationale || 'Retrieved from your taste profile \u2014 no note from the reranker.'}
           </p>
         </div>
 
@@ -162,7 +162,7 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
             <div className="flex flex-wrap gap-1.5">
               {matchedTraits.map((t) => (
                 <Badge key={t.id} variant={t.polarity === 'reward' ? 'accent' : 'warning'}>
-                  {t.claim.length > 40 ? t.claim.slice(0, 38) + '…' : t.claim}
+                  {t.claim.length > 40 ? t.claim.slice(0, 38) + '\u2026' : t.claim}
                 </Badge>
               ))}
             </div>

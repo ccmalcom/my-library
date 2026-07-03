@@ -139,7 +139,7 @@ export default function ImportModal({
         <div className="flex-1 overflow-y-auto">
           <p className="mb-3 text-sm text-muted">
             Detected: <span className="font-medium text-text">{FORMAT_LABEL[preview.format]}</span>
-            {' — '}
+            {'\u2014'}
             {preview.headers.length} columns.
           </p>
 
@@ -181,7 +181,7 @@ export default function ImportModal({
         </Button>
         {preview && (
           <Button onClick={handleImport} loading={busy} disabled={!canImport || busy}>
-            {busy ? 'Importing…' : 'Import'}
+            {busy ? 'Importing\u2026' : 'Import'}
           </Button>
         )}
       </div>

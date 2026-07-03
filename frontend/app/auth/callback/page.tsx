@@ -179,7 +179,7 @@ export default function AuthCallbackPage() {
             {errorMsg && <p className="text-sm text-danger">{errorMsg}</p>}
 
             <Button type="submit" size="lg" loading={saving} className="w-full">
-              {saving ? 'Saving…' : 'Set password & continue'}
+              {saving ? 'Saving\u2026' : 'Set password & continue'}
             </Button>
           </form>
         )}

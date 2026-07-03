@@ -57,7 +57,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
     try {
       await api.updateTrait(trait.id, { claim: trimmed });
       await mutate(TRAITS_KEY);
-      toast.success('Noted — your profile just got sharper.');
+      toast.success('Noted \u2014 your profile just got sharper.');
       setEditing(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Save failed.');
@@ -81,7 +81,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
         { revalidate: false }
       );
       await mutate(PROFILE_STATUS_KEY);
-      toast.success("Updated — we'll recommend accordingly.");
+      toast.success("Updated \u2014 we'll recommend accordingly.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Update failed.');
     } finally {
@@ -185,7 +185,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
       {editing && (
         <div className="flex items-center gap-2 pl-14">
           <Button size="sm" loading={saving} onClick={() => void save()}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving\u2026' : 'Save'}
           </Button>
           <Button size="sm" variant="ghost" onClick={cancel}>
             Cancel

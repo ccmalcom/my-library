@@ -68,7 +68,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
   return (
     <input
       type="search"
-      placeholder="Search title or author…"
+      placeholder="Search title or author\u2026"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={[
@@ -778,7 +778,7 @@ function DnfTab({ books }: { books: Book[] }) {
                           'transition hover:bg-danger/20 disabled:opacity-50',
                         ].join(' ')}
                       >
-                        {busy ? 'Removing…' : 'Confirm remove'}
+                        {busy ? 'Removing\u2026' : 'Confirm remove'}
                       </button>
                     ) : (
                       <button

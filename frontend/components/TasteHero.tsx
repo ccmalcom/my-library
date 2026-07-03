@@ -348,7 +348,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
           {chipTraits.map((t) => {
             const truncated = t.claim.length > 60;
             const isExpanded = expandedChip === t.id;
-            const chipLabel = truncated && !isExpanded ? t.claim.slice(0, 57) + '…' : t.claim;
+            const chipLabel = truncated && !isExpanded ? t.claim.slice(0, 57) + '\u2026' : t.claim;
             return (
               <button
                 key={t.id}

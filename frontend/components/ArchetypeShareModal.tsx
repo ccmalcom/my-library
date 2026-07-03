@@ -90,7 +90,7 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('Canvas toBlob returned null');
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      toast.success('Copied — go show someone your reader type.');
+      toast.success('Copied \u2014 go show someone your reader type.');
     } catch {
       toast.error("Couldn't copy the image. Try a different browser.");
     }

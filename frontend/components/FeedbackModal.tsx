@@ -52,7 +52,7 @@ export default function FeedbackModal({ trigger, runId, heading, onClose, onReso
         app_version: process.env.NEXT_PUBLIC_APP_VERSION ?? 'unknown',
       };
       await api.submitFeedback(payload);
-      toast.success('Got it — thank you. This is exactly how the beta gets better.');
+      toast.success('Got it \u2014 thank you. This is exactly how the beta gets better.');
       onResolved();
     } catch (e) {
       toast.error("That didn't send. Try again in a moment.");
@@ -105,7 +105,7 @@ export default function FeedbackModal({ trigger, runId, heading, onClose, onReso
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={6}
-          placeholder="Rough edges, wrong recommendations, small joys — all useful."
+          placeholder="Rough edges, wrong recommendations, small joys \u2014 all useful."
           disabled={submitting}
           className={[inputClass, 'resize-y disabled:opacity-50 disabled:cursor-not-allowed'].join(
             ' '
