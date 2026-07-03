@@ -829,6 +829,61 @@ def _interpret_query(
     return {"interpretation": "", "queries": [], "constraints": {}}
 
 
+def _discovery_pool(queries: list[str], *, per_query: int) -> list[tuple[dict, str]]:
+    """Run interpreted NL-discovery queries against the live catalog (Google + OL free-text).
+
+    Discovery has no library-metadata backstop — recall rests entirely on these queries — so
+    each runs against BOTH sources. Mirrors `_seed_pool`'s (candidate, reason) tuple shape."""
+    from . import catalog
+
+    pool: list[tuple[dict, str]] = []
+    for q in queries:
+        for cand in catalog.googlebooks_query(q, max_results=per_query):
+            pool.append((cand, f"query:{q}"))
+        for cand in catalog.openlibrary_query(q, max_results=per_query):
+            pool.append((cand, f"query:{q}"))
+    return pool
+
+
+def _subject_hits(term: str, subject: str) -> bool:
+    """True when `term` appears as a whole word inside `subject` (both already lowercased).
+
+    Whole-word so an exclude of 'war' doesn't trip 'warmth' or 'steward'."""
+    return re.search(rf"\b{re.escape(term)}\b", subject) is not None
+
+
+def _apply_discovery_constraints(
+    pool: list[tuple[dict, str]], constraints: dict
+) -> list[tuple[dict, str]]:
+    """Filter the candidate pool by the reader's stated era + exclude_subjects constraints.
+
+    Applied to the RAW pool before assembly's cap, so the cap never keeps a constraint-
+    violating book over a valid one. Unknown/missing fields always PASS (never drop a
+    candidate for lacking metadata — same philosophy as `_language_ok`). Language is handled
+    separately, via the signal's allowed-language set in `discover`."""
+    if not constraints:
+        return pool
+    min_year = constraints.get("min_year")
+    max_year = constraints.get("max_year")
+    exclude = [s.lower() for s in (constraints.get("exclude_subjects") or [])]
+
+    def ok(cand: dict) -> bool:
+        year = cand.get("year")
+        if isinstance(year, int):
+            if min_year is not None and year < min_year:
+                return False
+            if max_year is not None and year > max_year:
+                return False
+        if exclude:
+            subjects = [str(s).lower() for s in (cand.get("subjects") or [])]
+            for term in exclude:
+                if any(_subject_hits(term, s) for s in subjects):
+                    return False
+        return True
+
+    return [(c, r) for (c, r) in pool if ok(c)]
+
+
 def _fill_ol_descriptions(candidates: list[dict]) -> None:
     """Fetch Work descriptions for OL candidates that didn't get one from the pool query.
 
