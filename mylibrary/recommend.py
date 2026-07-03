@@ -26,6 +26,7 @@ rejected recs as labeled negatives and a UI can show "why this".
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from collections import Counter
 
@@ -633,6 +634,199 @@ def _similar_seed_pool(
         for cand in catalog.googlebooks_query(q, max_results=per_query):
             pool.append((cand, f"query:{q}"))
     return pool, queries
+
+
+# --- Wave 3b: natural-language discovery ------------------------------------
+#
+# Stage A interprets a free-text request into catalog search queries + hard
+# constraints (never titles). Stage B (below) reranks the real candidates by fit
+# to the request. Results are ephemeral — discover() persists nothing.
+
+_DISCOVER_SYSTEM = (
+    "You translate a reader's natural-language book request into catalog search queries and "
+    "constraints. You never name specific titles — you produce search TERMS (themes, genres, "
+    "styles, comparable-author names when the reader gives one) that a book catalog can "
+    "resolve.\n\n"
+    "Rules:\n"
+    "- The reader's request is the primary signal. Their taste profile is provided as "
+    "secondary context: use it to break ties and set tone (e.g. their prose preferences), "
+    "never to override what they asked for. If they ask for something their profile dislikes, "
+    "honor the request — people read outside their pattern on purpose.\n"
+    "- If the request names a book or author (\"like The Fifth Season\"), decompose WHY someone "
+    "asks for that book into 3-6 distinct facets (e.g. geological apocalypse setting; "
+    "second-person narration; rage as the engine; found family under oppression) and emit one "
+    "query per facet. Facets, not synonyms — six rewordings of the same idea retrieve the same "
+    "shelf six times.\n"
+    "- If the request is a mood or situation (\"something gentle for a bad week\", \"a beach book "
+    "that isn't dumb\"), translate the mood into concrete catalog language: pacing, stakes, tone.\n"
+    "- Extract hard constraints ONLY when the reader states them: language, publication era "
+    "(min_year / max_year), and subjects to avoid (exclude_subjects — e.g. \"nothing violent\" "
+    "-> war, violence). These are filters, not queries. Do not invent constraints the reader "
+    "didn't state, and do not constrain by length or series — those aren't filterable.\n"
+    "- When the request is ambiguous, emit queries covering the 2-3 most likely readings rather "
+    "than guessing one.\n\n"
+    "Examples (request -> facets; constraints only when stated):\n"
+    "- \"Find me a book like Project Hail Mary\" -> facets: lone-problem-solver survival scifi; "
+    "competence-porn engineering narration; first-contact friendship; humor inside hard sci-fi; "
+    "race-against-extinction stakes. No constraints.\n"
+    "- \"Something gentle for a bad week\" -> facets: low-stakes literary comfort; kindness between "
+    "strangers; cozy small-community fiction; quiet healing narratives. Constraints: "
+    "exclude_subjects: [grief, war, abuse].\n"
+    "- \"A thriller my book club won't hate\" -> facets: literary crime; character-driven suspense; "
+    "thrillers with prose ambition; discussable moral-dilemma plots. No hard constraints.\n"
+    "- \"Nonfiction that reads like a novel\" -> facets: narrative nonfiction; immersive reportage; "
+    "true crime with literary structure; biography with scene-level storytelling. No hard "
+    "constraints."
+)
+
+_DISCOVER_TOOL = {
+    "name": "interpret_request",
+    "description": (
+        "Translate a reader's natural-language book request into catalog SEARCH queries "
+        "(search terms — themes, styles, comparable-author names — never specific titles), "
+        "the hard constraints they stated, and a one-sentence interpretation of what they want."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "interpretation": {
+                "type": "string",
+                "description": "One sentence restating what the reader wants, in their own terms.",
+            },
+            "queries": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "A catalog search query for one facet — search terms, not a title.",
+                        },
+                        "rationale": {
+                            "type": "string",
+                            "description": "Which facet of the request this query chases.",
+                        },
+                    },
+                    "required": ["query", "rationale"],
+                },
+            },
+            "constraints": {
+                "type": "object",
+                "description": "Hard filters the reader stated. Omit any they did not state.",
+                "properties": {
+                    "languages": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "ISO 639-1 codes, e.g. ['en','fr']. Only when the reader names a language.",
+                    },
+                    "min_year": {
+                        "type": "integer",
+                        "description": "Earliest publication year, when the reader states an era.",
+                    },
+                    "max_year": {
+                        "type": "integer",
+                        "description": "Latest publication year, when the reader states an era.",
+                    },
+                    "exclude_subjects": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Subjects/themes to avoid, e.g. ['war','grief'] for 'nothing heavy'.",
+                    },
+                },
+            },
+        },
+        "required": ["interpretation", "queries"],
+    },
+}
+
+
+def _clean_constraints(raw: dict) -> dict:
+    """Keep only the supported, catalog-filterable constraints; normalize their types.
+
+    Supported: languages (list[str], 2-letter lowercased), min_year/max_year (int),
+    exclude_subjects (list[str], lowercased). Page-count and standalone/series constraints
+    are intentionally unsupported — catalog candidates don't reliably carry that data — so
+    they are dropped here even if the model emits them."""
+    out: dict = {}
+    langs = [
+        str(x).strip().lower()[:2]
+        for x in (raw.get("languages") or [])
+        if str(x).strip()
+    ]
+    if langs:
+        out["languages"] = langs
+    for key in ("min_year", "max_year"):
+        val = raw.get(key)
+        if isinstance(val, bool):
+            continue
+        if isinstance(val, int):
+            out[key] = val
+        elif isinstance(val, str) and val.strip().isdigit():
+            out[key] = int(val.strip())
+    excl = [
+        str(x).strip().lower()
+        for x in (raw.get("exclude_subjects") or [])
+        if str(x).strip()
+    ]
+    if excl:
+        out["exclude_subjects"] = excl
+    return out
+
+
+def _interpret_query(
+    query: str, signal: dict, *, api_key: str | None = None, user_id: str
+) -> dict:
+    """Stage A: interpret an NL request into search queries + constraints + an echo string.
+
+    Returns {"interpretation": str, "queries": list[str], "constraints": dict}. The taste
+    profile (traits + loved) is passed as secondary context for tie-breaking; the request
+    rules. Tracks spend under operation 'discover_interpret'."""
+    client, _settings = _client(api_key)
+    profile_context = (
+        "READER TASTE PROFILE (secondary context — the request rules):\n"
+        "TASTE TRAITS (JSON):\n"
+        + json.dumps(signal.get("traits") or [], ensure_ascii=False)
+        + "\n\nLOVED BOOKS (JSON):\n"
+        + json.dumps((signal.get("loved") or [])[:_LOVED_SAMPLE], ensure_ascii=False)
+    )
+    task_prompt = (
+        f'The reader asked: "{query}"\n\n'
+        "Interpret this request. Emit search QUERIES (facets, not titles), any hard "
+        "CONSTRAINTS they stated (language, era, subjects to avoid — omit if unstated), and "
+        "a one-sentence INTERPRETATION of what they want."
+    )
+    message = tracked_create(
+        client,
+        user_id=user_id,
+        operation="discover_interpret",
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1500,
+        system=_DISCOVER_SYSTEM,
+        tools=[_DISCOVER_TOOL],
+        tool_choice={"type": "tool", "name": "interpret_request"},
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": profile_context,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": task_prompt},
+            ],
+        }],
+    )
+    for block in message.content:
+        if getattr(block, "type", None) == "tool_use":
+            data = block.input
+            queries = [
+                q["query"].strip()
+                for q in data.get("queries", [])
+                if q.get("query", "").strip()
+            ]
+            return {
+                "interpretation": (data.get("interpretation") or "").strip(),
+                "queries": queries,
+                "constraints": _clean_constraints(data.get("constraints") or {}),
+            }
+    return {"interpretation": "", "queries": [], "constraints": {}}
 
 
 def _fill_ol_descriptions(candidates: list[dict]) -> None:
