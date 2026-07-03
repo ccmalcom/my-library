@@ -290,6 +290,10 @@ class ProfileMeta(Base):
     last_profiled_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_profile_kind: Mapped[str | None] = mapped_column(String)  # full | update
     rec_feedback_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Bumped by library.correct_enrichment (Wave 3c) whenever a mis-resolved
+    # enrichment is fixed via the LOW-confidence correction queue. A third
+    # dirty-state signal alongside last_profiled_at / rec_feedback_updated_at.
+    enrichment_corrected_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class UserSettings(Base):
@@ -604,6 +608,10 @@ def init_db() -> None:
             if "rec_feedback_updated_at" not in pm_cols:
                 conn.execute(
                     sa_text("ALTER TABLE profile_meta ADD COLUMN rec_feedback_updated_at DATETIME")
+                )
+            if "enrichment_corrected_at" not in pm_cols:
+                conn.execute(
+                    sa_text("ALTER TABLE profile_meta ADD COLUMN enrichment_corrected_at DATETIME")
                 )
 
     # Lightweight migration: user_settings gets new columns added in place.
