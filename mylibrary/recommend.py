@@ -1256,6 +1256,144 @@ def _rerank_similar(
     return (with_desc + without_desc)[:n]
 
 
+_DISCOVER_RANK_TOOL = {
+    "name": "rank_discovery",
+    "description": (
+        "Rank the provided real catalog candidates by how well they answer the reader's "
+        "request, and explain each pick. Choose ONLY from the given candidates."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "recommendations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "candidate_index": {
+                            "type": "integer",
+                            "description": "The `idx` of a provided candidate. Must exist.",
+                        },
+                        "score": {
+                            "type": "number",
+                            "description": "0..1 fit with the reader's REQUEST.",
+                        },
+                        "rationale": {
+                            "type": "string",
+                            "description": (
+                                "1-2 sentences answering the request in its own terms: what the "
+                                "book does and which facet of the request it delivers. Name the "
+                                "mechanism (pace, voice, structure, mood, subject), not just "
+                                "shared genre. Honest about stretch picks."
+                            ),
+                        },
+                    },
+                    "required": ["candidate_index", "score", "rationale"],
+                },
+            }
+        },
+        "required": ["recommendations"],
+    },
+}
+
+_DISCOVER_RANK_SYSTEM = (
+    "You are a book recommender answering a reader's specific request. You rank a fixed list "
+    "of real catalog candidates by how well they answer THAT REQUEST, and you never invent "
+    "books — you only rank the candidates given. Rank fit against the request first and the "
+    "reader's taste profile second (use the profile only to break ties). You prefer specific "
+    "fit (voice, structure, pace, mood, subject) over popularity.\n\n"
+    "Write each rationale like a well-read friend pressing the book into their hands, in 1-2 "
+    "sentences: lead with what the book does, then answer the request in its own terms — if "
+    "they asked for \"like The Fifth Season\", say which facet of it this book delivers. Name "
+    "the mechanism of the fit, never just shared genre. If a pick is a stretch, say so honestly "
+    "and name what still connects. Never write \"you'll love this\", generic praise, or clinical "
+    "trait language."
+)
+
+
+def _rerank_discovery(
+    candidates: list[dict],
+    query: str,
+    interpretation: str,
+    signal: dict,
+    *,
+    n: int,
+    api_key: str | None = None,
+    user_id: str,
+) -> list[dict]:
+    """Stage B for discovery: rank candidates by fit to the reader's request (profile secondary).
+
+    Mirrors `_rerank_similar`'s id-validation + description-priority, but grounds in the
+    request text + interpretation rather than a single anchor book. Tracks spend under
+    operation 'discover_rerank'."""
+    client, settings = _client(api_key)
+    indexed = [
+        {
+            "idx": i,
+            "title": c["title"],
+            "author": c.get("author"),
+            "year": c.get("year"),
+            "subjects": c.get("subjects") or [],
+        }
+        for i, c in enumerate(candidates)
+    ]
+    profile_context = (
+        "READER TASTE PROFILE (secondary — the request rules):\n"
+        "TASTE TRAITS (JSON):\n"
+        + json.dumps(signal.get("traits") or [], ensure_ascii=False)
+        + "\n\nLOVED BOOKS (JSON):\n"
+        + json.dumps((signal.get("loved") or [])[:_LOVED_SAMPLE], ensure_ascii=False)
+    )
+    task_prompt = (
+        f'The reader asked: "{query}"\n'
+        f"Interpreted as: {interpretation}\n\n"
+        f"Rank the best {n} candidates against THIS REQUEST and explain each. Choose ONLY from "
+        "the CANDIDATES list (cite each by its `idx`). Score 0..1 for fit to the request. In "
+        "each rationale, answer the request in its own terms.\n\n"
+        "CANDIDATES (JSON):\n" + json.dumps(indexed, ensure_ascii=False)
+    )
+    message = tracked_create(
+        client,
+        user_id=user_id,
+        operation="discover_rerank",
+        model=settings.model,
+        max_tokens=4000,
+        system=_DISCOVER_RANK_SYSTEM,
+        tools=[_DISCOVER_RANK_TOOL],
+        tool_choice={"type": "tool", "name": "rank_discovery"},
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": profile_context,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": task_prompt},
+            ],
+        }],
+    )
+    ranked = []
+    for block in message.content:
+        if getattr(block, "type", None) == "tool_use":
+            ranked = block.input.get("recommendations", [])
+            break
+
+    out = []
+    seen_idx: set[int] = set()
+    for r in ranked:
+        idx = r.get("candidate_index")
+        if not isinstance(idx, int) or idx < 0 or idx >= len(candidates) or idx in seen_idx:
+            continue  # drop hallucinated / duplicate indices
+        seen_idx.add(idx)
+        cand = dict(candidates[idx])
+        cand["score"] = float(r.get("score", 0.0))
+        cand["rationale"] = (r.get("rationale") or "").strip()
+        out.append(cand)
+
+    out.sort(key=lambda c: c["score"], reverse=True)
+    with_desc = [c for c in out if c.get("description")]
+    without_desc = [c for c in out if not c.get("description")]
+    return (with_desc + without_desc)[:n]
+
+
 # --- orchestrator ----------------------------------------------------------
 
 
