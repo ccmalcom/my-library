@@ -1,10 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { ExternalLink, BookOpen, X } from 'lucide-react';
+import { ExternalLink, BookOpen, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { Modal } from '@/components/ui';
 import { bookLinks } from '@/lib/bookLinks';
+import SimilarBooksModal from '@/components/SimilarBooksModal';
 import type { Book, Shelf } from '@/lib/api';
 
 interface Props {
@@ -19,6 +20,7 @@ const LABEL_ID = 'book-detail-modal-title';
 
 export default function BookDetailModal({ book, onClose, onMove, onRemove, busy = false }: Props) {
   const [removeArmed, setRemoveArmed] = useState(false);
+  const [showSimilar, setShowSimilar] = useState(false);
 
   const links = bookLinks({ title: book.title, author: book.author, isbn13: book.isbn13 });
 
@@ -120,6 +122,19 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
               <ExternalLink className="h-3 w-3" />
             </a>
           ))}
+          <button
+            type="button"
+            onClick={() => setShowSimilar(true)}
+            className={[
+              'inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10',
+              'px-3 py-1 text-xs font-medium text-accent',
+              'transition hover:bg-accent/20',
+              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+            ].join(' ')}
+          >
+            Find similar reads
+            <Sparkles className="h-3 w-3" />
+          </button>
         </div>
 
         {/* Shelf actions */}
@@ -188,6 +203,8 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
           )}
         </div>
       </div>
+
+      {showSimilar && <SimilarBooksModal book={book} onClose={() => setShowSimilar(false)} />}
     </Modal>
   );
 }

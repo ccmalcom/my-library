@@ -216,6 +216,42 @@ class RecommendationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SimilarRequest(BaseModel):
+    """Body for POST /books/{book_id}/similar."""
+
+    n: int = Field(default=8, ge=1, le=20)
+
+
+class SimilarBookOut(BaseModel):
+    """One ephemeral 'more like this' result (not persisted)."""
+
+    rank: int
+    title: str
+    author: str | None = None
+    year: int | None = None
+    isbn13: str | None = None
+    cover_url: str | None = None
+    subjects: list[str] | None = None
+    description: str | None = None
+    catalog_source: str | None = None
+    catalog_id: str | None = None
+    retrieval_pool: str | None = None
+    seed_reason: str | None = None
+    score: float
+    rationale: str | None = None
+
+
+class SimilarBooksOut(BaseModel):
+    """Response for POST /books/{book_id}/similar — an ephemeral ranked list."""
+
+    anchor_book_id: int
+    anchor_title: str
+    count: int
+    model: str
+    seed_queries: list[str]
+    recommendations: list[SimilarBookOut]
+
+
 class ApiKeyRequest(BaseModel):
     """Body for setting the per-user Anthropic key. The key is encrypted at rest and
     never read back — there is no field that returns it."""

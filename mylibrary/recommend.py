@@ -370,6 +370,59 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     }
 
 
+def _build_book_signal(session, book: Book, user_id: str = LOCAL_USER_ID) -> dict:
+    """A `signal`-shaped dict seeded from ONE book for the 'more like this' path.
+
+    Discovery seeds (`top_subjects`, `top_authors`, `anchor`) come from the single seed
+    book. The exclusion/permission sets (`library_keys`, `library_isbns`,
+    `library_authors`, `library_languages`) still cover the WHOLE library, so we never
+    recommend a book the reader already owns and we respect their reading languages —
+    exactly like `_build_signal`, but without the taste-profile/loved aggregation.
+    """
+    from sqlalchemy.orm import selectinload
+
+    books = (
+        session.query(Book)
+        .options(selectinload(Book.enrichment))
+        .filter(Book.user_id == user_id)
+        .all()
+    )
+    library_keys: set[tuple[str, str]] = set()
+    library_isbns: set[str] = set()
+    library_languages: set[str] = set()
+    library_authors: set[str] = set()
+    for b in books:
+        library_keys.add(_dedup_key(b.title, b.author))
+        if b.isbn13:
+            library_isbns.add(b.isbn13)
+        enr_lang = b.enrichment.language if b.enrichment else None
+        if enr_lang:
+            library_languages.add(enr_lang)
+        if b.author:
+            library_authors.add(_surname(b.author))
+
+    enr = book.enrichment
+    subjects = (enr.subjects or []) if enr else []
+    anchor = {
+        "id": book.id,
+        "title": book.title,
+        "author": book.author,
+        "year": book.year_published,
+        "subjects": subjects[:8],
+        "description": enr.description if enr else None,
+        "series": enr.series if enr else None,
+    }
+    return {
+        "library_keys": library_keys,
+        "library_isbns": library_isbns,
+        "library_authors": library_authors,
+        "library_languages": library_languages,
+        "top_subjects": subjects[:_TOP_SUBJECTS],
+        "top_authors": [book.author] if book.author else [],
+        "anchor": anchor,
+    }
+
+
 def _feedback_book_signals(
     session, user_id: str = LOCAL_USER_ID
 ) -> tuple[list[str], list[str]]:
@@ -502,6 +555,75 @@ def _seed_pool(
     from . import catalog
 
     queries = _claude_seed_queries(signal, n_queries=n_queries, api_key=api_key, user_id=user_id)
+    pool: list[tuple[dict, str]] = []
+    for q in queries:
+        for cand in catalog.googlebooks_query(q, max_results=per_query):
+            pool.append((cand, f"query:{q}"))
+    return pool, queries
+
+
+_BOOK_FACET_SYSTEM = (
+    "You decompose ONE book into catalog search queries that would surface OTHER books "
+    "like it. You propose search TERMS, never specific titles. Chase what makes this "
+    "particular book distinctive — its voice, structure, pace, mood, and specific subject "
+    "matter — not generic bestsellers in its genre. Do not aim queries at the book's own "
+    "author (same-author books are handled separately); reach for comparable books by "
+    "other authors."
+)
+
+
+def _book_facet_queries(
+    anchor: dict, *, n_queries: int, api_key: str | None = None, user_id: str
+) -> list[str]:
+    """Stage 1b for the per-book path: ask Claude for catalog search terms that describe
+    books like the seed book. Returns query strings only. Reuses `_SEED_TOOL`."""
+    client, _settings = _client(api_key)
+    book_context = "SEED BOOK (JSON):\n" + json.dumps(
+        {
+            "title": anchor.get("title"),
+            "author": anchor.get("author"),
+            "year": anchor.get("year"),
+            "subjects": anchor.get("subjects") or [],
+            "series": anchor.get("series"),
+            "description": anchor.get("description"),
+        },
+        ensure_ascii=False,
+    )
+    task_prompt = (
+        f"The seed book is above. Propose up to {n_queries} CATALOG SEARCH QUERIES "
+        "(search terms, not book titles) that would surface books a reader who loved this "
+        "one is likely to enjoy. Chase its distinguishing qualities — voice, structure, "
+        "mood, and specific subject matter — and avoid generic bestseller terms and the "
+        "book's own author."
+    )
+    message = tracked_create(
+        client,
+        user_id=user_id,
+        operation="similar_seed",
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1500,
+        system=_BOOK_FACET_SYSTEM,
+        tools=[_SEED_TOOL],
+        tool_choice={"type": "tool", "name": "propose_search_queries"},
+        messages=[{
+            "role": "user",
+            "content": [{"type": "text", "text": book_context + "\n\n" + task_prompt}],
+        }],
+    )
+    for block in message.content:
+        if getattr(block, "type", None) == "tool_use":
+            items = block.input.get("queries", [])
+            return [q["query"].strip() for q in items if q.get("query", "").strip()]
+    return []
+
+
+def _similar_seed_pool(
+    anchor: dict, *, n_queries: int, per_query: int, api_key: str | None = None, user_id: str
+) -> tuple[list[tuple[dict, str]], list[str]]:
+    """Run the per-book facet queries against the live catalog. Mirrors `_seed_pool`."""
+    from . import catalog
+
+    queries = _book_facet_queries(anchor, n_queries=n_queries, api_key=api_key, user_id=user_id)
     pool: list[tuple[dict, str]] = []
     for q in queries:
         for cand in catalog.googlebooks_query(q, max_results=per_query):
@@ -752,6 +874,135 @@ def _claude_rerank(
     return prioritised[:n]
 
 
+_SIMILAR_RANK_TOOL = {
+    "name": "rank_similar_books",
+    "description": (
+        "Rank the provided real catalog candidates by how similar they are to the seed "
+        "book, and explain each pick. Choose ONLY from the given candidates."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "recommendations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "candidate_index": {
+                            "type": "integer",
+                            "description": "The `idx` of a provided candidate. Must exist.",
+                        },
+                        "score": {
+                            "type": "number",
+                            "description": "0..1 similarity to the seed book.",
+                        },
+                        "rationale": {
+                            "type": "string",
+                            "description": (
+                                "1-2 sentences in the voice of a well-read friend: what the "
+                                "book does and how it echoes the seed book, naming the "
+                                "mechanism of the resemblance (pace, voice, structure, mood, "
+                                "subject) — never just shared genre. Honest about stretch picks."
+                            ),
+                        },
+                    },
+                    "required": ["candidate_index", "score", "rationale"],
+                },
+            }
+        },
+        "required": ["recommendations"],
+    },
+}
+
+_SIMILAR_RANK_SYSTEM = (
+    "You recommend books similar to ONE specific book the reader already knows. You rank a "
+    "fixed list of real catalog candidates by how much they resemble that seed book, and you "
+    "never invent books — you only rank the candidates given. You prefer specific resemblance "
+    "(voice, structure, pace, mood, subject) over shared genre or popularity.\n\n"
+    "Write each rationale like a well-read friend pressing the book into their hands, in 1-2 "
+    "sentences: lead with what the book does, then name exactly how it echoes the seed book. "
+    "If a pick is a stretch, say so honestly and name what still connects. Never write "
+    "\"you'll love this\", generic praise, or clinical genre-speak."
+)
+
+
+def _rerank_similar(
+    candidates: list[dict], anchor: dict, *, n: int, api_key: str | None = None, user_id: str
+) -> list[dict]:
+    """Stage 2 for the per-book path: rank candidates by similarity to the seed book.
+
+    Mirrors `_claude_rerank`'s id-validation and description-priority, but grounds in a
+    single anchor book rather than the taste profile (no trait/book id grounding)."""
+    client, settings = _client(api_key)
+    indexed = [
+        {
+            "idx": i,
+            "title": c["title"],
+            "author": c.get("author"),
+            "year": c.get("year"),
+            "subjects": c.get("subjects") or [],
+        }
+        for i, c in enumerate(candidates)
+    ]
+    seed_context = "SEED BOOK (JSON):\n" + json.dumps(
+        {
+            "title": anchor.get("title"),
+            "author": anchor.get("author"),
+            "year": anchor.get("year"),
+            "subjects": anchor.get("subjects") or [],
+            "series": anchor.get("series"),
+            "description": anchor.get("description"),
+        },
+        ensure_ascii=False,
+    )
+    task_prompt = (
+        f"Rank the best {n} candidates by similarity to the SEED BOOK and explain each. "
+        "Choose ONLY from the CANDIDATES list (cite each by its `idx`). Score 0..1 for "
+        "resemblance to the seed book. Name the mechanism of the resemblance in each "
+        "rationale.\n\nCANDIDATES (JSON):\n" + json.dumps(indexed, ensure_ascii=False)
+    )
+    message = tracked_create(
+        client,
+        user_id=user_id,
+        operation="similar_rerank",
+        model=settings.model,
+        max_tokens=4000,
+        system=_SIMILAR_RANK_SYSTEM,
+        tools=[_SIMILAR_RANK_TOOL],
+        tool_choice={"type": "tool", "name": "rank_similar_books"},
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": seed_context,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": task_prompt},
+            ],
+        }],
+    )
+    ranked = []
+    for block in message.content:
+        if getattr(block, "type", None) == "tool_use":
+            ranked = block.input.get("recommendations", [])
+            break
+
+    out = []
+    seen_idx: set[int] = set()
+    for r in ranked:
+        idx = r.get("candidate_index")
+        if not isinstance(idx, int) or idx < 0 or idx >= len(candidates) or idx in seen_idx:
+            continue  # drop hallucinated / duplicate indices
+        seen_idx.add(idx)
+        cand = dict(candidates[idx])
+        cand["score"] = float(r.get("score", 0.0))
+        cand["rationale"] = (r.get("rationale") or "").strip()
+        out.append(cand)
+
+    out.sort(key=lambda c: c["score"], reverse=True)
+    with_desc = [c for c in out if c.get("description")]
+    without_desc = [c for c in out if not c.get("description")]
+    return (with_desc + without_desc)[:n]
+
+
 # --- orchestrator ----------------------------------------------------------
 
 
@@ -878,6 +1129,89 @@ def recommend(
         "model": get_settings().model,
         "recommendations": recs_out,
     }
+
+
+def recommend_similar(
+    book_id: int, *, n: int = 8, user_id: str = LOCAL_USER_ID
+) -> dict:
+    """Ephemeral 'more books like this' for one library book.
+
+    Book-anchored: seeds retrieval from the single book's facets (not the taste profile),
+    skips the profile-missing/stale gate and library-thinness cold-start gating, and
+    returns results WITHOUT persisting any `recommendations` rows. Same-author caps and
+    language filtering still apply (reused from the main retrieval path)."""
+    from sqlalchemy.orm import selectinload
+
+    init_db()
+    api_key = resolve_anthropic_key(user_id)
+
+    with session_scope() as session:
+        book = (
+            session.query(Book)
+            .options(selectinload(Book.enrichment))
+            .filter(Book.id == book_id, Book.user_id == user_id)
+            .one_or_none()
+        )
+        if book is None:
+            raise RuntimeError(f"Book {book_id} not found.")
+
+        signal = _build_book_signal(session, book, user_id)
+        anchor = signal["anchor"]
+        if not signal["top_subjects"] and not anchor.get("description") and not anchor.get("author"):
+            raise RuntimeError(
+                "Not enough metadata on this book to find similar reads. Enrich it first."
+            )
+
+        # cold_start is always False here: library thinness is irrelevant to a single seed.
+        metadata_pool = _metadata_pool(signal, per_query=_PER_QUERY, cold_start=False)
+        seed_pool, seed_queries = _similar_seed_pool(
+            anchor, n_queries=_SEED_QUERIES, per_query=_PER_QUERY, api_key=api_key, user_id=user_id
+        )
+
+        candidates = _assemble(metadata_pool, seed_pool, signal, cap=_MAX_CANDIDATES)
+        _fill_ol_descriptions(candidates)
+        model = get_settings().model
+        if not candidates:
+            return {
+                "anchor_book_id": book.id,
+                "anchor_title": book.title,
+                "count": 0,
+                "model": model,
+                "seed_queries": seed_queries,
+                "recommendations": [],
+            }
+
+        ranked = _rerank_similar(candidates, anchor, n=n, api_key=api_key, user_id=user_id)
+
+        recs_out = []
+        for rank, c in enumerate(ranked, 1):
+            recs_out.append(
+                {
+                    "rank": rank,
+                    "title": c["title"],
+                    "author": c.get("author"),
+                    "year": c.get("year"),
+                    "isbn13": c.get("isbn13"),
+                    "cover_url": c.get("cover_url"),
+                    "subjects": c.get("subjects") or [],
+                    "description": c.get("description"),
+                    "catalog_source": c.get("catalog_source"),
+                    "catalog_id": c.get("catalog_id"),
+                    "retrieval_pool": c.get("retrieval_pool"),
+                    "seed_reason": c.get("seed_reason"),
+                    "score": round(c["score"], 2),
+                    "rationale": c.get("rationale"),
+                }
+            )
+
+        return {
+            "anchor_book_id": book.id,
+            "anchor_title": book.title,
+            "count": len(recs_out),
+            "model": model,
+            "seed_queries": seed_queries,
+            "recommendations": recs_out,
+        }
 
 
 def latest_recommendations(

@@ -140,6 +140,18 @@
   **Spend tracking:** both Claude calls (`_claude_seed_queries` → `recommend_seed`,
   `_claude_rerank` → `recommend_rerank`) go through `usage.tracked_create`, recording tokens + cost.
 
+  ### Per-book "more like this" (`recommend_similar`)
+
+  `recommend_similar(book_id)` is a book-anchored sibling of `recommend()`: it seeds Stage-1
+  retrieval from a single library book's enriched facets (subjects + author) plus a Claude
+  facet-decomposition of that book (`similar_seed`), assembles/dedupes/caps against the live
+  catalog with the **same** machinery (`_metadata_pool`/`_assemble`/`_apply_author_caps`/
+  language filter), then reranks by similarity to the seed book with a book-anchored prompt
+  (`similar_rerank`). It does **not** require a taste profile, does **not** apply
+  library-thinness cold-start gating, and returns results **ephemerally** — no
+  `recommendations` rows are written, so the main recs feed and swipe deck are untouched.
+  Surfaced at `POST /books/{book_id}/similar`.
+
 - **`TasteSignal` / `taste_signal` table** — durable, append-only steering signals that express
   "more like this" or "less like this" for a specific book or recommendation. Columns:
   `direction` (`more` | `less`), `target_kind` (`book` | `rec`), `target_book_id` (FK to user's

@@ -74,7 +74,7 @@ from .library import (
 )
 from .profile import extract_taste_profile, update_taste_profile
 from .purge import clear_library, clear_profile, delete_account
-from .recommend import latest_recommendations, recommend
+from .recommend import latest_recommendations, recommend, recommend_similar
 from .schemas import (
     AddBookRequest,
     AdminMeOut,
@@ -102,6 +102,8 @@ from .schemas import (
     RecommendRequest,
     RevokeRequest,
     ShelfRequest,
+    SimilarBooksOut,
+    SimilarRequest,
     TasteSignalOut,
     TasteSignalRequest,
     TraitOut,
@@ -827,6 +829,30 @@ def get_recommendations(user_id: UserId) -> list[RecommendationOut]:
     with session_scope() as session:
         rows = latest_recommendations(session, user_id)
         return [RecommendationOut.model_validate(r) for r in rows]
+
+
+@app.post("/books/{book_id}/similar", response_model=SimilarBooksOut)
+@limiter.limit("15/minute")
+def similar_books(
+    request: Request, book_id: int, req: SimilarRequest, user_id: UserId
+) -> SimilarBooksOut:
+    """Ephemeral 'more books like this' for one owned library book.
+
+    Book-anchored retrieval + rerank; results are NOT persisted (they never touch the
+    main recs feed or swipe deck). 404 if the book isn't the caller's; 400 if the book
+    lacks the metadata needed to seed retrieval."""
+    with session_scope() as session:
+        owned = (
+            session.query(Book)
+            .filter(Book.id == book_id, Book.user_id == user_id)
+            .one_or_none()
+        )
+        if owned is None:
+            raise HTTPException(status_code=404, detail=f"Book {book_id} not found")
+    try:
+        return recommend_similar(book_id, n=req.n, user_id=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/recommendations/rejected", response_model=list[RecommendationOut])

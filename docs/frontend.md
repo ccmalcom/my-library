@@ -46,7 +46,11 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 - **`ArchetypeShareModal`** — canvas share image using archetype color.
 - **`ArchetypeExplainerModal`** — static inline component in `TasteHero.tsx` (not a separate file). Explains the 4 axes. Opened via "What is this?" link.
 - **`BookEditModal`** — re-rate + review; diff-based save; optional `queuePosition`/`onFinishQueue` for step-through review queue; opt-in `allowRemove` shows two-step "Remove" → `DELETE /books/{id}` (passed only by Library row editor).
-- **`BookDetailModal`** — read-only detail view for a To-Read book: cover, description, "find it" links via `lib/bookLinks.ts`, shelf actions. Used by `ToReadTab`.
+- **`BookDetailModal`** — read-only detail view for a To-Read book: cover, description, "find it" links via `lib/bookLinks.ts`, shelf actions, and a "Find similar reads" button opening `SimilarBooksModal`. Used by `ToReadTab`.
+- **`SimilarBooksModal`** — opened from `BookDetailModal`'s "Find similar reads" button.
+  Fetches `POST /books/{id}/similar` on open and renders an **ephemeral** ranked list
+  (rationale per result). Results are not persisted; "Add to to-read" routes through the
+  existing `POST /books` add path. Does not touch the main recommendations feed / swipe deck.
 - **`AddBookModal`** — manual add: debounced `/catalog/search` → pick a real result → optional shelf + star rating + review text → `POST /books`. Used by Library page and setup wizard manual branch.
 - **`ReprofileBanner`** — app-wide; shows only when `/profile/status` reports `dirty`, runs `/profile/update`.
 - **`UsageWarningBanner`** — app-wide, mounted in `(main)/layout.tsx` above the page content. Reads `GET /settings/usage` (`getUsage` / `USAGE_KEY`); renders nothing until `usage.warn` is true. Shows spend-vs-cap copy + a "Details" link to `/settings` and a **Dismiss** button (local `useState`, no persistence — reappears on next page load while `warn` stays true). Purely informational; never blocks any action.
