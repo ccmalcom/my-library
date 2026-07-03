@@ -74,7 +74,7 @@ from .library import (
 )
 from .profile import extract_taste_profile, update_taste_profile
 from .purge import clear_library, clear_profile, delete_account
-from .recommend import latest_recommendations, recommend, recommend_similar
+from .recommend import discover, latest_recommendations, recommend, recommend_similar
 from .schemas import (
     AddBookRequest,
     AdminMeOut,
@@ -86,6 +86,8 @@ from .schemas import (
     BookFeedbackRequest,
     BookOut,
     CatalogResult,
+    DiscoverRequest,
+    DiscoverResult,
     EnrichJobOut,
     EnrichRequest,
     EnrichStartRequest,
@@ -851,6 +853,22 @@ def similar_books(
             raise HTTPException(status_code=404, detail=f"Book {book_id} not found")
     try:
         return recommend_similar(book_id, n=req.n, user_id=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/discover", response_model=DiscoverResult)
+@limiter.limit("30/minute")
+def discover_books(
+    request: Request, req: DiscoverRequest, user_id: UserId
+) -> DiscoverResult:
+    """Ephemeral natural-language discovery ('find me a book like X').
+
+    Interprets the request into catalog queries + constraints, retrieves real candidates,
+    and reranks them by fit to the request. Results are NOT persisted (they never touch the
+    main recs feed or swipe deck). 400 when the request can't be served (e.g. no API key)."""
+    try:
+        return discover(req.query, n=req.n, user_id=user_id)
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

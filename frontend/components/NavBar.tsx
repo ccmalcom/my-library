@@ -10,6 +10,7 @@ import { adminMe, ADMIN_ME_KEY } from '@/lib/api';
 const links = [
   { href: '/', label: 'Home' },
   { href: '/swipe', label: 'Swipe' },
+  { href: '/discover', label: 'Discover' },
   { href: '/library', label: 'My library' },
   { href: '/profile', label: 'My profile' },
   { href: '/settings', label: 'Settings' },

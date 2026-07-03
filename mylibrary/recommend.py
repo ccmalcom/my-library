@@ -26,6 +26,7 @@ rejected recs as labeled negatives and a UI can show "why this".
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from collections import Counter
 
@@ -635,6 +636,254 @@ def _similar_seed_pool(
     return pool, queries
 
 
+# --- Wave 3b: natural-language discovery ------------------------------------
+#
+# Stage A interprets a free-text request into catalog search queries + hard
+# constraints (never titles). Stage B (below) reranks the real candidates by fit
+# to the request. Results are ephemeral — discover() persists nothing.
+
+_DISCOVER_SYSTEM = (
+    "You translate a reader's natural-language book request into catalog search queries and "
+    "constraints. You never name specific titles — you produce search TERMS (themes, genres, "
+    "styles, comparable-author names when the reader gives one) that a book catalog can "
+    "resolve.\n\n"
+    "Rules:\n"
+    "- The reader's request is the primary signal. Their taste profile is provided as "
+    "secondary context: use it to break ties and set tone (e.g. their prose preferences), "
+    "never to override what they asked for. If they ask for something their profile dislikes, "
+    "honor the request — people read outside their pattern on purpose.\n"
+    "- If the request names a book or author (\"like The Fifth Season\"), decompose WHY someone "
+    "asks for that book into 3-6 distinct facets (e.g. geological apocalypse setting; "
+    "second-person narration; rage as the engine; found family under oppression) and emit one "
+    "query per facet. Facets, not synonyms — six rewordings of the same idea retrieve the same "
+    "shelf six times.\n"
+    "- If the request is a mood or situation (\"something gentle for a bad week\", \"a beach book "
+    "that isn't dumb\"), translate the mood into concrete catalog language: pacing, stakes, tone.\n"
+    "- Extract hard constraints ONLY when the reader states them: language, publication era "
+    "(min_year / max_year), and subjects to avoid (exclude_subjects — e.g. \"nothing violent\" "
+    "-> war, violence). These are filters, not queries. Do not invent constraints the reader "
+    "didn't state, and do not constrain by length or series — those aren't filterable.\n"
+    "- When the request is ambiguous, emit queries covering the 2-3 most likely readings rather "
+    "than guessing one.\n\n"
+    "Examples (request -> facets; constraints only when stated):\n"
+    "- \"Find me a book like Project Hail Mary\" -> facets: lone-problem-solver survival scifi; "
+    "competence-porn engineering narration; first-contact friendship; humor inside hard sci-fi; "
+    "race-against-extinction stakes. No constraints.\n"
+    "- \"Something gentle for a bad week\" -> facets: low-stakes literary comfort; kindness between "
+    "strangers; cozy small-community fiction; quiet healing narratives. Constraints: "
+    "exclude_subjects: [grief, war, abuse].\n"
+    "- \"A thriller my book club won't hate\" -> facets: literary crime; character-driven suspense; "
+    "thrillers with prose ambition; discussable moral-dilemma plots. No hard constraints.\n"
+    "- \"Nonfiction that reads like a novel\" -> facets: narrative nonfiction; immersive reportage; "
+    "true crime with literary structure; biography with scene-level storytelling. No hard "
+    "constraints."
+)
+
+_DISCOVER_TOOL = {
+    "name": "interpret_request",
+    "description": (
+        "Translate a reader's natural-language book request into catalog SEARCH queries "
+        "(search terms — themes, styles, comparable-author names — never specific titles), "
+        "the hard constraints they stated, and a one-sentence interpretation of what they want."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "interpretation": {
+                "type": "string",
+                "description": "One sentence restating what the reader wants, in their own terms.",
+            },
+            "queries": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "A catalog search query for one facet — search terms, not a title.",
+                        },
+                        "rationale": {
+                            "type": "string",
+                            "description": "Which facet of the request this query chases.",
+                        },
+                    },
+                    "required": ["query", "rationale"],
+                },
+            },
+            "constraints": {
+                "type": "object",
+                "description": "Hard filters the reader stated. Omit any they did not state.",
+                "properties": {
+                    "languages": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "ISO 639-1 codes, e.g. ['en','fr']. Only when the reader names a language.",
+                    },
+                    "min_year": {
+                        "type": "integer",
+                        "description": "Earliest publication year, when the reader states an era.",
+                    },
+                    "max_year": {
+                        "type": "integer",
+                        "description": "Latest publication year, when the reader states an era.",
+                    },
+                    "exclude_subjects": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Subjects/themes to avoid, e.g. ['war','grief'] for 'nothing heavy'.",
+                    },
+                },
+            },
+        },
+        "required": ["interpretation", "queries"],
+    },
+}
+
+
+def _clean_constraints(raw: dict) -> dict:
+    """Keep only the supported, catalog-filterable constraints; normalize their types.
+
+    Supported: languages (list[str], 2-letter lowercased), min_year/max_year (int),
+    exclude_subjects (list[str], lowercased). Page-count and standalone/series constraints
+    are intentionally unsupported — catalog candidates don't reliably carry that data — so
+    they are dropped here even if the model emits them."""
+    out: dict = {}
+    langs = [
+        str(x).strip().lower()[:2]
+        for x in (raw.get("languages") or [])
+        if str(x).strip()
+    ]
+    if langs:
+        out["languages"] = langs
+    for key in ("min_year", "max_year"):
+        val = raw.get(key)
+        if isinstance(val, bool):
+            continue
+        if isinstance(val, int):
+            out[key] = val
+        elif isinstance(val, str) and val.strip().isdigit():
+            out[key] = int(val.strip())
+    excl = [
+        str(x).strip().lower()
+        for x in (raw.get("exclude_subjects") or [])
+        if str(x).strip()
+    ]
+    if excl:
+        out["exclude_subjects"] = excl
+    return out
+
+
+def _interpret_query(
+    query: str, signal: dict, *, api_key: str | None = None, user_id: str
+) -> dict:
+    """Stage A: interpret an NL request into search queries + constraints + an echo string.
+
+    Returns {"interpretation": str, "queries": list[str], "constraints": dict}. The taste
+    profile (traits + loved) is passed as secondary context for tie-breaking; the request
+    rules. Tracks spend under operation 'discover_interpret'."""
+    client, _settings = _client(api_key)
+    profile_context = (
+        "READER TASTE PROFILE (secondary context — the request rules):\n"
+        "TASTE TRAITS (JSON):\n"
+        + json.dumps(signal.get("traits") or [], ensure_ascii=False)
+        + "\n\nLOVED BOOKS (JSON):\n"
+        + json.dumps((signal.get("loved") or [])[:_LOVED_SAMPLE], ensure_ascii=False)
+    )
+    task_prompt = (
+        f'The reader asked: "{query}"\n\n'
+        "Interpret this request. Emit search QUERIES (facets, not titles), any hard "
+        "CONSTRAINTS they stated (language, era, subjects to avoid — omit if unstated), and "
+        "a one-sentence INTERPRETATION of what they want."
+    )
+    message = tracked_create(
+        client,
+        user_id=user_id,
+        operation="discover_interpret",
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1500,
+        system=_DISCOVER_SYSTEM,
+        tools=[_DISCOVER_TOOL],
+        tool_choice={"type": "tool", "name": "interpret_request"},
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": profile_context,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": task_prompt},
+            ],
+        }],
+    )
+    for block in message.content:
+        if getattr(block, "type", None) == "tool_use":
+            data = block.input
+            queries = [
+                q["query"].strip()
+                for q in data.get("queries", [])
+                if q.get("query", "").strip()
+            ]
+            return {
+                "interpretation": (data.get("interpretation") or "").strip(),
+                "queries": queries,
+                "constraints": _clean_constraints(data.get("constraints") or {}),
+            }
+    return {"interpretation": "", "queries": [], "constraints": {}}
+
+
+def _discovery_pool(queries: list[str], *, per_query: int) -> list[tuple[dict, str]]:
+    """Run interpreted NL-discovery queries against the live catalog (Google + OL free-text).
+
+    Discovery has no library-metadata backstop — recall rests entirely on these queries — so
+    each runs against BOTH sources. Mirrors `_seed_pool`'s (candidate, reason) tuple shape."""
+    from . import catalog
+
+    pool: list[tuple[dict, str]] = []
+    for q in queries:
+        for cand in catalog.googlebooks_query(q, max_results=per_query):
+            pool.append((cand, f"query:{q}"))
+        for cand in catalog.openlibrary_query(q, max_results=per_query):
+            pool.append((cand, f"query:{q}"))
+    return pool
+
+
+def _subject_hits(term: str, subject: str) -> bool:
+    """True when `term` appears as a whole word inside `subject` (both already lowercased).
+
+    Whole-word so an exclude of 'war' doesn't trip 'warmth' or 'steward'."""
+    return re.search(rf"\b{re.escape(term)}\b", subject) is not None
+
+
+def _apply_discovery_constraints(
+    pool: list[tuple[dict, str]], constraints: dict
+) -> list[tuple[dict, str]]:
+    """Filter the candidate pool by the reader's stated era + exclude_subjects constraints.
+
+    Applied to the RAW pool before assembly's cap, so the cap never keeps a constraint-
+    violating book over a valid one. Unknown/missing fields always PASS (never drop a
+    candidate for lacking metadata — same philosophy as `_language_ok`). Language is handled
+    separately, via the signal's allowed-language set in `discover`."""
+    if not constraints:
+        return pool
+    min_year = constraints.get("min_year")
+    max_year = constraints.get("max_year")
+    exclude = [s.lower() for s in (constraints.get("exclude_subjects") or [])]
+
+    def ok(cand: dict) -> bool:
+        year = cand.get("year")
+        if isinstance(year, int):
+            if min_year is not None and year < min_year:
+                return False
+            if max_year is not None and year > max_year:
+                return False
+        if exclude:
+            subjects = [str(s).lower() for s in (cand.get("subjects") or [])]
+            for term in exclude:
+                if any(_subject_hits(term, s) for s in subjects):
+                    return False
+        return True
+
+    return [(c, r) for (c, r) in pool if ok(c)]
+
+
 def _fill_ol_descriptions(candidates: list[dict]) -> None:
     """Fetch Work descriptions for OL candidates that didn't get one from the pool query.
 
@@ -1007,6 +1256,144 @@ def _rerank_similar(
     return (with_desc + without_desc)[:n]
 
 
+_DISCOVER_RANK_TOOL = {
+    "name": "rank_discovery",
+    "description": (
+        "Rank the provided real catalog candidates by how well they answer the reader's "
+        "request, and explain each pick. Choose ONLY from the given candidates."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "recommendations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "candidate_index": {
+                            "type": "integer",
+                            "description": "The `idx` of a provided candidate. Must exist.",
+                        },
+                        "score": {
+                            "type": "number",
+                            "description": "0..1 fit with the reader's REQUEST.",
+                        },
+                        "rationale": {
+                            "type": "string",
+                            "description": (
+                                "1-2 sentences answering the request in its own terms: what the "
+                                "book does and which facet of the request it delivers. Name the "
+                                "mechanism (pace, voice, structure, mood, subject), not just "
+                                "shared genre. Honest about stretch picks."
+                            ),
+                        },
+                    },
+                    "required": ["candidate_index", "score", "rationale"],
+                },
+            }
+        },
+        "required": ["recommendations"],
+    },
+}
+
+_DISCOVER_RANK_SYSTEM = (
+    "You are a book recommender answering a reader's specific request. You rank a fixed list "
+    "of real catalog candidates by how well they answer THAT REQUEST, and you never invent "
+    "books — you only rank the candidates given. Rank fit against the request first and the "
+    "reader's taste profile second (use the profile only to break ties). You prefer specific "
+    "fit (voice, structure, pace, mood, subject) over popularity.\n\n"
+    "Write each rationale like a well-read friend pressing the book into their hands, in 1-2 "
+    "sentences: lead with what the book does, then answer the request in its own terms — if "
+    "they asked for \"like The Fifth Season\", say which facet of it this book delivers. Name "
+    "the mechanism of the fit, never just shared genre. If a pick is a stretch, say so honestly "
+    "and name what still connects. Never write \"you'll love this\", generic praise, or clinical "
+    "trait language."
+)
+
+
+def _rerank_discovery(
+    candidates: list[dict],
+    query: str,
+    interpretation: str,
+    signal: dict,
+    *,
+    n: int,
+    api_key: str | None = None,
+    user_id: str,
+) -> list[dict]:
+    """Stage B for discovery: rank candidates by fit to the reader's request (profile secondary).
+
+    Mirrors `_rerank_similar`'s id-validation + description-priority, but grounds in the
+    request text + interpretation rather than a single anchor book. Tracks spend under
+    operation 'discover_rerank'."""
+    client, settings = _client(api_key)
+    indexed = [
+        {
+            "idx": i,
+            "title": c["title"],
+            "author": c.get("author"),
+            "year": c.get("year"),
+            "subjects": c.get("subjects") or [],
+        }
+        for i, c in enumerate(candidates)
+    ]
+    profile_context = (
+        "READER TASTE PROFILE (secondary — the request rules):\n"
+        "TASTE TRAITS (JSON):\n"
+        + json.dumps(signal.get("traits") or [], ensure_ascii=False)
+        + "\n\nLOVED BOOKS (JSON):\n"
+        + json.dumps((signal.get("loved") or [])[:_LOVED_SAMPLE], ensure_ascii=False)
+    )
+    task_prompt = (
+        f'The reader asked: "{query}"\n'
+        f"Interpreted as: {interpretation}\n\n"
+        f"Rank the best {n} candidates against THIS REQUEST and explain each. Choose ONLY from "
+        "the CANDIDATES list (cite each by its `idx`). Score 0..1 for fit to the request. In "
+        "each rationale, answer the request in its own terms.\n\n"
+        "CANDIDATES (JSON):\n" + json.dumps(indexed, ensure_ascii=False)
+    )
+    message = tracked_create(
+        client,
+        user_id=user_id,
+        operation="discover_rerank",
+        model=settings.model,
+        max_tokens=4000,
+        system=_DISCOVER_RANK_SYSTEM,
+        tools=[_DISCOVER_RANK_TOOL],
+        tool_choice={"type": "tool", "name": "rank_discovery"},
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": profile_context,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": task_prompt},
+            ],
+        }],
+    )
+    ranked = []
+    for block in message.content:
+        if getattr(block, "type", None) == "tool_use":
+            ranked = block.input.get("recommendations", [])
+            break
+
+    out = []
+    seen_idx: set[int] = set()
+    for r in ranked:
+        idx = r.get("candidate_index")
+        if not isinstance(idx, int) or idx < 0 or idx >= len(candidates) or idx in seen_idx:
+            continue  # drop hallucinated / duplicate indices
+        seen_idx.add(idx)
+        cand = dict(candidates[idx])
+        cand["score"] = float(r.get("score", 0.0))
+        cand["rationale"] = (r.get("rationale") or "").strip()
+        out.append(cand)
+
+    out.sort(key=lambda c: c["score"], reverse=True)
+    with_desc = [c for c in out if c.get("description")]
+    without_desc = [c for c in out if not c.get("description")]
+    return (with_desc + without_desc)[:n]
+
+
 # --- orchestrator ----------------------------------------------------------
 
 
@@ -1214,6 +1601,98 @@ def recommend_similar(
             "count": len(recs_out),
             "model": model,
             "seed_queries": seed_queries,
+            "recommendations": recs_out,
+        }
+
+
+def discover(query: str, *, n: int = 10, user_id: str = LOCAL_USER_ID) -> dict:
+    """Ephemeral natural-language discovery: 'find me a book like X'.
+
+    Two-stage and request-anchored: Stage A (Claude Haiku) interprets the NL request into
+    catalog search queries + hard constraints; retrieval resolves them against the live
+    catalog; Stage B (rerank model) ranks the real candidates by fit to the request (the
+    taste profile is only secondary tie-break context). Results are NOT persisted — no
+    `recommendations` rows — so the main recs feed / swipe deck are untouched, and discovery
+    works without a taste profile (no profile-missing/stale gate)."""
+    query = (query or "").strip()
+    if not query:
+        raise RuntimeError("Enter something to search for.")
+
+    init_db()
+    api_key = resolve_anthropic_key(user_id)
+
+    with session_scope() as session:
+        # Full signal: library exclusion sets (keys/isbns/authors/languages) + traits/loved
+        # as secondary context. _build_signal never raises on a thin/profile-less library.
+        signal = _build_signal(session, user_id)
+        interp = _interpret_query(query, signal, api_key=api_key, user_id=user_id)
+        queries = interp["queries"]
+        constraints = interp["constraints"]
+        model = get_settings().model
+
+        if not queries:
+            return {
+                "query": query,
+                "interpretation": interp["interpretation"],
+                "count": 0,
+                "model": model,
+                "queries": [],
+                "recommendations": [],
+            }
+
+        # A stated language constraint overrides the reader's library languages for this run
+        # (people ask for other-language books on purpose). _assemble reads library_languages
+        # via _allowed_languages, so overriding it here is enough.
+        if constraints.get("languages"):
+            signal = {**signal, "library_languages": set(constraints["languages"])}
+
+        pool = _discovery_pool(queries, per_query=_PER_QUERY)
+        pool = _apply_discovery_constraints(pool, constraints)
+        # Discovery is purely query-driven: no metadata_pool. The interpreted queries ARE the
+        # seed pool; _assemble dedups, drops owned/rejected books, language-filters, caps authors.
+        candidates = _assemble([], pool, signal, cap=_MAX_CANDIDATES)
+        _fill_ol_descriptions(candidates)
+
+        if not candidates:
+            return {
+                "query": query,
+                "interpretation": interp["interpretation"],
+                "count": 0,
+                "model": model,
+                "queries": queries,
+                "recommendations": [],
+            }
+
+        ranked = _rerank_discovery(
+            candidates, query, interp["interpretation"], signal,
+            n=n, api_key=api_key, user_id=user_id,
+        )
+
+        recs_out = []
+        for rank, c in enumerate(ranked, 1):
+            recs_out.append({
+                "rank": rank,
+                "title": c["title"],
+                "author": c.get("author"),
+                "year": c.get("year"),
+                "isbn13": c.get("isbn13"),
+                "cover_url": c.get("cover_url"),
+                "subjects": c.get("subjects") or [],
+                "description": c.get("description"),
+                "catalog_source": c.get("catalog_source"),
+                "catalog_id": c.get("catalog_id"),
+                "retrieval_pool": c.get("retrieval_pool"),
+                "seed_reason": c.get("seed_reason"),
+                "score": round(c["score"], 2),
+                "rationale": c.get("rationale"),
+            })
+
+        return {
+            "query": query,
+            "interpretation": interp["interpretation"],
+            "count": len(recs_out),
+            "model": model,
+            "queries": queries,
             "recommendations": recs_out,
         }
 
