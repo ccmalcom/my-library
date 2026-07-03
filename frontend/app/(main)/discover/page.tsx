@@ -27,7 +27,7 @@ export default function DiscoverPage() {
       setResults(res.recommendations);
       setAdded(new Set());
     } catch {
-      setError('Discovery tripped — your request is fine, try running it again.');
+      setError('Discovery tripped - your request is fine, try running it again.');
       setResults(null);
       setInterpretation(null);
     } finally {
