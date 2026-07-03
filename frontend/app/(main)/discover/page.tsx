@@ -78,7 +78,7 @@ export default function DiscoverPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={
-              'Ask for anything — "like Piranesi", "a thriller my book club won’t hate"…'
+              'Ask for anything - "like Piranesi", "a thriller my book club won\'t hate"...'
             }
             aria-label="Describe the book you want"
             className={[
