@@ -4,7 +4,16 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR, { mutate } from 'swr';
 import { Inbox, Sparkles } from 'lucide-react';
-import { api, type Book, type Recommendation, type Trait, REJECT_REASONS, rejectRecWithReasons, recordTasteSignal, PROFILE_STATUS_KEY } from '@/lib/api';
+import {
+  api,
+  type Book,
+  type Recommendation,
+  type Trait,
+  REJECT_REASONS,
+  rejectRecWithReasons,
+  recordTasteSignal,
+  PROFILE_STATUS_KEY,
+} from '@/lib/api';
 import { Button, Spinner, useToast, Modal } from '@/components/ui';
 import SwipeCard from '@/components/SwipeCard';
 import BookEditModal from '@/components/BookEditModal';
@@ -12,17 +21,19 @@ import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
 
 export default function SwipePage() {
   const router = useRouter();
-  const toast  = useToast();
+  const toast = useToast();
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [reviewing, setReviewing] = useState<Book | null>(null);
   const [pendingRejectId, setPendingRejectId] = useState<number | null>(null);
   const [selectedReasons, setSelectedReasons] = useState<Set<string>>(new Set());
 
-  const { data: recs, isLoading: recsLoading, error: recsError } =
-    useSWR<Recommendation[]>('recommendations', () => api.recommendations());
+  const {
+    data: recs,
+    isLoading: recsLoading,
+    error: recsError,
+  } = useSWR<Recommendation[]>('recommendations', () => api.recommendations());
 
-  const { data: traits = [] } =
-    useSWR<Trait[]>('profile', () => api.profile());
+  const { data: traits = [] } = useSWR<Trait[]>('profile', () => api.profile());
 
   // post-recs feedback prompt: fire when the user actions the last card this session
   const runId = recs?.[0]?.run_id;
@@ -32,9 +43,7 @@ export default function SwipePage() {
     .filter((r) => r.status === 'served' && !dismissed.has(r.id))
     .sort((a, b) => a.rank - b.rank);
 
-  const total = (recs ?? []).filter(
-    (r) => r.status === 'served' || dismissed.has(r.id)
-  );
+  const total = (recs ?? []).filter((r) => r.status === 'served' || dismissed.has(r.id));
 
   useEffect(() => {
     if (dismissed.size > 0 && pending.length === 0 && recs && recs.length > 0) {
@@ -80,26 +89,23 @@ export default function SwipePage() {
     });
   }, []);
 
-  const handleTasteSignal = useCallback(
-    async (rec: Recommendation, direction: 'more' | 'less') => {
-      try {
-        await recordTasteSignal({
-          target_kind: 'rec',
-          direction,
-          snapshot: {
-            title: rec.title,
-            author: rec.author,
-            subjects: rec.subjects,
-            isbn13: rec.isbn13,
-          },
-        });
-        void mutate(PROFILE_STATUS_KEY);
-      } catch (e) {
-        console.error('taste signal failed', e);
-      }
-    },
-    []
-  );
+  const handleTasteSignal = useCallback(async (rec: Recommendation, direction: 'more' | 'less') => {
+    try {
+      await recordTasteSignal({
+        target_kind: 'rec',
+        direction,
+        snapshot: {
+          title: rec.title,
+          author: rec.author,
+          subjects: rec.subjects,
+          isbn13: rec.isbn13,
+        },
+      });
+      void mutate(PROFILE_STATUS_KEY);
+    } catch (e) {
+      console.error('taste signal failed', e);
+    }
+  }, []);
 
   const submitReject = useCallback(async () => {
     if (pendingRejectId === null) return;
@@ -120,10 +126,10 @@ export default function SwipePage() {
 
   if (recsLoading) {
     return (
-      <div className='fade-in flex items-center justify-center py-24'>
-        <div className='text-center space-y-3'>
-          <Spinner size='lg' />
-          <p className='text-muted text-sm'>Loading recommendations...</p>
+      <div className="fade-in flex items-center justify-center py-24">
+        <div className="text-center space-y-3">
+          <Spinner size="lg" />
+          <p className="text-muted text-sm">Loading recommendations...</p>
         </div>
       </div>
     );
@@ -131,21 +137,19 @@ export default function SwipePage() {
 
   if (recsError) {
     return (
-      <div className='fade-in py-12 text-center'>
-        <p className='text-danger'>Failed to load recommendations.</p>
-        <p className='mt-1 text-sm text-faint'>{String(recsError)}</p>
+      <div className="fade-in py-12 text-center">
+        <p className="text-danger">Failed to load recommendations.</p>
+        <p className="mt-1 text-sm text-faint">{String(recsError)}</p>
       </div>
     );
   }
 
   if ((recs ?? []).length === 0) {
     return (
-      <div className='fade-in py-20 text-center space-y-4'>
-        <Inbox className='mx-auto h-12 w-12 text-faint' />
-        <h2 className='text-xl font-display font-semibold text-text'>No recommendations yet</h2>
-        <p className='text-muted'>
-          Go to the home page and run a recommendation batch first.
-        </p>
+      <div className="fade-in py-20 text-center space-y-4">
+        <Inbox className="mx-auto h-12 w-12 text-faint" />
+        <h2 className="text-xl font-display font-semibold text-text">No recommendations yet</h2>
+        <p className="text-muted">Go to the home page and run a recommendation batch first.</p>
         <Button onClick={() => router.push('/')}>Back to Home</Button>
       </div>
     );
@@ -154,20 +158,16 @@ export default function SwipePage() {
   if (pending.length === 0) {
     return (
       <>
-        <div className='fade-in py-20 text-center space-y-4'>
-          <Sparkles className='mx-auto h-12 w-12 text-accent' />
-          <h2 className='text-xl font-display font-semibold text-text'>All done!</h2>
-          <p className='text-muted'>
-            You reviewed all {total.length} recommendations.
-          </p>
-          <Button onClick={() => router.push('/library?tab=to-read')}>
-            View To-Read Shelf
-          </Button>
+        <div className="fade-in py-20 text-center space-y-4">
+          <Sparkles className="mx-auto h-12 w-12 text-accent" />
+          <h2 className="text-xl font-display font-semibold text-text">All done!</h2>
+          <p className="text-muted">You reviewed all {total.length} recommendations.</p>
+          <Button onClick={() => router.push('/library?tab=to-read')}>View To-Read Shelf</Button>
         </div>
         {reviewing && (
           <BookEditModal
             book={reviewing}
-            listKey='recommendations'
+            listKey="recommendations"
             onClose={() => setReviewing(null)}
           />
         )}
@@ -180,14 +180,15 @@ export default function SwipePage() {
 
   return (
     <>
-      <div className='fade-in flex flex-col items-center gap-6 py-6'>
+      <div className="fade-in flex flex-col items-center gap-6 py-6">
         {/* Progress */}
-        <p className='font-mono text-xs uppercase tracking-widest text-faint'>
-          {dismissed.size} / {(recs ?? []).filter((r) => r.status === 'served' || dismissed.has(r.id)).length} reviewed
+        <p className="font-mono text-xs uppercase tracking-widest text-faint">
+          {dismissed.size} /{' '}
+          {(recs ?? []).filter((r) => r.status === 'served' || dismissed.has(r.id)).length} reviewed
         </p>
 
         {/* Card stack */}
-        <div className='relative h-[440px] sm:h-[560px] w-full max-w-sm'>
+        <div className="relative h-[440px] sm:h-[560px] w-full max-w-sm">
           {visibleStack
             .slice()
             .reverse()
@@ -207,10 +208,13 @@ export default function SwipePage() {
         </div>
 
         {/* Button controls */}
-        <div className='flex gap-4 items-center'>
+        <div className="flex gap-4 items-center">
           <button
-            onClick={() => { const top = pending[0]; if (top) void handleDecide(top.id, 'rejected'); }}
-            aria-label='Not interested'
+            onClick={() => {
+              const top = pending[0];
+              if (top) void handleDecide(top.id, 'rejected');
+            }}
+            aria-label="Not interested"
             className={[
               'flex h-14 w-14 items-center justify-center rounded-full',
               'border-2 border-danger bg-surface text-danger shadow',
@@ -218,11 +222,16 @@ export default function SwipePage() {
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 focus-visible:ring-offset-base',
             ].join(' ')}
           >
-            <span className='text-xl font-bold' aria-hidden='true'>X</span>
+            <span className="text-xl font-bold" aria-hidden="true">
+              X
+            </span>
           </button>
           <button
-            onClick={() => { const top = pending[0]; if (top) void handleDecide(top.id, 'already_read'); }}
-            aria-label='Already read'
+            onClick={() => {
+              const top = pending[0];
+              if (top) void handleDecide(top.id, 'already_read');
+            }}
+            aria-label="Already read"
             className={[
               'flex h-12 w-12 items-center justify-center self-center rounded-full',
               'border-2 border-warning bg-surface text-warning shadow',
@@ -230,11 +239,16 @@ export default function SwipePage() {
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2 focus-visible:ring-offset-base',
             ].join(' ')}
           >
-            <span className='text-base font-mono font-bold' aria-hidden='true'>R</span>
+            <span className="text-base font-mono font-bold" aria-hidden="true">
+              R
+            </span>
           </button>
           <button
-            onClick={() => { const top = pending[0]; if (top) void handleDecide(top.id, 'accepted'); }}
-            aria-label='Add to to-read list'
+            onClick={() => {
+              const top = pending[0];
+              if (top) void handleDecide(top.id, 'accepted');
+            }}
+            aria-label="Add to to-read list"
             className={[
               'flex h-14 w-14 items-center justify-center rounded-full',
               'border-2 border-success bg-surface text-success shadow',
@@ -242,20 +256,23 @@ export default function SwipePage() {
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-2 focus-visible:ring-offset-base',
             ].join(' ')}
           >
-            <span className='text-xl font-bold' aria-hidden='true'>+</span>
+            <span className="text-xl font-bold" aria-hidden="true">
+              +
+            </span>
           </button>
         </div>
 
-        <p className='font-mono text-xs text-faint'>
-          Drag left/right or use the buttons
-        </p>
+        <p className="font-mono text-xs text-faint">Drag left/right or use the buttons</p>
 
         {/* Taste signal row */}
         {pending[0] && (
-          <div className='flex gap-3'>
+          <div className="flex gap-3">
             <button
-              onClick={() => { const top = pending[0]; if (top) void handleTasteSignal(top, 'less'); }}
-              aria-label='Less like this'
+              onClick={() => {
+                const top = pending[0];
+                if (top) void handleTasteSignal(top, 'less');
+              }}
+              aria-label="Less like this"
               className={[
                 'rounded-full border border-border bg-surface px-4 py-1.5 text-xs font-medium text-muted',
                 'transition hover:border-danger/60 hover:text-danger active:scale-95',
@@ -265,8 +282,11 @@ export default function SwipePage() {
               Less like this
             </button>
             <button
-              onClick={() => { const top = pending[0]; if (top) void handleTasteSignal(top, 'more'); }}
-              aria-label='More like this'
+              onClick={() => {
+                const top = pending[0];
+                if (top) void handleTasteSignal(top, 'more');
+              }}
+              aria-label="More like this"
               className={[
                 'rounded-full border border-border bg-surface px-4 py-1.5 text-xs font-medium text-muted',
                 'transition hover:border-success/60 hover:text-success active:scale-95',
@@ -281,20 +301,25 @@ export default function SwipePage() {
       {reviewing && (
         <BookEditModal
           book={reviewing}
-          listKey='recommendations'
+          listKey="recommendations"
           onClose={() => setReviewing(null)}
         />
       )}
       {recsModal}
       {pendingRejectId !== null && (
         <Modal
-          labelId='reject-reason-title'
-          onClose={() => { setPendingRejectId(null); setSelectedReasons(new Set()); }}
-          className='w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl'
+          labelId="reject-reason-title"
+          onClose={() => {
+            setPendingRejectId(null);
+            setSelectedReasons(new Set());
+          }}
+          className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl"
         >
-          <p id='reject-reason-title' className='mb-1 text-sm font-semibold text-text'>Why not interested?</p>
-          <p className='mb-4 text-xs text-faint'>Optional -- helps improve recommendations.</p>
-          <div className='flex flex-wrap gap-2'>
+          <p id="reject-reason-title" className="mb-1 text-sm font-semibold text-text">
+            Why not interested?
+          </p>
+          <p className="mb-4 text-xs text-faint">Optional -- helps improve recommendations.</p>
+          <div className="flex flex-wrap gap-2">
             {Object.entries(REJECT_REASONS).map(([key, label]) => {
               const active = selectedReasons.has(key);
               return (
@@ -313,9 +338,11 @@ export default function SwipePage() {
               );
             })}
           </div>
-          <div className='mt-5 flex gap-3 justify-end'>
-            <Button variant='ghost' size='sm' onClick={submitReject}>Skip</Button>
-            <Button size='sm' onClick={submitReject}>
+          <div className="mt-5 flex gap-3 justify-end">
+            <Button variant="ghost" size="sm" onClick={submitReject}>
+              Skip
+            </Button>
+            <Button size="sm" onClick={submitReject}>
               {selectedReasons.size > 0 ? 'Submit' : 'Confirm'}
             </Button>
           </div>

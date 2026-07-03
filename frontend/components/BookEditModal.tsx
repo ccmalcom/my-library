@@ -21,7 +21,8 @@ const inputClass = [
   'focus-visible:ring-1 focus-visible:ring-accent',
 ].join(' ');
 
-const labelClass = 'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
+const labelClass =
+  'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
 
 export default function BookEditModal({
   book,
@@ -34,34 +35,33 @@ export default function BookEditModal({
 }: Props) {
   const toast = useToast();
 
-  const initialRating   = book.effective_rating ?? 0;
-  const initialReview   = book.app_review ?? '';
-  const initialDate     = book.date_read ?? '';
-  const initialExclude  = book.exclude_from_profile ?? false;
+  const initialRating = book.effective_rating ?? 0;
+  const initialReview = book.app_review ?? '';
+  const initialDate = book.date_read ?? '';
+  const initialExclude = book.exclude_from_profile ?? false;
 
-  const [rating, setRating]         = useState(initialRating);
-  const [hover, setHover]           = useState(0);
-  const [review, setReview]         = useState(initialReview);
-  const [dateRead, setDateRead]     = useState(initialDate);
-  const [exclude, setExclude]       = useState(initialExclude);
-  const [saving, setSaving]         = useState(false);
+  const [rating, setRating] = useState(initialRating);
+  const [hover, setHover] = useState(0);
+  const [review, setReview] = useState(initialReview);
+  const [dateRead, setDateRead] = useState(initialDate);
+  const [exclude, setExclude] = useState(initialExclude);
+  const [saving, setSaving] = useState(false);
   const [removeArmed, setRemoveArmed] = useState(false);
-  const [removing, setRemoving]     = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
 
-  const ratingChanged       = rating !== initialRating;
-  const reviewChanged       = review.trim() !== initialReview.trim();
-  const dateChanged         = dateRead !== '' && dateRead !== initialDate;
-  const excludeChanged      = exclude !== initialExclude;
-  const dirty               = ratingChanged || reviewChanged || dateChanged || excludeChanged;
+  const ratingChanged = rating !== initialRating;
+  const reviewChanged = review.trim() !== initialReview.trim();
+  const dateChanged = dateRead !== '' && dateRead !== initialDate;
+  const excludeChanged = exclude !== initialExclude;
+  const dirty = ratingChanged || reviewChanged || dateChanged || excludeChanged;
   const reviewWithoutRating = !allowReviewWithoutRating && review.trim() !== '' && rating === 0;
-  const canSave             = dirty && !reviewWithoutRating;
+  const canSave = dirty && !reviewWithoutRating;
 
   const desc = book.description ?? null;
   const DESC_CUTOFF = 200;
-  const descShort = desc && desc.length > DESC_CUTOFF
-    ? desc.slice(0, DESC_CUTOFF - 3) + '...'
-    : desc;
+  const descShort =
+    desc && desc.length > DESC_CUTOFF ? desc.slice(0, DESC_CUTOFF - 3) + '...' : desc;
 
   async function handleSave() {
     if (!dirty) {
@@ -85,7 +85,7 @@ export default function BookEditModal({
         listKey,
         (curr?: Book[]) =>
           curr ? curr.map((b) => (b.id === book.id ? { ...b, ...result } : b)) : curr,
-        { revalidate: false },
+        { revalidate: false }
       );
       // Profile-status may have flipped to dirty; revalidate quietly, unawaited.
       void mutate(PROFILE_STATUS_KEY);
@@ -102,11 +102,9 @@ export default function BookEditModal({
     setRemoving(true);
     try {
       await api.removeBook(book.id);
-      mutate(
-        listKey,
-        (curr?: Book[]) => (curr ? curr.filter((b) => b.id !== book.id) : curr),
-        { revalidate: false },
-      );
+      mutate(listKey, (curr?: Book[]) => (curr ? curr.filter((b) => b.id !== book.id) : curr), {
+        revalidate: false,
+      });
       void mutate('stats');
       void mutate(PROFILE_STATUS_KEY);
       toast.success(`${book.title} removed.`);
@@ -119,25 +117,25 @@ export default function BookEditModal({
   }
 
   const shown = hover || rating;
-  const busy  = saving || removing;
+  const busy = saving || removing;
 
   return (
     <Modal
-      labelId='book-edit-title'
+      labelId="book-edit-title"
       onClose={onClose}
-      className='fade-in flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-2xl'
+      className="fade-in flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-2xl"
     >
       {/* Header */}
-      <div className='mb-4'>
+      <div className="mb-4">
         {queuePosition && (
-          <p className='mb-1 font-mono text-xs font-semibold uppercase tracking-widest text-accent'>
+          <p className="mb-1 font-mono text-xs font-semibold uppercase tracking-widest text-accent">
             Missing reviews · {queuePosition.index + 1} of {queuePosition.total}
           </p>
         )}
-        <h2 id='book-edit-title' className='text-lg font-bold leading-tight text-text'>
+        <h2 id="book-edit-title" className="text-lg font-bold leading-tight text-text">
           {book.title}
         </h2>
-        <p className='text-sm text-muted'>
+        <p className="text-sm text-muted">
           {book.author ?? 'Unknown'}
           {book.year_published ? ` · ${book.year_published}` : ''}
         </p>
@@ -145,16 +143,14 @@ export default function BookEditModal({
 
       {/* Description */}
       {desc && (
-        <div className='mb-5'>
+        <div className="mb-5">
           <p className={labelClass}>About</p>
-          <p className='text-sm leading-relaxed text-muted'>
-            {descExpanded ? desc : descShort}
-          </p>
+          <p className="text-sm leading-relaxed text-muted">{descExpanded ? desc : descShort}</p>
           {desc.length > DESC_CUTOFF && (
             <button
-              type='button'
+              type="button"
               onClick={() => setDescExpanded((v) => !v)}
-              className='mt-1 text-xs text-accent hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded'
+              className="mt-1 text-xs text-accent hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
             >
               {descExpanded ? 'Show less' : 'Show more'}
             </button>
@@ -163,79 +159,77 @@ export default function BookEditModal({
       )}
 
       {/* Rating */}
-      <div className='mb-5'>
-        <div className='mb-2 flex items-center justify-between'>
+      <div className="mb-5">
+        <div className="mb-2 flex items-center justify-between">
           <span className={labelClass}>Your rating</span>
           {rating > 0 && (
             <button
-              type='button'
+              type="button"
               onClick={() => setRating(0)}
-              className='text-xs text-faint hover:text-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded'
+              className="text-xs text-faint hover:text-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
             >
               Clear
             </button>
           )}
         </div>
-        <div className='flex gap-1' onMouseLeave={() => setHover(0)}>
+        <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
-              type='button'
+              type="button"
               onMouseEnter={() => setHover(n)}
               onClick={() => setRating(n)}
-              className='rounded text-3xl leading-none transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent'
+              className="rounded text-3xl leading-none transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
               aria-label={`${n} star${n > 1 ? 's' : ''}`}
             >
-              <span className={n <= shown ? 'text-accent' : 'text-faint'} aria-hidden='true'>
+              <span className={n <= shown ? 'text-accent' : 'text-faint'} aria-hidden="true">
                 ★
               </span>
             </button>
           ))}
         </div>
         {rating === 0 && (
-          <p className='mt-1 text-xs text-faint'>
+          <p className="mt-1 text-xs text-faint">
             {book.goodreads_rating > 0 ? 'Unrated (Goodreads import cleared).' : 'Unrated.'}
           </p>
         )}
       </div>
 
       {/* Review */}
-      <div className='mb-5'>
+      <div className="mb-5">
         <label className={labelClass}>Review</label>
         <textarea
           value={review}
           onChange={(e) => setReview(e.target.value)}
           rows={5}
-          placeholder='What did you think? Your words feed the taste profile...'
+          placeholder="What did you think? Your words feed the taste profile..."
           className={[inputClass, 'resize-y'].join(' ')}
         />
         {reviewWithoutRating && (
-          <p className='mt-1 text-xs text-warning'>
-            Add a star rating above to save your review.
-          </p>
+          <p className="mt-1 text-xs text-warning">Add a star rating above to save your review.</p>
         )}
       </div>
 
       {/* Date read */}
-      <div className='mb-5'>
+      <div className="mb-5">
         <label className={labelClass}>
           Date read{' '}
-          <span className='font-normal normal-case text-faint'>· optional, if you remember</span>
+          <span className="font-normal normal-case text-faint">· optional, if you remember</span>
         </label>
         <input
-          type='date'
+          type="date"
           value={dateRead}
           max={new Date().toISOString().slice(0, 10)}
           onChange={(e) => setDateRead(e.target.value)}
-          className='rounded-lg border border-border bg-base px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus-visible:ring-1 focus-visible:ring-accent [color-scheme:dark]'
+          className="rounded-lg border border-border bg-base px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus-visible:ring-1 focus-visible:ring-accent [color-scheme:dark]"
         />
       </div>
 
       {/* Exclude from profile toggle */}
-      <div className='mb-5 flex items-center gap-3'>
+      <div className="mb-5 flex items-center gap-3">
         <button
-          type='button'
-          role='switch'
+          type="button"
+          role="switch"
           aria-checked={exclude}
           onClick={() => setExclude(!exclude)}
           className={[
@@ -251,39 +245,41 @@ export default function BookEditModal({
           />
         </button>
         <div>
-          <p className='text-sm font-medium text-text'>Exclude from taste profile</p>
-          <p className='text-xs text-faint'>Track this book without letting it influence your recommendations or reader archetype.</p>
+          <p className="text-sm font-medium text-text">Exclude from taste profile</p>
+          <p className="text-xs text-faint">
+            Track this book without letting it influence your recommendations or reader archetype.
+          </p>
         </div>
       </div>
 
       {/* Footer actions */}
-      <div className='flex items-center justify-between gap-2'>
+      <div className="flex items-center justify-between gap-2">
         {/* Left side: queue finish-later / remove */}
         {queuePosition ? (
           <button
-            type='button'
+            type="button"
             onClick={onClose}
             disabled={busy}
-            className='text-sm font-medium text-faint transition hover:text-muted disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded'
+            className="text-sm font-medium text-faint transition hover:text-muted disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
           >
             Finish later
           </button>
         ) : allowRemove ? (
           removeArmed ? (
             <button
-              type='button'
+              type="button"
               onClick={handleRemove}
               disabled={busy}
-              className='text-sm font-semibold text-danger transition hover:opacity-80 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger rounded'
+              className="text-sm font-semibold text-danger transition hover:opacity-80 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger rounded"
             >
               {removing ? 'Removing...' : 'Confirm remove'}
             </button>
           ) : (
             <button
-              type='button'
+              type="button"
               onClick={() => setRemoveArmed(true)}
               disabled={busy}
-              className='text-sm font-medium text-faint transition hover:text-danger disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger rounded'
+              className="text-sm font-medium text-faint transition hover:text-danger disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger rounded"
             >
               Remove
             </button>
@@ -293,15 +289,15 @@ export default function BookEditModal({
         )}
 
         {/* Right side: cancel + save */}
-        <div className='flex gap-2'>
-          <Button variant='ghost' onClick={queuePosition && onFinishQueue ? onFinishQueue : onClose} disabled={busy}>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            onClick={queuePosition && onFinishQueue ? onFinishQueue : onClose}
+            disabled={busy}
+          >
             {queuePosition ? 'Skip' : 'Cancel'}
           </Button>
-          <Button
-            onClick={handleSave}
-            loading={saving}
-            disabled={busy || !canSave}
-          >
+          <Button onClick={handleSave} loading={saving} disabled={busy || !canSave}>
             {saving ? 'Saving...' : queuePosition ? 'Save & next' : 'Save'}
           </Button>
         </div>

@@ -9,11 +9,14 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 
 **Auth boundaries do a FULL document load, not client-side nav** (`window.location.assign`): sign-in, sign-out, and destructive clear-library / delete-account actions all hard-reload. The SWR cache + component state (notably `LibraryGate`'s latch) are in-memory and global, so a client-side `router.push` after these leaks previous user's state until a manual refresh. Don't revert these to `router.push`/`replace`. `app/auth/callback` (invite-link landing page — see `docs/hosting.md` Admin console notes) follows the same rule for its post-password-set and error-state navigations.
 
+**Invite/recovery links must land on `/auth/callback`** (the only page that consumes the hash tokens and prompts for a password). For that, Supabase must be told to redirect there — which requires **both** the Railway backend env `FRONTEND_URL` (so `supabase_admin.invite_user` sends `redirect_to=…/auth/callback`) **and** that exact URL in the Supabase dashboard's Auth → URL Configuration → **Redirect URLs** allowlist. If either is missing, GoTrue silently falls back to the project Site URL (bare app root), which `middleware.ts` bounces to `/login` with the tokens stranded in the URL hash. As a safety net, `app/login` forwards any invite/recovery hash to `/auth/callback` via `lib/authRedirect.ts` (`inviteCallbackRedirect`) so onboarding still completes even when that config is wrong.
+
 ## Key files
 
 - `lib/api.ts` — single typed fetch client. All calls go through it; `BASE` is `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000`). Types here mirror the Pydantic schemas. `PROFILE_STATUS_KEY` is the shared SWR key for `/profile/status` so a mutation anywhere can revalidate the re-profile banner.
 - `app/providers.tsx` — client component wrapping `(main)` layout children with a global `SWRConfig` (`revalidateOnFocus: false`, `dedupingInterval: 30_000`). Prevents refetch thrash when switching browser tabs; per-page `useSWR` keys are unchanged.
 - `lib/bookLinks.ts` — pure function `bookLinks(book)` returning `{ label, href }[]` for Amazon, Bookshop.org, and WorldCat. Uses ISBN13 when present, falls back to title+author search query.
+- `lib/authRedirect.ts` — pure `inviteCallbackRedirect(hash)`: returns the `/auth/callback` URL (hash preserved) when a URL hash carries Supabase invite/recovery tokens or an auth error, else `null`. Used by `app/login` to rescue misdirected invite links (see Auth section).
 - `lib/tasteAccent.ts` — maps 4-letter archetype code to one of 16 curated HSL colors (warm for Immersive types, cool for Reflective); falls back to hash-derived color.
 
 ## Routes (`app/`)
@@ -30,7 +33,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
   "Approaching cap" badge when `usage.warn` is true, and a footnote clarifying it's a
   soft cap for visibility only — recommendations/profiling never stop running.
 - `/admin` — admin console (invite/revoke users, view roster). Only reachable by users in the `ADMIN_EMAILS` allowlist; in local mode all users can access it.
-- `/auth/callback` — public (middleware's `PUBLIC_PREFIXES` includes `/auth`) landing page for Supabase invite links. Client-only: consumes the session tokens Supabase puts in the URL hash, then prompts the invited user (no password yet) to set one before hard-reloading into `/`.
+- `/auth/callback` — public (middleware's `PUBLIC_PREFIXES` includes `/auth`) landing page for Supabase invite links. Client-only: consumes the session tokens Supabase puts in the URL hash, then prompts the invited user (no password yet) to set one before hard-reloading into `/`. `/login` forwards any invite/recovery hash here as a fallback (see Auth section).
 
 `layout.tsx` mounts `NavBar` + `ReprofileBanner` + `UsageWarningBanner` + `FeedbackLauncher` + `BottomNav` above/below all pages and wraps `children` in **`LibraryGate`**. The root `app/layout.tsx` `<body>` carries `suppressHydrationWarning` (browser extensions mutate `<body>` pre-hydration — silences benign attribute mismatches only).
 

@@ -23,25 +23,25 @@ import Link from 'next/link';
 function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
   const titleId = 'archetype-explainer-title';
   return (
-    <Modal labelId={titleId} onClose={onClose} className='w-full max-w-lg'>
-      <div className='rounded-2xl border border-border bg-surface p-6 space-y-5'>
+    <Modal labelId={titleId} onClose={onClose} className="w-full max-w-lg">
+      <div className="rounded-2xl border border-border bg-surface p-6 space-y-5">
         <div>
-          <h2 id={titleId} className='font-display text-xl font-bold text-text'>
+          <h2 id={titleId} className="font-display text-xl font-bold text-text">
             Your Reader Type
           </h2>
-          <p className='mt-1 text-sm text-muted'>
+          <p className="mt-1 text-sm text-muted">
             A personality system for readers, based on four reading axes.
           </p>
         </div>
 
-        <div className='space-y-4 text-sm'>
-          <p className='text-muted'>
-            We scored your taste profile across four dimensions to figure out what kind
-            of reader you are. Each axis produces one letter, and together they make your
-            four-letter reader code.
+        <div className="space-y-4 text-sm">
+          <p className="text-muted">
+            We scored your taste profile across four dimensions to figure out what kind of reader
+            you are. Each axis produces one letter, and together they make your four-letter reader
+            code.
           </p>
 
-          <div className='space-y-3'>
+          <div className="space-y-3">
             {[
               {
                 letters: 'I / R',
@@ -64,31 +64,31 @@ function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
                 desc: 'Does a book hit hardest when it makes you feel something (Heart), or when it gives you something to think about (Mind)?',
               },
             ].map(({ letters, name, desc }) => (
-              <div key={name} className='flex gap-3'>
-                <span className='font-mono text-xs font-bold text-user w-10 shrink-0 pt-0.5'>
+              <div key={name} className="flex gap-3">
+                <span className="font-mono text-xs font-bold text-user w-10 shrink-0 pt-0.5">
                   {letters}
                 </span>
                 <div>
-                  <span className='font-semibold text-text'>{name} -- </span>
-                  <span className='text-muted'>{desc}</span>
+                  <span className="font-semibold text-text">{name} -- </span>
+                  <span className="text-muted">{desc}</span>
                 </div>
               </div>
             ))}
           </div>
 
-          <p className='text-muted'>
-            The four letters combine into one of 16 named archetypes -- from
-            The Wandering Escapist to The Cerebral Architect. Your code is derived
-            from your actual rated books and taste traits, so it should feel like you.
+          <p className="text-muted">
+            The four letters combine into one of 16 named archetypes -- from The Wandering Escapist
+            to The Cerebral Architect. Your code is derived from your actual rated books and taste
+            traits, so it should feel like you.
           </p>
 
-          <p className='text-faint text-xs'>
+          <p className="text-faint text-xs">
             Not feeling it? Re-derive after updating your taste profile and it may shift.
           </p>
         </div>
 
-        <div className='flex justify-end'>
-          <Button variant='ghost' size='sm' onClick={onClose}>
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={onClose}>
             Got it
           </Button>
         </div>
@@ -97,14 +97,14 @@ function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-const TRAITS_KEY   = 'profile-traits';
+const TRAITS_KEY = 'profile-traits';
 const SUBJECTS_KEY = 'profile-subjects';
 
 const AXIS_META = [
-  { key: 'lens'      as const, left: 'Immersive',    right: 'Reflective'      },
-  { key: 'engine'    as const, left: 'Plot-first',    right: 'Character-first' },
-  { key: 'range'     as const, left: 'Broad',         right: 'Deep'            },
-  { key: 'resonance' as const, left: 'Heart',         right: 'Mind'            },
+  { key: 'lens' as const, left: 'Immersive', right: 'Reflective' },
+  { key: 'engine' as const, left: 'Plot-first', right: 'Character-first' },
+  { key: 'range' as const, left: 'Broad', right: 'Deep' },
+  { key: 'resonance' as const, left: 'Heart', right: 'Mind' },
 ];
 
 interface TasteHeroProps {
@@ -114,33 +114,39 @@ interface TasteHeroProps {
 export function TasteHero({ compact = false }: TasteHeroProps) {
   const { mutate } = useSWRConfig();
   const toast = useToast();
-  const [deriving, setDeriving]           = useState(false);
-  const [rederiving, setRederiving]       = useState(false);
-  const [expandedAxis, setExpandedAxis]   = useState<string | null>(null);
-  const [expandedChip, setExpandedChip]   = useState<number | null>(null);
-  const [shareOpen, setShareOpen]         = useState(false);
+  const [deriving, setDeriving] = useState(false);
+  const [rederiving, setRederiving] = useState(false);
+  const [expandedAxis, setExpandedAxis] = useState<string | null>(null);
+  const [expandedChip, setExpandedChip] = useState<number | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [explainerOpen, setExplainerOpen] = useState(false);
 
-  const { data: profileStatus, isLoading: statusLoading } =
-    useSWR<ProfileStatus>(PROFILE_STATUS_KEY, () => api.profileStatus());
-  const { data: traits, isLoading: traitsLoading } =
-    useSWR<Trait[]>(TRAITS_KEY, () => api.profile());
-  const { data: subjects, isLoading: subjectsLoading } =
-    useSWR<SubjectBreakdown>(SUBJECTS_KEY, () => api.profileSubjects());
-  const { data: archetype, isLoading: archetypeLoading } =
-    useSWR<ArchetypeOut | null>(ARCHETYPE_KEY, () => api.getArchetype());
+  const { data: profileStatus, isLoading: statusLoading } = useSWR<ProfileStatus>(
+    PROFILE_STATUS_KEY,
+    () => api.profileStatus()
+  );
+  const { data: traits, isLoading: traitsLoading } = useSWR<Trait[]>(TRAITS_KEY, () =>
+    api.profile()
+  );
+  const { data: subjects, isLoading: subjectsLoading } = useSWR<SubjectBreakdown>(
+    SUBJECTS_KEY,
+    () => api.profileSubjects()
+  );
+  const { data: archetype, isLoading: archetypeLoading } = useSWR<ArchetypeOut | null>(
+    ARCHETYPE_KEY,
+    () => api.getArchetype()
+  );
 
   const isLoading = statusLoading || traitsLoading || subjectsLoading || archetypeLoading;
 
   const topSubject = subjects?.overall?.[0]?.subject ?? null;
-  const topTrait   = traits?.[0] ?? null;
-  const seed       = archetype ? archetype.code : (topSubject ?? topTrait?.claim ?? null);
-  const accentHsl  = tasteAccent(seed);
+  const topTrait = traits?.[0] ?? null;
+  const seed = archetype ? archetype.code : (topSubject ?? topTrait?.claim ?? null);
+  const accentHsl = tasteAccent(seed);
 
   const noProfile =
     !isLoading &&
-    (profileStatus?.last_profiled_at === null ||
-      (traits !== undefined && traits.length === 0));
+    (profileStatus?.last_profiled_at === null || (traits !== undefined && traits.length === 0));
 
   const padClass = compact ? 'p-5' : 'p-8 sm:p-12';
 
@@ -148,17 +154,25 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   const axisItems = archetype
     ? AXIS_META.map((a) => {
         const axisData = archetype[a.key];
-        const score    = axisData.score;
-        const pct      = Math.abs(score) * 50;
-        const barLeft  = score < 0 ? `${50 - pct}%` : '50%';
+        const score = axisData.score;
+        const pct = Math.abs(score) * 50;
+        const barLeft = score < 0 ? `${50 - pct}%` : '50%';
         const barWidth = `${pct}%`;
         const leftWins = score < 0;
-        return { ...a, score, barLeft, barWidth, rationale: axisData.rationale, leftWins, letter: axisData.letter };
+        return {
+          ...a,
+          score,
+          barLeft,
+          barWidth,
+          rationale: axisData.rationale,
+          leftWins,
+          letter: axisData.letter,
+        };
       })
     : null;
 
-  const chipCount       = compact ? 3 : 5;
-  const chipTraits      = (traits ?? []).slice(0, chipCount);
+  const chipCount = compact ? 3 : 5;
+  const chipTraits = (traits ?? []).slice(0, chipCount);
 
   const headingClass = [
     'font-display font-extrabold tracking-tight leading-[1.05]',
@@ -193,15 +207,15 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   if (isLoading) {
     return (
       <div className={['rounded-2xl border border-border bg-surface', padClass].join(' ')}>
-        <div className='space-y-4'>
-          <div className='h-3 w-24 rounded bg-elevated motion-safe:animate-pulse' />
-          <div className='h-9 w-3/4 rounded bg-elevated motion-safe:animate-pulse' />
-          <div className='h-9 w-1/2 rounded bg-elevated motion-safe:animate-pulse' />
-          <div className='mt-4 flex gap-2'>
-            {[1, 2, 3].map(i => (
+        <div className="space-y-4">
+          <div className="h-3 w-24 rounded bg-elevated motion-safe:animate-pulse" />
+          <div className="h-9 w-3/4 rounded bg-elevated motion-safe:animate-pulse" />
+          <div className="h-9 w-1/2 rounded bg-elevated motion-safe:animate-pulse" />
+          <div className="mt-4 flex gap-2">
+            {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className='h-6 w-20 rounded-full bg-elevated motion-safe:animate-pulse'
+                className="h-6 w-20 rounded-full bg-elevated motion-safe:animate-pulse"
               />
             ))}
           </div>
@@ -214,20 +228,15 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   if (noProfile) {
     return (
       <div
-        className={[
-          'rounded-2xl border border-border bg-surface text-center',
-          padClass,
-        ].join(' ')}
+        className={['rounded-2xl border border-border bg-surface text-center', padClass].join(' ')}
       >
         {explainerOpen && <ArchetypeExplainerModal onClose={() => setExplainerOpen(false)} />}
-        <div className='flex items-center gap-3 mb-3'>
-          <p className='font-mono text-xs uppercase tracking-widest text-muted'>
-            Reader Type
-          </p>
+        <div className="flex items-center gap-3 mb-3">
+          <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader Type</p>
           <button
-            type='button'
+            type="button"
             onClick={() => setExplainerOpen(true)}
-            className='font-mono text-xs text-faint hover:text-muted transition-colors'
+            className="font-mono text-xs text-faint hover:text-muted transition-colors"
           >
             What is this?
           </button>
@@ -240,11 +249,11 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
         >
           MyLibrary doesn&apos;t know you yet.
         </h1>
-        <p className='mt-4 text-muted text-sm max-w-sm mx-auto'>
+        <p className="mt-4 text-muted text-sm max-w-sm mx-auto">
           Build your taste profile and discover your reader type.
         </p>
         <Link
-          href='/profile'
+          href="/profile"
           className={[
             'mt-6 inline-flex items-center gap-2 rounded-lg bg-accent text-sm font-semibold',
             'text-white hover:bg-accent-hover active:scale-95 transition-all',
@@ -263,20 +272,15 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
     return (
       <div
         style={{ ['--user-accent' as string]: accentHsl }}
-        className={[
-          'rounded-2xl border border-border bg-surface text-center',
-          padClass,
-        ].join(' ')}
+        className={['rounded-2xl border border-border bg-surface text-center', padClass].join(' ')}
       >
         {explainerOpen && <ArchetypeExplainerModal onClose={() => setExplainerOpen(false)} />}
-        <div className='flex items-center gap-3 mb-3'>
-          <p className='font-mono text-xs uppercase tracking-widest text-muted'>
-            Reader Type
-          </p>
+        <div className="flex items-center gap-3 mb-3">
+          <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader Type</p>
           <button
-            type='button'
+            type="button"
             onClick={() => setExplainerOpen(true)}
-            className='font-mono text-xs text-faint hover:text-muted transition-colors'
+            className="font-mono text-xs text-faint hover:text-muted transition-colors"
           >
             What is this?
           </button>
@@ -289,15 +293,11 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
         >
           What kind of reader are you?
         </h1>
-        <p className='mt-4 text-muted text-sm max-w-sm mx-auto'>
-          We&apos;ll analyze your taste profile to place you on four reading axes and find your archetype.
+        <p className="mt-4 text-muted text-sm max-w-sm mx-auto">
+          We&apos;ll analyze your taste profile to place you on four reading axes and find your
+          archetype.
         </p>
-        <Button
-          variant='primary'
-          loading={deriving}
-          onClick={handleDiscover}
-          className='mt-6'
-        >
+        <Button variant="primary" loading={deriving} onClick={handleDiscover} className="mt-6">
           Discover your reader type
         </Button>
       </div>
@@ -310,59 +310,54 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       style={{ ['--user-accent' as string]: accentHsl }}
       className={['rounded-2xl border border-border bg-surface', padClass].join(' ')}
     >
-      <div className='flex items-center gap-3 mb-3'>
-        <p className='font-mono text-xs uppercase tracking-widest text-muted'>
-          Reader Type
-        </p>
+      <div className="flex items-center gap-3 mb-3">
+        <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader Type</p>
         <button
-          type='button'
+          type="button"
           onClick={() => setExplainerOpen(true)}
-          className='font-mono text-xs text-faint hover:text-muted transition-colors'
+          className="font-mono text-xs text-faint hover:text-muted transition-colors"
         >
           What is this?
         </button>
       </div>
-      <div className='flex items-center gap-3 mb-1'>
-        <Badge variant='mono' className='text-base px-3 py-1'>
+      <div className="flex items-center gap-3 mb-1">
+        <Badge variant="mono" className="text-base px-3 py-1">
           {archetype.code}
         </Badge>
       </div>
-      <p className='font-mono text-xs text-faint mb-3'>
+      <p className="font-mono text-xs text-faint mb-3">
         {AXIS_META.map((a, i) => {
           const axisData = archetype[a.key];
           const label = axisData.score < 0 ? a.left : a.right;
           return (
             <span key={a.key}>
-              <span className='text-user'>{axisData.letter}</span>
-              {' '}{label}
+              <span className="text-user">{axisData.letter}</span> {label}
               {i < 3 ? ' · ' : ''}
             </span>
           );
         })}
       </p>
       <h1 className={headingClass}>
-        <span className='text-user'>{archetype.name}</span>
+        <span className="text-user">{archetype.name}</span>
       </h1>
-      <p className='text-sm text-muted italic mt-2'>{archetype.tagline}</p>
+      <p className="text-sm text-muted italic mt-2">{archetype.tagline}</p>
 
       {/* Trait chips as supporting detail -- click to expand truncated claims */}
       {chipTraits.length > 0 && (
-        <div className='mt-6 flex flex-wrap gap-2'>
-          {chipTraits.map(t => {
+        <div className="mt-6 flex flex-wrap gap-2">
+          {chipTraits.map((t) => {
             const truncated = t.claim.length > 60;
             const isExpanded = expandedChip === t.id;
             const chipLabel = truncated && !isExpanded ? t.claim.slice(0, 57) + '...' : t.claim;
             return (
               <button
                 key={t.id}
-                type='button'
+                type="button"
                 disabled={!truncated}
                 onClick={() => truncated && setExpandedChip(isExpanded ? null : t.id)}
                 className={truncated ? 'cursor-pointer' : 'cursor-default'}
               >
-                <Badge variant='mono'>
-                  {chipLabel}
-                </Badge>
+                <Badge variant="mono">{chipLabel}</Badge>
               </button>
             );
           })}
@@ -371,27 +366,27 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
 
       {/* Axis bars: axis-name | bar | letter + winning-label [why] */}
       {axisItems && (
-        <div className='mt-6 space-y-2'>
+        <div className="mt-6 space-y-2">
           {axisItems.map((a) => {
             const isExpanded = expandedAxis === a.key;
             const winningLabel = a.leftWins ? a.left : a.right;
             return (
               <div key={a.key}>
-                <div className='flex items-center gap-3'>
-                  <span className='w-20 shrink-0 text-xs text-faint capitalize'>{a.key}</span>
-                  <div className='relative flex-1 h-2 rounded-full bg-elevated overflow-hidden'>
+                <div className="flex items-center gap-3">
+                  <span className="w-20 shrink-0 text-xs text-faint capitalize">{a.key}</span>
+                  <div className="relative flex-1 h-2 rounded-full bg-elevated overflow-hidden">
                     <div
-                      className='absolute h-2 rounded-full bg-user'
+                      className="absolute h-2 rounded-full bg-user"
                       style={{ left: a.barLeft, width: a.barWidth }}
                     />
                   </div>
-                  <div className='w-32 shrink-0 flex items-center gap-1.5'>
-                    <span className='font-mono text-xs font-semibold text-user'>{a.letter}</span>
-                    <span className='text-xs text-text flex-1 min-w-0'>{winningLabel}</span>
+                  <div className="w-32 shrink-0 flex items-center gap-1.5">
+                    <span className="font-mono text-xs font-semibold text-user">{a.letter}</span>
+                    <span className="text-xs text-text flex-1 min-w-0">{winningLabel}</span>
                     {a.rationale && (
                       <button
-                        type='button'
-                        className='shrink-0 text-xs text-faint hover:text-muted transition-colors'
+                        type="button"
+                        className="shrink-0 text-xs text-faint hover:text-muted transition-colors"
                         onClick={() => setExpandedAxis(isExpanded ? null : a.key)}
                         aria-expanded={isExpanded}
                       >
@@ -401,7 +396,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
                   </div>
                 </div>
                 {isExpanded && a.rationale && (
-                  <p className='mt-1 pl-24 text-xs text-muted'>{a.rationale}</p>
+                  <p className="mt-1 pl-24 text-xs text-muted">{a.rationale}</p>
                 )}
               </div>
             );
@@ -410,19 +405,19 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       )}
 
       {/* Footer: stale nudge + actions */}
-      <div className='flex justify-between items-center mt-5'>
+      <div className="flex justify-between items-center mt-5">
         <div>
           {archetype.is_stale && (
-            <span className='text-xs text-warning'>
+            <span className="text-xs text-warning">
               Profile updated -- archetype may be outdated.
             </span>
           )}
         </div>
-        <div className='flex items-center gap-2'>
-          <Button variant='ghost' size='sm' loading={rederiving} onClick={handleRederive}>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" loading={rederiving} onClick={handleRederive}>
             Re-derive
           </Button>
-          <Button variant='secondary' size='sm' onClick={() => setShareOpen(true)}>
+          <Button variant="secondary" size="sm" onClick={() => setShareOpen(true)}>
             Share
           </Button>
         </div>

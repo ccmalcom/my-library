@@ -1,11 +1,11 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 // Routes reachable without a session.
-const PUBLIC_PREFIXES = ["/login", "/auth"];
+const PUBLIC_PREFIXES = ['/login', '/auth'];
 
 /**
  * Refresh the Supabase session cookie on each request and gate page routes:
@@ -45,12 +45,12 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && !isPublic) {
     const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
+    loginUrl.pathname = '/login';
     return NextResponse.redirect(loginUrl);
   }
-  if (user && path.startsWith("/login")) {
+  if (user && path.startsWith('/login')) {
     const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/";
+    homeUrl.pathname = '/';
     return NextResponse.redirect(homeUrl);
   }
 

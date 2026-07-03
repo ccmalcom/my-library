@@ -25,15 +25,10 @@ const inputClass = [
   'focus-visible:ring-1 focus-visible:ring-accent',
 ].join(' ');
 
-const labelClass = 'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
+const labelClass =
+  'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
 
-export default function FeedbackModal({
-  trigger,
-  runId,
-  heading,
-  onClose,
-  onResolved,
-}: Props) {
+export default function FeedbackModal({ trigger, runId, heading, onClose, onResolved }: Props) {
   const toast = useToast();
 
   const [category, setCategory] = useState<string | null>(null);
@@ -67,25 +62,25 @@ export default function FeedbackModal({
 
   return (
     <Modal
-      labelId='feedback-modal'
+      labelId="feedback-modal"
       onClose={onClose}
-      className='fade-in flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-2xl'
+      className="fade-in flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-2xl"
     >
       {/* Header */}
-      <div className='mb-6'>
-        <h2 id='feedback-modal' className='text-lg font-bold leading-tight text-text'>
+      <div className="mb-6">
+        <h2 id="feedback-modal" className="text-lg font-bold leading-tight text-text">
           {heading}
         </h2>
       </div>
 
       {/* Category buttons */}
-      <div className='mb-6'>
+      <div className="mb-6">
         <label className={labelClass}>Category</label>
-        <div className='grid grid-cols-2 gap-2'>
+        <div className="grid grid-cols-2 gap-2">
           {categoryOptions.map(({ value, label }) => (
             <button
               key={value}
-              type='button'
+              type="button"
               onClick={() => setCategory(value)}
               disabled={submitting}
               className={[
@@ -104,32 +99,26 @@ export default function FeedbackModal({
       </div>
 
       {/* Body textarea */}
-      <div className='mb-6 flex-1'>
+      <div className="mb-6 flex-1">
         <label className={labelClass}>Feedback</label>
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={6}
-          placeholder='Please share your thoughts...'
+          placeholder="Please share your thoughts..."
           disabled={submitting}
-          className={[inputClass, 'resize-y disabled:opacity-50 disabled:cursor-not-allowed'].join(' ')}
+          className={[inputClass, 'resize-y disabled:opacity-50 disabled:cursor-not-allowed'].join(
+            ' '
+          )}
         />
       </div>
 
       {/* Footer actions */}
-      <div className='flex gap-2'>
-        <Button
-          variant='ghost'
-          onClick={onClose}
-          disabled={submitting}
-        >
+      <div className="flex gap-2">
+        <Button variant="ghost" onClick={onClose} disabled={submitting}>
           Cancel
         </Button>
-        <Button
-          onClick={handleSubmit}
-          loading={submitting}
-          disabled={!canSubmit}
-        >
+        <Button onClick={handleSubmit} loading={submitting} disabled={!canSubmit}>
           Submit
         </Button>
       </div>

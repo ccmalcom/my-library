@@ -5,12 +5,7 @@ interface CardProps {
   as?: React.ElementType;
 }
 
-export function Card({
-  children,
-  elevated = false,
-  className = '',
-  as: Tag = 'div',
-}: CardProps) {
+export function Card({ children, elevated = false, className = '', as: Tag = 'div' }: CardProps) {
   return (
     <Tag
       className={[

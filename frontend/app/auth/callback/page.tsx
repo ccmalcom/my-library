@@ -39,11 +39,7 @@ export default function AuthCallbackPage() {
 
     const clearHash = () => {
       if (window.location.hash) {
-        window.history.replaceState(
-          null,
-          '',
-          window.location.pathname + window.location.search
-        );
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
       }
     };
 

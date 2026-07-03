@@ -47,75 +47,68 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
     >
       {/* Close button */}
       <button
-        type='button'
+        type="button"
         onClick={onClose}
-        aria-label='Close'
+        aria-label="Close"
         className={[
           'absolute right-4 top-4 rounded-full p-1 text-faint',
           'hover:bg-elevated hover:text-text',
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
         ].join(' ')}
       >
-        <X className='h-4 w-4' />
+        <X className="h-4 w-4" />
       </button>
 
       {/* Scrollable body */}
-      <div className='overflow-y-auto p-4 sm:p-6'>
+      <div className="overflow-y-auto p-4 sm:p-6">
         {/* Header: cover + metadata */}
-        <div className='flex flex-col items-center gap-4 sm:flex-row sm:items-start'>
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
           {/* Cover */}
-          <div className='relative h-40 w-28 shrink-0 overflow-hidden rounded-lg bg-elevated'>
+          <div className="relative h-40 w-28 shrink-0 overflow-hidden rounded-lg bg-elevated">
             {book.cover_url ? (
               <Image
                 src={book.cover_url}
                 alt={`Cover of ${book.title}`}
                 fill
-                className='object-cover'
+                className="object-cover"
                 unoptimized
               />
             ) : (
-              <div className='flex h-full items-center justify-center text-faint'>
-                <BookOpen className='h-8 w-8' />
+              <div className="flex h-full items-center justify-center text-faint">
+                <BookOpen className="h-8 w-8" />
               </div>
             )}
           </div>
 
           {/* Title / author / meta */}
-          <div className='min-w-0 text-center sm:text-left'>
-            <h2
-              id={LABEL_ID}
-              className='font-display text-xl font-semibold leading-snug text-text'
-            >
+          <div className="min-w-0 text-center sm:text-left">
+            <h2 id={LABEL_ID} className="font-display text-xl font-semibold leading-snug text-text">
               {book.title}
             </h2>
-            <p className='mt-1 text-sm text-muted'>
-              {book.author ?? 'Unknown author'}
-            </p>
+            <p className="mt-1 text-sm text-muted">{book.author ?? 'Unknown author'}</p>
             {meta.length > 0 && (
-              <p className='mt-1 font-mono text-xs text-faint'>
-                {meta.join(' \u00B7 ')}
-              </p>
+              <p className="mt-1 font-mono text-xs text-faint">{meta.join(' \u00B7 ')}</p>
             )}
           </div>
         </div>
 
         {/* Description */}
-        <div className='mt-5'>
+        <div className="mt-5">
           {book.description ? (
-            <p className='text-sm leading-relaxed text-muted'>{book.description}</p>
+            <p className="text-sm leading-relaxed text-muted">{book.description}</p>
           ) : (
-            <p className='text-sm text-faint italic'>No description available.</p>
+            <p className="text-sm text-faint italic">No description available.</p>
           )}
         </div>
 
         {/* External links */}
-        <div className='mt-5 flex flex-wrap gap-2'>
+        <div className="mt-5 flex flex-wrap gap-2">
           {links.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              target='_blank'
-              rel='noopener noreferrer'
+              target="_blank"
+              rel="noopener noreferrer"
               className={[
                 'inline-flex items-center gap-1.5 rounded-full border border-border',
                 'px-3 py-1 text-xs font-medium text-muted',
@@ -124,15 +117,15 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
               ].join(' ')}
             >
               {link.label}
-              <ExternalLink className='h-3 w-3' />
+              <ExternalLink className="h-3 w-3" />
             </a>
           ))}
         </div>
 
         {/* Shelf actions */}
-        <div className='mt-6 flex flex-wrap gap-2 border-t border-border pt-5'>
+        <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-5">
           <button
-            type='button'
+            type="button"
             disabled={busy}
             onClick={() => handleMove('currently-reading')}
             className={[
@@ -144,7 +137,7 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
             Start reading
           </button>
           <button
-            type='button'
+            type="button"
             disabled={busy}
             onClick={() => handleMove('read', true)}
             className={[
@@ -156,7 +149,7 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
             Mark finished
           </button>
           <button
-            type='button'
+            type="button"
             disabled={busy}
             onClick={() => handleMove('did-not-finish')}
             className={[
@@ -169,7 +162,7 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
           </button>
           {removeArmed ? (
             <button
-              type='button'
+              type="button"
               disabled={busy}
               onClick={handleRemove}
               className={[
@@ -181,7 +174,7 @@ export default function BookDetailModal({ book, onClose, onMove, onRemove, busy 
             </button>
           ) : (
             <button
-              type='button'
+              type="button"
               disabled={busy}
               onClick={() => setRemoveArmed(true)}
               className={[

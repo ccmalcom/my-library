@@ -8,11 +8,11 @@ interface BadgeProps {
 
 const variantClasses: Record<BadgeVariant, string> = {
   default: 'bg-elevated text-muted',
-  mono:    'bg-elevated text-muted font-mono',
+  mono: 'bg-elevated text-muted font-mono',
   success: 'bg-success-quiet text-success',
-  danger:  'bg-danger-quiet text-danger',
+  danger: 'bg-danger-quiet text-danger',
   warning: 'bg-warning-quiet text-warning',
-  accent:  'bg-accent-quiet text-accent',
+  accent: 'bg-accent-quiet text-accent',
 };
 
 export function Badge({ children, variant = 'default', className = '' }: BadgeProps) {

@@ -6,9 +6,7 @@ import { api, PROFILE_STATUS_KEY, type ProfileStatus } from '@/lib/api';
 import { Spinner } from '@/components/ui';
 
 export default function ReprofileBanner() {
-  const { data: status } = useSWR<ProfileStatus>(PROFILE_STATUS_KEY, () =>
-    api.profileStatus()
-  );
+  const { data: status } = useSWR<ProfileStatus>(PROFILE_STATUS_KEY, () => api.profileStatus());
   const { mutate } = useSWR<ProfileStatus>(PROFILE_STATUS_KEY);
 
   const [running, setRunning] = useState(false);
@@ -32,15 +30,15 @@ export default function ReprofileBanner() {
   const n = status.changed_books;
 
   return (
-    <div className='border-b border-warning/30 bg-warning/10'>
-      <div className='mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-2.5'>
-        <p className='text-sm text-warning'>
-          <span className='font-semibold'>Taste profile out of date.</span>{' '}
-          {n} book{n !== 1 ? 's' : ''} changed since the last build.
-          {error && <span className='ml-2 text-danger'>{error}</span>}
+    <div className="border-b border-warning/30 bg-warning/10">
+      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+        <p className="text-sm text-warning">
+          <span className="font-semibold">Taste profile out of date.</span> {n} book
+          {n !== 1 ? 's' : ''} changed since the last build.
+          {error && <span className="ml-2 text-danger">{error}</span>}
         </p>
         <button
-          type='button'
+          type="button"
           onClick={handleReprofile}
           disabled={running}
           className={[
@@ -51,7 +49,7 @@ export default function ReprofileBanner() {
               : 'bg-warning hover:opacity-90 active:scale-95',
           ].join(' ')}
         >
-          {running && <Spinner size='sm' />}
+          {running && <Spinner size="sm" />}
           {running ? 'Re-profiling...' : 'Re-profile'}
         </button>
       </div>

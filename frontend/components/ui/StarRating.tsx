@@ -43,11 +43,7 @@ export function StarRating({
   const display = readOnly ? value : hovered || value;
 
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className="flex items-center gap-1"
-    >
+    <div role="radiogroup" aria-label={label} className="flex items-center gap-1">
       {Array.from({ length: max }, (_, i) => {
         const star = i + 1;
         const filled = star <= display;
@@ -71,9 +67,7 @@ export function StarRating({
               'rounded transition-transform',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
               'focus-visible:ring-offset-1 focus-visible:ring-offset-base',
-              readOnly
-                ? 'cursor-default'
-                : 'cursor-pointer hover:scale-110 active:scale-95',
+              readOnly ? 'cursor-default' : 'cursor-pointer hover:scale-110 active:scale-95',
             ].join(' ')}
           >
             <StarIcon filled={filled} size={size} />
@@ -88,21 +82,11 @@ function StarIcon({ filled, size }: { filled: boolean; size: number }) {
   const path =
     'M10 1.5l2.47 5.02 5.54.8-4.01 3.91.95 5.52L10 14.27l-4.95 2.48.95-5.52L2 7.32l5.54-.8L10 1.5z';
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 20 20"
-      aria-hidden="true"
-    >
+    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden="true">
       {filled ? (
         <path fill="var(--accent)" d={path} />
       ) : (
-        <path
-          fill="none"
-          stroke="var(--border)"
-          strokeWidth="1.5"
-          d={path}
-        />
+        <path fill="none" stroke="var(--border)" strokeWidth="1.5" d={path} />
       )}
     </svg>
   );

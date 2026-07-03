@@ -12,10 +12,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  primary:   'bg-accent text-white hover:bg-accent-hover',
+  primary: 'bg-accent text-white hover:bg-accent-hover',
   secondary: 'bg-surface border border-border text-text hover:bg-elevated',
-  ghost:     'bg-transparent text-muted hover:text-text hover:bg-surface',
-  danger:    'bg-danger text-white hover:opacity-90',
+  ghost: 'bg-transparent text-muted hover:text-text hover:bg-surface',
+  danger: 'bg-danger text-white hover:opacity-90',
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -29,15 +29,7 @@ const focusRing =
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    {
-      variant = 'primary',
-      size = 'md',
-      loading,
-      disabled,
-      children,
-      className = '',
-      ...props
-    },
+    { variant = 'primary', size = 'md', loading, disabled, children, className = '', ...props },
     ref
   ) => (
     <button

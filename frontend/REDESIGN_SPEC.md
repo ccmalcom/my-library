@@ -15,7 +15,7 @@ that need fixing before a beta / portfolio release:
 1. **The visual design is the generic AI-default dark theme.** Cool near-black slate
    (`#0f1117`) + blue/green/red/amber accents, **system fonts only** (`--font-geist-sans` is
    referenced in `tailwind.config.ts` but never declared), emoji as icons (book / star), and a
-   token system that is *defined but unused* (every component hardcodes `bg-[#1a1f2e]` etc.). It
+   token system that is _defined but unused_ (every component hardcodes `bg-[#1a1f2e]` etc.). It
    reads as templated.
 2. **Accessibility & interaction gaps** — modals don't trap focus or close on Escape,
    animations ignore `prefers-reduced-motion`, several covers have empty `alt`, focus rings are
@@ -23,7 +23,7 @@ that need fixing before a beta / portfolio release:
 
 **Decided direction (locked with the owner):** a clean, modern, **warm-dark** identity whose
 **signature is personalization** — the app opens by telling you something true and specific about
-*your* taste (Spotify's "it knows me" feeling), not a generic dashboard. We chase that feeling
+_your_ taste (Spotify's "it knows me" feeling), not a generic dashboard. We chase that feeling
 without copying Spotify's literal palette (near-black + acid green), which is itself the most
 common AI-default dark theme.
 
@@ -39,12 +39,14 @@ client-side from data the API already returns (traits + subjects).
 ## Design system (the locked token system)
 
 ### Concept
+
 **"MyLibrary knows you."** The hero of the app is the user's generated taste identity, rendered
 as a bold typographic statement with a per-user color, surfaced on the **dashboard** (not buried
 in `/profile`). Everything else is quiet and clean so the personal moment is the one memorable
 thing.
 
 ### Color — warm dark (NOT cool slate)
+
 Define as CSS variables in `globals.css` and mirror into `tailwind.config.ts` theme tokens.
 
 ```
@@ -70,6 +72,7 @@ Define as CSS variables in `globals.css` and mirror into `tailwind.config.ts` th
 ```
 
 Rules:
+
 - **One accent.** Persimmon is the brand. Do not reintroduce blue as a primary action color.
 - **Green is success-only**, never brand or navigation (this is what separates us from the
   Spotify/AI-default look).
@@ -77,15 +80,17 @@ Rules:
   It washes the taste hero and the profile header. Fallback = persimmon.
 
 ### Type
+
 Load via `next/font/google` in `app/layout.tsx` and expose as CSS variables.
 
-| Role     | Family               | Usage                                                        |
-|----------|----------------------|-------------------------------------------------------------|
-| Display  | **Bricolage Grotesque** (700/800) | Hero statements, page titles, big numbers. Characterful, modern, NOT a default Inter-everywhere look. |
-| Body     | **Inter** (400/500/600) | All body copy, labels, buttons.                          |
-| Mono     | **JetBrains Mono** (400/500) | Data labels: counts, confidence (HIGH/MED/LOW), IDs, "data lines". |
+| Role    | Family                            | Usage                                                                                                 |
+| ------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Display | **Bricolage Grotesque** (700/800) | Hero statements, page titles, big numbers. Characterful, modern, NOT a default Inter-everywhere look. |
+| Body    | **Inter** (400/500/600)           | All body copy, labels, buttons.                                                                       |
+| Mono    | **JetBrains Mono** (400/500)      | Data labels: counts, confidence (HIGH/MED/LOW), IDs, "data lines".                                    |
 
 Type scale (Tailwind classes, tight tracking on display):
+
 - Hero: `text-5xl sm:text-6xl font-extrabold tracking-tight` (display font, `leading-[1.03]`)
 - Page title (h1): `text-3xl font-bold tracking-tight` (display)
 - Section (h2): `text-lg font-semibold` (display)
@@ -93,6 +98,7 @@ Type scale (Tailwind classes, tight tracking on display):
 - Eyebrow / data label: `text-xs font-medium uppercase tracking-widest` (mono), color `--muted`
 
 ### Layout & structure
+
 - Keep the centered `max-w-4xl` main column, but the **dashboard leads with the taste hero**,
   then demotes stats to a secondary strip, then the recommend CTA.
 - Structural device = the **taste trait itself** + a small mono "data line"
@@ -100,7 +106,9 @@ Type scale (Tailwind classes, tight tracking on display):
   (01/02/03) — the content is not a sequence.
 
 ### Signature element — the Taste Hero
+
 A generated, per-user block (new component `components/TasteHero.tsx`):
+
 - Pulls the user's top taste trait and renders its claim in **huge display type**, with the key
   phrase emphasized in the per-user accent.
 - A row of the remaining traits as quiet chips (mono data line under each on hover/secondary).
@@ -110,6 +118,7 @@ A generated, per-user block (new component `components/TasteHero.tsx`):
 - Reused in condensed form as the `/profile` page header.
 
 `lib/tasteAccent.ts` — deterministic seed → accessible hue:
+
 - Input: a stable seed (the user's dominant genre/subject string from `/profile/subjects`,
   falling back to the top trait claim, falling back to a constant).
 - Output: an HSL string constrained to a curated, warm, vivid, dark-bg-legible range
@@ -118,12 +127,13 @@ A generated, per-user block (new component `components/TasteHero.tsx`):
 - Pure, no network, memoizable. Fallback to persimmon when no data.
 
 ### Self-critique vs. the three AI defaults (passed)
+
 - **Not** default #1 (cream + serif + terracotta): it's dark, the display face is a grotesque
   not a serif, and persimmon is a bright modern red-orange, not earthy terracotta.
-- **Not** default #2 (near-black + acid green): base is *warm* charcoal `#161412` (brown-tinted,
+- **Not** default #2 (near-black + acid green): base is _warm_ charcoal `#161412` (brown-tinted,
   not slate/black), the accent is persimmon, and green is restricted to success states.
-- **Not** the templated dashboard (big number + label + gradient): the hero is a *typographic
-  personal statement*; stats are demoted to a secondary strip.
+- **Not** the templated dashboard (big number + label + gradient): the hero is a _typographic
+  personal statement_; stats are demoted to a secondary strip.
 
 ---
 
@@ -132,7 +142,7 @@ A generated, per-user block (new component `components/TasteHero.tsx`):
 These are hard rules for editing `.tsx` files in this repo. Violating them breaks the Turbopack build.
 
 - **No non-ASCII inside JS string literals in `.tsx`.** Em dashes, curly quotes, ellipses, etc.
-  are fine in JSX *text nodes* (between tags) but NOT inside `"..."`/`'...'` JS string values.
+  are fine in JSX _text nodes_ (between tags) but NOT inside `"..."`/`'...'` JS string values.
   Use ASCII (`-`, `...`) or unicode escapes (`—`) in string literals.
 - **No IIFEs inside JSX** (`{(() => {...})()}`) — compute derived values as plain variables
   above the `return`, then reference them.
@@ -155,7 +165,7 @@ These are hard rules for editing `.tsx` files in this repo. Violating them break
 ## Phase 0 — Verify the login "Enter does not submit" bug (do first)
 
 The current `app/login/page.tsx` **already** uses a real `<form onSubmit={handleSubmit}>` with a
-`type="submit"` button and two inputs — native Enter-to-submit *should* work. **Do not blindly
+`type="submit"` button and two inputs — native Enter-to-submit _should_ work. **Do not blindly
 patch correct code.** Reproduce first.
 
 1. `cd frontend; npm run dev`. Open `/login`. Type into a field, press Enter.
@@ -166,7 +176,7 @@ patch correct code.** Reproduce first.
      or a throwing import.
    - **Local-dev auth branch** — with no Supabase env, `getSupabaseClient()` returns null and
      `handleSubmit` sets "Auth is not configured"; confirm whether the tester is actually in this
-     branch (it *does* submit, just errors). If so, this is expected, not a bug.
+     branch (it _does_ submit, just errors). If so, this is expected, not a bug.
    - Only if a genuine wiring issue is found, fix minimally.
 
 **Acceptance:** Enter submits the login form (or a written note explaining it was already correct
@@ -213,7 +223,7 @@ accessibility baseline lives, so later phases inherit it for free.
    `ghost`, `danger`. Sizes `sm`/`md`/`lg`. Built on `<button>`. Includes:
    `disabled:opacity-50 disabled:cursor-not-allowed`, `active:scale-95`, and a shared
    **focus-visible ring** (`focus-visible:outline-none focus-visible:ring-2
-   focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base`).
+focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base`).
    Optional `loading` prop -> shows `<Spinner/>` and sets `disabled` + `aria-busy`.
 2. **`Input.tsx` / `Textarea.tsx`** — token styles (`bg-base border-border`), focus-visible ring
    (replace the current `focus:outline-none` + border-only pattern). Forward refs. Accept
@@ -260,11 +270,11 @@ Files: new `components/TasteHero.tsx`, new `lib/tasteAccent.ts`, rewrite
    - Copy is **second-person and specific** ("You reward satire over realism."). Derive the
      statement from the trait claim text; keep a clean fallback if the claim is long.
 3. **Rewrite `app/(main)/page.tsx`** dashboard order:
-   1) `<TasteHero/>` (the signature, top of page)
-   2) secondary stats strip (reuse current stat values, demoted to a single quiet row using
+   1. `<TasteHero/>` (the signature, top of page)
+   2. secondary stats strip (reuse current stat values, demoted to a single quiet row using
       `Card`/`Badge`, not four big cards leading the page)
-   3) ratings breakdown (restyled with tokens; bars use `bg-accent`)
-   4) "Run recommendations" CTA (use `Button`; keep the dirty/no-profile block logic + message,
+   3. ratings breakdown (restyled with tokens; bars use `bg-accent`)
+   4. "Run recommendations" CTA (use `Button`; keep the dirty/no-profile block logic + message,
       reworded to be actionable; surface errors via toast — Phase 6).
    - Add the missing **SWR error state** (currently `stats`/`profileStatus` errors are ignored).
 
@@ -285,6 +295,7 @@ small icon set (e.g. `lucide-react`) to replace emoji (book / star / x / open-bo
 it to `package.json`.
 
 Per file:
+
 - `components/NavBar.tsx` — token styles; add `aria-current="page"` on the active link; keep the
   hard-reload sign-out.
 - `components/ReprofileBanner.tsx` — restyle with `Card`/`Button`; keep dirty-state logic.
@@ -333,7 +344,7 @@ Some of this is already handled by Phase 2 primitives; this phase closes the res
    - `globals.css`: wrap `@keyframes fadeIn`/`.fade-in` in
      `@media (prefers-reduced-motion: no-preference)`, and add a global
      `@media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:.01ms
-     !important; transition-duration:.01ms !important; } }` safety net.
+!important; transition-duration:.01ms !important; } }` safety net.
    - `SwipeCard.tsx`: use framer-motion's `useReducedMotion()` to disable the fly-off/spring
      animations (keep drag, drop the decorative spring).
    - Skeletons: use `motion-safe:animate-pulse` and spinners `motion-safe:animate-spin`.
@@ -382,6 +393,7 @@ UI is the test surface.
 ## Verification (end to end)
 
 Run from `frontend/`:
+
 1. `npm run lint` — clean.
 2. `npm run build` — passes (Turbopack; watch for the non-ASCII-in-string-literal and
    curly-quote errors called out in conventions — fix per the CLAUDE.md snippet if they appear).
@@ -411,6 +423,7 @@ library so there is no `Enrichment` row to JOIN back to.
 **Fix — two parts:**
 
 Backend (`mylibrary/`):
+
 1. Add `description: Mapped[str | None] = mapped_column(Text)` to `Recommendation` in `db.py`.
 2. Add a guarded Alembic migration (idempotent `add_column`, same pattern as 0002/0003).
 3. In `recommend.py`, carry `description` from the catalog candidate dict into the `Recommendation`
@@ -418,6 +431,7 @@ Backend (`mylibrary/`):
 4. Add `description: str | None` to `RecommendationOut` in `schemas.py`.
 
 Frontend (`frontend/`):
+
 1. Add `description?: string` to the `Recommendation` interface in `lib/api.ts`.
 2. In `components/SwipeCard.tsx` (Phase 4 restyle), render `description` below the cover/title in a
    collapsible or truncated block (e.g. 3-line clamp, "Show more" to expand). Keep `rationale`
@@ -425,6 +439,7 @@ Frontend (`frontend/`):
    Order: cover + meta → description (what) → rationale (why for you).
 
 **Notes:**
+
 - The migration must be idempotent (inspect-and-skip if column already exists) because the 0001
   baseline creates tables from `Base.metadata` and a fresh `upgrade head` must not double-add.
 - Candidates without a description (rare — Open Library sometimes omits it) render gracefully with
@@ -434,10 +449,12 @@ Frontend (`frontend/`):
 ---
 
 ## Out of scope
+
 - Any backend / FastAPI / DB / migration change (the frontend stays a pure HTTP client).
 - New product features. This is identity + polish + a11y only.
 - Auth flow changes beyond restyling the existing login page.
 
 ## Suggested order for the build agent
+
 Phase 0 -> 1 -> 2 -> 3 -> (4, 5, 6 interleaved per surface, since they touch the same files) ->
 final Verification. Commit per phase only when the owner asks (the owner controls git).

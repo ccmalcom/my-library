@@ -29,13 +29,13 @@ export default function NavBar() {
   }
 
   return (
-    <nav className='sticky top-0 z-50 border-b border-border bg-base/90 backdrop-blur-sm'>
-      <div className='mx-auto flex max-w-4xl items-center justify-between px-4 py-3'>
-        <span className='font-mono text-xs font-semibold uppercase tracking-widest text-muted'>
+    <nav className="sticky top-0 z-50 border-b border-border bg-base/90 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+        <span className="font-mono text-xs font-semibold uppercase tracking-widest text-muted">
           MyLibrary
         </span>
         {/* Desktop nav links */}
-        <div className='hidden sm:flex gap-1'>
+        <div className="hidden sm:flex gap-1">
           {links.map(({ href, label }) => {
             const active = pathname === href;
             return (
@@ -46,9 +46,7 @@ export default function NavBar() {
                 className={[
                   'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   focusRing,
-                  active
-                    ? 'bg-elevated text-text'
-                    : 'text-muted hover:bg-elevated hover:text-text',
+                  active ? 'bg-elevated text-text' : 'text-muted hover:bg-elevated hover:text-text',
                 ].join(' ')}
               >
                 {label}
@@ -57,7 +55,7 @@ export default function NavBar() {
           })}
           {me?.is_admin && (
             <Link
-              href='/admin'
+              href="/admin"
               aria-current={pathname === '/admin' ? 'page' : undefined}
               className={[
                 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
@@ -72,7 +70,7 @@ export default function NavBar() {
           )}
           {authEnabled && (
             <button
-              type='button'
+              type="button"
               onClick={handleSignOut}
               className={[
                 'rounded-md px-3 py-1.5 text-sm font-medium text-muted transition-colors',
@@ -87,16 +85,16 @@ export default function NavBar() {
         {/* Mobile sign-out icon */}
         {authEnabled && (
           <button
-            type='button'
+            type="button"
             onClick={handleSignOut}
-            aria-label='Sign out'
+            aria-label="Sign out"
             className={[
               'flex sm:hidden items-center justify-center rounded-md p-2 text-muted transition-colors',
               'hover:bg-elevated hover:text-danger',
               focusRing,
             ].join(' ')}
           >
-            <LogOut size={18} aria-hidden='true' />
+            <LogOut size={18} aria-hidden="true" />
           </button>
         )}
       </div>
