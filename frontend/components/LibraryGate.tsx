@@ -55,7 +55,7 @@ export default function LibraryGate({ children }: { children: React.ReactNode })
   const gated = GATED.has(pathname);
 
   // Shares the "stats" SWR key with the dashboard, so no duplicate fetch.
-  const { data: stats, isLoading } = useSWR<Stats>('stats', () => api.stats());
+  const { data: stats, error, isLoading } = useSWR<Stats>('stats', () => api.stats());
   const [mode, setMode] = useState<'loading' | 'setup' | 'ready'>('loading');
 
   useEffect(() => {
@@ -65,6 +65,9 @@ export default function LibraryGate({ children }: { children: React.ReactNode })
   }, [isLoading, stats, mode]);
 
   if (!gated) return <>{children}</>;
+  // If the stats fetch fails, don't leave the user stuck on the spinner forever — fall
+  // back to rendering the page itself.
+  if (error) return <>{children}</>;
   if (mode === 'loading') return <GateSpinner />;
   if (mode === 'setup') return <SetupWizard onComplete={() => setMode('ready')} />;
   return <>{children}</>;
