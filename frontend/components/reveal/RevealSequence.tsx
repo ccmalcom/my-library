@@ -39,6 +39,9 @@ export default function RevealSequence({
 }) {
   const reduced = useReducedMotion() ?? false;
   const [index, setIndex] = useState(0);
+  const [verdicts, setVerdicts] = useState<Record<number, 'confirmed' | 'edited' | 'rejected'>>({});
+  const recordVerdict = (id: number, v: 'confirmed' | 'edited' | 'rejected') =>
+    setVerdicts((prev) => ({ ...prev, [id]: v }));
 
   // Fetch every input in parallel. reveal-lines POST also generates any missing lines.
   const { data: stats } = useSWR<Stats>('reveal-stats', () => api.stats());
@@ -98,7 +101,13 @@ export default function RevealSequence({
       onSkip={onClose}
     >
       <Stagger reduced={reduced} key={index}>
-        {renderBeat(beat, { next, onFinish, onClose })}
+        {renderBeat(beat, {
+          next,
+          onFinish,
+          onClose,
+          onVerdict: recordVerdict,
+          verdicts,
+        })}
       </Stagger>
     </RevealFrame>
   );
@@ -106,7 +115,13 @@ export default function RevealSequence({
 
 function renderBeat(
   beat: Beat,
-  h: { next: () => void; onFinish: () => void; onClose: () => void }
+  h: {
+    next: () => void;
+    onFinish: () => void;
+    onClose: () => void;
+    onVerdict: (id: number, v: 'confirmed' | 'edited' | 'rejected') => void;
+    verdicts: Record<number, 'confirmed' | 'edited' | 'rejected'>;
+  }
 ) {
   switch (beat.kind) {
     case 'cold-open':
@@ -149,10 +164,10 @@ function renderBeat(
       );
 
     case 'reward-trait':
-      return <RewardTraitBeat beat={beat} onNext={h.next} />;
+      return <RewardTraitBeat beat={beat} onNext={h.next} onVerdict={h.onVerdict} />;
 
     case 'aversions':
-      return <AversionsBeat beat={beat} onNext={h.next} />;
+      return <AversionsBeat beat={beat} onNext={h.next} onVerdict={h.onVerdict} />;
 
     case 'shelves':
       return (
@@ -227,17 +242,53 @@ function renderBeat(
         </div>
       );
 
-    case 'summary':
-      // Task 6 replaces this with live verdict counts; static placeholder copy for now.
+    case 'summary': {
+      const values = Object.values(h.verdicts);
+      const nConfirmed = values.filter((v) => v === 'confirmed').length;
+      const nEdited = values.filter((v) => v === 'edited').length;
+      const nRejected = values.filter((v) => v === 'rejected').length;
+      const total = values.length;
+      const allConfirmed = total > 0 && nConfirmed === total;
+      const mostlyRejected = total > 0 && nRejected / total > 0.5;
       return (
         <div className="space-y-4">
-          <p className="text-base text-muted">
-            This is your taste profile now — not just what we inferred, what you signed off on.
-            It gets smarter every time you rate, review, or correct us.
-          </p>
+          {allConfirmed ? (
+            <>
+              <h2 className="font-display text-2xl font-bold text-text">
+                You confirmed the lot.
+              </h2>
+              <p className="text-base text-muted">
+                Either we nailed it or you’re being polite. You can revise any of this later on
+                your profile page.
+              </p>
+            </>
+          ) : mostlyRejected ? (
+            <>
+              <h2 className="font-display text-2xl font-bold text-text">
+                We missed more than we hit — that happens with libraries like yours.
+              </h2>
+              <p className="text-base text-muted">
+                Your corrections just taught us more than the import did. The next pass will be
+                sharper.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-display text-xl font-bold text-text">
+                <span className="text-user">{nConfirmed}</span> confirmed.{' '}
+                <span className="text-user">{nEdited}</span> said better by you.{' '}
+                <span className="text-user">{nRejected}</span> struck from the record.
+              </p>
+              <p className="text-base text-muted">
+                This is your taste profile now — not just what we inferred, what you signed off
+                on. It gets smarter every time you rate, review, or correct us.
+              </p>
+            </>
+          )}
           <RevealButton onClick={h.next}>Continue</RevealButton>
         </div>
       );
+    }
 
     case 'handoff':
       return (
