@@ -796,6 +796,76 @@ export const backfillAdminUsers = (): Promise<{
   total_supabase_users: number;
 }> => post<{ added: number; total_supabase_users: number }>('/admin/backfill', {});
 
+export interface AdminUsageEvent {
+  id: number;
+  user_id: string;
+  email: string | null;
+  model: string;
+  operation: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens: number;
+  cache_read_input_tokens: number;
+  cost_usd: number;
+  created_at: string;
+}
+
+export interface AdminUsageList {
+  events: AdminUsageEvent[];
+  total: number;
+  total_cost_usd: number;
+  limit: number;
+  offset: number;
+}
+
+/** Paginated usage events across all users (admin-only). GET /admin/usage */
+export function listAdminUsage(opts?: {
+  limit?: number;
+  offset?: number;
+  operation?: string;
+}): Promise<AdminUsageList> {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  if (opts?.operation) params.set('operation', opts.operation);
+  const qs = params.toString();
+  return get<AdminUsageList>(`/admin/usage${qs ? `?${qs}` : ''}`);
+}
+
+export interface AdminFeedbackItem {
+  id: number;
+  user_id: string;
+  email: string | null;
+  category: string;
+  body: string;
+  trigger: string | null;
+  run_id: string | null;
+  page: string | null;
+  app_version: string | null;
+  created_at: string;
+}
+
+export interface AdminFeedbackList {
+  items: AdminFeedbackItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** Paginated feedback rows across all users (admin-only). GET /admin/feedback */
+export function listAdminFeedback(opts?: {
+  limit?: number;
+  offset?: number;
+  category?: string;
+}): Promise<AdminFeedbackList> {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  if (opts?.category) params.set('category', opts.category);
+  const qs = params.toString();
+  return get<AdminFeedbackList>(`/admin/feedback${qs ? `?${qs}` : ''}`);
+}
+
 // ── Spend guardrails ────────────────────────────────────────────────────────
 
 /** Shared SWR key for the month-to-date Anthropic spend (settings panel + warning banner). */
