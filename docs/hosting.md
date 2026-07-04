@@ -78,7 +78,7 @@ Verifies Supabase access tokens and returns `sub` as `user_id`. Supabase signs w
 
 **Baseline gotcha (fixed):** `0001_initial` builds the schema via `Base.metadata.create_all()` from the _live_ models — so as models gained new columns, the baseline started creating them too. On a fresh DB, later migrations tried to add already-existing columns → `duplicate column name`. Fix: **migrations 0002+ are idempotent** — they inspect the bind and skip if the column/table already exists. Any future migration that adds something already in the models' `create_all` baseline must guard the same way.
 
-Migration chain: `0001_initial_multitenant_schema` → `0002_display_name` → `0003_enrich_jobs` → `0004_...` → `0005_reader_archetypes` → `0006_add_exclude_from_profile` → ... → `0013_invites` → `0014_usage_events` → `0015_profile_meta_enrichment_corrected`.
+Migration chain: `0001_initial_multitenant_schema` → `0002_display_name` → `0003_enrich_jobs` → `0004_...` → `0005_reader_archetypes` → `0006_add_exclude_from_profile` → ... → `0013_invites` → `0014_usage_events` → `0015_enrichment_corrected_at`.
 
 ## Spend tracking (soft-warn)
 

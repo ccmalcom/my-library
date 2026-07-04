@@ -1,6 +1,6 @@
 """Add enrichment_corrected_at to profile_meta
 
-Revision ID: 0015_profile_meta_enrichment_corrected
+Revision ID: 0015_enrichment_corrected_at
 Revises: 0014_usage_events
 Create Date: 2026-07-03
 """
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
-revision: str = "0015_profile_meta_enrichment_corrected"
+revision: str = "0015_enrichment_corrected_at"
 down_revision: str = "0014_usage_events"
 branch_labels = None
 depends_on = None
