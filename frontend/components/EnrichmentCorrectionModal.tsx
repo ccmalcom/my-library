@@ -16,6 +16,8 @@ interface Props {
 
 const LABEL_ID = 'enrichment-correction-title';
 
+type SearchOutcome = { query: string; hits: CatalogResult[] } | { query: string; error: string };
+
 export default function EnrichmentCorrectionModal({
   book,
   onCorrected,
@@ -26,39 +28,37 @@ export default function EnrichmentCorrectionModal({
   const toast = useToast();
 
   const [query, setQuery] = useState(book.title);
-  const [results, setResults] = useState<CatalogResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<SearchOutcome | null>(null);
   const [selected, setSelected] = useState<CatalogResult | null>(null);
   const [saving, setSaving] = useState(false);
 
   const reqId = useRef(0);
+  const trimmedQuery = query.trim();
+  const shouldSearch = !selected && trimmedQuery.length >= 2;
   useEffect(() => {
-    const q = query.trim();
-    if (selected) return;
-    if (q.length < 2) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    setSearchError(null);
+    if (!shouldSearch) return;
     const id = ++reqId.current;
     const t = setTimeout(async () => {
       try {
-        const hits = await api.catalogSearch(q);
-        if (id === reqId.current) setResults(hits);
+        const hits = await api.catalogSearch(trimmedQuery);
+        if (id === reqId.current) setOutcome({ query: trimmedQuery, hits });
       } catch (e) {
         if (id === reqId.current) {
-          setSearchError(e instanceof Error ? e.message : 'Search failed.');
-          setResults([]);
+          setOutcome({
+            query: trimmedQuery,
+            error: e instanceof Error ? e.message : 'Search failed.',
+          });
         }
-      } finally {
-        if (id === reqId.current) setSearching(false);
       }
     }, 350);
     return () => clearTimeout(t);
-  }, [query, selected]);
+  }, [shouldSearch, trimmedQuery]);
+  // Only trust the outcome when it matches the query it was fetched for — otherwise
+  // it's stale (from a prior query) and we're still effectively searching.
+  const currentOutcome = shouldSearch && outcome?.query === trimmedQuery ? outcome : null;
+  const displayResults = currentOutcome && 'hits' in currentOutcome ? currentOutcome.hits : [];
+  const searchError = currentOutcome && 'error' in currentOutcome ? currentOutcome.error : null;
+  const isSearching = shouldSearch && currentOutcome == null;
 
   function finishOrClose() {
     if (queuePosition && onFinishQueue) onFinishQueue();
@@ -143,17 +143,17 @@ export default function EnrichmentCorrectionModal({
           />
 
           <div className="mt-4 min-h-[120px] flex-1 overflow-y-auto">
-            {searching && (
+            {isSearching && (
               <p className="py-8 text-center text-sm text-muted">Searching the catalogs...</p>
             )}
             {searchError && <p className="py-4 text-sm text-danger">{searchError}</p>}
-            {!searching && !searchError && query.trim().length >= 2 && results.length === 0 && (
+            {!isSearching && !searchError && shouldSearch && displayResults.length === 0 && (
               <p className="py-8 text-center text-sm text-muted">
                 No matches. Try a different spelling.
               </p>
             )}
             <ul className="space-y-1">
-              {results.map((r, i) => (
+              {displayResults.map((r, i) => (
                 <li key={`${r.source}-${r.catalog_id ?? i}`}>
                   <button
                     type="button"

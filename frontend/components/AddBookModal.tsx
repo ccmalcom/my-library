@@ -19,6 +19,8 @@ const SHELF_OPTIONS: { value: Shelf; label: string }[] = [
   { value: 'did-not-finish', label: 'DNF' },
 ];
 
+type SearchOutcome = { query: string; hits: CatalogResult[] } | { query: string; error: string };
+
 const inputClass = [
   'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
   'placeholder-faint focus:border-accent focus:outline-none',
@@ -29,9 +31,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
   const toast = useToast();
 
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<CatalogResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<SearchOutcome | null>(null);
 
   const [selected, setSelected] = useState<CatalogResult | null>(null);
   const [shelf, setShelf] = useState<Shelf>(defaultShelf);
@@ -43,32 +43,32 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
 
   const reqId = useRef(0);
   const searchRef = useRef<HTMLInputElement>(null);
+  const trimmedQuery = query.trim();
+  const shouldSearch = !selected && trimmedQuery.length >= 2;
   useEffect(() => {
-    const q = query.trim();
-    if (selected) return;
-    if (q.length < 2) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    setSearchError(null);
+    if (!shouldSearch) return;
     const id = ++reqId.current;
     const t = setTimeout(async () => {
       try {
-        const hits = await api.catalogSearch(q);
-        if (id === reqId.current) setResults(hits);
+        const hits = await api.catalogSearch(trimmedQuery);
+        if (id === reqId.current) setOutcome({ query: trimmedQuery, hits });
       } catch (e) {
         if (id === reqId.current) {
-          setSearchError(e instanceof Error ? e.message : 'Search failed.');
-          setResults([]);
+          setOutcome({
+            query: trimmedQuery,
+            error: e instanceof Error ? e.message : 'Search failed.',
+          });
         }
-      } finally {
-        if (id === reqId.current) setSearching(false);
       }
     }, 350);
     return () => clearTimeout(t);
-  }, [query, selected]);
+  }, [shouldSearch, trimmedQuery]);
+  // Only trust the outcome when it matches the query it was fetched for — otherwise
+  // it's stale (from a prior query) and we're still effectively searching.
+  const currentOutcome = shouldSearch && outcome?.query === trimmedQuery ? outcome : null;
+  const displayResults = currentOutcome && 'hits' in currentOutcome ? currentOutcome.hits : [];
+  const searchError = currentOutcome && 'error' in currentOutcome ? currentOutcome.error : null;
+  const isSearching = shouldSearch && currentOutcome == null;
 
   async function handleAdd() {
     if (!selected) return;
@@ -92,7 +92,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
       // Keep the modal open for rapid successive adds: reset the form and refocus search.
       setSelected(null);
       setQuery('');
-      setResults([]);
+      setOutcome(null);
       setRating(0);
       setReview('');
       setSaving(false);
@@ -132,22 +132,22 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
           />
 
           <div className="mt-4 min-h-[120px] flex-1 overflow-y-auto">
-            {searching && (
+            {isSearching && (
               <p className="py-8 text-center text-sm text-muted">Searching the catalogs…</p>
             )}
             {searchError && <p className="py-4 text-sm text-danger">{searchError}</p>}
-            {!searching && !searchError && query.trim().length >= 2 && results.length === 0 && (
+            {!isSearching && !searchError && shouldSearch && displayResults.length === 0 && (
               <p className="py-8 text-center text-sm text-muted">
                 No matches. Try a different spelling.
               </p>
             )}
-            {!searching && query.trim().length < 2 && (
+            {!isSearching && trimmedQuery.length < 2 && (
               <p className="py-8 text-center text-sm text-faint">
                 Type at least 2 characters to search.
               </p>
             )}
             <ul className="space-y-1">
-              {results.map((r, i) => (
+              {displayResults.map((r, i) => (
                 <li key={`${r.source}-${r.catalog_id ?? i}`}>
                   <button
                     type="button"

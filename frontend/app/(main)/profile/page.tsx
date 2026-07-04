@@ -35,10 +35,6 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (!editing) setDraft(trait.claim);
-  }, [trait.claim, editing]);
-
-  useEffect(() => {
     if (editing && textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
@@ -138,7 +134,10 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
           ) : (
             <button
               type="button"
-              onClick={() => setEditing(true)}
+              onClick={() => {
+                setDraft(trait.claim);
+                setEditing(true);
+              }}
               title="Click to edit"
               className={[
                 'group text-left text-sm text-text hover:text-text focus-visible:outline-none',

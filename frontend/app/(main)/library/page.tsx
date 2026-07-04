@@ -1124,8 +1124,8 @@ function LibraryInner() {
 
       {lowConfidenceBooks.length > 0 && (
         <Button variant="secondary" size="sm" onClick={startLowConfidenceQueue}>
-          {lowConfidenceBooks.length} book{lowConfidenceBooks.length !== 1 ? 's' : ''} need a
-          match check
+          {lowConfidenceBooks.length} book{lowConfidenceBooks.length !== 1 ? 's' : ''} need a match
+          check
         </Button>
       )}
 
