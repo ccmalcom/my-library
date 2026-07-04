@@ -14,6 +14,7 @@ import {
 } from '@/lib/api';
 import { Button, Card, Badge, Spinner, useToast } from '@/components/ui';
 import { UsageTab } from '@/components/admin/UsageTab';
+import { FeedbackTab } from '@/components/admin/FeedbackTab';
 
 const inputClass = [
   'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
@@ -212,7 +213,7 @@ export default function AdminPage() {
       ) : tab === 'usage' ? (
         <UsageTab />
       ) : (
-        <p className="text-sm text-faint">Feedback tab lands in the next task.</p>
+        <FeedbackTab />
       )}
     </div>
   );
