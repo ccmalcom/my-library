@@ -35,7 +35,7 @@ export default function ReprofileBanner() {
     <div className="border-b border-warning/30 bg-warning/10">
       <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-2.5">
         <p className="text-sm text-warning">
-          <span className="font-semibold">Your taste has new evidence.</span> Ratings and edits
+          <span className="font-semibold">Your taste has new evidence. </span> Ratings and edits
           since the last build aren&apos;t in your profile yet. Re-profile to fold them in — one
           Claude call, when you choose.
           {error && <span className="ml-2 text-danger">{error}</span>}
