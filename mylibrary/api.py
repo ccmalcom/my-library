@@ -1126,6 +1126,7 @@ def _archetype_out(row: ReaderArchetype, last_profiled_at) -> ArchetypeOut:
         code=row.code,
         name=row.archetype_name,
         tagline=row.archetype_tagline,
+        hook=archetype_module.ARCHETYPE_HOOKS.get(row.code, ""),
         lens=_axis("lens", row.axis_lens, row.lens_rationale),
         engine=_axis("engine", row.axis_engine, row.engine_rationale),
         range=_axis("range", row.axis_range, row.range_rationale),

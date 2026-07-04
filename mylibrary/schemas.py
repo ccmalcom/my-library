@@ -388,6 +388,7 @@ class ArchetypeOut(BaseModel):
     code: str            # e.g. "IPBH"
     name: str            # e.g. "The Wandering Escapist"
     tagline: str
+    hook: str            # extends the tagline for Beat 7: "You're the one who {hook}."
     lens: ArchetypeAxisOut
     engine: ArchetypeAxisOut
     range: ArchetypeAxisOut

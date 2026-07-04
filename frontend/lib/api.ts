@@ -295,6 +295,8 @@ export interface ArchetypeOut {
   code: string;
   name: string;
   tagline: string;
+  /** Extends the tagline for the reveal finale: "You're the one who {hook}." */
+  hook: string;
   lens: ArchetypeAxisOut;
   engine: ArchetypeAxisOut;
   range: ArchetypeAxisOut;
