@@ -494,5 +494,47 @@ class AdminMeOut(BaseModel):
     is_admin: bool
 
 
+class AdminUsageEventOut(BaseModel):
+    id: int
+    user_id: str
+    email: str | None = None
+    model: str
+    operation: str
+    input_tokens: int
+    output_tokens: int
+    cache_creation_input_tokens: int
+    cache_read_input_tokens: int
+    cost_usd: float
+    created_at: datetime
+
+
+class AdminUsageListOut(BaseModel):
+    events: list[AdminUsageEventOut]
+    total: int
+    total_cost_usd: float
+    limit: int
+    offset: int
+
+
+class AdminFeedbackOut(BaseModel):
+    id: int
+    user_id: str
+    email: str | None = None
+    category: str
+    body: str
+    trigger: str | None = None
+    run_id: str | None = None
+    page: str | None = None
+    app_version: str | None = None
+    created_at: datetime
+
+
+class AdminFeedbackListOut(BaseModel):
+    items: list[AdminFeedbackOut]
+    total: int
+    limit: int
+    offset: int
+
+
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.
 RecFeedbackResult.model_rebuild()
