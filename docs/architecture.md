@@ -110,6 +110,26 @@
   it normalises empty-string rationales to `None` via `rationale or None` so the frontend's
   truthiness check is reliable. `is_stale` is `True` when `derived_at < last_profiled_at`.
   The Claude call goes through `usage.tracked_create` (`archetype` operation), recording tokens + cost.
+  `ARCHETYPE_HOOKS` is a static per-code dict (one clause per archetype, e.g. `"reread the
+  whole series to get ready for the new one"` for `ICDH`) exposed as `ArchetypeOut.hook` —
+  backs the Wrapped-reveal finale ("You're the one who {hook}."); no Claude call involved.
+
+- `highlights.py` — **Wrapped-reveal Beat 5 data**: `compute_highlights(session, user_id)` is
+  a pure computation over existing `Enrichment` rows (no catalog/Claude calls) returning
+  rating-weighted `top_genres`, `top_authors` (min 2 books), a page-count/series/subject-token
+  `format_mix` heuristic (series > novella-by-pagecount > collection > novel priority — a short
+  book tagged "short stories" reads as a novella first since page count is the stronger signal),
+  and `era_split`. `thin` mirrors `recommend._is_cold_start`'s thresholds (imported, not
+  reimplemented). Surfaced at `GET /profile/highlights`.
+
+- `reveal.py` — **lazy `reveal_line` generation** for the Wrapped reveal. Each `TasteTrait.claim`
+  is analytic; `generate_reveal_lines(user_id)` does one cheap Haiku pass (via
+  `usage.tracked_create`, operation `reveal_lines`) to rewrite traits missing a `reveal_line`
+  into a second-person, ≤14-word presentation line, then persists it per-trait. Idempotent —
+  traits that already have a line are skipped, and no Claude call happens if none are pending.
+  Generation happens at reveal-open time (not profile-build time) so it covers existing profiles
+  and the replay path uniformly and costs nothing for users who never open the reveal. Surfaced
+  at `POST /profile/reveal-lines` (generates any missing lines, returns all traits).
 
 - `recommend.py` — two-stage recommender. Stage 1 retrieval = metadata expansion
   (`catalog.openlibrary_subject` / `googlebooks_subject` / `googlebooks_author`) +
