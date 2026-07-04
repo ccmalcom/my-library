@@ -100,6 +100,7 @@ from .schemas import (
     ImportSummaryOut,
     IngestRequest,
     InviteRequest,
+    ProfileHighlightsOut,
     ProfileStatusOut,
     RecFeedbackResult,
     RecommendationOut,
@@ -1099,6 +1100,17 @@ def get_profile_subjects(user_id: UserId) -> dict:
                 for tier, counter in sorted(by_tier.items(), key=lambda x: int(x[0]), reverse=True)
             },
         }
+
+
+@app.get("/profile/highlights", response_model=ProfileHighlightsOut)
+def get_profile_highlights(user_id: UserId) -> ProfileHighlightsOut:
+    """Rating-weighted shelf highlights for the reveal (genres/authors/format/era).
+
+    Pure computation over existing enrichment — no Claude, no catalog calls."""
+    from .highlights import compute_highlights
+
+    with session_scope() as session:
+        return ProfileHighlightsOut.model_validate(compute_highlights(session, user_id))
 
 
 def _archetype_out(row: ReaderArchetype, last_profiled_at) -> ArchetypeOut:

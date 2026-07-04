@@ -145,6 +145,22 @@ export interface SubjectBreakdown {
   by_tier: Record<string, SubjectCount[]>;
 }
 
+export interface ProfileHighlights {
+  thin: boolean;
+  n_authors: number;
+  top_genres: { subject: string; share: number }[];
+  top_authors: string[];
+  format_mix: {
+    novel: number;
+    novella: number;
+    collection: number;
+    series: number;
+    dominant: 'novel' | 'novella' | 'collection' | 'series' | null;
+    low_confidence: boolean;
+  };
+  era_split: { pre_2000: number; post_2000: number } | null;
+}
+
 export interface FeedbackRequest {
   status?: 'accepted' | 'rejected' | 'already_read';
   user_note?: string | null;
@@ -321,6 +337,9 @@ export const PROFILE_STATUS_KEY = 'profile-status';
 /** Shared SWR key for the reader archetype (GET /profile/archetype). */
 export const ARCHETYPE_KEY = 'archetype';
 
+/** Shared SWR key for the computed shelf highlights (GET /profile/highlights). */
+export const PROFILE_HIGHLIGHTS_KEY = 'profile-highlights';
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -431,6 +450,8 @@ export const api = {
     patch<Trait>(`/profile/traits/${traitId}`, req),
 
   profileSubjects: () => get<SubjectBreakdown>('/profile/subjects'),
+
+  profileHighlights: () => get<ProfileHighlights>('/profile/highlights'),
 
   runRecommend: (n = 10) => post<Record<string, unknown>>('/recommend', { n }),
 
