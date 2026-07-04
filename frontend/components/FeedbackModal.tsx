@@ -105,7 +105,7 @@ export default function FeedbackModal({ trigger, runId, heading, onClose, onReso
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={6}
-          placeholder="Rough edges, wrong recommendations, small joys \u2014 all useful."
+          placeholder={'Rough edges, wrong recommendations, small joys \u2014 all useful.'}
           disabled={submitting}
           className={[inputClass, 'resize-y disabled:opacity-50 disabled:cursor-not-allowed'].join(
             ' '

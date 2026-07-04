@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 /** Full-screen dark card that every beat renders inside. */
 export function RevealFrame({
@@ -14,12 +14,23 @@ export function RevealFrame({
   progress?: { index: number; total: number };
   onSkip?: () => void;
 }) {
+  // The reveal is a fixed full-screen overlay — lock the page behind it so it
+  // can't be scrolled while the reveal is up.
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   return (
     <div
       style={{ ['--user-accent' as string]: accent }}
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-base px-6 py-10 text-center"
       role="dialog"
       aria-modal="true"
+      aria-label="Your reading profile reveal"
     >
       <div className="flex w-full max-w-xl flex-1 flex-col items-center justify-center">
         {children}
@@ -65,9 +76,7 @@ export function RevealButton({
   const base =
     'mt-8 inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base';
   const styles =
-    variant === 'primary'
-      ? 'bg-user text-base hover:opacity-90'
-      : 'text-muted hover:text-text';
+    variant === 'primary' ? 'bg-user text-base hover:opacity-90' : 'text-muted hover:text-text';
   return (
     <button type="button" onClick={onClick} className={[base, styles].join(' ')}>
       {children}

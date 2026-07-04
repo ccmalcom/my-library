@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   api,
+  ARCHETYPE_KEY,
   type Stats,
   type Trait,
   type ArchetypeOut,
@@ -48,8 +49,11 @@ export default function RevealSequence({
   const { data: traits, error: traitsErr } = useSWR<Trait[]>('reveal-traits', () =>
     api.generateRevealLines()
   );
-  const { data: archetype } = useSWR<ArchetypeOut | null>('reveal-archetype', () =>
-    api.getArchetype()
+  // Older accounts (pre-dating the archetype feature) never derived one, and a
+  // fresh account never will have — derive on demand so the reveal doesn't stall.
+  const { data: archetype, error: archetypeErr } = useSWR<ArchetypeOut>(
+    ARCHETYPE_KEY,
+    async () => (await api.getArchetype()) ?? api.deriveArchetype()
   );
   const { data: highlights } = useSWR<ProfileHighlights>('reveal-highlights', () =>
     api.profileHighlights()
@@ -66,7 +70,7 @@ export default function RevealSequence({
   const accent = archetype ? tasteAccent(archetype.code) : 'var(--accent)';
 
   // ── Error state ─────────────────────────────────────────────────────────────
-  if (traitsErr) {
+  if (traitsErr || archetypeErr) {
     return (
       <RevealFrame accent={accent}>
         <div className="space-y-4">
@@ -95,11 +99,7 @@ export default function RevealSequence({
   const next = () => setIndex((i) => Math.min(i + 1, beats.length - 1));
 
   return (
-    <RevealFrame
-      accent={accent}
-      progress={{ index, total: beats.length }}
-      onSkip={onClose}
-    >
+    <RevealFrame accent={accent} progress={{ index, total: beats.length }} onSkip={onClose}>
       <Stagger reduced={reduced} key={index}>
         {renderBeat(beat, {
           next,
@@ -132,7 +132,7 @@ function renderBeat(
           </h2>
           <p className="text-base text-muted">
             {beat.thin
-              ? `It’s ${beat.nBooks} books — enough for a sketch, not yet a portrait.`
+              ? `It\u2019s ${beat.nBooks} books \u2014 enough for a sketch, not yet a portrait.`
               : `All ${beat.nBooks} books. The obsessions, the abandonments, the ones you rated at 2 a.m. and never reviewed.`}
           </p>
           <p className="text-base text-muted">Here’s what your shelf says about you.</p>
@@ -182,8 +182,8 @@ function renderBeat(
                 </>
               ) : (
                 <>
-                  {beat.genres[0].subject} is home. But {beat.genres[1].subject} is where you go when
-                  nobody’s watching.
+                  {beat.genres[0].subject} is home. But {beat.genres[1].subject} is where you go
+                  when nobody’s watching.
                 </>
               )}
             </p>
@@ -192,7 +192,7 @@ function renderBeat(
             <span className="font-semibold text-text">Authors</span> —{' '}
             {beat.authors.length > 0
               ? `${beat.authors.join(', ')}. When you find a voice you trust, you follow it.`
-              : 'No repeat authors in your top tier — you follow books, not names. Rare.'}
+              : 'No repeat authors in your top tier \u2014 you follow books, not names. Rare.'}
           </p>
           {beat.formatLine && (
             <p className="text-base text-muted">
@@ -226,7 +226,7 @@ function renderBeat(
         <div className="space-y-4">
           <p className="text-sm text-muted">
             {beat.thin
-              ? 'Early read: you might be —'
+              ? 'Early read: you might be \u2014'
               : `Four axes. ${beat.nBooks} books of evidence. One reader:`}
           </p>
           <p className="font-mono text-lg text-user">{beat.archetype.code}</p>
@@ -254,12 +254,10 @@ function renderBeat(
         <div className="space-y-4">
           {allConfirmed ? (
             <>
-              <h2 className="font-display text-2xl font-bold text-text">
-                You confirmed the lot.
-              </h2>
+              <h2 className="font-display text-2xl font-bold text-text">You confirmed the lot.</h2>
               <p className="text-base text-muted">
-                Either we nailed it or you’re being polite. You can revise any of this later on
-                your profile page.
+                Either we nailed it or you’re being polite. You can revise any of this later on your
+                profile page.
               </p>
             </>
           ) : mostlyRejected ? (
@@ -280,8 +278,8 @@ function renderBeat(
                 <span className="text-user">{nRejected}</span> struck from the record.
               </p>
               <p className="text-base text-muted">
-                This is your taste profile now — not just what we inferred, what you signed off
-                on. It gets smarter every time you rate, review, or correct us.
+                This is your taste profile now — not just what we inferred, what you signed off on.
+                It gets smarter every time you rate, review, or correct us.
               </p>
             </>
           )}

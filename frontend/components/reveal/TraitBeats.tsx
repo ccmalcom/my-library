@@ -11,7 +11,7 @@ type AversionsBeat = Extract<Beat, { kind: 'aversions' }>;
 
 export type Verdict = 'confirmed' | 'edited' | 'rejected';
 
-const CONFIRM_TOAST = 'Noted. We’ll lean on this.';
+const CONFIRM_TOAST = "Noted. We'll lean on this.";
 const REJECT_TOAST = 'Fair. Forgotten.';
 
 /** "A", "A and B", or "A, B, and C" — matches the spec's evidence-row grammar. */
@@ -48,7 +48,7 @@ function VerdictControls({
       toast.success(CONFIRM_TOAST);
       onNext();
     } catch {
-      toast.error('That didn’t take. Try again.');
+      toast.error("That didn't take. Try again.");
       setBusy(false);
     }
   }
@@ -61,7 +61,7 @@ function VerdictControls({
       toast.info(REJECT_TOAST);
       onNext();
     } catch {
-      toast.error('That didn’t take. Try again.');
+      toast.error("That didn't take. Try again.");
       setBusy(false);
     }
   }
@@ -73,10 +73,10 @@ function VerdictControls({
     try {
       await api.updateTrait(trait.id, { claim: trimmed, user_note: trimmed });
       onVerdict(trait.id, 'edited');
-      toast.success('Noted — your profile just got sharper.');
+      toast.success('Noted \u2014 your profile just got sharper.');
       onNext();
     } catch {
-      toast.error('That didn’t take. Try again.');
+      toast.error("That didn't take. Try again.");
       setBusy(false);
     }
   }
@@ -161,7 +161,7 @@ export function RewardTraitBeat({
   const line = trait.reveal_line ?? trait.claim;
   const evidence =
     exhibitTitles.length > 0
-      ? `Because of ${joinWithAnd(exhibitTitles.map((t) => `“${t}”`))}.`
+      ? `Because of ${joinWithAnd(exhibitTitles.map((t) => `\u201C${t}\u201D`))}.`
       : null;
 
   return (
@@ -182,7 +182,7 @@ export function RewardTraitBeat({
         <VerdictControls
           trait={trait}
           lowConfidence={lowConfidence}
-          labels={{ confirm: 'That’s me', reject: 'Not quite', edit: 'Almost…' }}
+          labels={{ confirm: 'That\u2019s me', reject: 'Not quite', edit: 'Almost\u2026' }}
           onVerdict={onVerdict}
           onNext={onNext}
         />
@@ -216,7 +216,7 @@ export function AversionsBeat({
               labels={{
                 confirm: 'True',
                 reject: 'Not really',
-                edit: 'It’s more specific than that…',
+                edit: 'It\u2019s more specific than that\u2026',
               }}
               onVerdict={onVerdict}
               onNext={() => {
@@ -227,8 +227,8 @@ export function AversionsBeat({
         ))}
       </ul>
       <p className="text-xs text-faint">
-        Aversions matter as much as favorites — they’re half of what makes recommendations
-        feel like yours.
+        Aversions matter as much as favorites — they’re half of what makes recommendations feel like
+        yours.
       </p>
       <RevealButton onClick={onNext}>Continue</RevealButton>
     </div>

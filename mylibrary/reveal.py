@@ -17,7 +17,7 @@ import json
 
 from anthropic import Anthropic
 
-from .config import LOCAL_USER_ID, get_settings
+from .config import LOCAL_USER_ID
 from .db import TasteTrait, init_db, session_scope
 from .usage import tracked_create
 from .user_settings import resolve_anthropic_key
@@ -103,7 +103,6 @@ def generate_reveal_lines(*, user_id: str = LOCAL_USER_ID, max_tokens: int = 120
     only when there is work to do.
     """
     init_db()
-    settings = get_settings()
 
     with session_scope() as session:
         pending = (
@@ -163,4 +162,4 @@ def generate_reveal_lines(*, user_id: str = LOCAL_USER_ID, max_tokens: int = 120
             trait.reveal_line = line
             generated += 1
 
-    return {"generated": generated, "traits": len(payload), "model": settings.model and _MODEL}
+    return {"generated": generated, "traits": len(payload), "model": _MODEL}

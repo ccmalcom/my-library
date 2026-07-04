@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 
+from sqlalchemy.orm import selectinload
+
 from .config import LOCAL_USER_ID
 from .db import Book
 from .recommend import _COLD_START_LOVED, _COLD_START_RATED, _LOVED_MIN
@@ -42,7 +44,10 @@ def _classify_format(book: Book) -> tuple[str, bool]:
 def compute_highlights(session, user_id: str = LOCAL_USER_ID) -> dict:
     rated = [
         b
-        for b in session.query(Book).filter(Book.user_id == user_id).all()
+        for b in session.query(Book)
+        .options(selectinload(Book.enrichment))
+        .filter(Book.user_id == user_id)
+        .all()
         if b.effective_rating is not None
     ]
 
