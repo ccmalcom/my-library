@@ -130,6 +130,9 @@
   Generation happens at reveal-open time (not profile-build time) so it covers existing profiles
   and the replay path uniformly and costs nothing for users who never open the reveal. Surfaced
   at `POST /profile/reveal-lines` (generates any missing lines, returns all traits).
+  Frontend consumer: `components/reveal/RevealSequence.tsx` (see `docs/frontend.md`) turns
+  `profile_highlights` + `reveal_line` + `ArchetypeOut.hook` into the nine-beat reveal via the
+  pure `lib/revealBeats.ts#buildBeats`.
 
 - `recommend.py` — two-stage recommender. Stage 1 retrieval = metadata expansion
   (`catalog.openlibrary_subject` / `googlebooks_subject` / `googlebooks_author`) +
