@@ -48,6 +48,7 @@ from .enrich import _normalize_title, _surname, enrich_library
 from .exporters import export_csv, export_json
 from .feedback import (
     VALID_CATEGORIES,
+    admin_list_feedback,
     check_prompt_eligibility,
     dismiss_prompt,
     submit_feedback,
@@ -78,7 +79,9 @@ from .purge import clear_library, clear_profile, delete_account
 from .recommend import discover, latest_recommendations, recommend, recommend_similar
 from .schemas import (
     AddBookRequest,
+    AdminFeedbackListOut,
     AdminMeOut,
+    AdminUsageListOut,
     AdminUserOut,
     ApiKeyRequest,
     ApiKeyStatus,
@@ -119,7 +122,7 @@ from .schemas import (
 )
 from .stats import dataset_stats
 from .supabase_admin import SupabaseAdminError
-from .usage import cap_status
+from .usage import admin_list_usage, cap_status
 from .user_settings import (
     anthropic_key_status,
     clear_anthropic_key,
@@ -824,6 +827,32 @@ def admin_revoke(req: RevokeRequest, admin_id: AdminId) -> dict:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except SupabaseAdminError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/admin/usage", response_model=AdminUsageListOut)
+def admin_usage(
+    admin_id: AdminId,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user_id: str | None = None,
+    operation: str | None = None,
+) -> AdminUsageListOut:
+    return AdminUsageListOut(
+        **admin_list_usage(limit=limit, offset=offset, user_id=user_id, operation=operation)
+    )
+
+
+@app.get("/admin/feedback", response_model=AdminFeedbackListOut)
+def admin_feedback(
+    admin_id: AdminId,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user_id: str | None = None,
+    category: str | None = None,
+) -> AdminFeedbackListOut:
+    return AdminFeedbackListOut(
+        **admin_list_feedback(limit=limit, offset=offset, user_id=user_id, category=category)
+    )
 
 
 @app.get("/profile/status", response_model=ProfileStatusOut)

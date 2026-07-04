@@ -19,7 +19,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from .config import get_settings
-from .db import Feedback, FeedbackPromptState, session_scope, utcnow
+from .db import Feedback, FeedbackPromptState, Invite, session_scope, utcnow
 
 # Triggers that fire exactly once per user (keyed on run_id='').
 ONE_TIME_TRIGGERS = {"post-setup", "post-first-profile"}
@@ -259,3 +259,60 @@ def _upsert_state(
         row.status = status
         row.snooze_until = snooze_until
     return row
+
+
+# ---------------------------------------------------------------------------
+# admin browsing
+# ---------------------------------------------------------------------------
+
+def admin_list_feedback(
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    user_id: str | None = None,
+    category: str | None = None,
+) -> dict:
+    """All feedback rows across all users, newest first, paginated (admin-only)."""
+    with session_scope() as s:
+        query = s.query(Feedback)
+        if user_id:
+            query = query.filter(Feedback.user_id == user_id)
+        if category:
+            query = query.filter(Feedback.category == category)
+
+        total = query.count()
+        rows = (
+            query.order_by(Feedback.created_at.desc(), Feedback.id.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
+        row_user_ids = {row.user_id for row in rows}
+        emails = (
+            dict(
+                s.query(Invite.supabase_user_id, Invite.email)
+                .filter(Invite.supabase_user_id.in_(row_user_ids))
+                .all()
+            )
+            if row_user_ids
+            else {}
+        )
+
+        items = [
+            {
+                "id": row.id,
+                "user_id": row.user_id,
+                "email": emails.get(row.user_id),
+                "category": row.category,
+                "body": row.body,
+                "trigger": row.trigger,
+                "run_id": row.run_id,
+                "page": row.page,
+                "app_version": row.app_version,
+                "created_at": row.created_at,
+            }
+            for row in rows
+        ]
+
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
