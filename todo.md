@@ -1,14 +1,17 @@
 # TODO
 
-Prioritized for the invite-only / free launch. Organizing question: what would
-break or confuse the first wave of invited users, then friction, then growth.
+## BUGS
 
-## Wave 4 — Delight & growth
+- recommender giving books in series not yet read that are not the first book (I.e. 7th book in series)
+- got frankenstein, but the version for russian students learning english:
+  - "You already rated Frankenstein a 5★ for its voice and darkness; this is the same text in a different edition/language format, so it's a reread more than a new discovery, but it hits the canonical-wit trait dead on."
+- sooooo many emdashes. Before we do a full copy review, I need to run the thing that sets up claude with your writing style
 
-- Spotify Wrapped-style profile reveal on onboarding
-  - in general, I want to spice up the onboarding flow by immediately surfacing the profile to the user (possibly each trait individually) and the user approving/denying/modifying. Also maybe we should add some more metadata to the profile like favorite genres, authors, types (short story, novella, novel, seires, etc.)
-- Admin console — users, token usage, API usage, feedback (overlaps Wave 1 cost visibility)
+## enhancements
+
 - Social — add friends, see each other's activity, etc.
+- ui/ux full review
+- Invite email setup on external service
 
 ## Done
 
@@ -36,5 +39,11 @@ break or confuse the first wave of invited users, then friction, then growth.
 - "More books like this" from a selected library book (smallest, highest-visibility win, specific recommendations based only on selected book)
 - NL discovery — natural-language "find me a book like X" search (builds on the above)
 - Full feedback / labeling surface — surface LOW-confidence enrichment matches for correction
+
+## Wave 4 — Delight & growth
+
+- Spotify Wrapped-style profile reveal on onboarding
+  - in general, I want to spice up the onboarding flow by immediately surfacing the profile to the user (possibly each trait individually) and the user approving/denying/modifying. Also maybe we should add some more metadata to the profile like favorite genres, authors, types (short story, novella, novel, seires, etc.)
+- Admin console — users, token usage, API usage, feedback (overlaps Wave 1 cost visibility)
 
 ## Shelves & data model
