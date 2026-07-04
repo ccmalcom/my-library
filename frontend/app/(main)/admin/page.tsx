@@ -13,6 +13,7 @@ import {
   type AdminUser,
 } from '@/lib/api';
 import { Button, Card, Badge, Spinner, useToast } from '@/components/ui';
+import { UsageTab } from '@/components/admin/UsageTab';
 
 const inputClass = [
   'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
@@ -44,6 +45,7 @@ export default function AdminPage() {
   const [apiKey, setApiKey] = useState('');
   const [inviting, setInviting] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [tab, setTab] = useState<'users' | 'usage' | 'feedback'>('users');
 
   if (meLoading) {
     return (
@@ -113,82 +115,105 @@ export default function AdminPage() {
         </Button>
       </div>
 
-      <section className="mb-6">
-        <Card>
-          <h2 className="mb-4 font-display text-lg font-semibold text-text">Invite a user</h2>
-          <form onSubmit={handleInvite} className="space-y-3">
-            <div>
-              <label className={labelClass}>Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="invite@example.com"
-                required
-                className={inputClass}
-              />
-            </div>
-            {showExtra ? (
-              <>
+      <div className="mb-6 flex gap-1 border-b border-border">
+        {(['users', 'usage', 'feedback'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={[
+              '-mb-px border-b-2 px-3 py-2 text-sm font-medium capitalize transition-colors',
+              tab === t ? 'border-accent text-text' : 'border-transparent text-muted hover:text-text',
+            ].join(' ')}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'users' ? (
+        <>
+          <section className="mb-6">
+            <Card>
+              <h2 className="mb-4 font-display text-lg font-semibold text-text">Invite a user</h2>
+              <form onSubmit={handleInvite} className="space-y-3">
                 <div>
-                  <label className={labelClass}>Name (optional)</label>
+                  <label className={labelClass}>Email</label>
                   <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Alex"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="invite@example.com"
+                    required
                     className={inputClass}
                   />
                 </div>
-                <div>
-                  <label className={labelClass}>Anthropic API key (optional)</label>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sk-ant-..."
-                    autoComplete="off"
-                    className={[inputClass, 'font-mono'].join(' ')}
-                  />
-                  <p className="mt-1 text-xs text-faint">
-                    Pre-fills their key and name so setup skips those steps.
-                  </p>
-                </div>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowExtra(true)}
-                className="text-xs font-medium text-accent hover:underline"
-              >
-                + Set name / API key for them
-              </button>
-            )}
-            <Button type="submit" loading={inviting} disabled={inviting || !email.trim()}>
-              {inviting ? 'Sending\u2026' : 'Invite'}
-            </Button>
-          </form>
-        </Card>
-      </section>
+                {showExtra ? (
+                  <>
+                    <div>
+                      <label className={labelClass}>Name (optional)</label>
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Alex"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Anthropic API key (optional)</label>
+                      <input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder="sk-ant-..."
+                        autoComplete="off"
+                        className={[inputClass, 'font-mono'].join(' ')}
+                      />
+                      <p className="mt-1 text-xs text-faint">
+                        Pre-fills their key and name so setup skips those steps.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowExtra(true)}
+                    className="text-xs font-medium text-accent hover:underline"
+                  >
+                    + Set name / API key for them
+                  </button>
+                )}
+                <Button type="submit" loading={inviting} disabled={inviting || !email.trim()}>
+                  {inviting ? 'Sending\u2026' : 'Invite'}
+                </Button>
+              </form>
+            </Card>
+          </section>
 
-      <section>
-        <Card className="p-0">
-          <h2 className="px-5 pt-5 font-display text-lg font-semibold text-text">Users</h2>
-          {usersLoading ? (
-            <div className="flex justify-center p-8">
-              <Spinner label="Loading users" />
-            </div>
-          ) : !users || users.length === 0 ? (
-            <p className="p-5 text-sm text-faint">No invited users yet.</p>
-          ) : (
-            <div className="mt-4 divide-y divide-border">
-              {users.map((u) => (
-                <UserRow key={u.id} user={u} onRevoked={() => mutate()} />
-              ))}
-            </div>
-          )}
-        </Card>
-      </section>
+          <section>
+            <Card className="p-0">
+              <h2 className="px-5 pt-5 font-display text-lg font-semibold text-text">Users</h2>
+              {usersLoading ? (
+                <div className="flex justify-center p-8">
+                  <Spinner label="Loading users" />
+                </div>
+              ) : !users || users.length === 0 ? (
+                <p className="p-5 text-sm text-faint">No invited users yet.</p>
+              ) : (
+                <div className="mt-4 divide-y divide-border">
+                  {users.map((u) => (
+                    <UserRow key={u.id} user={u} onRevoked={() => mutate()} />
+                  ))}
+                </div>
+              )}
+            </Card>
+          </section>
+        </>
+      ) : tab === 'usage' ? (
+        <UsageTab />
+      ) : (
+        <p className="text-sm text-faint">Feedback tab lands in the next task.</p>
+      )}
     </div>
   );
 }
