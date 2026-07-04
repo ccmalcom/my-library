@@ -1061,12 +1061,10 @@ function LibraryInner() {
   }
 
   function advanceLcQueue() {
-    setLcQueue((q) => {
-      if (!q) return null;
-      const next = lcIndex + 1;
-      if (next >= q.length) return null;
-      setLcIndex(next);
-      return q;
+    setLcIndex((prevIndex) => {
+      const next = prevIndex + 1;
+      setLcQueue((q) => (q && next < q.length ? q : null));
+      return next;
     });
   }
 
