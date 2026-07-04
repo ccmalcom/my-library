@@ -123,7 +123,9 @@ export default function AdminPage() {
             onClick={() => setTab(t)}
             className={[
               '-mb-px border-b-2 px-3 py-2 text-sm font-medium capitalize transition-colors',
-              tab === t ? 'border-accent text-text' : 'border-transparent text-muted hover:text-text',
+              tab === t
+                ? 'border-accent text-text'
+                : 'border-transparent text-muted hover:text-text',
             ].join(' ')}
           >
             {t}

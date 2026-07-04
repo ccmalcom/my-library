@@ -24,9 +24,8 @@ export function UsageTab() {
   const [offset, setOffset] = useState(0);
   const [operation, setOperation] = useState('');
 
-  const { data, isLoading } = useSWR(
-    ['admin-usage', offset, operation] as const,
-    () => listAdminUsage({ limit: PAGE_SIZE, offset, operation: operation || undefined })
+  const { data, isLoading } = useSWR(['admin-usage', offset, operation] as const, () =>
+    listAdminUsage({ limit: PAGE_SIZE, offset, operation: operation || undefined })
   );
 
   function handleFilterChange(value: string) {
@@ -41,7 +40,8 @@ export function UsageTab() {
           <h2 className="font-display text-lg font-semibold text-text">API usage</h2>
           {data ? (
             <p className="text-xs text-faint">
-              {data.total} event{data.total !== 1 ? 's' : ''} · {formatCost(data.total_cost_usd)} total
+              {data.total} event{data.total !== 1 ? 's' : ''} · {formatCost(data.total_cost_usd)}{' '}
+              total
             </p>
           ) : null}
         </div>

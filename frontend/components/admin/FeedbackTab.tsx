@@ -20,9 +20,8 @@ export function FeedbackTab() {
   const [offset, setOffset] = useState(0);
   const [category, setCategory] = useState('');
 
-  const { data, isLoading } = useSWR(
-    ['admin-feedback', offset, category] as const,
-    () => listAdminFeedback({ limit: PAGE_SIZE, offset, category: category || undefined })
+  const { data, isLoading } = useSWR(['admin-feedback', offset, category] as const, () =>
+    listAdminFeedback({ limit: PAGE_SIZE, offset, category: category || undefined })
   );
 
   function handleFilterChange(value: string) {
