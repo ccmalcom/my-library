@@ -197,6 +197,7 @@ class BookOut(BaseModel):
 class TraitOut(BaseModel):
     id: int
     claim: str
+    reveal_line: str | None = None
     polarity: str
     exhibits: list[int] | None
     contrasts: list[int] | None

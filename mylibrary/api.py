@@ -1055,6 +1055,30 @@ def update_trait(trait_id: int, req: TraitUpdateRequest, user_id: UserId) -> Tra
         return TraitOut.model_validate(trait)
 
 
+@app.post("/profile/reveal-lines", response_model=list[TraitOut])
+def post_reveal_lines(user_id: UserId) -> list[TraitOut]:
+    """Ensure every trait has a second-person reveal line, then return all traits.
+
+    Generates any missing lines with one cheap Haiku pass (idempotent — a no-op once
+    filled). Backs the Wrapped reveal; safe to call on every reveal open/replay."""
+    from .db import TasteTrait
+    from .reveal import generate_reveal_lines
+
+    try:
+        generate_reveal_lines(user_id=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    with session_scope() as session:
+        traits = (
+            session.query(TasteTrait)
+            .filter(TasteTrait.user_id == user_id)
+            .order_by(TasteTrait.inference_confidence.desc())
+            .all()
+        )
+        return [TraitOut.model_validate(t) for t in traits]
+
+
 @app.get("/profile/subjects")
 def get_profile_subjects(user_id: UserId) -> dict:
     """Subject/genre breakdown across rated books, split by star tier.

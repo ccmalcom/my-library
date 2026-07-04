@@ -120,6 +120,7 @@ export interface DiscoverResult {
 export interface Trait {
   id: number;
   claim: string;
+  reveal_line: string | null;
   polarity: string;
   exhibits: number[] | null;
   contrasts: number[] | null;
@@ -450,6 +451,9 @@ export const api = {
 
   updateTrait: (traitId: number, req: TraitUpdateRequest) =>
     patch<Trait>(`/profile/traits/${traitId}`, req),
+
+  /** Ensure every trait has a second-person reveal line; returns all traits. Wave 4a. */
+  generateRevealLines: () => post<Trait[]>('/profile/reveal-lines'),
 
   profileSubjects: () => get<SubjectBreakdown>('/profile/subjects'),
 
