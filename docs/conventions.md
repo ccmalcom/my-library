@@ -43,6 +43,7 @@
 - **Two normalizers, different purposes:** `_norm_full` (search path, `catalog.py`) keeps subtitles — do NOT use it in enrichment matching. `enrich._normalize_title` (enrichment path) splits on `:` — do NOT use it in search. Conflating them will break series dedup or enrichment matching respectively.
 - **Language policy:** captured at enrich time from the catalog candidate; filtered at recommend time. Unknown-language candidates (`language=None`) are always allowed through — never silently dropped. When the library has no language data, the recommender defaults to English-only candidates.
 - **Cold-start thresholds and author-cap constants are tunable knobs** in `recommend.py` (`_COLD_START_LOVED`, `_COLD_START_RATED`, `_MAX_PER_AUTHOR`, `_MAX_LIBRARY_AUTHOR_SHARE`) — adjust there, not in tests or callers.
+- **Series/edition gating (Stage 1, `recommend.py`):** `_series_ok` only catches sequels that carry a Goodreads/OL-style `(Series, #N)` title suffix — series without that numbering convention in the title text aren't detected (no series-field fetch; deterministic title parsing only, matching the manual-search picker's `_apply_series_grouping` precedent). `_fuzzy_duplicate` / `_is_learner_edition` are additional gates in `_assemble`'s `add()`; new marker/threshold tuning belongs in `recommend.py` module constants (`_LEARNER_EDITION_MARKERS`), not in tests or callers.
 
 ## Data invariants
 
