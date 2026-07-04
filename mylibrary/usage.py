@@ -185,11 +185,11 @@ def admin_list_usage(
                 "email": emails.get(row.user_id),
                 "model": row.model,
                 "operation": row.operation,
-                "input_tokens": row.input_tokens,
-                "output_tokens": row.output_tokens,
-                "cache_creation_input_tokens": row.cache_creation_input_tokens,
-                "cache_read_input_tokens": row.cache_read_input_tokens,
-                "cost_usd": row.cost_usd,
+                "input_tokens": row.input_tokens or 0,
+                "output_tokens": row.output_tokens or 0,
+                "cache_creation_input_tokens": row.cache_creation_input_tokens or 0,
+                "cache_read_input_tokens": row.cache_read_input_tokens or 0,
+                "cost_usd": float(row.cost_usd or 0.0),
                 "created_at": row.created_at,
             }
             for row in rows
