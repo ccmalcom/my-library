@@ -197,6 +197,7 @@ class BookOut(BaseModel):
 class TraitOut(BaseModel):
     id: int
     claim: str
+    reveal_line: str | None = None
     polarity: str
     exhibits: list[int] | None
     contrasts: list[int] | None
@@ -344,6 +345,36 @@ class UsageOut(BaseModel):
     by_operation: dict[str, float]
 
 
+class FormatMixOut(BaseModel):
+    novel: int
+    novella: int
+    collection: int
+    series: int
+    dominant: str | None
+    low_confidence: bool
+
+
+class GenreHighlightOut(BaseModel):
+    subject: str
+    share: float
+
+
+class EraSplitOut(BaseModel):
+    pre_2000: int
+    post_2000: int
+
+
+class ProfileHighlightsOut(BaseModel):
+    """Computed shelf highlights for the reveal's Beat 5 (no external calls)."""
+
+    thin: bool
+    n_authors: int
+    top_genres: list[GenreHighlightOut]
+    top_authors: list[str]
+    format_mix: FormatMixOut
+    era_split: EraSplitOut | None
+
+
 class ArchetypeAxisOut(BaseModel):
     """One axis score for the reader archetype (lens / engine / range / resonance)."""
 
@@ -358,6 +389,7 @@ class ArchetypeOut(BaseModel):
     code: str            # e.g. "IPBH"
     name: str            # e.g. "The Wandering Escapist"
     tagline: str
+    hook: str            # extends the tagline for Beat 7: "You're the one who {hook}."
     lens: ArchetypeAxisOut
     engine: ArchetypeAxisOut
     range: ArchetypeAxisOut

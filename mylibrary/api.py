@@ -100,6 +100,7 @@ from .schemas import (
     ImportSummaryOut,
     IngestRequest,
     InviteRequest,
+    ProfileHighlightsOut,
     ProfileStatusOut,
     RecFeedbackResult,
     RecommendationOut,
@@ -1054,6 +1055,30 @@ def update_trait(trait_id: int, req: TraitUpdateRequest, user_id: UserId) -> Tra
         return TraitOut.model_validate(trait)
 
 
+@app.post("/profile/reveal-lines", response_model=list[TraitOut])
+def post_reveal_lines(user_id: UserId) -> list[TraitOut]:
+    """Ensure every trait has a second-person reveal line, then return all traits.
+
+    Generates any missing lines with one cheap Haiku pass (idempotent — a no-op once
+    filled). Backs the Wrapped reveal; safe to call on every reveal open/replay."""
+    from .db import TasteTrait
+    from .reveal import generate_reveal_lines
+
+    try:
+        generate_reveal_lines(user_id=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    with session_scope() as session:
+        traits = (
+            session.query(TasteTrait)
+            .filter(TasteTrait.user_id == user_id)
+            .order_by(TasteTrait.inference_confidence.desc())
+            .all()
+        )
+        return [TraitOut.model_validate(t) for t in traits]
+
+
 @app.get("/profile/subjects")
 def get_profile_subjects(user_id: UserId) -> dict:
     """Subject/genre breakdown across rated books, split by star tier.
@@ -1101,6 +1126,17 @@ def get_profile_subjects(user_id: UserId) -> dict:
         }
 
 
+@app.get("/profile/highlights", response_model=ProfileHighlightsOut)
+def get_profile_highlights(user_id: UserId) -> ProfileHighlightsOut:
+    """Rating-weighted shelf highlights for the reveal (genres/authors/format/era).
+
+    Pure computation over existing enrichment — no Claude, no catalog calls."""
+    from .highlights import compute_highlights
+
+    with session_scope() as session:
+        return ProfileHighlightsOut.model_validate(compute_highlights(session, user_id))
+
+
 def _archetype_out(row: ReaderArchetype, last_profiled_at) -> ArchetypeOut:
     """Map a ReaderArchetype DB row to ArchetypeOut (computes letters + is_stale)."""
     def _axis(axis_key: str, score: float, rationale: str | None) -> ArchetypeAxisOut:
@@ -1114,6 +1150,7 @@ def _archetype_out(row: ReaderArchetype, last_profiled_at) -> ArchetypeOut:
         code=row.code,
         name=row.archetype_name,
         tagline=row.archetype_tagline,
+        hook=archetype_module.ARCHETYPE_HOOKS.get(row.code, ""),
         lens=_axis("lens", row.axis_lens, row.lens_rationale),
         engine=_axis("engine", row.axis_engine, row.engine_rationale),
         range=_axis("range", row.axis_range, row.range_rationale),

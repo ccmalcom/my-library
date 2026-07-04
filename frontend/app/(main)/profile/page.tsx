@@ -16,6 +16,7 @@ import {
 } from '@/lib/api';
 import { Button, Badge, Card, useToast } from '@/components/ui';
 import { TasteHero } from '@/components/TasteHero';
+import RevealSequence from '@/components/reveal/RevealSequence';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
 
 const TRAITS_KEY = 'profile-traits';
@@ -497,6 +498,7 @@ export default function ProfilePage() {
 
   const bookMap = new Map(allBooks.map((b) => [b.id, b.title]));
   const isLoading = traitsLoading || statsLoading || subjectsLoading;
+  const [revealOpen, setRevealOpen] = useState(false);
 
   // post-first-profile feedback prompt: fire once when profile data first loads
   const { fire: fireProfilePrompt, modal: profileModal } = useFeedbackPrompt('post-first-profile');
@@ -515,7 +517,24 @@ export default function ProfilePage() {
 
   return (
     <div className="fade-in space-y-8 py-6">
-      <TasteHero compact />
+      <div className="space-y-3">
+        <TasteHero compact />
+        {traits.length > 0 && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setRevealOpen(true)}
+              className="font-mono text-xs text-faint hover:text-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
+            >
+              Replay my reveal
+            </button>
+          </div>
+        )}
+      </div>
+
+      {revealOpen && (
+        <RevealSequence onClose={() => setRevealOpen(false)} onFinish={() => setRevealOpen(false)} />
+      )}
 
       {isLoading ? (
         <Skeleton />

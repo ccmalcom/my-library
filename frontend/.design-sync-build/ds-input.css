@@ -1,0 +1,60 @@
+/* Google Fonts — the brand families next/font normally injects at runtime.
+   Loaded remotely (validate reports [FONT_REMOTE], informational). */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* base */
+  --bg: #161412;
+  --surface: #1f1b18;
+  --elevated: #2a2420;
+  --border: #3a332d;
+  --hairline: #2a2420;
+
+  /* text */
+  --text: #f5f0e8;
+  --muted: #a89f92;
+  --faint: #6e665c;
+
+  /* brand + semantics */
+  --accent: #ff5c3a;
+  --accent-hover: #ff7355;
+  --accent-quiet: rgba(255, 92, 58, 0.12);
+  --success: #5bbf7b;
+  --danger: #e0524b;
+  --warning: #f5b82e;
+
+  --success-quiet: rgba(91, 191, 123, 0.12);
+  --danger-quiet: rgba(224, 82, 75, 0.12);
+  --warning-quiet: rgba(245, 184, 46, 0.12);
+
+  /* per-user accent (runtime-set in the app; static default here) */
+  --user-accent: #ff5c3a;
+
+  /* font families — supplied by next/font in the app; hardcoded here so the
+     standalone bundle's var(--font-*) references resolve. */
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html,
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display), system-ui, sans-serif;
+  }
+}

@@ -14,6 +14,7 @@ import {
 } from '@/lib/api';
 import { Button, Spinner } from '@/components/ui';
 import AddBookModal from '@/components/AddBookModal';
+import RevealSequence from '@/components/reveal/RevealSequence';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
 
 type Step = 'name' | 'api-key' | 'upload' | 'enrich' | 'manual' | 'profile' | 'done';
@@ -698,15 +699,27 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
 function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: () => void }) {
   const router = useRouter();
   const { fire, modal } = useFeedbackPrompt('post-setup');
+  const [revealOpen, setRevealOpen] = useState(false);
 
   useEffect(() => {
     fire();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleFinish() {
+  function goHome() {
     onComplete?.();
     router.push('/');
+  }
+
+  function goRecommend() {
+    onComplete?.();
+    router.push('/swipe');
+  }
+
+  if (revealOpen) {
+    return (
+      <RevealSequence onClose={goHome} onFinish={goRecommend} />
+    );
   }
 
   return (
@@ -716,7 +729,7 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
           <h2 className="mb-2 text-2xl font-bold text-text">Your library is in.</h2>
           <p className="text-sm text-muted">
             {profiled
-              ? 'Books shelved, taste profiled. Time to see what it found for you.'
+              ? 'Books shelved, taste profiled. Now let us show you what we found.'
               : 'Books are shelved. Build your taste profile next — recommendations need it.'}
           </p>
         </div>
@@ -727,9 +740,15 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
           </div>
         )}
 
-        <Button size="lg" className="w-full" onClick={handleFinish}>
-          Take me home
-        </Button>
+        {profiled ? (
+          <Button size="lg" className="w-full" onClick={() => setRevealOpen(true)}>
+            Show me what you found
+          </Button>
+        ) : (
+          <Button size="lg" className="w-full" onClick={goHome}>
+            Take me home
+          </Button>
+        )}
       </div>
       {modal}
     </>

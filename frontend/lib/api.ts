@@ -120,6 +120,7 @@ export interface DiscoverResult {
 export interface Trait {
   id: number;
   claim: string;
+  reveal_line: string | null;
   polarity: string;
   exhibits: number[] | null;
   contrasts: number[] | null;
@@ -143,6 +144,22 @@ export interface SubjectCount {
 export interface SubjectBreakdown {
   overall: SubjectCount[];
   by_tier: Record<string, SubjectCount[]>;
+}
+
+export interface ProfileHighlights {
+  thin: boolean;
+  n_authors: number;
+  top_genres: { subject: string; share: number }[];
+  top_authors: string[];
+  format_mix: {
+    novel: number;
+    novella: number;
+    collection: number;
+    series: number;
+    dominant: 'novel' | 'novella' | 'collection' | 'series' | null;
+    low_confidence: boolean;
+  };
+  era_split: { pre_2000: number; post_2000: number } | null;
 }
 
 export interface FeedbackRequest {
@@ -279,6 +296,8 @@ export interface ArchetypeOut {
   code: string;
   name: string;
   tagline: string;
+  /** Extends the tagline for the reveal finale: "You're the one who {hook}." */
+  hook: string;
   lens: ArchetypeAxisOut;
   engine: ArchetypeAxisOut;
   range: ArchetypeAxisOut;
@@ -320,6 +339,9 @@ export const PROFILE_STATUS_KEY = 'profile-status';
 
 /** Shared SWR key for the reader archetype (GET /profile/archetype). */
 export const ARCHETYPE_KEY = 'archetype';
+
+/** Shared SWR key for the computed shelf highlights (GET /profile/highlights). */
+export const PROFILE_HIGHLIGHTS_KEY = 'profile-highlights';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 
@@ -430,7 +452,12 @@ export const api = {
   updateTrait: (traitId: number, req: TraitUpdateRequest) =>
     patch<Trait>(`/profile/traits/${traitId}`, req),
 
+  /** Ensure every trait has a second-person reveal line; returns all traits. Wave 4a. */
+  generateRevealLines: () => post<Trait[]>('/profile/reveal-lines'),
+
   profileSubjects: () => get<SubjectBreakdown>('/profile/subjects'),
+
+  profileHighlights: () => get<ProfileHighlights>('/profile/highlights'),
 
   runRecommend: (n = 10) => post<Record<string, unknown>>('/recommend', { n }),
 
