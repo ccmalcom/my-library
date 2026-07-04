@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "incremental": false,
+    "skipLibCheck": true,
+    "rootDir": "../components/ui",
+    "outDir": "../types"
+  },
+  "include": ["../components/ui/**/*.ts", "../components/ui/**/*.tsx"],
+  "exclude": ["../**/*.test.ts", "../**/*.test.tsx", "../**/__tests__/**"]
+}
