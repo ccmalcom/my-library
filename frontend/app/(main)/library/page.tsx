@@ -17,6 +17,7 @@ import { Button, Badge, Card, Modal } from '@/components/ui';
 import BookEditModal from '@/components/BookEditModal';
 import BookDetailModal from '@/components/BookDetailModal';
 import AddBookModal from '@/components/AddBookModal';
+import EnrichmentCorrectionModal from '@/components/EnrichmentCorrectionModal';
 
 const READ_KEY = 'books-read';
 const TO_READ_KEY = 'books-to-read';
@@ -1007,6 +1008,8 @@ function LibraryInner() {
     : 'read';
 
   const [adding, setAdding] = useState(false);
+  const [lcQueue, setLcQueue] = useState<Book[] | null>(null);
+  const [lcIndex, setLcIndex] = useState(0);
 
   function setTab(tab: Tab) {
     const params = new URLSearchParams(searchParams.toString());
@@ -1044,6 +1047,55 @@ function LibraryInner() {
     () => api.rejectedRecs()
   );
 
+  const lowConfidenceBooks = [
+    ...readBooks,
+    ...toReadBooks,
+    ...currentlyReadingBooks,
+    ...dnfBooks,
+  ].filter((b) => b.confidence_label === 'LOW');
+
+  function startLowConfidenceQueue() {
+    if (lowConfidenceBooks.length === 0) return;
+    setLcIndex(0);
+    setLcQueue(lowConfidenceBooks);
+  }
+
+  function advanceLcQueue() {
+    setLcIndex((prevIndex) => {
+      const next = prevIndex + 1;
+      setLcQueue((q) => (q && next < q.length ? q : null));
+      return next;
+    });
+  }
+
+  function shelfListKey(shelf: string | null): string | null {
+    switch (shelf) {
+      case 'read':
+        return READ_KEY;
+      case 'to-read':
+        return TO_READ_KEY;
+      case 'currently-reading':
+        return CURRENTLY_READING_KEY;
+      case 'did-not-finish':
+        return DNF_KEY;
+      default:
+        return null;
+    }
+  }
+
+  function handleCorrected(updated: Book) {
+    const key = shelfListKey(updated.exclusive_shelf);
+    if (key) {
+      mutate(
+        key,
+        (curr?: Book[]) =>
+          curr ? curr.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)) : curr,
+        { revalidate: false }
+      );
+    }
+    void mutate(PROFILE_STATUS_KEY);
+  }
+
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: 'read', label: 'Read', count: readBooks.length },
     { id: 'currently-reading', label: 'Currently reading', count: currentlyReadingBooks.length },
@@ -1067,6 +1119,24 @@ function LibraryInner() {
       </div>
 
       {adding && <AddBookModal onAdded={handleAdded} onClose={() => setAdding(false)} />}
+
+      {lowConfidenceBooks.length > 0 && (
+        <Button variant="secondary" size="sm" onClick={startLowConfidenceQueue}>
+          {lowConfidenceBooks.length} book{lowConfidenceBooks.length !== 1 ? 's' : ''} need a match
+          check
+        </Button>
+      )}
+
+      {lcQueue && lcQueue[lcIndex] && (
+        <EnrichmentCorrectionModal
+          key={lcQueue[lcIndex]!.id}
+          book={lcQueue[lcIndex]!}
+          queuePosition={{ index: lcIndex, total: lcQueue.length }}
+          onFinishQueue={advanceLcQueue}
+          onCorrected={handleCorrected}
+          onClose={() => setLcQueue(null)}
+        />
+      )}
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-xl border border-border bg-elevated p-1">

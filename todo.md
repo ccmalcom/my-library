@@ -3,12 +3,6 @@
 Prioritized for the invite-only / free launch. Organizing question: what would
 break or confuse the first wave of invited users, then friction, then growth.
 
-## Wave 3 — Recommender depth
-
-- "More books like this" from a selected library book (smallest, highest-visibility win, specific recommendations based only on selected book)
-- NL discovery — natural-language "find me a book like X" search (builds on the above)
-- Full feedback / labeling surface — surface LOW-confidence enrichment matches for correction
-
 ## Wave 4 — Delight & growth
 
 - Spotify Wrapped-style profile reveal on onboarding
@@ -18,7 +12,7 @@ break or confuse the first wave of invited users, then friction, then growth.
 
 ## Done
 
-# Wave 1 — Launch blockers - COMPLETE
+## Wave 1 — Launch blockers - COMPLETE
 
 - Cost guardrails + rate limiting (paired; spend/abuse control under multi-user BYO-key) — **done**
   - Per-user Anthropic spend visibility/limits so big libraries don't cause a surprise bill — **done**: soft-warn spend tracking shipped (`usage_events` table, `/settings` usage panel, `UsageWarningBanner`; never blocks a call)
@@ -36,5 +30,11 @@ break or confuse the first wave of invited users, then friction, then growth.
 - BUGS — cleared
 - No-Anthropic-key error UX — shows error + prompts for key on profile/recommend
 - Onboarding empty state — setup/onboarding wizard shows on home / swipe / my library
+
+## Wave 3 — Recommender depth
+
+- "More books like this" from a selected library book (smallest, highest-visibility win, specific recommendations based only on selected book)
+- NL discovery — natural-language "find me a book like X" search (builds on the above)
+- Full feedback / labeling surface — surface LOW-confidence enrichment matches for correction
 
 ## Shelves & data model

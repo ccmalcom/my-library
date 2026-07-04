@@ -320,7 +320,8 @@ def profile_status(*, user_id: str = LOCAL_USER_ID) -> dict:
     """Report whether `user_id`'s taste profile is stale relative to in-app edits.
 
     `dirty` is True when ratings/reviews have changed since the profile was last built,
-    OR when any trait verdict (status/user_weight) has been updated since last profiling.
+    OR when any trait verdict (status/user_weight) has been updated since last profiling,
+    OR when a LOW-confidence enrichment correction has been made since last profiling.
     This backs the UI's "re-profile" button — the app shows it only when `dirty` is True.
     """
     init_db()
@@ -335,8 +336,13 @@ def profile_status(*, user_id: str = LOCAL_USER_ID) -> dict:
             meta.rec_feedback_updated_at is not None
             and (since is None or meta.rec_feedback_updated_at > since)
         )
+        # Also dirty if a LOW-confidence enrichment was corrected after the last build.
+        enrichment_corrected_dirty = (
+            meta.enrichment_corrected_at is not None
+            and (since is None or meta.enrichment_corrected_at > since)
+        )
         return {
-            "dirty": bool(changed) or trait_verdict_dirty or rec_reject_dirty,
+            "dirty": bool(changed) or trait_verdict_dirty or rec_reject_dirty or enrichment_corrected_dirty,
             "changed_books": len(changed),
             "changed_book_ids": [b.id for b in changed],
             "last_profiled_at": meta.last_profiled_at,
@@ -444,3 +450,61 @@ def record_taste_signal(
 
     session.flush()
     return signal
+
+
+def correct_enrichment(
+    book_id: int,
+    *,
+    catalog_source: str,
+    catalog_id: str,
+    cover_url: str | None = None,
+    subjects: list[str] | None = None,
+    description: str | None = None,
+    user_id: str = LOCAL_USER_ID,
+) -> None:
+    """Re-point book_id's enrichment at a user-picked catalog match (Wave 3c).
+
+    Fixes a mis-resolved (typically LOW-confidence) enrichment: the book's own
+    title/author/rating/review are the user's data and are left untouched — only
+    the catalog-derived metadata (subjects/cover/description/provenance) is
+    replaced with the picked candidate. `description` is always overwritten, even
+    to None, so a stale wrong synopsis never survives a correction — better to
+    show "no description available" than a definitely-wrong one.
+
+    Sets `confidence_label="CORRECTED"` / `resolution_confidence=1.0` (full
+    confidence — the user confirmed it), which drops the book out of any
+    LOW-confidence queue. Bumps `ProfileMeta.enrichment_corrected_at` so
+    `profile_status()` reports the profile dirty and the next build picks up the
+    fixed subjects for this book.
+
+    `catalog_source` and `catalog_id` are required and must come from a real
+    `/catalog/search` hit (locked decision: no invented titles survive).
+    """
+    catalog_source = (catalog_source or "").strip()
+    catalog_id = (catalog_id or "").strip()
+    if not catalog_source or not catalog_id:
+        raise ValueError("catalog_source and catalog_id are required.")
+
+    init_db()
+    with session_scope() as session:
+        book = session.get(Book, book_id)
+        if book is None or book.user_id != user_id:
+            raise BookNotFoundError(f"Book {book_id} not found.")
+
+        enr = book.enrichment
+        if enr is None:
+            enr = Enrichment(book_id=book.id)
+            session.add(enr)
+
+        enr.resolved_source = catalog_source
+        enr.resolved_id = catalog_id
+        enr.subjects = subjects or []
+        enr.cover_url = cover_url
+        enr.description = description
+        enr.confidence_label = "CORRECTED"
+        enr.resolution_confidence = 1.0
+        enr.match_method = "user_correction"
+        enr.resolved_at = utcnow()
+
+        meta = get_profile_meta(session, user_id)
+        meta.enrichment_corrected_at = utcnow()

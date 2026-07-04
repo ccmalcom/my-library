@@ -76,6 +76,16 @@
   `add_book` — the search already resolved the book — so adding is fast and offline.
   `remove_book` permanently deletes a single book (+ its enrichment, cascaded) — the granular
   end of the removal surface.
+  `correct_enrichment` (Wave 3c) re-points a mis-resolved (typically LOW-confidence)
+  book's enrichment at a user-picked catalog match: only catalog-derived fields
+  (`subjects`/`cover_url`/`description`/`resolved_source`/`resolved_id`) are replaced —
+  the book's own title/author/rating/review are the user's data and are left
+  untouched. `description` is always overwritten, even to `None`, so a stale wrong
+  synopsis never survives a correction. Sets `confidence_label="CORRECTED"` /
+  `resolution_confidence=1.0` and bumps `ProfileMeta.enrichment_corrected_at`, a
+  third dirty-state signal (alongside `feedback_updated_at` and
+  `rec_feedback_updated_at`) that `profile_status()` checks. Surfaced at
+  `PATCH /books/{book_id}/enrichment`.
 
 - `purge.py` — **bulk, user-scoped data removal** (the supported way to reset a user, e.g. to
   re-test onboarding without minting a new account). `clear_profile` drops traits + recs +
@@ -215,4 +225,6 @@ The feedback surface (Phase 3) exposes three endpoints that record user preferen
 
 - **`POST /taste-signal`** — Record a "more like this" or "less like this" signal for a specific book or recommendation. Accepts `direction` (more/less), `target_kind` (book/rec), `target_book_id` (for book-kind), and optional `snapshot` JSON (for rec-kind). Book-kind signals feed into profile builds as positive/negative guidance; rec-kind signals snapshot the recommendation so steering survives recommendation pruning. Signals are durable (never dropped by `clear_library` or `clear_profile`) and dirty the profile. Backed by `library.record_taste_signal()`.
 
-All three endpoints stamp `ProfileMeta.rec_feedback_updated_at` or equivalent, triggering dirty-state tracking so `profile_status()` / `GET /profile/status` flags the profile for rebuild.
+- **`PATCH /books/{book_id}/enrichment`** — Re-point a mis-resolved (typically LOW-confidence) book's enrichment at a user-picked `/catalog/search` result. Accepts `catalog_source` and `catalog_id` (both required — no invented titles), plus optional `cover_url`/`subjects`/`description`. Only catalog-derived enrichment fields are replaced; the book's own title/author/rating/review are untouched. Sets `confidence_label="CORRECTED"` and dirties the profile. Backed by `library.correct_enrichment()`. Wave 3c.
+
+All four endpoints stamp `ProfileMeta.rec_feedback_updated_at` (or, for the enrichment-correction endpoint, `ProfileMeta.enrichment_corrected_at`), triggering dirty-state tracking so `profile_status()` / `GET /profile/status` flags the profile for rebuild.

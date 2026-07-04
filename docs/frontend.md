@@ -31,7 +31,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
   recommendations feed / swipe deck. Reachable from a NavBar "Discover" link and a home-page CTA
   (not in `BottomNav`, which stays at 5 items — the home CTA covers mobile).
 - `/to-read` — per-book: start reading / mark finished → review / remove.
-- `/library` — rated books; click a row to re-rate/review; "N books waiting on a rating" button steps through unrated read books; **+ Add book** button opens `AddBookModal`.
+- `/library` — rated books; click a row to re-rate/review; "N books waiting on a rating" button steps through unrated read books; **+ Add book** button opens `AddBookModal`; "N books need a match check" button (shown whenever any book across all four shelves has `confidence_label === 'LOW'`) steps through `EnrichmentCorrectionModal`.
 - `/profile` — `TasteHero` archetype card at top; taste traits with inline editing, rating distribution, genre breakdown.
 - `/setup` — CSV import wizard plus a no-CSV "add books manually" branch (`ManualStep`). Now a thin wrapper around `components/SetupWizard.tsx`.
 - `/settings` — API key management, **Claude usage this month** panel, + Danger Zone.
@@ -58,6 +58,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
   (rationale per result). Results are not persisted; "Add to to-read" routes through the
   existing `POST /books` add path. Does not touch the main recommendations feed / swipe deck.
 - **`AddBookModal`** — manual add: debounced `/catalog/search` → pick a real result → optional shelf + star rating + review text → `POST /books`. Used by Library page and setup wizard manual branch.
+- **`EnrichmentCorrectionModal`** — Wave 3c "fix match" queue: reuses `AddBookModal`'s debounced `/catalog/search` pick pattern (title/author/cover/subjects/description only — no shelf/rating/review) to re-point a mis-resolved book's enrichment via `PATCH /books/{id}/enrichment`. Supports the same `queuePosition`/`onFinishQueue` step-through convention as `BookEditModal`'s review queue. Orchestrated at the `/library` page level (not per-tab) because a LOW-confidence book can be on any shelf.
 - **`ReprofileBanner`** — app-wide; shows only when `/profile/status` reports `dirty`, runs `/profile/update`.
 - **`UsageWarningBanner`** — app-wide, mounted in `(main)/layout.tsx` above the page content. Reads `GET /settings/usage` (`getUsage` / `USAGE_KEY`); renders nothing until `usage.warn` is true. Shows spend-vs-cap copy + a "Details" link to `/settings` and a **Dismiss** button (local `useState`, no persistence — reappears on next page load while `warn` stays true). Purely informational; never blocks any action.
 - **`NavBar`** — on mobile shows only logo + LogOut icon; full link row is `hidden sm:flex`. Conditionally renders an "Admin" link when `me?.is_admin` is true (fetched via `adminMe` SWR call).
