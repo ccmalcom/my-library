@@ -32,7 +32,7 @@ from collections import Counter
 
 from .config import LOCAL_USER_ID, get_settings
 from .db import Book, Recommendation, TasteSignal, TasteTrait, init_db, session_scope
-from .enrich import _normalize_title, _surname
+from .enrich import _STRONG_SIM, _normalize_title, _surname, _title_sim
 from .profile import books_changed_since, get_profile_meta
 from .usage import tracked_create
 from .user_settings import resolve_anthropic_key
@@ -280,6 +280,42 @@ def _series_ok(title: str | None, library_series: dict[str, set[int]]) -> bool:
         return True
     owned = library_series.get(name)
     return bool(owned and any(p < position for p in owned))
+
+
+def _fuzzy_duplicate(title: str | None, library_titles: list[str]) -> bool:
+    """Catches same-work editions that survive the exact (title, author) dedup key --
+    e.g. an abridged/translated/ELT-graded-reader reissue credited to a different
+    'author' field (a retelling editor or publisher series name instead of the
+    original author). A near-identical normalized title is treated as the same work
+    on its own; author agreement is not required."""
+    if not title:
+        return False
+    return any(_title_sim(title, lt) >= _STRONG_SIM for lt in library_titles)
+
+
+_LEARNER_EDITION_MARKERS = (
+    "graded reader",
+    "for foreign speakers",
+    "for esl",
+    "for efl",
+    "esl reader",
+    "efl reader",
+    "english language learners",
+    "simplified english edition",
+    "learner's edition",
+    "students of english",
+)
+
+
+def _is_learner_edition(cand: dict) -> bool:
+    """Flags graded-reader / ESL / abridged-for-language-learners reissues. These
+    carry title or subject phrasing like 'graded reader' or 'for foreign speakers'
+    (the latter mirrors real OpenLibrary/Google Books subject-heading text). They
+    aren't a genuine discovery for a taste-driven recommender even when the reader
+    has never read the original work, so they're dropped outright rather than only
+    deduped against an owned copy."""
+    haystack = " | ".join([cand.get("title") or "", *(cand.get("subjects") or [])]).lower()
+    return any(marker in haystack for marker in _LEARNER_EDITION_MARKERS)
 
 
 def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
@@ -572,6 +608,7 @@ def _assemble(
     library_keys = signal["library_keys"]
     library_isbns = signal["library_isbns"]
     library_series = signal.get("library_series") or {}
+    library_titles = signal.get("library_titles") or []
     allowed_langs = _allowed_languages(signal)
     by_key: dict[tuple[str, str], dict] = {}
 
@@ -588,6 +625,10 @@ def _assemble(
         if not _language_ok(cand.get("language"), allowed_langs):
             return
         if not _series_ok(title, library_series):
+            return
+        if _fuzzy_duplicate(title, library_titles):
+            return
+        if _is_learner_edition(cand):
             return
         existing = by_key.get(key)
         if existing is None:
