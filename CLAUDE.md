@@ -14,7 +14,14 @@ Invite-only / free launch. Admin console (invite/revoke users) shipped. Frontend
 Per-user Anthropic spend tracking (soft-warn only, never blocks) shipped: `usage_events` table,
 `/settings` usage panel, `UsageWarningBanner`. `/catalog/search` rate limiting was already
 satisfied by the existing 30/min per-user SlowAPI limit — closed with no code change. Wave 1
-(`todo.md`) is done; next priority is Wave 2 (onboarding friction / custom imports).
+(`todo.md`) is done. Admin console gained read-only usage/feedback browsing (Wave 4b):
+`GET /admin/usage` and `GET /admin/feedback`, paginated, joined against `invites` for
+email display, surfaced as new tabs on `/admin`. Next priority is Wave 2 (onboarding
+friction / custom imports).
+The Wrapped-style profile reveal (Wave 4a) shipped: a nine-beat, full-screen onboarding
+sequence (`components/reveal/RevealSequence.tsx`) backed by `highlights.py`, `reveal.py`,
+and `archetype.ARCHETYPE_HOOKS` — replayable from `/profile` and wired into the
+`SetupWizard` "done" step.
 
 ## Sub-documents (load when relevant)
 

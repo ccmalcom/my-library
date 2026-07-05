@@ -158,6 +158,61 @@ def test_rec_reject_reasons_migration(tmp_path, monkeypatch):
         assert row[1] == "rejected"
 
 
+def test_profile_meta_enrichment_corrected_migration(tmp_path, monkeypatch):
+    """init_db() must add enrichment_corrected_at to an existing profile_meta
+    table WITHOUT dropping it or losing existing rows.
+
+    Strategy: downgrade profile_meta to an old schema (has rec_feedback_updated_at
+    but NOT enrichment_corrected_at), insert a sentinel row, call init_db() again.
+    """
+    import mylibrary.db as db
+
+    assert "sqlite" in str(db._engine.url), (
+        "Expected SQLite engine but got: " + str(db._engine.url)
+    )
+
+    # Downgrade profile_meta to old schema (missing enrichment_corrected_at).
+    with db._engine.begin() as conn:
+        conn.execute(sa_text(
+            "ALTER TABLE profile_meta RENAME TO profile_meta_old"
+        ))
+        conn.execute(sa_text(
+            "CREATE TABLE profile_meta ("
+            "    id INTEGER PRIMARY KEY,"
+            "    user_id VARCHAR NOT NULL DEFAULT 'local',"
+            "    last_profiled_at DATETIME,"
+            "    last_profile_kind VARCHAR,"
+            "    rec_feedback_updated_at DATETIME"
+            ")"
+        ))
+        conn.execute(sa_text(
+            "INSERT INTO profile_meta (user_id, last_profile_kind)"
+            " VALUES ('local', 'full')"
+        ))
+        conn.execute(sa_text("DROP TABLE profile_meta_old"))
+
+    # Confirm enrichment_corrected_at is absent before running init_db() again.
+    cols_before = {c["name"] for c in inspect(db._engine).get_columns("profile_meta")}
+    assert "enrichment_corrected_at" not in cols_before, "enrichment_corrected_at should not exist yet"
+
+    # Reset the engine so init_db() re-opens the same SQLite file fresh.
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    db._engine.dispose()
+    db._engine = None
+    db._SessionLocal = None
+    db.init_db()
+
+    # Verify the new column was added and the sentinel row survived.
+    with db._engine.connect() as conn:
+        cols = {c["name"] for c in inspect(db._engine).get_columns("profile_meta")}
+        assert "enrichment_corrected_at" in cols, "enrichment_corrected_at column missing after init_db"
+        row = conn.execute(sa_text(
+            "SELECT user_id, last_profile_kind FROM profile_meta WHERE user_id = 'local'"
+        )).fetchone()
+        assert row is not None, "Existing row was deleted -- migration must preserve data"
+        assert row[1] == "full"
+
+
 def test_feedback_vocab_validates():
     from mylibrary.feedback_vocab import is_valid_reasons, REJECT_REASONS
     assert is_valid_reasons(["too_dark"])

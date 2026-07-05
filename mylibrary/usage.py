@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func
 
 from .config import get_settings
-from .db import UsageEvent, session_scope
+from .db import Invite, UsageEvent, session_scope
 
 logger = logging.getLogger(__name__)
 
@@ -133,4 +133,72 @@ def cap_status(user_id: str) -> dict:
         "pct": round(pct, 4),
         "warn": pct >= settings.usage_warn_threshold,
         "by_operation": {op: round(float(c), 4) for op, c in by_op_rows},
+    }
+
+
+def admin_list_usage(
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    user_id: str | None = None,
+    operation: str | None = None,
+) -> dict:
+    """All usage_events across all users, newest first, paginated (admin-only).
+
+    Unlike `cap_status` (one user, current month), this has no user or date scoping
+    by default -- an admin needs the full history to spot anomalies.
+    """
+    with session_scope() as session:
+        query = session.query(UsageEvent)
+        if user_id:
+            query = query.filter(UsageEvent.user_id == user_id)
+        if operation:
+            query = query.filter(UsageEvent.operation == operation)
+
+        total = query.count()
+        total_cost = (
+            query.with_entities(func.coalesce(func.sum(UsageEvent.cost_usd), 0.0)).scalar() or 0.0
+        )
+
+        rows = (
+            query.order_by(UsageEvent.created_at.desc(), UsageEvent.id.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
+        row_user_ids = {row.user_id for row in rows}
+        emails = (
+            dict(
+                session.query(Invite.supabase_user_id, Invite.email)
+                .filter(Invite.supabase_user_id.in_(row_user_ids))
+                .all()
+            )
+            if row_user_ids
+            else {}
+        )
+
+        events = [
+            {
+                "id": row.id,
+                "user_id": row.user_id,
+                "email": emails.get(row.user_id),
+                "model": row.model,
+                "operation": row.operation,
+                "input_tokens": row.input_tokens or 0,
+                "output_tokens": row.output_tokens or 0,
+                "cache_creation_input_tokens": row.cache_creation_input_tokens or 0,
+                "cache_read_input_tokens": row.cache_read_input_tokens or 0,
+                "cost_usd": float(row.cost_usd or 0.0),
+                "created_at": row.created_at,
+            }
+            for row in rows
+        ]
+
+    return {
+        "events": events,
+        "total": total,
+        "total_cost_usd": round(float(total_cost), 4),
+        "limit": limit,
+        "offset": offset,
     }

@@ -119,9 +119,9 @@ export default function HomePage() {
   const recBlocked = noProfile || isDirty;
 
   const recBlockMsg = noProfile
-    ? 'No taste profile yet - head to My Profile to build one first.'
+    ? 'No taste profile yet \u2014 build one on your profile page first.'
     : isDirty
-      ? 'Your library has changed since the last profile build - head to My Profile to update it.'
+      ? 'Your library changed since the last profile build — update it on your profile page.'
       : null;
 
   const displayName = userProfile?.display_name ?? null;
@@ -133,7 +133,9 @@ export default function HomePage() {
       await api.runRecommend(10);
       router.push('/swipe');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Something went wrong running recommendations.');
+      toast.error(
+        e instanceof Error ? e.message : 'Recommendations hit a snag. Try again in a moment.'
+      );
       setRunning(false);
     }
   }
@@ -180,7 +182,7 @@ export default function HomePage() {
       {statsLoading ? (
         <StatsStripSkeleton />
       ) : statsError ? (
-        <p className="text-sm text-danger">Could not load library stats.</p>
+        <p className="text-sm text-danger">Your stats didn&apos;t load. Refresh to retry.</p>
       ) : stats ? (
         <StatsStrip stats={stats} />
       ) : null}
@@ -195,15 +197,21 @@ export default function HomePage() {
             Ready for new picks?
           </h2>
           <p className="mb-5 text-sm text-muted">
-            Claude will analyze your taste profile and find 10 books matched to you. This takes 30 -
-            60 seconds.
+            Ten books, chosen against your taste profile and explained. Takes 30–60 seconds.
           </p>
 
           <Button size="lg" loading={running} disabled={running || recBlocked} onClick={handleRun}>
-            {running ? 'Running...' : 'Run Recommendations'}
+            {running ? 'Choosing carefully\u2026' : 'Find my next books'}
           </Button>
 
           {recBlockMsg && <p className="mt-4 text-sm text-warning">{recBlockMsg}</p>}
+
+          <Link
+            href="/discover"
+            className="mt-4 block text-sm text-muted transition-colors hover:text-text"
+          >
+            Or ask for something specific &rarr;
+          </Link>
         </div>
       </Card>
     </div>

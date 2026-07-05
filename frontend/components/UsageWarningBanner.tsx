@@ -15,9 +15,9 @@ export default function UsageWarningBanner() {
     <div className="border-b border-warning/30 bg-warning/10">
       <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-2.5">
         <p className="text-sm text-warning">
-          You&apos;ve used <span className="font-semibold">${data.spent_usd.toFixed(2)}</span> of
-          your ${data.cap_usd.toFixed(2)} monthly Claude budget. Recommendations and profiles still
-          run — this is just a heads-up.{' '}
+          You&apos;re approaching your monthly soft cap (
+          <span className="font-semibold">${data.spent_usd.toFixed(2)}</span> of $
+          {data.cap_usd.toFixed(2)}). Nothing stops — this is a heads-up, not a wall.{' '}
           <Link href="/settings" className="font-semibold underline">
             Details
           </Link>

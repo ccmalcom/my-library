@@ -70,6 +70,28 @@ ARCHETYPES: dict[str, dict[str, str]] = {
     "RCDM": {"name": "The Cerebral Architect",      "tagline": "A well-constructed mind on the page -- that's everything."},
 }
 
+# One hook clause per archetype, extending the tagline without repeating it. Ship as
+# static copy (Wrapped reveal Beat 7: "You're the one who {hook}."). Lowercase start,
+# no trailing period — the UI supplies the sentence frame.
+ARCHETYPE_HOOKS: dict[str, str] = {
+    "IPBH": "wants the portal, not the postcard",
+    "IPBM": "can hear a plot click into place",
+    "IPDH": "has said \"one more chapter\" and meant it, at 3 a.m., seven times",
+    "IPDM": "reads a genre the way an engineer reads a blueprint",
+    "ICBH": "collects other people's inner lives",
+    "ICBM": "would rather understand a character than like one",
+    "ICDH": "reread the whole series to get ready for the new one",
+    "ICDM": "can't be fooled by a false note in a character",
+    "RPBH": "refuses to choose between a page-turner and a poem",
+    "RPBM": "has never met a genre they wouldn't cross-examine",
+    "RPDH": "ordered the same thing twice because it was perfect",
+    "RPDM": "sees the load-bearing walls in every story",
+    "RCBH": "follows voices across any border",
+    "RCBM": "reads minds for sport",
+    "RCDH": "keeps a canon and tends it like a garden",
+    "RCDM": "admires a well-built mind above all fireworks",
+}
+
 
 def _score_to_letter(axis_key: str, score: float) -> str:
     """Return the winning pole letter for a given axis score.

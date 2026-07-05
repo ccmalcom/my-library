@@ -61,7 +61,7 @@ export default function BookEditModal({
   const desc = book.description ?? null;
   const DESC_CUTOFF = 200;
   const descShort =
-    desc && desc.length > DESC_CUTOFF ? desc.slice(0, DESC_CUTOFF - 3) + '...' : desc;
+    desc && desc.length > DESC_CUTOFF ? desc.slice(0, DESC_CUTOFF - 3) + '\u2026' : desc;
 
   async function handleSave() {
     if (!dirty) {
@@ -206,7 +206,9 @@ export default function BookEditModal({
           className={[inputClass, 'resize-y'].join(' ')}
         />
         {reviewWithoutRating && (
-          <p className="mt-1 text-xs text-warning">Add a star rating above to save your review.</p>
+          <p className="mt-1 text-xs text-warning">
+            A review needs a rating to anchor it — add stars first.
+          </p>
         )}
       </div>
 
@@ -272,7 +274,7 @@ export default function BookEditModal({
               disabled={busy}
               className="text-sm font-semibold text-danger transition hover:opacity-80 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger rounded"
             >
-              {removing ? 'Removing...' : 'Confirm remove'}
+              {removing ? 'Removing\u2026' : 'Confirm remove'}
             </button>
           ) : (
             <button
@@ -298,7 +300,7 @@ export default function BookEditModal({
             {queuePosition ? 'Skip' : 'Cancel'}
           </Button>
           <Button onClick={handleSave} loading={saving} disabled={busy || !canSave}>
-            {saving ? 'Saving...' : queuePosition ? 'Save & next' : 'Save'}
+            {saving ? 'Saving\u2026' : queuePosition ? 'Save & next' : 'Save'}
           </Button>
         </div>
       </div>

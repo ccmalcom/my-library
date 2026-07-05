@@ -72,7 +72,7 @@ export default function FeedbackLauncher() {
       {/* Modal */}
       {modalOpen && (
         <FeedbackModal
-          heading="Share your feedback"
+          heading="What's working? What isn't?"
           onClose={() => setModalOpen(false)}
           onResolved={() => setModalOpen(false)}
         />

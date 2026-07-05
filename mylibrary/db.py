@@ -167,6 +167,10 @@ class TasteTrait(Base):
     # Timestamp of the last time the user confirmed/rejected/edited this trait so
     # the profile can detect stale user verdicts after a bulk re-enrich.
     verdict_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Presentation-only second-person rewrite of `claim`, generated lazily by a Haiku
+    # pass when the Wrapped reveal is first viewed (see reveal.py). NULL until generated;
+    # cleared implicitly when a re-profile replaces the proposed trait rows.
+    reveal_line: Mapped[str | None] = mapped_column(Text, nullable=True)
     # NB: no explicit UniqueConstraint on `id` — it's already the primary key (unique by
     # definition). A redundant UNIQUE on the PK made `alembic revision --autogenerate` emit a
     # spurious create_unique_constraint into every migration, so it was removed.
@@ -290,6 +294,10 @@ class ProfileMeta(Base):
     last_profiled_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_profile_kind: Mapped[str | None] = mapped_column(String)  # full | update
     rec_feedback_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Bumped by library.correct_enrichment (Wave 3c) whenever a mis-resolved
+    # enrichment is fixed via the LOW-confidence correction queue. A third
+    # dirty-state signal alongside last_profiled_at / rec_feedback_updated_at.
+    enrichment_corrected_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class UserSettings(Base):
@@ -561,6 +569,7 @@ def init_db() -> None:
             new_trait_cols = {
                 "user_weight": "FLOAT NOT NULL DEFAULT 1.0",
                 "verdict_updated_at": "DATETIME",
+                "reveal_line": "TEXT",
             }
             missing_trait_cols = {k: v for k, v in new_trait_cols.items() if k not in cols}
             if missing_trait_cols:
@@ -604,6 +613,10 @@ def init_db() -> None:
             if "rec_feedback_updated_at" not in pm_cols:
                 conn.execute(
                     sa_text("ALTER TABLE profile_meta ADD COLUMN rec_feedback_updated_at DATETIME")
+                )
+            if "enrichment_corrected_at" not in pm_cols:
+                conn.execute(
+                    sa_text("ALTER TABLE profile_meta ADD COLUMN enrichment_corrected_at DATETIME")
                 )
 
     # Lightweight migration: user_settings gets new columns added in place.

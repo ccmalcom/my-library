@@ -76,6 +76,16 @@
   `add_book` — the search already resolved the book — so adding is fast and offline.
   `remove_book` permanently deletes a single book (+ its enrichment, cascaded) — the granular
   end of the removal surface.
+  `correct_enrichment` (Wave 3c) re-points a mis-resolved (typically LOW-confidence)
+  book's enrichment at a user-picked catalog match: only catalog-derived fields
+  (`subjects`/`cover_url`/`description`/`resolved_source`/`resolved_id`) are replaced —
+  the book's own title/author/rating/review are the user's data and are left
+  untouched. `description` is always overwritten, even to `None`, so a stale wrong
+  synopsis never survives a correction. Sets `confidence_label="CORRECTED"` /
+  `resolution_confidence=1.0` and bumps `ProfileMeta.enrichment_corrected_at`, a
+  third dirty-state signal (alongside `feedback_updated_at` and
+  `rec_feedback_updated_at`) that `profile_status()` checks. Surfaced at
+  `PATCH /books/{book_id}/enrichment`.
 
 - `purge.py` — **bulk, user-scoped data removal** (the supported way to reset a user, e.g. to
   re-test onboarding without minting a new account). `clear_profile` drops traits + recs +
@@ -100,6 +110,29 @@
   it normalises empty-string rationales to `None` via `rationale or None` so the frontend's
   truthiness check is reliable. `is_stale` is `True` when `derived_at < last_profiled_at`.
   The Claude call goes through `usage.tracked_create` (`archetype` operation), recording tokens + cost.
+  `ARCHETYPE_HOOKS` is a static per-code dict (one clause per archetype, e.g. `"reread the
+  whole series to get ready for the new one"` for `ICDH`) exposed as `ArchetypeOut.hook` —
+  backs the Wrapped-reveal finale ("You're the one who {hook}."); no Claude call involved.
+
+- `highlights.py` — **Wrapped-reveal Beat 5 data**: `compute_highlights(session, user_id)` is
+  a pure computation over existing `Enrichment` rows (no catalog/Claude calls) returning
+  rating-weighted `top_genres`, `top_authors` (min 2 books), a page-count/series/subject-token
+  `format_mix` heuristic (series > novella-by-pagecount > collection > novel priority — a short
+  book tagged "short stories" reads as a novella first since page count is the stronger signal),
+  and `era_split`. `thin` mirrors `recommend._is_cold_start`'s thresholds (imported, not
+  reimplemented). Surfaced at `GET /profile/highlights`.
+
+- `reveal.py` — **lazy `reveal_line` generation** for the Wrapped reveal. Each `TasteTrait.claim`
+  is analytic; `generate_reveal_lines(user_id)` does one cheap Haiku pass (via
+  `usage.tracked_create`, operation `reveal_lines`) to rewrite traits missing a `reveal_line`
+  into a second-person, ≤14-word presentation line, then persists it per-trait. Idempotent —
+  traits that already have a line are skipped, and no Claude call happens if none are pending.
+  Generation happens at reveal-open time (not profile-build time) so it covers existing profiles
+  and the replay path uniformly and costs nothing for users who never open the reveal. Surfaced
+  at `POST /profile/reveal-lines` (generates any missing lines, returns all traits).
+  Frontend consumer: `components/reveal/RevealSequence.tsx` (see `docs/frontend.md`) turns
+  `profile_highlights` + `reveal_line` + `ArchetypeOut.hook` into the nine-beat reveal via the
+  pure `lib/revealBeats.ts#buildBeats`.
 
 - `recommend.py` — two-stage recommender. Stage 1 retrieval = metadata expansion
   (`catalog.openlibrary_subject` / `googlebooks_subject` / `googlebooks_author`) +
@@ -152,6 +185,35 @@
   **Spend tracking:** both Claude calls (`_claude_seed_queries` → `recommend_seed`,
   `_claude_rerank` → `recommend_rerank`) go through `usage.tracked_create`, recording tokens + cost.
 
+  ### Per-book "more like this" (`recommend_similar`)
+
+  `recommend_similar(book_id)` is a book-anchored sibling of `recommend()`: it seeds Stage-1
+  retrieval from a single library book's enriched facets (subjects + author) plus a Claude
+  facet-decomposition of that book (`similar_seed`), assembles/dedupes/caps against the live
+  catalog with the **same** machinery (`_metadata_pool`/`_assemble`/`_apply_author_caps`/
+  language filter), then reranks by similarity to the seed book with a book-anchored prompt
+  (`similar_rerank`). It does **not** require a taste profile, does **not** apply
+  library-thinness cold-start gating, and returns results **ephemerally** — no
+  `recommendations` rows are written, so the main recs feed and swipe deck are untouched.
+  Surfaced at `POST /books/{book_id}/similar`.
+
+  ### Natural-language discovery (`discover`)
+
+  `discover(query)` is the Wave 3b "find me a book like X" path — a request-anchored sibling
+  of `recommend_similar`. Stage A (`_interpret_query`, Claude Haiku, op `discover_interpret`)
+  turns the free-text request into catalog search queries + a constraints object + a
+  one-sentence interpretation echo (never titles). Retrieval runs those queries against Google
+  Books + Open Library (`_discovery_pool`), applies the stated constraints
+  (`_apply_discovery_constraints`), and reuses `_assemble` (dedup, owned/rejected exclusion,
+  language filter, author caps). Stage B (`_rerank_discovery`, op `discover_rerank`) ranks the
+  real candidates by fit to the request, profile secondary. Results are **ephemeral** — no
+  `recommendations` rows — so the main recs feed / swipe deck are untouched, and discovery works
+  without a taste profile. **Filterable constraints are limited to what catalog candidates
+  carry**: language, era (`min_year`/`max_year`), and `exclude_subjects`. Page-count and
+  standalone/series constraints are deliberately unsupported (candidates carry no page-count or
+  series field) and are stripped in `_clean_constraints`. Surfaced at `POST /discover`
+  (rate-limited 30/min, mirroring `/catalog/search`).
+
 - **`TasteSignal` / `taste_signal` table** — durable, append-only steering signals that express
   "more like this" or "less like this" for a specific book or recommendation. Columns:
   `direction` (`more` | `less`), `target_kind` (`book` | `rec`), `target_book_id` (FK to user's
@@ -198,4 +260,6 @@ The feedback surface (Phase 3) exposes three endpoints that record user preferen
 
 - **`POST /taste-signal`** — Record a "more like this" or "less like this" signal for a specific book or recommendation. Accepts `direction` (more/less), `target_kind` (book/rec), `target_book_id` (for book-kind), and optional `snapshot` JSON (for rec-kind). Book-kind signals feed into profile builds as positive/negative guidance; rec-kind signals snapshot the recommendation so steering survives recommendation pruning. Signals are durable (never dropped by `clear_library` or `clear_profile`) and dirty the profile. Backed by `library.record_taste_signal()`.
 
-All three endpoints stamp `ProfileMeta.rec_feedback_updated_at` or equivalent, triggering dirty-state tracking so `profile_status()` / `GET /profile/status` flags the profile for rebuild.
+- **`PATCH /books/{book_id}/enrichment`** — Re-point a mis-resolved (typically LOW-confidence) book's enrichment at a user-picked `/catalog/search` result. Accepts `catalog_source` and `catalog_id` (both required — no invented titles), plus optional `cover_url`/`subjects`/`description`. Only catalog-derived enrichment fields are replaced; the book's own title/author/rating/review are untouched. Sets `confidence_label="CORRECTED"` and dirties the profile. Backed by `library.correct_enrichment()`. Wave 3c.
+
+All four endpoints stamp `ProfileMeta.rec_feedback_updated_at` (or, for the enrichment-correction endpoint, `ProfileMeta.enrichment_corrected_at`), triggering dirty-state tracking so `profile_status()` / `GET /profile/status` flags the profile for rebuild.

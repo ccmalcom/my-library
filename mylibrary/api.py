@@ -48,6 +48,7 @@ from .enrich import _normalize_title, _surname, enrich_library
 from .exporters import export_csv, export_json
 from .feedback import (
     VALID_CATEGORIES,
+    admin_list_feedback,
     check_prompt_eligibility,
     dismiss_prompt,
     submit_feedback,
@@ -66,6 +67,7 @@ from .library import (
     BookNotFoundError,
     TasteSignalError,
     add_book,
+    correct_enrichment,
     profile_status,
     record_taste_signal,
     remove_book,
@@ -74,10 +76,12 @@ from .library import (
 )
 from .profile import extract_taste_profile, update_taste_profile
 from .purge import clear_library, clear_profile, delete_account
-from .recommend import latest_recommendations, recommend
+from .recommend import discover, latest_recommendations, recommend, recommend_similar
 from .schemas import (
     AddBookRequest,
+    AdminFeedbackListOut,
     AdminMeOut,
+    AdminUsageListOut,
     AdminUserOut,
     ApiKeyRequest,
     ApiKeyStatus,
@@ -86,7 +90,10 @@ from .schemas import (
     BookFeedbackRequest,
     BookOut,
     CatalogResult,
+    DiscoverRequest,
+    DiscoverResult,
     EnrichJobOut,
+    EnrichmentCorrectionRequest,
     EnrichRequest,
     EnrichStartRequest,
     FeedbackDismiss,
@@ -96,12 +103,15 @@ from .schemas import (
     ImportSummaryOut,
     IngestRequest,
     InviteRequest,
+    ProfileHighlightsOut,
     ProfileStatusOut,
     RecFeedbackResult,
     RecommendationOut,
     RecommendRequest,
     RevokeRequest,
     ShelfRequest,
+    SimilarBooksOut,
+    SimilarRequest,
     TasteSignalOut,
     TasteSignalRequest,
     TraitOut,
@@ -112,7 +122,7 @@ from .schemas import (
 )
 from .stats import dataset_stats
 from .supabase_admin import SupabaseAdminError
-from .usage import cap_status
+from .usage import admin_list_usage, cap_status
 from .user_settings import (
     anthropic_key_status,
     clear_anthropic_key,
@@ -636,6 +646,7 @@ def search_catalog(
             isbn13=h.get("isbn13"),
             cover_url=h.get("cover_url"),
             subjects=h.get("subjects"),
+            description=h.get("description"),
         )
         for h in hits
         if h.get("title")
@@ -706,6 +717,32 @@ def move_book_shelf(book_id: int, req: ShelfRequest, user_id: UserId) -> dict:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.patch("/books/{book_id}/enrichment", response_model=BookOut)
+def patch_book_enrichment(
+    book_id: int, req: EnrichmentCorrectionRequest, user_id: UserId
+) -> BookOut:
+    """Re-point a mis-resolved (typically LOW-confidence) book's enrichment at a
+    user-picked catalog match. The book's own title/author/rating/review are
+    untouched. Wave 3c "fix match" queue."""
+    try:
+        correct_enrichment(
+            book_id,
+            catalog_source=req.catalog_source,
+            catalog_id=req.catalog_id,
+            cover_url=req.cover_url,
+            subjects=req.subjects,
+            description=req.description,
+            user_id=user_id,
+        )
+    except BookNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    with session_scope() as session:
+        return _book_out(session.get(Book, book_id))
 
 
 @app.delete("/books/{book_id}")
@@ -792,6 +829,32 @@ def admin_revoke(req: RevokeRequest, admin_id: AdminId) -> dict:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+@app.get("/admin/usage", response_model=AdminUsageListOut)
+def admin_usage(
+    admin_id: AdminId,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user_id: str | None = None,
+    operation: str | None = None,
+) -> AdminUsageListOut:
+    return AdminUsageListOut(
+        **admin_list_usage(limit=limit, offset=offset, user_id=user_id, operation=operation)
+    )
+
+
+@app.get("/admin/feedback", response_model=AdminFeedbackListOut)
+def admin_feedback(
+    admin_id: AdminId,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user_id: str | None = None,
+    category: str | None = None,
+) -> AdminFeedbackListOut:
+    return AdminFeedbackListOut(
+        **admin_list_feedback(limit=limit, offset=offset, user_id=user_id, category=category)
+    )
+
+
 @app.get("/profile/status", response_model=ProfileStatusOut)
 def get_profile_status(user_id: UserId) -> ProfileStatusOut:
     """Whether ratings/reviews have changed since the profile was last built."""
@@ -827,6 +890,46 @@ def get_recommendations(user_id: UserId) -> list[RecommendationOut]:
     with session_scope() as session:
         rows = latest_recommendations(session, user_id)
         return [RecommendationOut.model_validate(r) for r in rows]
+
+
+@app.post("/books/{book_id}/similar", response_model=SimilarBooksOut)
+@limiter.limit("15/minute")
+def similar_books(
+    request: Request, book_id: int, req: SimilarRequest, user_id: UserId
+) -> SimilarBooksOut:
+    """Ephemeral 'more books like this' for one owned library book.
+
+    Book-anchored retrieval + rerank; results are NOT persisted (they never touch the
+    main recs feed or swipe deck). 404 if the book isn't the caller's; 400 if the book
+    lacks the metadata needed to seed retrieval."""
+    with session_scope() as session:
+        owned = (
+            session.query(Book)
+            .filter(Book.id == book_id, Book.user_id == user_id)
+            .one_or_none()
+        )
+        if owned is None:
+            raise HTTPException(status_code=404, detail=f"Book {book_id} not found")
+    try:
+        return recommend_similar(book_id, n=req.n, user_id=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/discover", response_model=DiscoverResult)
+@limiter.limit("30/minute")
+def discover_books(
+    request: Request, req: DiscoverRequest, user_id: UserId
+) -> DiscoverResult:
+    """Ephemeral natural-language discovery ('find me a book like X').
+
+    Interprets the request into catalog queries + constraints, retrieves real candidates,
+    and reranks them by fit to the request. Results are NOT persisted (they never touch the
+    main recs feed or swipe deck). 400 when the request can't be served (e.g. no API key)."""
+    try:
+        return discover(req.query, n=req.n, user_id=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/recommendations/rejected", response_model=list[RecommendationOut])
@@ -981,6 +1084,30 @@ def update_trait(trait_id: int, req: TraitUpdateRequest, user_id: UserId) -> Tra
         return TraitOut.model_validate(trait)
 
 
+@app.post("/profile/reveal-lines", response_model=list[TraitOut])
+def post_reveal_lines(user_id: UserId) -> list[TraitOut]:
+    """Ensure every trait has a second-person reveal line, then return all traits.
+
+    Generates any missing lines with one cheap Haiku pass (idempotent — a no-op once
+    filled). Backs the Wrapped reveal; safe to call on every reveal open/replay."""
+    from .db import TasteTrait
+    from .reveal import generate_reveal_lines
+
+    try:
+        generate_reveal_lines(user_id=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    with session_scope() as session:
+        traits = (
+            session.query(TasteTrait)
+            .filter(TasteTrait.user_id == user_id)
+            .order_by(TasteTrait.inference_confidence.desc())
+            .all()
+        )
+        return [TraitOut.model_validate(t) for t in traits]
+
+
 @app.get("/profile/subjects")
 def get_profile_subjects(user_id: UserId) -> dict:
     """Subject/genre breakdown across rated books, split by star tier.
@@ -1028,6 +1155,17 @@ def get_profile_subjects(user_id: UserId) -> dict:
         }
 
 
+@app.get("/profile/highlights", response_model=ProfileHighlightsOut)
+def get_profile_highlights(user_id: UserId) -> ProfileHighlightsOut:
+    """Rating-weighted shelf highlights for the reveal (genres/authors/format/era).
+
+    Pure computation over existing enrichment — no Claude, no catalog calls."""
+    from .highlights import compute_highlights
+
+    with session_scope() as session:
+        return ProfileHighlightsOut.model_validate(compute_highlights(session, user_id))
+
+
 def _archetype_out(row: ReaderArchetype, last_profiled_at) -> ArchetypeOut:
     """Map a ReaderArchetype DB row to ArchetypeOut (computes letters + is_stale)."""
     def _axis(axis_key: str, score: float, rationale: str | None) -> ArchetypeAxisOut:
@@ -1041,6 +1179,7 @@ def _archetype_out(row: ReaderArchetype, last_profiled_at) -> ArchetypeOut:
         code=row.code,
         name=row.archetype_name,
         tagline=row.archetype_tagline,
+        hook=archetype_module.ARCHETYPE_HOOKS.get(row.code, ""),
         lens=_axis("lens", row.axis_lens, row.lens_rationale),
         engine=_axis("engine", row.axis_engine, row.engine_rationale),
         range=_axis("range", row.axis_range, row.range_rationale),

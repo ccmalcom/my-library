@@ -124,6 +124,7 @@ docs/               # architecture.md, conventions.md, hosting.md, frontend.md
 ### TypeScript / TSX
 
 - **No non-ASCII characters inside JS string literals in `.tsx` files** — Turbopack rejects them. Em dashes, curly quotes, etc. are fine in JSX text nodes (between tags) but not inside `"…"` or `'…'` string values. Use ASCII equivalents or unicode escapes.
+  - **A bare JSX attribute value (`placeholder="…"`, `alt="…"`, etc.) is not a JS string literal — it gets zero escape processing.** A unicode escape sequence written directly inside `attr="…"` renders to the user as those literal backslash-u-and-4-hex-digit characters, not the character it names (this shipped as a real bug once — see `FeedbackModal.tsx`/`useFeedbackPrompt.tsx` git history for the fix). Two correct options: put the actual ASCII character directly in the attribute string (no escape needed there), or if an escape is genuinely required, move the value into a JS expression first — `attr={'text — more text'}` — where escape processing applies.
 - **No IIFEs inside JSX** — Turbopack rejects `{(() => { … })()}`. Compute derived values as plain variables at the top of the component function.
 - `Modal` in `components/ui/Modal.tsx` takes `labelId` + `onClose` + optional `className`. No `title` prop — render the heading as a child with `id={labelId}`.
 - SWR cache invalidation after mutations: use `mutate("stats", api.stats(), { revalidate: false })`, not bare `mutate("stats")` — a bare call won't refetch a key no mounted component subscribes to.

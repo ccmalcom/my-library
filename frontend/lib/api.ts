@@ -65,9 +65,62 @@ export interface Recommendation {
   created_at: string;
 }
 
+export interface SimilarBook {
+  rank: number;
+  title: string;
+  author: string | null;
+  year: number | null;
+  isbn13: string | null;
+  cover_url: string | null;
+  subjects: string[] | null;
+  description?: string | null;
+  catalog_source: string | null;
+  catalog_id: string | null;
+  retrieval_pool: string | null;
+  seed_reason: string | null;
+  score: number;
+  rationale: string | null;
+}
+
+export interface SimilarBooksResult {
+  anchor_book_id: number;
+  anchor_title: string;
+  count: number;
+  model: string;
+  seed_queries: string[];
+  recommendations: SimilarBook[];
+}
+
+export interface DiscoverBook {
+  rank: number;
+  title: string;
+  author: string | null;
+  year: number | null;
+  isbn13: string | null;
+  cover_url: string | null;
+  subjects: string[] | null;
+  description?: string | null;
+  catalog_source: string | null;
+  catalog_id: string | null;
+  retrieval_pool: string | null;
+  seed_reason: string | null;
+  score: number;
+  rationale: string | null;
+}
+
+export interface DiscoverResult {
+  query: string;
+  interpretation: string;
+  count: number;
+  model: string;
+  queries: string[];
+  recommendations: DiscoverBook[];
+}
+
 export interface Trait {
   id: number;
   claim: string;
+  reveal_line: string | null;
   polarity: string;
   exhibits: number[] | null;
   contrasts: number[] | null;
@@ -91,6 +144,22 @@ export interface SubjectCount {
 export interface SubjectBreakdown {
   overall: SubjectCount[];
   by_tier: Record<string, SubjectCount[]>;
+}
+
+export interface ProfileHighlights {
+  thin: boolean;
+  n_authors: number;
+  top_genres: { subject: string; share: number }[];
+  top_authors: string[];
+  format_mix: {
+    novel: number;
+    novella: number;
+    collection: number;
+    series: number;
+    dominant: 'novel' | 'novella' | 'collection' | 'series' | null;
+    low_confidence: boolean;
+  };
+  era_split: { pre_2000: number; post_2000: number } | null;
 }
 
 export interface FeedbackRequest {
@@ -137,6 +206,7 @@ export interface CatalogResult {
   isbn13: string | null;
   cover_url: string | null;
   subjects: string[] | null;
+  description: string | null;
 }
 
 /** Fields the generic importer can map to (mirrors backend MAPPING_FIELDS). */
@@ -174,6 +244,15 @@ export interface AddBookRequest {
   subjects?: string[] | null;
   catalog_source?: string | null;
   catalog_id?: string | null;
+}
+
+/** Re-point a book's enrichment at a user-picked catalog match (PATCH /books/{id}/enrichment). */
+export interface EnrichmentCorrectionRequest {
+  catalog_source: string;
+  catalog_id: string;
+  cover_url?: string | null;
+  subjects?: string[] | null;
+  description?: string | null;
 }
 
 /** Summary returned by the book mutation endpoints (not a full Book). */
@@ -217,6 +296,8 @@ export interface ArchetypeOut {
   code: string;
   name: string;
   tagline: string;
+  /** Extends the tagline for the reveal finale: "You're the one who {hook}." */
+  hook: string;
   lens: ArchetypeAxisOut;
   engine: ArchetypeAxisOut;
   range: ArchetypeAxisOut;
@@ -258,6 +339,9 @@ export const PROFILE_STATUS_KEY = 'profile-status';
 
 /** Shared SWR key for the reader archetype (GET /profile/archetype). */
 export const ARCHETYPE_KEY = 'archetype';
+
+/** Shared SWR key for the computed shelf highlights (GET /profile/highlights). */
+export const PROFILE_HIGHLIGHTS_KEY = 'profile-highlights';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 
@@ -356,12 +440,24 @@ export const api = {
 
   recommendations: () => get<Recommendation[]>('/recommendations'),
 
+  /** Ephemeral "more books like this" for one library book (Wave 3a). */
+  similarBooks: (bookId: number, n = 8) =>
+    post<SimilarBooksResult>(`/books/${bookId}/similar`, { n }),
+
+  /** Natural-language discovery: "find me a book like X" (Wave 3b). Ephemeral — not persisted. */
+  discover: (query: string, n = 10) => post<DiscoverResult>('/discover', { query, n }),
+
   profile: () => get<Trait[]>('/profile'),
 
   updateTrait: (traitId: number, req: TraitUpdateRequest) =>
     patch<Trait>(`/profile/traits/${traitId}`, req),
 
+  /** Ensure every trait has a second-person reveal line; returns all traits. Wave 4a. */
+  generateRevealLines: () => post<Trait[]>('/profile/reveal-lines'),
+
   profileSubjects: () => get<SubjectBreakdown>('/profile/subjects'),
+
+  profileHighlights: () => get<ProfileHighlights>('/profile/highlights'),
 
   runRecommend: (n = 10) => post<Record<string, unknown>>('/recommend', { n }),
 
@@ -385,6 +481,13 @@ export const api = {
 
   /** Manually add a book to the library (from a picked catalog result). */
   addBook: (req: AddBookRequest) => post<Book>('/books', req),
+
+  /**
+   * Re-point a book's enrichment at a user-picked catalog match — fixes a
+   * mis-resolved (typically LOW-confidence) match. Wave 3c "fix match" queue.
+   */
+  correctEnrichment: (bookId: number, req: EnrichmentCorrectionRequest) =>
+    patch<Book>(`/books/${bookId}/enrichment`, req),
 
   /** Permanently remove a book from the library. */
   removeBook: (bookId: number) =>
@@ -692,6 +795,76 @@ export const backfillAdminUsers = (): Promise<{
   added: number;
   total_supabase_users: number;
 }> => post<{ added: number; total_supabase_users: number }>('/admin/backfill', {});
+
+export interface AdminUsageEvent {
+  id: number;
+  user_id: string;
+  email: string | null;
+  model: string;
+  operation: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens: number;
+  cache_read_input_tokens: number;
+  cost_usd: number;
+  created_at: string;
+}
+
+export interface AdminUsageList {
+  events: AdminUsageEvent[];
+  total: number;
+  total_cost_usd: number;
+  limit: number;
+  offset: number;
+}
+
+/** Paginated usage events across all users (admin-only). GET /admin/usage */
+export function listAdminUsage(opts?: {
+  limit?: number;
+  offset?: number;
+  operation?: string;
+}): Promise<AdminUsageList> {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  if (opts?.operation) params.set('operation', opts.operation);
+  const qs = params.toString();
+  return get<AdminUsageList>(`/admin/usage${qs ? `?${qs}` : ''}`);
+}
+
+export interface AdminFeedbackItem {
+  id: number;
+  user_id: string;
+  email: string | null;
+  category: string;
+  body: string;
+  trigger: string | null;
+  run_id: string | null;
+  page: string | null;
+  app_version: string | null;
+  created_at: string;
+}
+
+export interface AdminFeedbackList {
+  items: AdminFeedbackItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** Paginated feedback rows across all users (admin-only). GET /admin/feedback */
+export function listAdminFeedback(opts?: {
+  limit?: number;
+  offset?: number;
+  category?: string;
+}): Promise<AdminFeedbackList> {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  if (opts?.category) params.set('category', opts.category);
+  const qs = params.toString();
+  return get<AdminFeedbackList>(`/admin/feedback${qs ? `?${qs}` : ''}`);
+}
 
 // ── Spend guardrails ────────────────────────────────────────────────────────
 

@@ -99,7 +99,8 @@ class CatalogResult(BaseModel):
     """One hit from the manual add-a-book search (GET /catalog/search).
 
     A real catalog candidate the user can pick; its fields are passed straight back into
-    POST /books so the added book carries the cover/subjects/isbn from the chosen result.
+    POST /books so the added book carries the cover/subjects/isbn from the chosen result,
+    or into PATCH /books/{id}/enrichment to fix a mis-resolved match (Wave 3c).
     """
 
     source: str  # openlibrary | googlebooks
@@ -110,6 +111,7 @@ class CatalogResult(BaseModel):
     isbn13: str | None = None
     cover_url: str | None = None
     subjects: list[str] | None = None
+    description: str | None = None
 
 
 class AddBookRequest(BaseModel):
@@ -131,6 +133,24 @@ class AddBookRequest(BaseModel):
     subjects: list[str] | None = None
     catalog_source: str | None = None
     catalog_id: str | None = None
+
+
+class EnrichmentCorrectionRequest(BaseModel):
+    """Body for PATCH /books/{book_id}/enrichment — re-point a mis-resolved
+    enrichment at a user-picked catalog match (Wave 3c "fix match" queue).
+
+    catalog_source/catalog_id must come from a real GET /catalog/search hit
+    (locked decision: no invented titles) — both are required. The book's own
+    title/author/rating/review are untouched; only catalog-derived enrichment
+    fields are replaced. description is always applied, even None, so a stale
+    wrong synopsis never survives a correction.
+    """
+
+    catalog_source: str
+    catalog_id: str
+    cover_url: str | None = None
+    subjects: list[str] | None = None
+    description: str | None = None
 
 
 class TraitUpdateRequest(BaseModel):
@@ -177,6 +197,7 @@ class BookOut(BaseModel):
 class TraitOut(BaseModel):
     id: int
     claim: str
+    reveal_line: str | None = None
     polarity: str
     exhibits: list[int] | None
     contrasts: list[int] | None
@@ -216,6 +237,79 @@ class RecommendationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SimilarRequest(BaseModel):
+    """Body for POST /books/{book_id}/similar."""
+
+    n: int = Field(default=8, ge=1, le=20)
+
+
+class SimilarBookOut(BaseModel):
+    """One ephemeral 'more like this' result (not persisted)."""
+
+    rank: int
+    title: str
+    author: str | None = None
+    year: int | None = None
+    isbn13: str | None = None
+    cover_url: str | None = None
+    subjects: list[str] | None = None
+    description: str | None = None
+    catalog_source: str | None = None
+    catalog_id: str | None = None
+    retrieval_pool: str | None = None
+    seed_reason: str | None = None
+    score: float
+    rationale: str | None = None
+
+
+class SimilarBooksOut(BaseModel):
+    """Response for POST /books/{book_id}/similar — an ephemeral ranked list."""
+
+    anchor_book_id: int
+    anchor_title: str
+    count: int
+    model: str
+    seed_queries: list[str]
+    recommendations: list[SimilarBookOut]
+
+
+class DiscoverRequest(BaseModel):
+    """Body for POST /discover — a natural-language book request."""
+
+    query: str = Field(min_length=1, max_length=500)
+    n: int = Field(default=10, ge=1, le=20)
+
+
+class DiscoverBookOut(BaseModel):
+    """One ephemeral NL-discovery result (not persisted)."""
+
+    rank: int
+    title: str
+    author: str | None = None
+    year: int | None = None
+    isbn13: str | None = None
+    cover_url: str | None = None
+    subjects: list[str] | None = None
+    description: str | None = None
+    catalog_source: str | None = None
+    catalog_id: str | None = None
+    retrieval_pool: str | None = None
+    seed_reason: str | None = None
+    score: float
+    rationale: str | None = None
+
+
+class DiscoverResult(BaseModel):
+    """Response for POST /discover — an ephemeral ranked list answering the request."""
+
+    query: str
+    interpretation: str
+    count: int
+    model: str
+    queries: list[str]
+    recommendations: list[DiscoverBookOut]
+
+
 class ApiKeyRequest(BaseModel):
     """Body for setting the per-user Anthropic key. The key is encrypted at rest and
     never read back — there is no field that returns it."""
@@ -251,6 +345,36 @@ class UsageOut(BaseModel):
     by_operation: dict[str, float]
 
 
+class FormatMixOut(BaseModel):
+    novel: int
+    novella: int
+    collection: int
+    series: int
+    dominant: str | None
+    low_confidence: bool
+
+
+class GenreHighlightOut(BaseModel):
+    subject: str
+    share: float
+
+
+class EraSplitOut(BaseModel):
+    pre_2000: int
+    post_2000: int
+
+
+class ProfileHighlightsOut(BaseModel):
+    """Computed shelf highlights for the reveal's Beat 5 (no external calls)."""
+
+    thin: bool
+    n_authors: int
+    top_genres: list[GenreHighlightOut]
+    top_authors: list[str]
+    format_mix: FormatMixOut
+    era_split: EraSplitOut | None
+
+
 class ArchetypeAxisOut(BaseModel):
     """One axis score for the reader archetype (lens / engine / range / resonance)."""
 
@@ -265,6 +389,7 @@ class ArchetypeOut(BaseModel):
     code: str            # e.g. "IPBH"
     name: str            # e.g. "The Wandering Escapist"
     tagline: str
+    hook: str            # extends the tagline for Beat 7: "You're the one who {hook}."
     lens: ArchetypeAxisOut
     engine: ArchetypeAxisOut
     range: ArchetypeAxisOut
@@ -367,6 +492,48 @@ class RevokeRequest(BaseModel):
 
 class AdminMeOut(BaseModel):
     is_admin: bool
+
+
+class AdminUsageEventOut(BaseModel):
+    id: int
+    user_id: str
+    email: str | None = None
+    model: str
+    operation: str
+    input_tokens: int
+    output_tokens: int
+    cache_creation_input_tokens: int
+    cache_read_input_tokens: int
+    cost_usd: float
+    created_at: datetime
+
+
+class AdminUsageListOut(BaseModel):
+    events: list[AdminUsageEventOut]
+    total: int
+    total_cost_usd: float
+    limit: int
+    offset: int
+
+
+class AdminFeedbackOut(BaseModel):
+    id: int
+    user_id: str
+    email: str | None = None
+    category: str
+    body: str
+    trigger: str | None = None
+    run_id: str | None = None
+    page: str | None = None
+    app_version: str | None = None
+    created_at: datetime
+
+
+class AdminFeedbackListOut(BaseModel):
+    items: list[AdminFeedbackOut]
+    total: int
+    limit: int
+    offset: int
 
 
 # RecFeedbackResult forward-references BookOut (defined above); resolve it now.

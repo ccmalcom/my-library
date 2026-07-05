@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import useSWR from 'swr';
 import { api, type Stats } from '@/lib/api';
@@ -57,12 +57,15 @@ export default function LibraryGate({ children }: { children: React.ReactNode })
   // Shares the "stats" SWR key with the dashboard, so no duplicate fetch.
   const { data: stats, error, isLoading } = useSWR<Stats>('stats', () => api.stats());
   const [mode, setMode] = useState<'loading' | 'setup' | 'ready'>('loading');
+  const [latched, setLatched] = useState(false);
 
-  useEffect(() => {
-    if (mode !== 'loading') return; // decide once, then latch
-    if (isLoading || stats == null) return;
+  // Decide once, then latch: computed during render (React's sanctioned "adjust
+  // state while rendering" escape hatch) rather than in an effect, so the decision
+  // lands on the same render the data arrives instead of costing an extra pass.
+  if (!latched && !isLoading && stats != null) {
+    setLatched(true);
     setMode(stats.total === 0 ? 'setup' : 'ready');
-  }, [isLoading, stats, mode]);
+  }
 
   if (!gated) return <>{children}</>;
   // If the stats fetch fails, don't leave the user stuck on the spinner forever — fall
