@@ -33,3 +33,5 @@ docs/superpowers/
 .agents/
 # .claude/
 .worktrees/
+.ds-sync/
+ds-bundle/
