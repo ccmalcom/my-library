@@ -345,6 +345,37 @@ class UsageOut(BaseModel):
     by_operation: dict[str, float]
 
 
+class DirectiveOut(BaseModel):
+    """The user's saved custom instructions (null text/empty constraints when unset)."""
+
+    nl_text: str | None = None
+    constraints: dict = Field(default_factory=dict)
+    updated_at: datetime | None = None
+
+
+class DirectiveUpdateRequest(BaseModel):
+    """Body for PUT /directive - save the durable custom-instructions record."""
+
+    nl_text: str | None = None
+    constraints: dict = Field(default_factory=dict)
+
+
+class DirectiveDraftRequest(BaseModel):
+    """Body for POST /directive/draft - one turn of the elicitation assistant."""
+
+    message: str = Field(min_length=1, max_length=1000)
+    current_text: str | None = Field(default=None, max_length=4000)
+
+
+class DirectiveDraftOut(BaseModel):
+    """Ephemeral proposal from the elicitation assistant (never auto-saved)."""
+
+    proposed_text: str
+    constraints: dict = Field(default_factory=dict)
+    conflicts: list[str] = Field(default_factory=list)
+    assistant_message: str
+
+
 class FormatMixOut(BaseModel):
     novel: int
     novella: int

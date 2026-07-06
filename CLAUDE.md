@@ -22,10 +22,14 @@ The Wrapped-style profile reveal (Wave 4a) shipped: a nine-beat, full-screen onb
 sequence (`components/reveal/RevealSequence.tsx`) backed by `highlights.py`, `reveal.py`,
 and `archetype.ARCHETYPE_HOOKS` — replayable from `/profile` and wired into the
 `SetupWizard` "done" step.
+Custom instructions (natural-language taste directive) shipped: `UserDirective` table +
+`directive.py`; steers Stage-1 constraints + Stage-2 rerank + profile build; authored
+directly or via a bounded Haiku distill chat; surfaced on `/profile` (`CustomInstructions`)
+and as a reveal beat.
 
 ## Sub-documents (load when relevant)
 
-- **`docs/architecture.md`** — stack, pipeline modules (`ingest`, `catalog`, `enrich`, `profile`, `library`, `purge`, `archetype`, `recommend`, `stats`, `worker`)
+- **`docs/architecture.md`** — stack, pipeline modules (`ingest`, `catalog`, `enrich`, `profile`, `library`, `purge`, `archetype`, `recommend`, `directive`, `stats`, `worker`)
 - **`docs/hosting.md`** — Supabase auth, multi-tenancy, per-user API keys, background jobs, env vars, Alembic migrations, Railway/Vercel deploy
 - **`docs/frontend.md`** — Next.js routes, components, design system, auth boundaries, mobile/tablet, SWR patterns
 - **`docs/conventions.md`** — gotchas: TSX parser quirks, git rules, Python/CLI, data invariants, recommender, profile, SWR cache
@@ -50,6 +54,7 @@ python -m mylibrary.cli traits          # print the saved taste profile + eviden
 python -m mylibrary.cli add "Title"     # manually add a book (--author, --rating, --review, --shelf)
 python -m mylibrary.cli rate ID 1-5     # re-rate a book in-app (0 clears the override)
 python -m mylibrary.cli review ID "..." # write/clear (--clear) an in-app review
+python -m mylibrary.cli directive "..." # show/set (--clear) natural-language custom instructions
 python -m mylibrary.cli remove-book ID  # permanently delete a single book
 python -m mylibrary.cli backfill-descriptions  # repair rec-accepted books missing a description (--all-users for deployed DB)
 python -m mylibrary.cli clear-profile   # drop traits + recs; keep books (-y to skip confirm)
