@@ -306,7 +306,7 @@ def _fuzzy_duplicate(title: str | None, library_titles: list[str]) -> bool:
     on its own; author agreement is not required."""
     if not title:
         return False
-    return any(_title_sim(title, lt) >= _STRONG_SIM for lt in library_titles)
+    return any(_title_sim(title, lt) >= _STRONG_SIM for lt in set(library_titles))
 
 
 _LEARNER_EDITION_MARKERS = (
