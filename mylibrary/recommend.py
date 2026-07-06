@@ -1168,7 +1168,7 @@ def _claude_rerank(
         "the CANDIDATES list (cite each by its `idx`). Score 0..1 for fit. Penalize "
         "anything that trips an aversion trait or resembles a rejected book's noted reason. "
         "Ground every pick in specific trait ids "
-        "and the library book ids it most resembles — use only ids that appear above.\n\n"
+        "and the library book ids it most resembles - use only ids that appear above.\n\n"
         "CANDIDATES (JSON):\n"
         + json.dumps(indexed, ensure_ascii=False)
     )
@@ -1437,7 +1437,7 @@ def _rerank_discovery(
         for i, c in enumerate(candidates)
     ]
     profile_context = (
-        "READER TASTE PROFILE (secondary — the request rules):\n"
+        "READER TASTE PROFILE (secondary - the request rules):\n"
         "TASTE TRAITS (JSON):\n"
         + json.dumps(signal.get("traits") or [], ensure_ascii=False)
         + "\n\nLOVED BOOKS (JSON):\n"
