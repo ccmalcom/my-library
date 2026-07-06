@@ -689,7 +689,7 @@ function DnfTab({ books }: { books: Book[] }) {
   if (books.length === 0) {
     return (
       <div className="py-16 text-center text-faint">
-        Nothing abandoned yet. When a book isn&apos;t working, shelve it here guilt-free — quitting
+        Nothing abandoned yet. When a book isn&apos;t working, shelve it here guilt-free. Quitting
         is data too.
       </div>
     );

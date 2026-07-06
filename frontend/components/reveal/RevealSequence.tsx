@@ -132,7 +132,7 @@ function renderBeat(
           </h2>
           <p className="text-base text-muted">
             {beat.thin
-              ? `It\u2019s ${beat.nBooks} books \u2014 enough for a sketch, not yet a portrait.`
+              ? `It\u2019s ${beat.nBooks} books, enough for a sketch but not yet a portrait.`
               : `All ${beat.nBooks} books. The obsessions, the abandonments, the ones you rated at 2 a.m. and never reviewed.`}
           </p>
           <p className="text-base text-muted">Here’s what your shelf says about you.</p>
@@ -174,7 +174,7 @@ function renderBeat(
         <div className="space-y-5 text-left">
           {beat.genres.length >= 2 && (
             <p className="text-base text-muted">
-              <span className="font-semibold text-text">Genre</span> —{' '}
+              <span className="font-semibold text-text">Genre:</span>{' '}
               {beat.genres[0].share >= 0.8 ? (
                 <>
                   {beat.genres[0].subject}, {Math.round(beat.genres[0].share * 100)}% of your shelf.
@@ -189,14 +189,14 @@ function renderBeat(
             </p>
           )}
           <p className="text-base text-muted">
-            <span className="font-semibold text-text">Authors</span> —{' '}
+            <span className="font-semibold text-text">Authors:</span>{' '}
             {beat.authors.length > 0
               ? `${beat.authors.join(', ')}. When you find a voice you trust, you follow it.`
-              : 'No repeat authors in your top tier \u2014 you follow books, not names. Rare.'}
+              : 'No repeat authors in your top tier: you follow books, not names. Rare.'}
           </p>
           {beat.formatLine && (
             <p className="text-base text-muted">
-              <span className="font-semibold text-text">Format</span> — {beat.formatLine}
+              <span className="font-semibold text-text">Format:</span> {beat.formatLine}
             </p>
           )}
           <div className="text-center">
@@ -214,7 +214,7 @@ function renderBeat(
           {beat.rationale && <p className="text-sm text-faint">{beat.rationale}</p>}
           {beat.nearCenter && (
             <p className="text-xs italic text-faint">
-              This one was close — you live near the middle of this axis.
+              This one was close. You live near the middle of this axis.
             </p>
           )}
           <RevealButton onClick={h.next}>Continue</RevealButton>
@@ -226,7 +226,7 @@ function renderBeat(
         <div className="space-y-4">
           <p className="text-sm text-muted">
             {beat.thin
-              ? 'Early read: you might be \u2014'
+              ? 'Early read: you might be...'
               : `Four axes. ${beat.nBooks} books of evidence. One reader:`}
           </p>
           <p className="font-mono text-lg text-user">{beat.archetype.code}</p>
@@ -263,7 +263,7 @@ function renderBeat(
           ) : mostlyRejected ? (
             <>
               <h2 className="font-display text-2xl font-bold text-text">
-                We missed more than we hit — that happens with libraries like yours.
+                We missed more than we hit. That happens with libraries like yours.
               </h2>
               <p className="text-base text-muted">
                 Your corrections just taught us more than the import did. The next pass will be
@@ -278,7 +278,7 @@ function renderBeat(
                 <span className="text-user">{nRejected}</span> struck from the record.
               </p>
               <p className="text-base text-muted">
-                This is your taste profile now — not just what we inferred, what you signed off on.
+                This is your taste profile now: not just what we inferred, what you signed off on.
                 It gets smarter every time you rate, review, or correct us.
               </p>
             </>

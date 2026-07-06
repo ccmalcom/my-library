@@ -73,7 +73,7 @@ _SEED_TOOL = {
     "description": (
         "Propose catalog SEARCH queries that would surface books this reader is likely "
         "to love next. These are search terms (subjects, micro-genres, comp-author "
-        "phrasings) — NOT specific book titles. Each is run against a live book catalog."
+        "phrasings), NOT specific book titles. Each is run against a live book catalog."
     ),
     "input_schema": {
         "type": "object",
@@ -142,7 +142,8 @@ _RANK_TOOL = {
                                 "1-2 sentences in the voice of a well-read friend: what the "
                                 "book does, anchored to at most two library books by title, "
                                 "naming the mechanism of the fit. Honest about stretch picks. "
-                                "No generic praise, no clinical trait-speak."
+                                "Plain punctuation, no em dashes. No generic praise, no "
+                                "clinical trait-speak."
                             ),
                         },
                         "grounded_trait_ids": {
@@ -172,16 +173,17 @@ _RANK_TOOL = {
 
 _RANK_SYSTEM = (
     "You are a book recommender. You rank a fixed list of real catalog candidates against "
-    "a reader's evidence-backed taste profile. You never invent books — you only rank the "
+    "a reader's evidence-backed taste profile. You never invent books; you only rank the "
     "candidates given. Every pick cites the trait ids and library book ids it is grounded "
     "in, drawn only from the provided data. You prefer specific fit over popularity, and "
     "you respect aversion traits (penalize candidates that trip them).\n\n"
     "Write each rationale like a well-read friend pressing the book into their hands, in "
     "1-2 sentences: lead with what the book does, then anchor it to at most two of their "
-    "library books by title. Name the mechanism of the fit (pace, voice, structure, mood — "
+    "library books by title. Name the mechanism of the fit (pace, voice, structure, mood: "
     "whatever the trait actually is), never just shared genre. If the pick is a stretch, "
-    "say so honestly and name what still connects. Never write \"you'll love this\", "
-    "generic praise, or clinical trait language.\n\n"
+    "say so honestly and name what still connects. Use plain punctuation only: no em "
+    "dashes. Never write \"you'll love this\", generic praise, or clinical trait "
+    "language.\n\n"
     "Examples of the target voice:\n"
     "- Technically sci-fi, but it moves like the quiet family novels you rate highest: one "
     "household, twenty years, every chapter a knife slid in slowly.\n"
@@ -652,8 +654,8 @@ def _seed_pool(
 _BOOK_FACET_SYSTEM = (
     "You decompose ONE book into catalog search queries that would surface OTHER books "
     "like it. You propose search TERMS, never specific titles. Chase what makes this "
-    "particular book distinctive — its voice, structure, pace, mood, and specific subject "
-    "matter — not generic bestsellers in its genre. Do not aim queries at the book's own "
+    "particular book distinctive (its voice, structure, pace, mood, and specific subject "
+    "matter), not generic bestsellers in its genre. Do not aim queries at the book's own "
     "author (same-author books are handled separately); reach for comparable books by "
     "other authors."
 )
@@ -679,8 +681,8 @@ def _book_facet_queries(
     task_prompt = (
         f"The seed book is above. Propose up to {n_queries} CATALOG SEARCH QUERIES "
         "(search terms, not book titles) that would surface books a reader who loved this "
-        "one is likely to enjoy. Chase its distinguishing qualities — voice, structure, "
-        "mood, and specific subject matter — and avoid generic bestseller terms and the "
+        "one is likely to enjoy. Chase its distinguishing qualities (voice, structure, "
+        "mood, and specific subject matter) and avoid generic bestseller terms and the "
         "book's own author."
     )
     message = tracked_create(
@@ -730,25 +732,25 @@ def _similar_seed_pool(
 
 _DISCOVER_SYSTEM = (
     "You translate a reader's natural-language book request into catalog search queries and "
-    "constraints. You never name specific titles — you produce search TERMS (themes, genres, "
+    "constraints. You never name specific titles; you produce search TERMS (themes, genres, "
     "styles, comparable-author names when the reader gives one) that a book catalog can "
     "resolve.\n\n"
     "Rules:\n"
     "- The reader's request is the primary signal. Their taste profile is provided as "
     "secondary context: use it to break ties and set tone (e.g. their prose preferences), "
     "never to override what they asked for. If they ask for something their profile dislikes, "
-    "honor the request — people read outside their pattern on purpose.\n"
+    "honor the request; people read outside their pattern on purpose.\n"
     "- If the request names a book or author (\"like The Fifth Season\"), decompose WHY someone "
     "asks for that book into 3-6 distinct facets (e.g. geological apocalypse setting; "
     "second-person narration; rage as the engine; found family under oppression) and emit one "
-    "query per facet. Facets, not synonyms — six rewordings of the same idea retrieve the same "
+    "query per facet. Facets, not synonyms: six rewordings of the same idea retrieve the same "
     "shelf six times.\n"
     "- If the request is a mood or situation (\"something gentle for a bad week\", \"a beach book "
     "that isn't dumb\"), translate the mood into concrete catalog language: pacing, stakes, tone.\n"
     "- Extract hard constraints ONLY when the reader states them: language, publication era "
-    "(min_year / max_year), and subjects to avoid (exclude_subjects — e.g. \"nothing violent\" "
+    "(min_year / max_year), and subjects to avoid (exclude_subjects, e.g. \"nothing violent\" "
     "-> war, violence). These are filters, not queries. Do not invent constraints the reader "
-    "didn't state, and do not constrain by length or series — those aren't filterable.\n"
+    "didn't state, and do not constrain by length or series; those aren't filterable.\n"
     "- When the request is ambiguous, emit queries covering the 2-3 most likely readings rather "
     "than guessing one.\n\n"
     "Examples (request -> facets; constraints only when stated):\n"
@@ -769,7 +771,7 @@ _DISCOVER_TOOL = {
     "name": "interpret_request",
     "description": (
         "Translate a reader's natural-language book request into catalog SEARCH queries "
-        "(search terms — themes, styles, comparable-author names — never specific titles), "
+        "(search terms: themes, styles, comparable-author names, never specific titles), "
         "the hard constraints they stated, and a one-sentence interpretation of what they want."
     ),
     "input_schema": {
@@ -786,7 +788,7 @@ _DISCOVER_TOOL = {
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "A catalog search query for one facet — search terms, not a title.",
+                            "description": "A catalog search query for one facet: search terms, not a title.",
                         },
                         "rationale": {
                             "type": "string",
@@ -869,7 +871,7 @@ def _interpret_query(
     rules. Tracks spend under operation 'discover_interpret'."""
     client, _settings = _client(api_key)
     profile_context = (
-        "READER TASTE PROFILE (secondary context — the request rules):\n"
+        "READER TASTE PROFILE (secondary context; the request rules):\n"
         "TASTE TRAITS (JSON):\n"
         + json.dumps(signal.get("traits") or [], ensure_ascii=False)
         + "\n\nLOVED BOOKS (JSON):\n"
@@ -878,7 +880,7 @@ def _interpret_query(
     task_prompt = (
         f'The reader asked: "{query}"\n\n'
         "Interpret this request. Emit search QUERIES (facets, not titles), any hard "
-        "CONSTRAINTS they stated (language, era, subjects to avoid — omit if unstated), and "
+        "CONSTRAINTS they stated (language, era, subjects to avoid; omit if unstated), and "
         "a one-sentence INTERPRETATION of what they want."
     )
     message = tracked_create(
@@ -1123,7 +1125,7 @@ def _user_steering_block(signal: dict) -> str:
     lines.append(
         "Favor candidates resembling the more-like books; penalize candidates "
         "resembling the less-like books; penalize candidates matching frequent reject "
-        "reasons; weight trait influence by each trait's `user_weight` — traits with a "
+        "reasons; weight trait influence by each trait's `user_weight`: traits with a "
         "lower weight should influence the score less (0.0 = ignore, 1.0 = normal)."
     )
     return "\n\n".join(lines)
@@ -1154,7 +1156,7 @@ def _claude_rerank(
         + (
             "\n\nREJECTED RECOMMENDATIONS WITH NOTES (JSON):\n"
             "These are books the reader explicitly skipped with an explanation. Treat "
-            "each note as direct testimony about what to avoid — heavily penalize "
+            "each note as direct testimony about what to avoid; heavily penalize "
             "candidates that share the same qualities.\n"
             + json.dumps(rejected_with_notes, ensure_ascii=False)
             if rejected_with_notes else ""
@@ -1166,7 +1168,7 @@ def _claude_rerank(
         "the CANDIDATES list (cite each by its `idx`). Score 0..1 for fit. Penalize "
         "anything that trips an aversion trait or resembles a rejected book's noted reason. "
         "Ground every pick in specific trait ids "
-        "and the library book ids it most resembles — use only ids that appear above.\n\n"
+        "and the library book ids it most resembles - use only ids that appear above.\n\n"
         "CANDIDATES (JSON):\n"
         + json.dumps(indexed, ensure_ascii=False)
     )
@@ -1249,7 +1251,8 @@ _SIMILAR_RANK_TOOL = {
                                 "1-2 sentences in the voice of a well-read friend: what the "
                                 "book does and how it echoes the seed book, naming the "
                                 "mechanism of the resemblance (pace, voice, structure, mood, "
-                                "subject) — never just shared genre. Honest about stretch picks."
+                                "subject), never just shared genre. Honest about stretch "
+                                "picks. Plain punctuation, no em dashes."
                             ),
                         },
                     },
@@ -1264,12 +1267,13 @@ _SIMILAR_RANK_TOOL = {
 _SIMILAR_RANK_SYSTEM = (
     "You recommend books similar to ONE specific book the reader already knows. You rank a "
     "fixed list of real catalog candidates by how much they resemble that seed book, and you "
-    "never invent books — you only rank the candidates given. You prefer specific resemblance "
+    "never invent books; you only rank the candidates given. You prefer specific resemblance "
     "(voice, structure, pace, mood, subject) over shared genre or popularity.\n\n"
     "Write each rationale like a well-read friend pressing the book into their hands, in 1-2 "
     "sentences: lead with what the book does, then name exactly how it echoes the seed book. "
-    "If a pick is a stretch, say so honestly and name what still connects. Never write "
-    "\"you'll love this\", generic praise, or clinical genre-speak."
+    "If a pick is a stretch, say so honestly and name what still connects. Use plain "
+    "punctuation only: no em dashes. Never write \"you'll love this\", generic praise, or "
+    "clinical genre-speak."
 )
 
 
@@ -1378,7 +1382,8 @@ _DISCOVER_RANK_TOOL = {
                                 "1-2 sentences answering the request in its own terms: what the "
                                 "book does and which facet of the request it delivers. Name the "
                                 "mechanism (pace, voice, structure, mood, subject), not just "
-                                "shared genre. Honest about stretch picks."
+                                "shared genre. Honest about stretch picks. Plain punctuation, "
+                                "no em dashes."
                             ),
                         },
                     },
@@ -1393,15 +1398,15 @@ _DISCOVER_RANK_TOOL = {
 _DISCOVER_RANK_SYSTEM = (
     "You are a book recommender answering a reader's specific request. You rank a fixed list "
     "of real catalog candidates by how well they answer THAT REQUEST, and you never invent "
-    "books — you only rank the candidates given. Rank fit against the request first and the "
+    "books; you only rank the candidates given. Rank fit against the request first and the "
     "reader's taste profile second (use the profile only to break ties). You prefer specific "
     "fit (voice, structure, pace, mood, subject) over popularity.\n\n"
     "Write each rationale like a well-read friend pressing the book into their hands, in 1-2 "
-    "sentences: lead with what the book does, then answer the request in its own terms — if "
+    "sentences: lead with what the book does, then answer the request in its own terms: if "
     "they asked for \"like The Fifth Season\", say which facet of it this book delivers. Name "
     "the mechanism of the fit, never just shared genre. If a pick is a stretch, say so honestly "
-    "and name what still connects. Never write \"you'll love this\", generic praise, or clinical "
-    "trait language."
+    "and name what still connects. Use plain punctuation only: no em dashes. Never write "
+    "\"you'll love this\", generic praise, or clinical trait language."
 )
 
 
@@ -1432,7 +1437,7 @@ def _rerank_discovery(
         for i, c in enumerate(candidates)
     ]
     profile_context = (
-        "READER TASTE PROFILE (secondary — the request rules):\n"
+        "READER TASTE PROFILE (secondary - the request rules):\n"
         "TASTE TRAITS (JSON):\n"
         + json.dumps(signal.get("traits") or [], ensure_ascii=False)
         + "\n\nLOVED BOOKS (JSON):\n"

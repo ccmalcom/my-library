@@ -119,9 +119,9 @@ export default function HomePage() {
   const recBlocked = noProfile || isDirty;
 
   const recBlockMsg = noProfile
-    ? 'No taste profile yet \u2014 build one on your profile page first.'
+    ? 'No taste profile yet. Build one on your profile page first.'
     : isDirty
-      ? 'Your library changed since the last profile build — update it on your profile page.'
+      ? 'Your library changed since the last profile build. Update it on your profile page.'
       : null;
 
   const displayName = userProfile?.display_name ?? null;

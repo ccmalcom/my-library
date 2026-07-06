@@ -149,7 +149,7 @@ export default function SwipeCard({ rec, traits, onDecide, zIndex = 0, isTop }: 
         <div>
           <p className="mb-1 font-mono text-xs uppercase tracking-widest text-faint">Why for you</p>
           <p className="text-sm leading-relaxed text-text">
-            {rec.rationale || 'Retrieved from your taste profile \u2014 no note from the reranker.'}
+            {rec.rationale || 'Retrieved from your taste profile. No note from the reranker.'}
           </p>
         </div>
 

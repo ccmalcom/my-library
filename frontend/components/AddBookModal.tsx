@@ -100,7 +100,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
       requestAnimationFrame(() => searchRef.current?.focus());
     } catch (e) {
       const raw = e instanceof Error ? e.message : 'Failed to add book.';
-      const msg = raw.includes('409') ? "Already shelved \u2014 that one's in your library." : raw;
+      const msg = raw.includes('409') ? "Already shelved. That one's in your library." : raw;
       toast.error(msg);
       setSaving(false);
     }
@@ -312,7 +312,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
             />
             {reviewWithoutRating && (
               <p className="mt-1 text-xs text-warning">
-                A review needs a rating to anchor it — add stars first.
+                A review needs a rating to anchor it. Add stars first.
               </p>
             )}
           </div>

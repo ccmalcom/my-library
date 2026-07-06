@@ -17,7 +17,7 @@ export default function UsageWarningBanner() {
         <p className="text-sm text-warning">
           You&apos;re approaching your monthly soft cap (
           <span className="font-semibold">${data.spent_usd.toFixed(2)}</span> of $
-          {data.cap_usd.toFixed(2)}). Nothing stops — this is a heads-up, not a wall.{' '}
+          {data.cap_usd.toFixed(2)}). Nothing stops. This is a heads-up, not a wall.{' '}
           <Link href="/settings" className="font-semibold underline">
             Details
           </Link>

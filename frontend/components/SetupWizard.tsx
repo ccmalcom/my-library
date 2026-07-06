@@ -231,8 +231,8 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
       <div>
         <h2 className="mb-1 text-xl font-semibold text-text">Add your Anthropic API key</h2>
         <p className="text-sm text-muted">
-          MyLibrary runs on Claude — it reads your ratings to build a taste profile and find your
-          next books. That takes an API key.
+          MyLibrary runs on Claude. It reads your ratings to build a taste profile and find your
+          next books, and that takes an API key.
         </p>
       </div>
 
@@ -271,7 +271,7 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
           </p>
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}
-        {saved && <p className="text-sm text-success">Key saved — moving on.</p>}
+        {saved && <p className="text-sm text-success">Key saved. Moving on...</p>}
         <Button
           type="submit"
           size="lg"
@@ -304,7 +304,7 @@ function UploadStep({
     if (!f) return;
     if (!f.name.toLowerCase().endsWith('.csv')) {
       setError(
-        "That's not a .csv \u2014 export one from Goodreads (My Books \u203A Import/Export) or The " +
+        "That's not a .csv. Export one from Goodreads (My Books \u203A Import/Export) or The " +
           'StoryGraph and try again.'
       );
       return;
@@ -368,7 +368,7 @@ function UploadStep({
           <div className="space-y-1">
             <p className="font-medium text-success">{file.name}</p>
             <p className="text-xs text-faint">
-              {(file.size / 1024).toFixed(0)} KB — click to change
+              {(file.size / 1024).toFixed(0)} KB, click to change
             </p>
           </div>
         ) : (
@@ -434,7 +434,7 @@ function ManualStep({ onDone }: { onDone: () => void }) {
         <h2 className="mb-1 text-xl font-semibold text-text">Build your starter library</h2>
         <p className="text-sm text-muted">
           Add a handful of books you&apos;ve read and rate them. Five or six favorites are enough to
-          start reading you — add the rest whenever.
+          start reading you. Add the rest whenever.
         </p>
       </div>
 
@@ -442,7 +442,7 @@ function ManualStep({ onDone }: { onDone: () => void }) {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-elevated/40 p-8 text-center">
           <BookOpen className="mb-2 h-8 w-8 text-faint" />
           <p className="text-sm text-muted">
-            Empty shelf. Add the first book — the one you&apos;d make everyone read.
+            Empty shelf. Add the first book, the one you&apos;d make everyone read.
           </p>
         </div>
       ) : (
@@ -570,7 +570,7 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
         <p className="text-sm text-muted">
           <strong className="text-text">{ingestResult.inserted}</strong> books in
           {ingestResult.skipped > 0 && ` (${ingestResult.skipped} already existed)`}. Now we fetch
-          what the CSV left out — covers, page counts, genres — from Open Library and Google Books.
+          what the CSV left out (covers, page counts, genres) from Open Library and Google Books.
           About <strong className="text-text">5–10 minutes</strong> for a typical library.
         </p>
       </div>
@@ -578,7 +578,7 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
       <div className="rounded-xl border border-border bg-elevated p-4 text-sm text-muted space-y-1.5">
         <p>Pulls covers and metadata from public catalogs</p>
         <p>Recommendations need this done first</p>
-        <p>Safe to interrupt — it resumes where it stopped</p>
+        <p>Safe to interrupt; it resumes where it stopped</p>
       </div>
 
       {running && (
@@ -587,8 +587,8 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
             <Spinner size="sm" className="mt-0.5 shrink-0" />
             <span>
               {status === 'pending'
-                ? 'Queued — starting shortly…'
-                : 'Fetching covers and metadata\u2026 your shelf is getting dressed.'}
+                ? 'Queued. Starting shortly\u2026'
+                : 'Fetching covers and metadata from the public catalogs\u2026'}
             </span>
           </div>
           {total > 0 && (
@@ -730,7 +730,7 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
           <p className="text-sm text-muted">
             {profiled
               ? 'Books shelved, taste profiled. Now let us show you what we found.'
-              : 'Books are shelved. Build your taste profile next — recommendations need it.'}
+              : 'Books are shelved. Build your taste profile next; recommendations need it.'}
           </p>
         </div>
 

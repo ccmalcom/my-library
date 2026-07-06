@@ -2,9 +2,6 @@
 
 ## BUGS
 
-- recommender giving books in series not yet read that are not the first book (I.e. 7th book in series)
-- got frankenstein, but the version for russian students learning english:
-  - "You already rated Frankenstein a 5★ for its voice and darkness; this is the same text in a different edition/language format, so it's a reread more than a new discovery, but it hits the canonical-wit trait dead on."
 - sooooo many emdashes. Before we do a full copy review, I need to run the thing that sets up claude with your writing style
 
 ## enhancements

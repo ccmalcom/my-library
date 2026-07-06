@@ -162,7 +162,7 @@ export default function SwipePage() {
           <Sparkles className="mx-auto h-12 w-12 text-accent" />
           <h2 className="text-xl font-display font-semibold text-text">That&apos;s the batch.</h2>
           <p className="text-muted">
-            All {total.length} picks reviewed — your verdicts are already sharpening the next run.
+            All {total.length} picks reviewed. Your verdicts are already sharpening the next run.
           </p>
           <Button onClick={() => router.push('/library?tab=to-read')}>
             See your to-read shelf
@@ -323,7 +323,7 @@ export default function SwipePage() {
             What missed?
           </p>
           <p className="mb-4 text-xs text-faint">
-            Optional — every reason makes the next batch smarter.
+            Optional. Every reason makes the next batch smarter.
           </p>
           <div className="flex flex-wrap gap-2">
             {Object.entries(REJECT_REASONS).map(([key, label]) => {
