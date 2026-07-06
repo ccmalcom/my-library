@@ -43,7 +43,7 @@ function DangerAction({
       setError(
         e instanceof Error
           ? e.message
-          : 'Something went wrong. Nothing was changed \u2014 try again.'
+          : 'Something went wrong, and nothing was changed. Try again.'
       );
     } finally {
       setRunning(false);
@@ -69,7 +69,7 @@ function DangerAction({
               Cancel
             </Button>
             <Button variant="danger" size="sm" loading={running} onClick={handleConfirm}>
-              {running ? 'Working\u2026' : "I'm sure \u2014 do it"}
+              {running ? 'Working\u2026' : "I'm sure, do it"}
             </Button>
           </>
         ) : (
@@ -135,7 +135,7 @@ export default function SettingsPage() {
       const blob = await api.exportLibrary(format);
       const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       downloadBlob(blob, `mylibrary-backup-${stamp}.${format}`);
-      toast.success('Backup downloaded \u2014 your ratings and reviews are in it.');
+      toast.success('Backup downloaded. Your ratings and reviews are in it.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Export failed.');
     } finally {
@@ -550,7 +550,7 @@ export default function SettingsPage() {
               )}
 
               <p className="mt-4 text-xs text-faint">
-                A soft cap for visibility only — recommendations and profiling never stop running.
+                A soft cap for visibility only. Recommendations and profiling never stop.
               </p>
             </>
           ) : (
@@ -569,7 +569,7 @@ export default function SettingsPage() {
         <div className="space-y-3">
           <DangerAction
             title="Reset taste profile"
-            description="Deletes your taste traits and recommendations. Your books stay put \u2014 rebuild anytime."
+            description="Deletes your taste traits and recommendations. Your books stay put; rebuild anytime."
             buttonLabel="Reset profile"
             onRun={async () => {
               await api.clearProfile();
@@ -583,7 +583,7 @@ export default function SettingsPage() {
 
           <DangerAction
             title="Clear library"
-            description="Deletes every book, all enrichment, and your taste profile \u2014 a factory reset for your library."
+            description="Deletes every book, all enrichment, and your taste profile: a factory reset for your library."
             buttonLabel="Clear library"
             onRun={async () => {
               await api.clearLibrary();

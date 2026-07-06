@@ -24,7 +24,7 @@ export default function ReprofileBanner() {
       setError(
         e instanceof Error
           ? e.message
-          : "The update didn't finish. Your current profile still stands \u2014 try again."
+          : "The update didn't finish. Your current profile still stands; try again."
       );
     } finally {
       setRunning(false);
@@ -36,7 +36,7 @@ export default function ReprofileBanner() {
       <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-2.5">
         <p className="text-sm text-warning">
           <span className="font-semibold">Your taste has new evidence. </span> Ratings and edits
-          since the last build aren&apos;t in your profile yet. Re-profile to fold them in — one
+          since the last build aren&apos;t in your profile yet. Re-profile to fold them in: one
           Claude call, when you choose.
           {error && <span className="ml-2 text-danger">{error}</span>}
         </p>

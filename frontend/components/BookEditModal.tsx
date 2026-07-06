@@ -207,7 +207,7 @@ export default function BookEditModal({
         />
         {reviewWithoutRating && (
           <p className="mt-1 text-xs text-warning">
-            A review needs a rating to anchor it — add stars first.
+            A review needs a rating to anchor it. Add stars first.
           </p>
         )}
       </div>

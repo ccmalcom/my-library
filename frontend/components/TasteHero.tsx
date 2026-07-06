@@ -69,7 +69,7 @@ function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
                   {letters}
                 </span>
                 <div>
-                  <span className="font-semibold text-text">{name} — </span>
+                  <span className="font-semibold text-text">{name}: </span>
                   <span className="text-muted">{desc}</span>
                 </div>
               </div>
@@ -77,13 +77,13 @@ function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <p className="text-muted">
-            The four letters combine into one of 16 named archetypes — from The Wandering Escapist
+            The four letters combine into one of 16 named archetypes, from The Wandering Escapist
             to The Cerebral Architect. Your code is derived from your actual rated books and taste
             traits, so it should feel like you.
           </p>
 
           <p className="text-faint text-xs">
-            Doesn&apos;t feel like you? Correct your traits and re-derive — the code follows the
+            Doesn&apos;t feel like you? Correct your traits and re-derive. The code follows the
             evidence.
           </p>
         </div>
@@ -409,7 +409,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
         <div>
           {archetype.is_stale && (
             <span className="text-xs text-warning">
-              Profile changed — this archetype may be stale. Re-derive when ready.
+              Profile changed, so this archetype may be stale. Re-derive when ready.
             </span>
           )}
         </div>

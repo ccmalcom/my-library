@@ -54,7 +54,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
     try {
       await api.updateTrait(trait.id, { claim: trimmed });
       await mutate(TRAITS_KEY);
-      toast.success('Noted \u2014 your profile just got sharper.');
+      toast.success('Noted. Your profile just got sharper.');
       setEditing(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Save failed.');
@@ -78,7 +78,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
         { revalidate: false }
       );
       await mutate(PROFILE_STATUS_KEY);
-      toast.success("Updated \u2014 we'll recommend accordingly.");
+      toast.success("Updated. We'll recommend accordingly.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Update failed.');
     } finally {
@@ -269,7 +269,7 @@ function BuildProfileCTA({ onBuild }: { onBuild: () => Promise<void> }) {
       setError(
         e instanceof Error
           ? e.message
-          : 'The profile build failed — your books are untouched. Try again.'
+          : 'The profile build failed. Your books are untouched; try again.'
       );
       setRunning(false);
     }

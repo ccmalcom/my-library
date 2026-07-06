@@ -29,7 +29,8 @@ _SYSTEM = (
     "for a personal reading app. Each line addresses the reader directly ('You...'), "
     "uses concrete nouns over abstractions, contains no hedging words, and asserts "
     "nothing the source claim doesn't already say. Never gush; the delight is in the "
-    "specificity. Return one line per trait id via the record_reveal_lines tool."
+    "specificity. Use plain punctuation only: no em dashes. "
+    "Return one line per trait id via the record_reveal_lines tool."
 )
 
 # 3-5 few-shots (calibration Set 1) baked into the prompt as anchors.
@@ -39,7 +40,7 @@ _FEWSHOTS = [
     ("Reader consistently rewards character interiority over plot momentum",
      "You'll forgive a slow plot if the people feel real."),
     ("Rewards completed series over standalones",
-     "When you commit, you commit. Standalones envy your series."),
+     "When you commit, you commit. Standalones rarely make your top shelf."),
     ("Penalizes romance subplots that interrupt the main narrative",
      "Love stories that stall the plot lose you fast."),
     ("Possible preference for translated fiction; sample is small",
@@ -61,7 +62,7 @@ _REVEAL_TOOL = {
                         "reveal_line": {
                             "type": "string",
                             "description": "<=14 words, second person, concrete, no hedging, "
-                            "derivable from the claim.",
+                            "derivable from the claim. Plain punctuation, no em dashes.",
                         },
                     },
                     "required": ["id", "reveal_line"],
@@ -86,7 +87,8 @@ def _build_reveal_prompt(traits: list[dict]) -> str:
         "  - Concrete nouns over abstractions ('slow first chapters', not 'gradual pacing').\n"
         "  - No hedging words inside the line (no 'maybe', 'probably', 'we think').\n"
         "  - Assert nothing the claim doesn't already say. No new facts.\n"
-        "  - For an aversion, keep a knowing tone — 'not for you', never 'you failed to appreciate'.\n\n"
+        "  - For an aversion, keep a knowing tone: 'not for you', never 'you failed to appreciate'.\n"
+        "  - Plain punctuation only. No em dashes.\n\n"
         "Examples:\n"
         + examples
         + "\n\nReturn exactly one line per id via record_reveal_lines.\n\n"

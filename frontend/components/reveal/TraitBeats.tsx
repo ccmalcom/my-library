@@ -12,7 +12,7 @@ type AversionsBeat = Extract<Beat, { kind: 'aversions' }>;
 export type Verdict = 'confirmed' | 'edited' | 'rejected';
 
 const CONFIRM_TOAST = "Noted. We'll lean on this.";
-const REJECT_TOAST = 'Fair. Forgotten.';
+const REJECT_TOAST = 'Fair enough, forgotten.';
 
 /** "A", "A and B", or "A, B, and C" — matches the spec's evidence-row grammar. */
 function joinWithAnd(items: string[]): string {
@@ -73,7 +73,7 @@ function VerdictControls({
     try {
       await api.updateTrait(trait.id, { claim: trimmed, user_note: trimmed });
       onVerdict(trait.id, 'edited');
-      toast.success('Noted \u2014 your profile just got sharper.');
+      toast.success('Noted. Your profile just got sharper.');
       onNext();
     } catch {
       toast.error("That didn't take. Try again.");
@@ -92,7 +92,7 @@ function VerdictControls({
           className="w-full resize-none rounded-lg border border-user bg-elevated px-3 py-2 text-sm text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
         />
         <p className="text-xs text-faint">
-          Say it your way — this feeds your recommendations directly.
+          Say it your way. It feeds your recommendations directly.
         </p>
         <div className="flex items-center justify-center gap-2">
           <button
@@ -167,7 +167,7 @@ export function RewardTraitBeat({
   return (
     <div className="space-y-5">
       {lowConfidence && (
-        <p className="font-mono text-xs italic text-faint">We’re less sure about this one —</p>
+        <p className="font-mono text-xs italic text-faint">We’re less sure about this one.</p>
       )}
       <h2 className="font-display text-3xl font-bold leading-tight text-text sm:text-4xl">
         <span className="text-user">{line}</span>
@@ -227,7 +227,7 @@ export function AversionsBeat({
         ))}
       </ul>
       <p className="text-xs text-faint">
-        Aversions matter as much as favorites — they’re half of what makes recommendations feel like
+        Aversions matter as much as favorites. They’re half of what makes recommendations feel like
         yours.
       </p>
       <RevealButton onClick={onNext}>Continue</RevealButton>

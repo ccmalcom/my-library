@@ -94,7 +94,7 @@ export default function AdminPage() {
       toast.success(
         result.added > 0
           ? `Added ${result.added} user${result.added !== 1 ? 's' : ''} from Supabase.`
-          : 'Already in sync — no new users found.'
+          : 'Already in sync. No new users found.'
       );
       await mutate();
     } catch (err) {
@@ -228,7 +228,7 @@ function UserRow({ user, onRevoked }: { user: AdminUser; onRevoked: () => void }
 
   async function handleRevoke() {
     if (!user.supabase_user_id) {
-      toast.error('User has not signed up yet — nothing to revoke.');
+      toast.error('User has not signed up yet, so nothing to revoke.');
       setConfirming(false);
       return;
     }
