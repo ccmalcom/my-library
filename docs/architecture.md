@@ -170,6 +170,18 @@
   share to `_MAX_LIBRARY_AUTHOR_SHARE=0.4`. **Cold-start gate:** `_is_cold_start` returns True
   when loved < 8 or rated < 12; in cold-start mode, `_metadata_pool` skips author expansion and
   `recommend()` returns `cold_start: true`.
+  **Series gate:** `_series_ok` blocks book N (N>1) of a series the reader hasn't
+  started, parsed from a trailing Goodreads/OL-style `(Series, #N)` title marker via
+  `_series_info`; titles without that marker always pass (no series-field fetch —
+  the 2026-06-29 plan already found deterministic title parsing sufficient for the
+  manual-search picker and this follows the same precedent). **Edition/duplicate
+  gate:** `_fuzzy_duplicate` catches same-work reissues (abridged/translated/ELT
+  graded readers) that dodge the exact `(title, author)` dedup key because they're
+  credited to a different author field — a near-identical normalized title
+  (`enrich._title_sim` >= `enrich._STRONG_SIM`) is treated as the same work
+  regardless of author. `_is_learner_edition` drops graded-reader/ESL/
+  language-learner editions outright via title/subject keyword markers
+  (`_LEARNER_EDITION_MARKERS`), since they're never a genuine new-discovery pick.
   **Spend tracking:** both Claude calls (`_claude_seed_queries` → `recommend_seed`,
   `_claude_rerank` → `recommend_rerank`) go through `usage.tracked_create`, recording tokens + cost.
 

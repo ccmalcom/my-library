@@ -32,7 +32,7 @@ from collections import Counter
 
 from .config import LOCAL_USER_ID, get_settings
 from .db import Book, Recommendation, TasteSignal, TasteTrait, init_db, session_scope
-from .enrich import _normalize_title, _surname
+from .enrich import _STRONG_SIM, _normalize_title, _surname, _title_sim
 from .profile import books_changed_since, get_profile_meta
 from .usage import tracked_create
 from .user_settings import resolve_anthropic_key
@@ -260,6 +260,80 @@ def _language_ok(lang: str | None, allowed: set[str]) -> bool:
     return lang in allowed
 
 
+_SERIES_PAREN_RE = re.compile(
+    r"\(([^()]+?),\s*(?:#|book\s+|vol\.?\s+|volume\s+)(\d{1,3})\)",
+    re.IGNORECASE,
+)
+
+
+def _series_info(title: str | None) -> tuple[str, int] | None:
+    """Extract (series_name, position) from a Goodreads/OL-style trailing
+    parenthetical like '(Mistborn, #6)' or '(The Stormlight Archive, Book 2)'.
+    Returns None when the title carries no such marker -- most books don't, and
+    absence just means we can't tell it's a sequel from the title alone."""
+    if not title:
+        return None
+    m = _SERIES_PAREN_RE.search(title)
+    if not m:
+        return None
+    name = re.sub(r"\s+", " ", m.group(1)).strip().lower()
+    if not name:
+        return None
+    return name, int(m.group(2))
+
+
+def _series_ok(title: str | None, library_series: dict[str, set[int]]) -> bool:
+    """Blocks book N (N>1) of a series the reader hasn't started -- i.e. owns no
+    earlier volume, on any shelf, under the same series name. Titles without a
+    detectable '(Series, #N)' marker always pass: we can't identify them as a
+    sequel from text alone, and dropping candidates on a guess would silently
+    remove unrelated standalone books too."""
+    info = _series_info(title)
+    if info is None:
+        return True
+    name, position = info
+    if position <= 1:
+        return True
+    owned = library_series.get(name)
+    return bool(owned and any(p < position for p in owned))
+
+
+def _fuzzy_duplicate(title: str | None, library_titles: list[str]) -> bool:
+    """Catches same-work editions that survive the exact (title, author) dedup key --
+    e.g. an abridged/translated/ELT-graded-reader reissue credited to a different
+    'author' field (a retelling editor or publisher series name instead of the
+    original author). A near-identical normalized title is treated as the same work
+    on its own; author agreement is not required."""
+    if not title:
+        return False
+    return any(_title_sim(title, lt) >= _STRONG_SIM for lt in set(library_titles))
+
+
+_LEARNER_EDITION_MARKERS = (
+    "graded reader",
+    "for foreign speakers",
+    "for esl",
+    "for efl",
+    "esl reader",
+    "efl reader",
+    "english language learners",
+    "simplified english edition",
+    "learner's edition",
+    "students of english",
+)
+
+
+def _is_learner_edition(cand: dict) -> bool:
+    """Flags graded-reader / ESL / abridged-for-language-learners reissues. These
+    carry title or subject phrasing like 'graded reader' or 'for foreign speakers'
+    (the latter mirrors real OpenLibrary/Google Books subject-heading text). They
+    aren't a genuine discovery for a taste-driven recommender even when the reader
+    has never read the original work, so they're dropped outright rather than only
+    deduped against an owned copy."""
+    haystack = " | ".join([cand.get("title") or "", *(cand.get("subjects") or [])]).lower()
+    return any(marker in haystack for marker in _LEARNER_EDITION_MARKERS)
+
+
 def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     """Summarize the library: loved books, their top subjects/authors, and the dedup
     keys/ISBNs of everything already on a shelf (so we never re-recommend them)."""
@@ -269,6 +343,8 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     library_isbns: set[str] = set()
     library_languages: set[str] = set()
     library_authors: set[str] = set()
+    library_titles: list[str] = []
+    library_series: dict[str, set[int]] = {}
     loved: list[dict] = []
     subject_counts: Counter[str] = Counter()
     author_counts: Counter[str] = Counter()
@@ -276,6 +352,12 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
 
     for b in books:
         library_keys.add(_dedup_key(b.title, b.author))
+        if b.title:
+            library_titles.append(b.title)
+        series_info = _series_info(b.title)
+        if series_info is not None:
+            name, position = series_info
+            library_series.setdefault(name, set()).add(position)
         if b.isbn13:
             library_isbns.add(b.isbn13)
         enr_lang = b.enrichment.language if b.enrichment else None
@@ -320,6 +402,8 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     rejected_with_notes: list[dict] = []
     for r in rejected:
         library_keys.add(_dedup_key(r.title, r.author))
+        if r.title:
+            library_titles.append(r.title)
         if r.isbn13:
             library_isbns.add(r.isbn13)
         if r.user_note:
@@ -346,6 +430,8 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
         "library_isbns": library_isbns,
         "library_languages": library_languages,
         "library_authors": library_authors,
+        "library_titles": library_titles,
+        "library_series": library_series,
         "loved": loved,
         "rated_count": rated_count,
         "top_subjects": [s for s, _ in subject_counts.most_common(_TOP_SUBJECTS)],
@@ -911,6 +997,8 @@ def _assemble(
     """Merge both pools, drop library books + duplicates, tag provenance, cap size."""
     library_keys = signal["library_keys"]
     library_isbns = signal["library_isbns"]
+    library_series = signal.get("library_series") or {}
+    library_titles = signal.get("library_titles") or []
     allowed_langs = _allowed_languages(signal)
     by_key: dict[tuple[str, str], dict] = {}
 
@@ -925,6 +1013,12 @@ def _assemble(
         if isbn and isbn in library_isbns:
             return
         if not _language_ok(cand.get("language"), allowed_langs):
+            return
+        if not _series_ok(title, library_series):
+            return
+        if _fuzzy_duplicate(title, library_titles):
+            return
+        if _is_learner_edition(cand):
             return
         existing = by_key.get(key)
         if existing is None:
