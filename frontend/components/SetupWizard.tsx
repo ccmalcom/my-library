@@ -587,7 +587,7 @@ function EnrichStep({ ingestResult, onDone }: { ingestResult: IngestResult; onDo
             <Spinner size="sm" className="mt-0.5 shrink-0" />
             <span>
               {status === 'pending'
-                ? 'Queued. Starting shortly…'
+                ? 'Queued. Starting shortly\u2026'
                 : 'Fetching covers and metadata from the public catalogs\u2026'}
             </span>
           </div>
