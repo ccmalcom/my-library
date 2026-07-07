@@ -394,6 +394,18 @@ function UploadStep({
         </Button>
       </form>
 
+      <p className="text-center text-xs text-faint">
+        No Goodreads or StoryGraph history?{' '}
+        <a
+          href="/mylibrary-template.csv"
+          download
+          className="text-accent hover:underline"
+        >
+          Download a blank template
+        </a>
+        , fill in the books you remember, and drop it in above.
+      </p>
+
       <div className="flex items-center gap-3 text-xs text-faint">
         <div className="h-px flex-1 bg-border" />
         or
