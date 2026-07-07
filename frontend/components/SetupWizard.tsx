@@ -401,7 +401,7 @@ function UploadStep({
           download
           className="text-accent hover:underline"
         >
-          Download a blank template
+          Download a CSV template
         </a>
         , fill in the books you remember, and drop it in above.
       </p>
