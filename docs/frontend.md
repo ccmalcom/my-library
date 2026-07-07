@@ -33,7 +33,7 @@ Supabase is used purely to get a session — never to query tables (the FastAPI 
 - `/to-read` — per-book: start reading / mark finished → review / remove.
 - `/library` — rated books; click a row to re-rate/review; "N books waiting on a rating" button steps through unrated read books; **+ Add book** button opens `AddBookModal`; "N books need a match check" button (shown whenever any book across all four shelves has `confidence_label === 'LOW'`) steps through `EnrichmentCorrectionModal`.
 - `/profile` — `TasteHero` archetype card at top; taste traits with inline editing, `CustomInstructions` editor, rating distribution, genre breakdown.
-- `/setup` — CSV import wizard plus a no-CSV "add books manually" branch (`ManualStep`). Now a thin wrapper around `components/SetupWizard.tsx`.
+- `/setup` — CSV import wizard plus a no-CSV "add books manually" branch (`ManualStep`). Now a thin wrapper around `components/SetupWizard.tsx`. `UploadStep` also links a downloadable blank template (`public/mylibrary-template.csv`, headers = the `canonical` import format) for testers with no Goodreads/StoryGraph export — fills through the same upload/`detect_format` path, no separate code path.
 - `/settings` — API key management, **Claude usage this month** panel, + Danger Zone.
   The usage panel (`getUsage` / `USAGE_KEY` SWR call) shows month-to-date spend vs. the
   soft cap as a progress bar, a per-operation cost breakdown (`by_operation`), an
