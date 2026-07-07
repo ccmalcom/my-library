@@ -56,7 +56,7 @@ export default function DirectiveChat({
           placeholder="I want deep characters and slow-burn plots, nothing too bleak, and I'm trying to read more nonfiction this year."
         />
         <Button onClick={send} loading={loading} disabled={loading || !message.trim()}>
-          {loading ? 'Thinking…' : 'Draft it'}
+          {loading ? 'Thinking...' : 'Draft it'}
         </Button>
         {error && <p className="text-sm text-danger">{error}</p>}
 

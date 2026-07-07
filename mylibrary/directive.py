@@ -193,21 +193,20 @@ def _existing_signals(session, user_id: str) -> dict:
         )
     ]
 
-    def _label(book_id):
-        if book_id is None:
-            return None
-        b = session.query(Book).filter(
-            Book.id == book_id, Book.user_id == user_id
-        ).one_or_none()
-        if b is None:
-            return None
-        return f"{b.title} by {b.author}" if b.author else b.title
+    signals = list(
+        session.query(TasteSignal).filter(
+            TasteSignal.user_id == user_id, TasteSignal.target_kind == "book"
+        )
+    )
+    book_ids = {sig.target_book_id for sig in signals if sig.target_book_id is not None}
+    books_by_id = {
+        b.id: (f"{b.title} by {b.author}" if b.author else b.title)
+        for b in session.query(Book).filter(Book.user_id == user_id, Book.id.in_(book_ids))
+    }
 
     more_like, less_like = [], []
-    for sig in session.query(TasteSignal).filter(
-        TasteSignal.user_id == user_id, TasteSignal.target_kind == "book"
-    ):
-        label = _label(sig.target_book_id)
+    for sig in signals:
+        label = books_by_id.get(sig.target_book_id)
         if label is None:
             continue
         (more_like if sig.direction == "more" else less_like).append(label)

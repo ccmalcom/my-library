@@ -31,7 +31,15 @@ import uuid
 from collections import Counter
 
 from .config import LOCAL_USER_ID, get_settings
-from .db import Book, Recommendation, TasteSignal, TasteTrait, init_db, session_scope
+from .db import (
+    Book,
+    Recommendation,
+    TasteSignal,
+    TasteTrait,
+    UserDirective,
+    init_db,
+    session_scope,
+)
 from .enrich import _STRONG_SIM, _normalize_title, _surname, _title_sim
 from .profile import books_changed_since, get_profile_meta
 from .usage import tracked_create
@@ -427,8 +435,16 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     # aggregate reject reasons across the user's rejected recs.
     reject_reason_counts = _reject_reason_counts(session, user_id)
 
-    from . import directive as _directive
-    _d = _directive.get_directive(user_id=user_id)
+    directive = (
+        session.query(UserDirective)
+        .filter(UserDirective.user_id == user_id)
+        .one_or_none()
+    )
+    directive_text = None
+    directive_constraints = {}
+    if directive is not None and (directive.nl_text or directive.constraints):
+        directive_text = directive.nl_text
+        directive_constraints = directive.constraints or {}
 
     return {
         "library_keys": library_keys,
@@ -459,8 +475,8 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
         "less_like": less_like,
         "reject_reason_counts": reject_reason_counts,
         "rejected_with_notes": rejected_with_notes,
-        "directive_text": _d["nl_text"] if _d else None,
-        "directive_constraints": (_d["constraints"] if _d else {}) or {},
+        "directive_text": directive_text,
+        "directive_constraints": directive_constraints,
     }
 
 

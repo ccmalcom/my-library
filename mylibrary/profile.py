@@ -27,6 +27,7 @@ from .db import (
     Recommendation,
     TasteSignal,
     TasteTrait,
+    UserDirective,
     init_db,
     session_scope,
     utcnow,
@@ -298,8 +299,14 @@ def _feedback_context(session, user_id: str = LOCAL_USER_ID) -> dict:
         for b in favorite_books
     ]
 
-    from . import directive as _directive
-    _d = _directive.get_directive(user_id=user_id)
+    directive = (
+        session.query(UserDirective)
+        .filter(UserDirective.user_id == user_id)
+        .one_or_none()
+    )
+    directive_text = None
+    if directive is not None and (directive.nl_text or directive.constraints):
+        directive_text = directive.nl_text
 
     return {
         "confirmed": confirmed,
@@ -309,7 +316,7 @@ def _feedback_context(session, user_id: str = LOCAL_USER_ID) -> dict:
         "more_like": more_like,
         "less_like": less_like,
         "favorites": favorites,
-        "directive_text": _d["nl_text"] if _d else None,
+        "directive_text": directive_text,
     }
 
 
