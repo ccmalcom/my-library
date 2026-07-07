@@ -246,6 +246,32 @@ def review(
     typer.echo("\nProfile may now be stale — run `profile-status` / `reprofile`.")
 
 
+@app.command()
+def directive(
+    text: str = typer.Argument(None, help="Custom-instructions text. Omit to show current; use --clear to remove."),
+    clear: bool = typer.Option(False, help="Remove the saved custom instructions."),
+) -> None:
+    """Show, set, or clear your natural-language custom instructions (recommender steering)."""
+    from .directive import clear_directive, get_directive, set_directive
+
+    if clear:
+        clear_directive()
+        typer.echo("Custom instructions cleared.")
+        return
+    if text is None:
+        current = get_directive()
+        if current is None:
+            typer.echo("No custom instructions set.")
+        else:
+            _echo(current)
+        return
+    try:
+        _echo(set_directive(text))
+    except ValueError as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+
 @app.command(name="profile-status")
 def profile_status_cmd() -> None:
     """Show whether ratings/reviews changed since the profile was last built."""

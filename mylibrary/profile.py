@@ -27,6 +27,7 @@ from .db import (
     Recommendation,
     TasteSignal,
     TasteTrait,
+    UserDirective,
     init_db,
     session_scope,
     utcnow,
@@ -298,6 +299,15 @@ def _feedback_context(session, user_id: str = LOCAL_USER_ID) -> dict:
         for b in favorite_books
     ]
 
+    directive = (
+        session.query(UserDirective)
+        .filter(UserDirective.user_id == user_id)
+        .one_or_none()
+    )
+    directive_text = None
+    if directive is not None and (directive.nl_text or directive.constraints):
+        directive_text = directive.nl_text
+
     return {
         "confirmed": confirmed,
         "edited": edited,
@@ -306,6 +316,7 @@ def _feedback_context(session, user_id: str = LOCAL_USER_ID) -> dict:
         "more_like": more_like,
         "less_like": less_like,
         "favorites": favorites,
+        "directive_text": directive_text,
     }
 
 
@@ -356,6 +367,13 @@ def _feedback_block(feedback: dict | None) -> str:
             "The following are the user's all-time favorite books — weight these "
             "as the strongest possible positive signal when deriving taste traits: "
             + "; ".join(feedback["favorites"])
+        )
+    directive_text = (feedback.get("directive_text") or "").strip()
+    if directive_text:
+        lines.append(
+            "The reader wrote these custom instructions about what they want to read next. "
+            "Treat them as direct, high-priority guidance when deriving traits (honor them; "
+            "do not contradict them): " + directive_text
         )
     if not lines:
         return ""

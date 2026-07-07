@@ -222,6 +222,25 @@
   or `clear_profile`** — these are irreplaceable user preferences that survive full library resets.
   Alembic migration: `0010_taste_signal`.
 
+- `directive.py` / **`UserDirective` / `user_directive` table** — per-user "custom instructions",
+  a single durable natural-language taste directive that steers recommendations. One row per user
+  (unique `user_id`, upsert). `nl_text` is the user-editable source of truth; `constraints` is a
+  derived structured filter set (`languages` / `min_year` / `max_year` / `exclude_subjects` /
+  `exclude_authors`, all lowercased/normalized by `_clean_directive_constraints`). Like `TasteSignal`
+  it is an irreplaceable preference: **survives `clear_library` / `clear_profile`, dropped only by
+  `delete_account`**. Page-count and series/standalone wishes are deliberately NOT stored as
+  constraints (catalog candidates lack reliable data — same reasoning as `recommend._clean_constraints`);
+  those stay as soft Stage-2 steering inside `nl_text`. `distill_directive(message, current_text, user_id)`
+  is a Haiku tool-use authoring aid (`operation="directive_distill"`) that turns messy prose into
+  `{proposed_text, constraints, conflicts, assistant_message}` and surfaces conflicts against existing
+  signals (rejected traits / less-like books) for the user to resolve — it is **ephemeral and never
+  writes**; only `set_directive` persists. Three feed points at read time (editing does NOT force a
+  re-profile): Stage-1 `recommend._apply_directive_constraints` filters candidates by year/subjects/authors
+  plus a language override of the signal's allowed-language set; Stage-2 `recommend._user_steering_block`
+  emits a `CUSTOM INSTRUCTIONS` block; and `profile._feedback_block` injects `nl_text` as direct
+  high-priority trait-derivation guidance. Routes: `GET/PUT/DELETE /directive`, `POST /directive/draft`
+  (rate-limited 30/min). CLI: `python -m mylibrary.cli directive`. Alembic migration: `0017_user_directive`.
+
 - `feedback_vocab.py` — shared vocabulary for structured recommendation feedback. Defines
   `REJECT_REASONS` (the canonical tuple of rejection reason slugs: `wrong_genre`, `too_dark`,
   `tried_author`, `too_long`, `not_now`, `overhyped`, `wrong_vibe`) and `is_valid_reasons()`

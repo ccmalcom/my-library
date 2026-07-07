@@ -16,6 +16,7 @@ import {
 } from '@/lib/api';
 import { Button, Badge, Card, useToast } from '@/components/ui';
 import { TasteHero } from '@/components/TasteHero';
+import CustomInstructions from '@/components/CustomInstructions';
 import RevealSequence from '@/components/reveal/RevealSequence';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
 
@@ -533,7 +534,10 @@ export default function ProfilePage() {
       </div>
 
       {revealOpen && (
-        <RevealSequence onClose={() => setRevealOpen(false)} onFinish={() => setRevealOpen(false)} />
+        <RevealSequence
+          onClose={() => setRevealOpen(false)}
+          onFinish={() => setRevealOpen(false)}
+        />
       )}
 
       {isLoading ? (
@@ -541,6 +545,7 @@ export default function ProfilePage() {
       ) : (
         <>
           <TraitsSection traits={traits} bookMap={bookMap} onBuildProfile={handleBuildProfile} />
+          <CustomInstructions />
           {stats && <RatingSection stats={stats} />}
           {subjects && <GenreSection subjects={subjects} />}
         </>

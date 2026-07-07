@@ -2,8 +2,6 @@
 
 ## BUGS
 
-- sooooo many emdashes. Before we do a full copy review, I need to run the thing that sets up claude with your writing style
-
 ## enhancements
 
 - Social — add friends, see each other's activity, etc.

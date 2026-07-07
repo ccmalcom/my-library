@@ -31,7 +31,15 @@ import uuid
 from collections import Counter
 
 from .config import LOCAL_USER_ID, get_settings
-from .db import Book, Recommendation, TasteSignal, TasteTrait, init_db, session_scope
+from .db import (
+    Book,
+    Recommendation,
+    TasteSignal,
+    TasteTrait,
+    UserDirective,
+    init_db,
+    session_scope,
+)
 from .enrich import _STRONG_SIM, _normalize_title, _surname, _title_sim
 from .profile import books_changed_since, get_profile_meta
 from .usage import tracked_create
@@ -427,6 +435,17 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
     # aggregate reject reasons across the user's rejected recs.
     reject_reason_counts = _reject_reason_counts(session, user_id)
 
+    directive = (
+        session.query(UserDirective)
+        .filter(UserDirective.user_id == user_id)
+        .one_or_none()
+    )
+    directive_text = None
+    directive_constraints = {}
+    if directive is not None and (directive.nl_text or directive.constraints):
+        directive_text = directive.nl_text
+        directive_constraints = directive.constraints or {}
+
     return {
         "library_keys": library_keys,
         "library_isbns": library_isbns,
@@ -456,6 +475,8 @@ def _build_signal(session, user_id: str = LOCAL_USER_ID) -> dict:
         "less_like": less_like,
         "reject_reason_counts": reject_reason_counts,
         "rejected_with_notes": rejected_with_notes,
+        "directive_text": directive_text,
+        "directive_constraints": directive_constraints,
     }
 
 
@@ -972,6 +993,38 @@ def _apply_discovery_constraints(
     return [(c, r) for (c, r) in pool if ok(c)]
 
 
+def _apply_directive_constraints(candidates: list[dict], constraints: dict) -> list[dict]:
+    """Filter assembled candidates by the standing directive's hard constraints.
+
+    Year range + exclude_subjects + exclude_authors. Language is handled upstream by
+    overriding the signal's allowed-language set before assembly. Unknown/missing fields
+    always PASS (never drop a candidate for lacking metadata, same as _apply_discovery_constraints)."""
+    if not constraints:
+        return candidates
+    min_year = constraints.get("min_year")
+    max_year = constraints.get("max_year")
+    exclude_subjects = [s.lower() for s in (constraints.get("exclude_subjects") or [])]
+    exclude_authors = {a.lower() for a in (constraints.get("exclude_authors") or [])}
+
+    def ok(cand: dict) -> bool:
+        year = cand.get("year")
+        if isinstance(year, int):
+            if min_year is not None and year < min_year:
+                return False
+            if max_year is not None and year > max_year:
+                return False
+        if exclude_subjects:
+            subjects = [str(s).lower() for s in (cand.get("subjects") or [])]
+            for term in exclude_subjects:
+                if any(_subject_hits(term, s) for s in subjects):
+                    return False
+        if exclude_authors and _surname(cand.get("author")).lower() in exclude_authors:
+            return False
+        return True
+
+    return [c for c in candidates if ok(c)]
+
+
 def _fill_ol_descriptions(candidates: list[dict]) -> None:
     """Fetch Work descriptions for OL candidates that didn't get one from the pool query.
 
@@ -1107,6 +1160,7 @@ def _user_steering_block(signal: dict) -> str:
     more_like = signal.get("more_like") or []
     less_like = signal.get("less_like") or []
     reject_counts = signal.get("reject_reason_counts") or {}
+    directive_text = (signal.get("directive_text") or "").strip()
 
     lines = ["\n\n## User Steering"]
     if more_like:
@@ -1122,6 +1176,12 @@ def _user_steering_block(signal: dict) -> str:
     if reject_counts:
         reasons = ", ".join(f"{r}: {c} times" for r, c in reject_counts.items())
         lines.append("FREQUENT REJECT REASONS: " + reasons)
+    if directive_text:
+        lines.append(
+            "CUSTOM INSTRUCTIONS (the reader's own standing guidance, in their words; honor "
+            "it as direct high-priority intent, second only to the hard constraints already "
+            "applied to the candidate set):\n" + directive_text
+        )
     lines.append(
         "Favor candidates resembling the more-like books; penalize candidates "
         "resembling the less-like books; penalize candidates matching frequent reject "
@@ -1540,6 +1600,13 @@ def recommend(
                 "reflect your current taste."
             )
 
+        directive_constraints = signal.get("directive_constraints") or {}
+        if directive_constraints.get("languages"):
+            # A stated language constraint overrides the reader's library languages for this
+            # run (same semantics as discover): _assemble reads library_languages via
+            # _allowed_languages, so overriding it here is enough.
+            signal = {**signal, "library_languages": set(directive_constraints["languages"])}
+
         cold_start = _is_cold_start(signal)
         metadata_pool = (
             _metadata_pool(signal, per_query=_PER_QUERY, cold_start=cold_start)
@@ -1554,6 +1621,7 @@ def recommend(
             )
 
         candidates = _assemble(metadata_pool, seed_pool, signal, cap=_MAX_CANDIDATES)
+        candidates = _apply_directive_constraints(candidates, directive_constraints)
         _fill_ol_descriptions(candidates)
         if not candidates:
             return {

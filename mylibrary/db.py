@@ -322,6 +322,29 @@ class UserSettings(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=utcnow)
 
 
+class UserDirective(Base):
+    """Per-user natural-language 'custom instructions' plus derived hard constraints.
+
+    One row per user. `nl_text` is the durable, user-editable source of truth (the
+    distilled custom instructions). `constraints` is the derived structured filter set
+    (languages / min_year / max_year / exclude_subjects / exclude_authors) the recommender
+    applies deterministically. Like TasteSignal this is an irreplaceable user preference:
+    it survives clear_library / clear_profile and is dropped only by delete_account.
+    """
+
+    __tablename__ = "user_directive"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String, unique=True, index=True, nullable=False,
+        default=LOCAL_USER_ID, server_default=LOCAL_USER_ID,
+    )
+    nl_text: Mapped[str | None] = mapped_column(Text)
+    constraints: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=utcnow)
+
+
 class UsageEvent(Base):
     """One Anthropic API call's token usage + computed cost, for per-user spend tracking.
 

@@ -665,6 +665,30 @@ export interface EnrichJobOut {
 /** Shared SWR key for the user's display name / profile settings. */
 export const USER_PROFILE_KEY = 'user-profile';
 
+export interface DirectiveConstraints {
+  languages?: string[];
+  min_year?: number;
+  max_year?: number;
+  exclude_subjects?: string[];
+  exclude_authors?: string[];
+}
+
+export interface Directive {
+  nl_text: string | null;
+  constraints: DirectiveConstraints;
+  updated_at: string | null;
+}
+
+export interface DirectiveDraft {
+  proposed_text: string;
+  constraints: DirectiveConstraints;
+  conflicts: string[];
+  assistant_message: string;
+}
+
+/** Shared SWR key for the user's custom instructions record. */
+export const DIRECTIVE_KEY = 'directive';
+
 // ─── Structured feedback (Tasks 3.1–3.3 backend endpoints) ────────────────────
 
 /** Human-readable labels for recommendation reject reason codes. */
@@ -711,6 +735,24 @@ export function recordTasteSignal(body: {
 }): Promise<Record<string, unknown>> {
   return post<Record<string, unknown>>('/taste-signal', body);
 }
+
+/** GET /directive - the user's saved custom instructions. */
+export const getDirective = (): Promise<Directive> => get<Directive>('/directive');
+
+/** PUT /directive - save/replace the durable custom-instructions record. */
+export const putDirective = (body: {
+  nl_text: string | null;
+  constraints: DirectiveConstraints;
+}): Promise<Directive> => put<Directive>('/directive', body);
+
+/** DELETE /directive - clear the user's custom instructions. */
+export const deleteDirective = (): Promise<Directive> => del<Directive>('/directive');
+
+/** POST /directive/draft - authoring aid; returns a proposal (never saved). */
+export const draftDirective = (body: {
+  message: string;
+  current_text?: string | null;
+}): Promise<DirectiveDraft> => post<DirectiveDraft>('/directive/draft', body);
 
 /**
  * Toggle the favorite flag on a library book.

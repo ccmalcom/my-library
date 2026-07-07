@@ -6,11 +6,14 @@ import { motion, useReducedMotion } from 'framer-motion';
 import {
   api,
   ARCHETYPE_KEY,
+  DIRECTIVE_KEY,
+  getDirective,
   type Stats,
   type Trait,
   type ArchetypeOut,
   type ProfileHighlights,
   type Book,
+  type Directive,
 } from '@/lib/api';
 import { buildBeats, type Beat } from '@/lib/revealBeats';
 import { tasteAccent } from '@/lib/tasteAccent';
@@ -59,13 +62,15 @@ export default function RevealSequence({
     api.profileHighlights()
   );
   const { data: books } = useSWR<Book[]>('reveal-books', () => api.books({ limit: 500 }));
+  // Not part of the `ready` gate: a reader may legitimately have no directive yet.
+  const { data: directive } = useSWR<Directive>(DIRECTIVE_KEY, () => getDirective());
 
   const ready = stats && traits && archetype && highlights && books;
 
   const beats: Beat[] = useMemo(() => {
     if (!ready) return [];
-    return buildBeats({ stats, traits, archetype, highlights, books });
-  }, [ready, stats, traits, archetype, highlights, books]);
+    return buildBeats({ stats, traits, archetype, highlights, books, directive });
+  }, [ready, stats, traits, archetype, highlights, books, directive]);
 
   const accent = archetype ? tasteAccent(archetype.code) : 'var(--accent)';
 
@@ -287,6 +292,34 @@ function renderBeat(
         </div>
       );
     }
+
+    case 'directive':
+      return (
+        <div className="space-y-5">
+          {beat.nlText ? (
+            <>
+              <h2 className="font-display text-2xl font-bold text-text">
+                Your standing instructions
+              </h2>
+              <p className="whitespace-pre-wrap text-base text-muted">{beat.nlText}</p>
+              <p className="text-sm text-faint">
+                These steer every recommendation. Refine them anytime on your profile.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="font-display text-2xl font-bold text-text">
+                One more thing: tell us what you’re after.
+              </h2>
+              <p className="text-base text-muted">
+                You can give the recommender standing instructions in your own words: “more
+                nonfiction this year”, “nothing bleak”, “keep it short”. Add yours on your profile.
+              </p>
+            </>
+          )}
+          <RevealButton onClick={h.next}>Continue</RevealButton>
+        </div>
+      );
 
     case 'handoff':
       return (

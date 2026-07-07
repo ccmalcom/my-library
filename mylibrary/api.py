@@ -44,6 +44,7 @@ from .admin import AdminId, is_admin
 from .auth import AuthError, resolve_user_id
 from .config import get_settings
 from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
+from .directive import clear_directive, distill_directive, get_directive, set_directive
 from .enrich import _normalize_title, _surname, enrich_library
 from .exporters import export_csv, export_json
 from .feedback import (
@@ -90,6 +91,10 @@ from .schemas import (
     BookFeedbackRequest,
     BookOut,
     CatalogResult,
+    DirectiveDraftOut,
+    DirectiveDraftRequest,
+    DirectiveOut,
+    DirectiveUpdateRequest,
     DiscoverRequest,
     DiscoverResult,
     EnrichJobOut,
@@ -313,6 +318,48 @@ def put_profile_settings(req: UserProfileRequest, user_id: UserId) -> UserProfil
 def get_usage(user_id: UserId) -> UsageOut:
     """Month-to-date Anthropic spend for the caller + a soft-warn flag (never blocks)."""
     return UsageOut(**cap_status(user_id))
+
+
+@app.get("/directive", response_model=DirectiveOut)
+def get_directive_route(user_id: UserId) -> DirectiveOut:
+    """The user's saved custom instructions (null/empty when unset)."""
+    rec = get_directive(user_id=user_id)
+    if rec is None:
+        return DirectiveOut(nl_text=None, constraints={}, updated_at=None)
+    return DirectiveOut(**rec)
+
+
+@app.put("/directive", response_model=DirectiveOut)
+def put_directive_route(req: DirectiveUpdateRequest, user_id: UserId) -> DirectiveOut:
+    """Save/replace the durable custom-instructions record."""
+    try:
+        set_directive(req.nl_text, req.constraints, user_id=user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    rec = get_directive(user_id=user_id)
+    if rec is None:
+        return DirectiveOut(nl_text=None, constraints={}, updated_at=None)
+    return DirectiveOut(**rec)
+
+
+@app.delete("/directive", response_model=DirectiveOut)
+def delete_directive_route(user_id: UserId) -> DirectiveOut:
+    """Clear the user's custom instructions."""
+    clear_directive(user_id=user_id)
+    return DirectiveOut(nl_text=None, constraints={}, updated_at=None)
+
+
+@app.post("/directive/draft", response_model=DirectiveDraftOut)
+@limiter.limit("30/minute")
+def draft_directive_route(
+    request: Request, req: DirectiveDraftRequest, user_id: UserId
+) -> DirectiveDraftOut:
+    """Authoring aid: distill the reader's message into a proposed record (not saved)."""
+    try:
+        out = distill_directive(req.message, current_text=req.current_text, user_id=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return DirectiveDraftOut(**out)
 
 
 def _book_out(book: Book) -> BookOut:

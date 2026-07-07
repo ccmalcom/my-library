@@ -1,4 +1,4 @@
-import type { Trait, ArchetypeOut, ProfileHighlights, Stats, Book } from './api';
+import type { Trait, ArchetypeOut, ProfileHighlights, Stats, Book, Directive } from './api';
 import { POLE_LINES, ratingQuip, FORMAT_LINES } from './revealCopy';
 
 const AXIS_ORDER = ['lens', 'engine', 'range', 'resonance'] as const;
@@ -48,6 +48,7 @@ export type Beat =
       codeSoFar: string;
     }
   | { kind: 'finale'; archetype: ArchetypeOut; nBooks: number; thin: boolean }
+  | { kind: 'directive'; nlText: string | null }
   | { kind: 'handoff' }
   // summary counts are computed live in the component from verdict state; this beat
   // only marks position + carries the thin flag for copy selection.
@@ -59,6 +60,7 @@ export interface BuildBeatsInput {
   archetype: ArchetypeOut;
   highlights: ProfileHighlights;
   books: Book[];
+  directive?: Directive | null;
 }
 
 function aversionEvidence(trait: Trait, byId: Map<number, Book>): string {
@@ -158,6 +160,9 @@ export function buildBeats(input: BuildBeatsInput): Beat[] {
 
   // Beat 8 (summary) — full library only; thin has nothing to summarize verdict-wise.
   if (!thin) beats.push({ kind: 'summary', thin });
+
+  // Beat: custom instructions (standing directive), surfaced so the reader can see/refine it.
+  beats.push({ kind: 'directive', nlText: input.directive?.nl_text ?? null });
 
   // Beat 9 (handoff)
   beats.push({ kind: 'handoff' });

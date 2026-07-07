@@ -38,6 +38,7 @@ from .db import (
     TasteSignal,
     TasteTrait,
     UsageEvent,
+    UserDirective,
     UserSettings,
     init_db,
     session_scope,
@@ -143,6 +144,11 @@ def delete_account(*, user_id: str = LOCAL_USER_ID) -> dict:
             .filter(UsageEvent.user_id == user_id)
             .delete(synchronize_session=False)
         )
+        directive_removed = (
+            session.query(UserDirective)
+            .filter(UserDirective.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
         return {
             "books_removed": books,
             **profile,
@@ -150,5 +156,6 @@ def delete_account(*, user_id: str = LOCAL_USER_ID) -> dict:
             "signals_removed": signals_removed,
             "jobs_removed": jobs_removed,
             "usage_events_removed": usage_events_removed,
+            "directive_removed": directive_removed,
             "account_deleted": True,
         }
