@@ -38,15 +38,14 @@ export const GET = withApi('/api/profile/subjects', async (_req, ctx) => {
     const subjects = (row.enrichment?.subjects ?? null) as string[] | null;
     if (!subjects || subjects.length === 0) continue;
     const tier = String(rating);
-    if (!byTier.has(tier)) byTier.set(tier, new Counter());
-    const tierCounter = byTier.get(tier)!;
     const seen = new Set<string>();
     for (const raw of subjects.slice(0, 15)) {
       const normalised = pyTitle(raw.trim());
       if (normalised && !seen.has(normalised)) {
         seen.add(normalised);
         overall.add(normalised);
-        tierCounter.add(normalised);
+        if (!byTier.has(tier)) byTier.set(tier, new Counter());
+        byTier.get(tier)!.add(normalised);
       }
       if (seen.size >= 8) break;
     }
