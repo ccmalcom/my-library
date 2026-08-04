@@ -159,7 +159,7 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       user_id text not null default 'local' unique,
       nl_text text,
       constraints json,
-      created_at timestamp default current_timestamp,
+      created_at timestamp not null default current_timestamp,
       updated_at timestamp
     );
   `);
