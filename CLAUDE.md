@@ -26,6 +26,14 @@ Custom instructions (natural-language taste directive) shipped: `UserDirective` 
 `directive.py`; steers Stage-1 constraints + Stage-2 rerank + profile build; authored
 directly or via a bounded Haiku distill chat; surfaced on `/profile` (`CustomInstructions`)
 and as a reveal beat.
+Node backend migration underway. Wave 0 shipped the foundations: drizzle/Postgres client,
+Supabase-JWT + local-mode auth, AES-256-GCM crypto, a Postgres fixed-window rate limiter
+(SlowAPI parity), an admin debug-mode toggle, and a method-aware backend switcher
+(python/node/auto). Wave 1 ported 8 read-only route groups (stats, books, profile
+traits/status/subjects/highlights/archetype, recommendations, settings, directive) to
+Next.js route handlers, backed by a fixture-replay parity test harness that proves
+field-for-field equality against real recorded FastAPI responses; the frontend's `auto`
+mode now serves those GETs from Node by default.
 
 ## Sub-documents (load when relevant)
 
