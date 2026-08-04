@@ -14,7 +14,9 @@ import * as bookFeedbackRoute from '../../../../app/api/books/[id]/feedback/rout
 import * as bookShelfRoute from '../../../../app/api/books/[id]/shelf/route';
 import * as bookEnrichmentRoute from '../../../../app/api/books/[id]/enrichment/route';
 import * as bookByIdRoute from '../../../../app/api/books/[id]/route';
-// (Tasks 8–12 add imports here: ... )
+import * as recFeedbackRoute from '../../../../app/api/recommendations/[id]/feedback/route';
+import * as recommendationsRejectedRoute from '../../../../app/api/recommendations/rejected/route';
+// (Tasks 9–12 add imports here: ... )
 
 interface RegistryRow {
   method: string;
@@ -29,10 +31,12 @@ export const REGISTRY: RegistryRow[] = [
   // /profile/status, /recommendations/rejected, /directive, /settings/api-key/status
   // — added in the task that first replays a scenario using them.
   { method: 'GET', pattern: /^\/profile\/status$/, handler: () => profileStatusRoute.GET as Handler },
+  { method: 'GET', pattern: /^\/recommendations\/rejected$/, handler: () => recommendationsRejectedRoute.GET as Handler },
   { method: 'PATCH', pattern: /^\/books\/(?<id>\d+)\/feedback$/, handler: () => bookFeedbackRoute.PATCH as Handler },
   { method: 'PATCH', pattern: /^\/books\/(?<id>\d+)\/shelf$/, handler: () => bookShelfRoute.PATCH as Handler },
   { method: 'PATCH', pattern: /^\/books\/(?<id>\d+)\/enrichment$/, handler: () => bookEnrichmentRoute.PATCH as Handler },
   { method: 'DELETE', pattern: /^\/books\/(?<id>\d+)$/, handler: () => bookByIdRoute.DELETE as Handler },
+  { method: 'PATCH', pattern: /^\/recommendations\/(?<id>\d+)\/feedback$/, handler: () => recFeedbackRoute.PATCH as Handler },
 ];
 
 /** Mask volatile server-generated values; preserve the null/non-null distinction. */
