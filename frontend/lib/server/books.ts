@@ -1,8 +1,11 @@
 import type { schema } from './db';
-import { effectiveRating } from './serialize';
+import { effectiveRating, tsToIso } from './serialize';
 
 export type BookRow = typeof schema.books.$inferSelect;
 export type EnrichmentRow = typeof schema.enrichment.$inferSelect;
+
+/** Sorted — this exact order is what Python's sorted(VALID_SHELVES) interpolates into 422s. */
+export const VALID_SHELVES = ['currently-reading', 'did-not-finish', 'read', 'to-read'];
 
 /** Port of api.py::_book_out — the BookOut JSON shape. */
 export function bookOut(b: BookRow, e: EnrichmentRow | null) {
@@ -26,5 +29,22 @@ export function bookOut(b: BookRow, e: EnrichmentRow | null) {
     resolution_confidence: e?.resolutionConfidence ?? null,
     exclude_from_profile: b.excludeFromProfile,
     is_favorite: b.isFavorite,
+  };
+}
+
+/** Port of library.py::_book_summary — the PATCH feedback/shelf response dict. */
+export function bookSummary(b: BookRow) {
+  return {
+    id: b.id,
+    title: b.title,
+    author: b.author,
+    exclusive_shelf: b.exclusiveShelf,
+    app_rating: b.appRating,
+    goodreads_rating: b.goodreadsRating,
+    effective_rating: effectiveRating(b.appRating, b.goodreadsRating),
+    app_review: b.appReview,
+    date_read: b.dateRead,
+    feedback_updated_at: tsToIso(b.feedbackUpdatedAt),
+    exclude_from_profile: b.excludeFromProfile,
   };
 }
