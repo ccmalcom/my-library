@@ -19,7 +19,8 @@ import * as recommendationsRejectedRoute from '../../../../app/api/recommendatio
 import * as apiKeyRoute from '../../../../app/api/settings/api-key/route';
 import * as apiKeyStatusRoute from '../../../../app/api/settings/api-key/status/route';
 import * as profileSettingsRoute from '../../../../app/api/settings/profile/route';
-// (Tasks 10–12 add imports here: ... )
+import * as directiveRoute from '../../../../app/api/directive/route';
+// (Tasks 11–12 add imports here: ... )
 
 interface RegistryRow {
   method: string;
@@ -44,6 +45,9 @@ export const REGISTRY: RegistryRow[] = [
   { method: 'DELETE', pattern: /^\/settings\/api-key$/, handler: () => apiKeyRoute.DELETE as Handler },
   { method: 'GET', pattern: /^\/settings\/api-key\/status$/, handler: () => apiKeyStatusRoute.GET as Handler },
   { method: 'PUT', pattern: /^\/settings\/profile$/, handler: () => profileSettingsRoute.PUT as Handler },
+  { method: 'GET', pattern: /^\/directive$/, handler: () => directiveRoute.GET as Handler },
+  { method: 'PUT', pattern: /^\/directive$/, handler: () => directiveRoute.PUT as Handler },
+  { method: 'DELETE', pattern: /^\/directive$/, handler: () => directiveRoute.DELETE as Handler },
 ];
 
 /** Mask volatile server-generated values; preserve the null/non-null distinction. */
