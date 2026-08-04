@@ -48,6 +48,33 @@ def _surname(author: str | None) -> str:
     return _normalize_title(author).split(" ")[-1]
 
 
+def _normalize_full_title(t: str | None) -> str:
+    """Like `_normalize_title` but keeps the subtitle, for same-work equality checks."""
+    if not t:
+        return ""
+    t = t.lower()
+    t = re.sub(r"\(.*?\)", "", t)  # drop parenthetical (editions, etc.)
+    t = re.sub(r"[^a-z0-9 ]", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _same_work(title_a: str | None, author_a: str | None, title_b: str | None, author_b: str | None) -> bool:
+    """True when the two title/author pairs name the same work.
+
+    Titles match when their full normalized forms are equal, or when one title is the
+    other's bare pre-colon base — an edition variant like "Dune" vs "Dune: Special
+    Edition". Two *different* subtitles on a shared base are different works
+    ("Exodus: The Archimedes Engine" vs "Exodus: The Helium Sea"), which the
+    subtitle-dropping `_normalize_title` alone cannot tell apart.
+    """
+    if _surname(author_a) != _surname(author_b):
+        return False
+    full_a, full_b = _normalize_full_title(title_a), _normalize_full_title(title_b)
+    if full_a == full_b:
+        return True
+    return full_a == _normalize_title(title_b) or full_b == _normalize_title(title_a)
+
+
 def _title_sim(a: str | None, b: str | None) -> float:
     return SequenceMatcher(None, _normalize_title(a), _normalize_title(b)).ratio()
 

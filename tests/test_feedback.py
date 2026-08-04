@@ -97,6 +97,28 @@ def test_accept_is_idempotent():
         assert count == 1
 
 
+def test_accept_sibling_subtitle_creates_new_book_not_false_match():
+    """Accepting a rec must not collapse onto a different work that merely shares
+    the rec's pre-colon base title and author (e.g. two books in the same series)."""
+    from mylibrary.library import add_book
+
+    add_book(title="Exodus: The Archimedes Engine", author="Peter F. Hamilton")
+    rec_id = _make_rec(
+        title="Exodus: The Helium Sea",
+        author="Peter F. Hamilton",
+        isbn13=None,
+        catalog_id="gb_ehs",
+    )
+    with TestClient(app) as client:
+        resp = client.patch(f"/recommendations/{rec_id}/feedback", json={"status": "accepted"})
+    assert resp.status_code == 200
+
+    with session_scope() as session:
+        assert (
+            session.query(Book).filter(Book.title == "Exodus: The Helium Sea").count() == 1
+        )
+
+
 def test_already_read_creates_read_book_and_returns_it():
     """'already read' must land the book on the read shelf (so it's never recommended
     again) and return it so the UI can prompt a review."""
