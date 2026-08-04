@@ -3,44 +3,65 @@ import {
   baseFor,
   getBackendChoice,
   setBackendChoice,
-  NODE_DEFAULT_PREFIXES,
-  NODE_ONLY_PREFIXES,
+  NODE_DEFAULT_ROUTES,
 } from '../backend';
 
-const PYTHON_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
+describe('backend switcher (method-aware)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    process.env.NEXT_PUBLIC_API_URL = 'https://python.example';
+  });
 
-beforeEach(() => {
-  window.localStorage.clear();
-  NODE_DEFAULT_PREFIXES.length = 0;
-});
+  test('auto: wave-1 GETs go to Node', () => {
+    expect(baseFor('/stats', 'GET')).toBe('/api');
+    expect(baseFor('/books?shelf=read', 'GET')).toBe('/api');
+    expect(baseFor('/profile/status', 'GET')).toBe('/api');
+    expect(baseFor('/recommendations/rejected', 'GET')).toBe('/api');
+    expect(baseFor('/settings/usage', 'GET')).toBe('/api');
+    expect(baseFor('/directive', 'GET')).toBe('/api');
+  });
 
-describe('backend switcher', () => {
-  it('defaults to auto', () => {
+  test('auto: writes on flipped prefixes stay on Python', () => {
+    expect(baseFor('/books', 'POST')).toBe('https://python.example');
+    expect(baseFor('/profile/traits/3', 'PATCH')).toBe('https://python.example');
+    expect(baseFor('/recommendations/9/feedback', 'PATCH')).toBe('https://python.example');
+    expect(baseFor('/settings/api-key', 'PUT')).toBe('https://python.example');
+    expect(baseFor('/directive', 'DELETE')).toBe('https://python.example');
+    expect(baseFor('/profile/archetype', 'POST')).toBe('https://python.example');
+  });
+
+  test('auto: unflipped paths stay on Python', () => {
+    expect(baseFor('/catalog/search?q=x', 'GET')).toBe('https://python.example');
+    expect(baseFor('/export', 'GET')).toBe('https://python.example');
+  });
+
+  test('node-only prefixes always hit Node', () => {
+    expect(baseFor('/admin/config', 'GET')).toBe('/api');
+    setBackendChoice('python');
+    expect(baseFor('/admin/config', 'PUT')).toBe('/api');
+  });
+
+  test('forced overrides win for everything else', () => {
+    setBackendChoice('python');
+    expect(baseFor('/stats', 'GET')).toBe('https://python.example');
+    setBackendChoice('node');
+    expect(baseFor('/import', 'POST')).toBe('/api');
+    setBackendChoice('auto');
     expect(getBackendChoice()).toBe('auto');
   });
 
-  it('auto mode routes everything to Python while no prefixes are flipped', () => {
-    expect(baseFor('/stats')).toBe(PYTHON_BASE);
-    expect(baseFor('/books')).toBe(PYTHON_BASE);
-  });
-
-  it('auto mode routes flipped prefixes to Node', () => {
-    NODE_DEFAULT_PREFIXES.push('/stats');
+  test('default method is GET', () => {
     expect(baseFor('/stats')).toBe('/api');
-    expect(baseFor('/books')).toBe(PYTHON_BASE);
   });
 
-  it('node choice routes everything to Node; python choice everything to Python', () => {
-    setBackendChoice('node');
-    expect(getBackendChoice()).toBe('node');
-    expect(baseFor('/stats')).toBe('/api');
-    setBackendChoice('python');
-    expect(baseFor('/stats')).toBe(PYTHON_BASE);
-  });
-
-  it('node-only routes always go to Node, even under python choice', () => {
-    setBackendChoice('python');
-    expect(NODE_ONLY_PREFIXES).toContain('/admin/config');
-    expect(baseFor('/admin/config')).toBe('/api');
+  test('wave-1 flip list is exactly as designed', () => {
+    expect(NODE_DEFAULT_ROUTES).toEqual([
+      { prefix: '/stats' },
+      { prefix: '/books', methods: ['GET'] },
+      { prefix: '/profile', methods: ['GET'] },
+      { prefix: '/recommendations', methods: ['GET'] },
+      { prefix: '/settings', methods: ['GET'] },
+      { prefix: '/directive', methods: ['GET'] },
+    ]);
   });
 });
