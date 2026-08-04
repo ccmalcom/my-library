@@ -220,6 +220,11 @@ WRITE_SCENARIOS: dict[str, list[dict]] = {
     ],
     "book-feedback-invalid": [
         {"req": "PATCH /books/8/feedback", "json": {"review": "unrated review"}},
+        # Book 8 starts with goodreads_rating=0, app_rating=None, app_review=None (null
+        # effective rating) and is untouched by the rejected step above. Supplying rating
+        # + review TOGETHER must succeed (200): proves the review-without-rating guard
+        # reads POST-mutation state for both fields, not the pre-mutation snapshot.
+        {"req": "PATCH /books/8/feedback", "json": {"rating": 4, "review": "Actually loved the maze."}},
         {"req": "PATCH /books/1/feedback", "json": {}},
         {"req": "PATCH /books/1/feedback", "json": {"rating": 7}},
         {"req": "PATCH /books/101/feedback", "json": {"rating": 3}},

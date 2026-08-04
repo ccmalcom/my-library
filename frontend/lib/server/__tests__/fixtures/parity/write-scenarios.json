@@ -287,7 +287,7 @@
     "effective_rating": 4,
     "app_review": "Rereads well.",
     "date_read": "2025-11-02",
-    "feedback_updated_at": "2026-08-04T18:40:40.602098",
+    "feedback_updated_at": "2026-08-04T22:38:53.957001",
     "exclude_from_profile": false
    },
    "maskDetail": false
@@ -308,7 +308,7 @@
     "effective_rating": 4,
     "app_review": "Loved the problem-solving.",
     "date_read": null,
-    "feedback_updated_at": "2026-08-04T18:40:40.609521",
+    "feedback_updated_at": "2026-08-04T22:38:53.963512",
     "exclude_from_profile": false
    },
    "maskDetail": false
@@ -330,7 +330,7 @@
     "effective_rating": 4,
     "app_review": "Rereads well.",
     "date_read": "2026-01-15",
-    "feedback_updated_at": "2026-08-04T18:40:40.615009",
+    "feedback_updated_at": "2026-08-04T22:38:53.970924",
     "exclude_from_profile": false
    },
    "maskDetail": false
@@ -351,7 +351,7 @@
     "effective_rating": 3,
     "app_review": null,
     "date_read": null,
-    "feedback_updated_at": "2026-08-04T18:40:40.622679",
+    "feedback_updated_at": "2026-08-04T22:38:53.976966",
     "exclude_from_profile": true
    },
    "maskDetail": false
@@ -626,6 +626,28 @@
    "status": 422,
    "body": {
     "detail": "A review requires a rating. Rate the book 1-5 (same update is fine) before saving a review."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/8/feedback",
+   "json": {
+    "rating": 4,
+    "review": "Actually loved the maze."
+   },
+   "status": 200,
+   "body": {
+    "id": 8,
+    "title": "Piranesi",
+    "author": "Susanna Clarke",
+    "exclusive_shelf": "to-read",
+    "app_rating": 4,
+    "goodreads_rating": 0,
+    "effective_rating": 4,
+    "app_review": "Actually loved the maze.",
+    "date_read": null,
+    "feedback_updated_at": "2026-08-04T22:38:53.999822",
+    "exclude_from_profile": false
    },
    "maskDetail": false
   },
@@ -1349,7 +1371,7 @@
       "ringo"
      ]
     },
-    "updated_at": "2026-08-04T18:40:40.884460"
+    "updated_at": "2026-08-04T22:38:54.250218"
    },
    "maskDetail": false
   },
@@ -1373,7 +1395,7 @@
       "ringo"
      ]
     },
-    "updated_at": "2026-08-04T18:40:40.884460"
+    "updated_at": "2026-08-04T22:38:54.250218"
    },
    "maskDetail": false
   },
@@ -1433,7 +1455,7 @@
     "status": "confirmed",
     "user_note": null,
     "user_weight": 1.0,
-    "verdict_updated_at": "2026-08-04T18:40:40.920935",
+    "verdict_updated_at": "2026-08-04T22:38:54.286420",
     "created_at": "2026-07-01T12:00:00"
    },
    "maskDetail": false
@@ -1458,7 +1480,7 @@
     "status": "edited",
     "user_note": null,
     "user_weight": 1.0,
-    "verdict_updated_at": "2026-08-04T18:40:40.920935",
+    "verdict_updated_at": "2026-08-04T22:38:54.286420",
     "created_at": "2026-07-01T12:00:00"
    },
    "maskDetail": false
@@ -1486,7 +1508,7 @@
     "status": "proposed",
     "user_note": "sort of",
     "user_weight": 0.5,
-    "verdict_updated_at": "2026-08-04T18:40:40.927141",
+    "verdict_updated_at": "2026-08-04T22:38:54.294799",
     "created_at": "2026-07-01T12:00:00"
    },
    "maskDetail": false
@@ -1696,7 +1718,7 @@
     "target_kind": "book",
     "target_book_id": 1,
     "snapshot": null,
-    "created_at": "2026-08-04T18:40:41"
+    "created_at": "2026-08-04T22:38:54"
    },
    "maskDetail": false
   },
@@ -1726,7 +1748,7 @@
       "science fiction"
      ]
     },
-    "created_at": "2026-08-04T18:40:41"
+    "created_at": "2026-08-04T22:38:54"
    },
    "maskDetail": false
   },
