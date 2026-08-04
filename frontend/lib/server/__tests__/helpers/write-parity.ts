@@ -12,7 +12,9 @@ import * as booksRoute from '../../../../app/api/books/route';
 import * as profileStatusRoute from '../../../../app/api/profile/status/route';
 import * as bookFeedbackRoute from '../../../../app/api/books/[id]/feedback/route';
 import * as bookShelfRoute from '../../../../app/api/books/[id]/shelf/route';
-// (Tasks 7–12 add imports here: ... )
+import * as bookEnrichmentRoute from '../../../../app/api/books/[id]/enrichment/route';
+import * as bookByIdRoute from '../../../../app/api/books/[id]/route';
+// (Tasks 8–12 add imports here: ... )
 
 interface RegistryRow {
   method: string;
@@ -29,6 +31,8 @@ export const REGISTRY: RegistryRow[] = [
   { method: 'GET', pattern: /^\/profile\/status$/, handler: () => profileStatusRoute.GET as Handler },
   { method: 'PATCH', pattern: /^\/books\/(?<id>\d+)\/feedback$/, handler: () => bookFeedbackRoute.PATCH as Handler },
   { method: 'PATCH', pattern: /^\/books\/(?<id>\d+)\/shelf$/, handler: () => bookShelfRoute.PATCH as Handler },
+  { method: 'PATCH', pattern: /^\/books\/(?<id>\d+)\/enrichment$/, handler: () => bookEnrichmentRoute.PATCH as Handler },
+  { method: 'DELETE', pattern: /^\/books\/(?<id>\d+)$/, handler: () => bookByIdRoute.DELETE as Handler },
 ];
 
 /** Mask volatile server-generated values; preserve the null/non-null distinction. */

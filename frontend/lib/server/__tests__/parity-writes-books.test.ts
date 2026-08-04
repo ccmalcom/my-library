@@ -12,4 +12,6 @@ describe('write parity: books', () => {
   it('book-feedback', () => runScenario('book-feedback'));
   it('book-feedback-invalid', () => runScenario('book-feedback-invalid'));
   it('book-shelf', () => runScenario('book-shelf'));
+  it('enrichment-correction', () => runScenario('enrichment-correction'));
+  it('delete-book', () => runScenario('delete-book'));
 });
