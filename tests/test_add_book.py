@@ -98,6 +98,14 @@ def test_add_book_dedups_on_title_and_surname():
         add_book(title="DUNE: Special Edition", author="Herbert")
 
 
+def test_add_book_allows_different_subtitles_on_shared_base_title():
+    # "Exodus: The Archimedes Engine" and "Exodus: The Helium Sea" are different works
+    # that share a base title and author -- adding the second must not 409.
+    add_book(title="Exodus: The Archimedes Engine", author="Peter F. Hamilton")
+    book_id = add_book(title="Exodus: The Helium Sea", author="Peter F. Hamilton")
+    assert _get(book_id).title == "Exodus: The Helium Sea"
+
+
 def test_add_book_rejects_bad_shelf_and_rating():
     with pytest.raises(ValueError):
         add_book(title="X", shelf="nonsense")

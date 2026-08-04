@@ -45,7 +45,7 @@ from .auth import AuthError, resolve_user_id
 from .config import get_settings
 from .db import Book, EnrichJob, Enrichment, ReaderArchetype, Recommendation, init_db, session_scope
 from .directive import clear_directive, distill_directive, get_directive, set_directive
-from .enrich import _normalize_title, _surname, enrich_library
+from .enrich import _same_work, enrich_library
 from .exporters import export_csv, export_json
 from .feedback import (
     VALID_CATEGORIES,
@@ -391,19 +391,17 @@ def _book_out(book: Book) -> BookOut:
 def _ensure_library_book(session, rec: Recommendation, shelf: str, user_id: str) -> Book:
     """Idempotently land a recommended book in `user_id`'s library on the given shelf.
 
-    Matches an existing book by normalized title + author surname (the same dedup the
-    recommender uses); if found, just returns it. Otherwise creates the book + a stub
+    Matches an existing book by same-work identity (normalized title + author surname,
+    sibling subtitles distinct); if found, just returns it. Otherwise creates the book + a stub
     enrichment (so the cover/subjects render). Used by both `accepted` (-> to-read) and
     `already_read` (-> read), so neither can be recommended again. The dedup walk is
     scoped to this user so it never scans another user's library.
     """
-    norm_title = _normalize_title(rec.title)
-    norm_surname = _surname(rec.author)
     dupe_q = session.query(Book).filter(
         Book.user_id == user_id, Book.title.isnot(None)
     )
     for b in dupe_q.all():
-        if _normalize_title(b.title) == norm_title and _surname(b.author) == norm_surname:
+        if _same_work(b.title, b.author, rec.title, rec.author):
             return b
 
     book = Book(
