@@ -9,4 +9,7 @@ describe('write parity: books', () => {
   it('add-book-duplicate', () => runScenario('add-book-duplicate'));
   it('add-book-sibling-subtitle', () => runScenario('add-book-sibling-subtitle'));
   it('add-book-invalid', () => runScenario('add-book-invalid'));
+  it('book-feedback', () => runScenario('book-feedback'));
+  it('book-feedback-invalid', () => runScenario('book-feedback-invalid'));
+  it('book-shelf', () => runScenario('book-shelf'));
 });

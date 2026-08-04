@@ -10,7 +10,9 @@ type Handler = (req: Request, routeCtx?: { params?: Record<string, string> }) =>
  *  they create routes; a step whose path matches no row throws loudly. */
 import * as booksRoute from '../../../../app/api/books/route';
 import * as profileStatusRoute from '../../../../app/api/profile/status/route';
-// (Tasks 6–12 add imports here: booksIdRoute, booksFeedbackRoute, ... )
+import * as bookFeedbackRoute from '../../../../app/api/books/[id]/feedback/route';
+import * as bookShelfRoute from '../../../../app/api/books/[id]/shelf/route';
+// (Tasks 7–12 add imports here: ... )
 
 interface RegistryRow {
   method: string;
@@ -25,6 +27,8 @@ export const REGISTRY: RegistryRow[] = [
   // /profile/status, /recommendations/rejected, /directive, /settings/api-key/status
   // — added in the task that first replays a scenario using them.
   { method: 'GET', pattern: /^\/profile\/status$/, handler: () => profileStatusRoute.GET as Handler },
+  { method: 'PATCH', pattern: /^\/books\/(?<id>\d+)\/feedback$/, handler: () => bookFeedbackRoute.PATCH as Handler },
+  { method: 'PATCH', pattern: /^\/books\/(?<id>\d+)\/shelf$/, handler: () => bookShelfRoute.PATCH as Handler },
 ];
 
 /** Mask volatile server-generated values; preserve the null/non-null distinction. */
