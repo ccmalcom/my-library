@@ -5,8 +5,12 @@ import { round4 } from '@/lib/server/serialize';
 
 /** Port of usage.py::cap_status — month-to-date spend, soft-warn only. */
 export const GET = withApi('/api/settings/usage', async (_req, ctx) => {
-  const cap = parseFloat(process.env.MYLIBRARY_MONTHLY_SOFT_CAP_USD ?? '5.0');
-  const warnThreshold = parseFloat(process.env.MYLIBRARY_USAGE_WARN_THRESHOLD ?? '0.8');
+  // `??` only falls back on null/undefined — an explicitly empty-string env var (a real
+  // state in local isolated-env setups, and a possible deployment misconfiguration) would
+  // otherwise parseFloat('') into NaN and silently poison cap_usd/pct/warn. Empty string is
+  // falsy in JS, so `||` treats unset and empty-string the same way.
+  const cap = parseFloat(process.env.MYLIBRARY_MONTHLY_SOFT_CAP_USD || '5.0');
+  const warnThreshold = parseFloat(process.env.MYLIBRARY_USAGE_WARN_THRESHOLD || '0.8');
 
   const now = new Date();
   const monthStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01 00:00:00`;
