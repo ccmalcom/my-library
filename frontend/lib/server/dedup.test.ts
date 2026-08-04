@@ -22,4 +22,13 @@ describe('dedup', () => {
                     'Exodus: The Helium Sea', 'Peter F. Hamilton')).toBe(false);
     expect(sameWork('Dune', 'Frank Herbert', 'Dune', 'Arthur C. Clarke')).toBe(false);
   });
+  it('sameWork: same-surname different-author collision (inherited from Python behavior)', () => {
+    // This documents an intentional false-positive surface inherited from mylibrary/enrich.py:
+    // sameWork checks surname equality BEFORE comparing titles, so genuinely different books
+    // by different authors who share a surname will be flagged as the same work.
+    // E.g., Brian Herbert (Frank's son) wrote his own books; "Dune: House Atreides" by Brian
+    // should NOT match Frank's "Dune", but it does because surname(authorA) === surname(authorB).
+    // This is locked-in behavior — a refactor must not silently change it without test notice.
+    expect(sameWork('Dune: House Atreides', 'Brian Herbert', 'Dune', 'Frank Herbert')).toBe(true);
+  });
 });
