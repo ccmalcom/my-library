@@ -1,0 +1,1771 @@
+{
+ "add-book-basic": [
+  {
+   "req": "POST /books",
+   "json": {
+    "title": "Ancillary Justice",
+    "author": "Ann Leckie",
+    "year": 2013,
+    "isbn13": "9780316246620",
+    "shelf": "to-read",
+    "cover_url": "https://covers.example/aj.jpg",
+    "subjects": [
+     "science fiction",
+     "space opera"
+    ],
+    "catalog_source": "openlibrary",
+    "catalog_id": "/works/OL16813953W"
+   },
+   "status": 201,
+   "body": {
+    "id": 103,
+    "title": "Ancillary Justice",
+    "author": "Ann Leckie",
+    "isbn13": "9780316246620",
+    "exclusive_shelf": "to-read",
+    "goodreads_rating": 0,
+    "app_rating": null,
+    "app_review": null,
+    "effective_rating": null,
+    "year_published": 2013,
+    "page_count": null,
+    "date_read": null,
+    "date_added": "2026-08-04",
+    "cover_url": "https://covers.example/aj.jpg",
+    "description": null,
+    "confidence_label": "MANUAL",
+    "resolution_confidence": 1.0,
+    "exclude_from_profile": false,
+    "is_favorite": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /books?shelf=to-read",
+   "json": null,
+   "status": 200,
+   "body": [
+    {
+     "id": 8,
+     "title": "Piranesi",
+     "author": "Susanna Clarke",
+     "isbn13": null,
+     "exclusive_shelf": "to-read",
+     "goodreads_rating": 0,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": null,
+     "year_published": 2020,
+     "page_count": 272,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "MEDIUM",
+     "resolution_confidence": 0.7,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 103,
+     "title": "Ancillary Justice",
+     "author": "Ann Leckie",
+     "isbn13": "9780316246620",
+     "exclusive_shelf": "to-read",
+     "goodreads_rating": 0,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": null,
+     "year_published": 2013,
+     "page_count": null,
+     "date_read": null,
+     "date_added": "2026-08-04",
+     "cover_url": "https://covers.example/aj.jpg",
+     "description": null,
+     "confidence_label": "MANUAL",
+     "resolution_confidence": 1.0,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    }
+   ],
+   "maskDetail": false
+  }
+ ],
+ "add-book-rated-review": [
+  {
+   "req": "POST /books",
+   "json": {
+    "title": "The Player of Games",
+    "author": "Iain M. Banks",
+    "shelf": "read",
+    "rating": 5,
+    "review": "The Culture at its best."
+   },
+   "status": 201,
+   "body": {
+    "id": 103,
+    "title": "The Player of Games",
+    "author": "Iain M. Banks",
+    "isbn13": null,
+    "exclusive_shelf": "read",
+    "goodreads_rating": 0,
+    "app_rating": 5,
+    "app_review": "The Culture at its best.",
+    "effective_rating": 5,
+    "year_published": null,
+    "page_count": null,
+    "date_read": null,
+    "date_added": "2026-08-04",
+    "cover_url": null,
+    "description": null,
+    "confidence_label": null,
+    "resolution_confidence": null,
+    "exclude_from_profile": false,
+    "is_favorite": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /profile/status",
+   "json": null,
+   "status": 200,
+   "body": {
+    "dirty": true,
+    "changed_books": 4,
+    "changed_book_ids": [
+     2,
+     3,
+     9,
+     103
+    ],
+    "last_profiled_at": "2026-07-01T12:00:00",
+    "last_profile_kind": "full"
+   },
+   "maskDetail": false
+  }
+ ],
+ "add-book-duplicate": [
+  {
+   "req": "POST /books",
+   "json": {
+    "title": "DUNE: Special Edition",
+    "author": "Herbert"
+   },
+   "status": 409,
+   "body": {
+    "detail": "\"DUNE: Special Edition\" is already in your library."
+   },
+   "maskDetail": false
+  }
+ ],
+ "add-book-sibling-subtitle": [
+  {
+   "req": "POST /books",
+   "json": {
+    "title": "Exodus: The Archimedes Engine",
+    "author": "Peter F. Hamilton"
+   },
+   "status": 201,
+   "body": {
+    "id": 103,
+    "title": "Exodus: The Archimedes Engine",
+    "author": "Peter F. Hamilton",
+    "isbn13": null,
+    "exclusive_shelf": "read",
+    "goodreads_rating": 0,
+    "app_rating": null,
+    "app_review": null,
+    "effective_rating": null,
+    "year_published": null,
+    "page_count": null,
+    "date_read": null,
+    "date_added": "2026-08-04",
+    "cover_url": null,
+    "description": null,
+    "confidence_label": null,
+    "resolution_confidence": null,
+    "exclude_from_profile": false,
+    "is_favorite": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /books",
+   "json": {
+    "title": "Exodus: The Helium Sea",
+    "author": "Peter F. Hamilton"
+   },
+   "status": 201,
+   "body": {
+    "id": 104,
+    "title": "Exodus: The Helium Sea",
+    "author": "Peter F. Hamilton",
+    "isbn13": null,
+    "exclusive_shelf": "read",
+    "goodreads_rating": 0,
+    "app_rating": null,
+    "app_review": null,
+    "effective_rating": null,
+    "year_published": null,
+    "page_count": null,
+    "date_read": null,
+    "date_added": "2026-08-04",
+    "cover_url": null,
+    "description": null,
+    "confidence_label": null,
+    "resolution_confidence": null,
+    "exclude_from_profile": false,
+    "is_favorite": false
+   },
+   "maskDetail": false
+  }
+ ],
+ "add-book-invalid": [
+  {
+   "req": "POST /books",
+   "json": {
+    "title": "X",
+    "shelf": "nonsense"
+   },
+   "status": 422,
+   "body": {
+    "detail": "shelf must be one of ['currently-reading', 'did-not-finish', 'read', 'to-read']."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /books",
+   "json": {
+    "title": "X",
+    "rating": 9
+   },
+   "status": 422,
+   "body": {
+    "detail": "rating must be between 1 and 5 (or omitted/0 for unrated)."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /books",
+   "json": {
+    "title": "X",
+    "review": "no rating"
+   },
+   "status": 422,
+   "body": {
+    "detail": "A review requires a rating (1-5). Rate the book, or omit the review."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /books",
+   "json": {
+    "title": "   "
+   },
+   "status": 422,
+   "body": {
+    "detail": "title is required."
+   },
+   "maskDetail": false
+  }
+ ],
+ "book-feedback": [
+  {
+   "req": "PATCH /books/1/feedback",
+   "json": {
+    "rating": 4,
+    "review": "Rereads well."
+   },
+   "status": 200,
+   "body": {
+    "id": 1,
+    "title": "Dune",
+    "author": "Frank Herbert",
+    "exclusive_shelf": "read",
+    "app_rating": 4,
+    "goodreads_rating": 5,
+    "effective_rating": 4,
+    "app_review": "Rereads well.",
+    "date_read": "2025-11-02",
+    "feedback_updated_at": "2026-08-04T18:40:40.602098",
+    "exclude_from_profile": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/3/feedback",
+   "json": {
+    "rating": 0
+   },
+   "status": 200,
+   "body": {
+    "id": 3,
+    "title": "Project Hail Mary",
+    "author": "Andy Weir",
+    "exclusive_shelf": "read",
+    "app_rating": null,
+    "goodreads_rating": 4,
+    "effective_rating": 4,
+    "app_review": "Loved the problem-solving.",
+    "date_read": null,
+    "feedback_updated_at": "2026-08-04T18:40:40.609521",
+    "exclude_from_profile": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/1/feedback",
+   "json": {
+    "date_read": "2026-01-15",
+    "is_favorite": true
+   },
+   "status": 200,
+   "body": {
+    "id": 1,
+    "title": "Dune",
+    "author": "Frank Herbert",
+    "exclusive_shelf": "read",
+    "app_rating": 4,
+    "goodreads_rating": 5,
+    "effective_rating": 4,
+    "app_review": "Rereads well.",
+    "date_read": "2026-01-15",
+    "feedback_updated_at": "2026-08-04T18:40:40.615009",
+    "exclude_from_profile": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/5/feedback",
+   "json": {
+    "exclude_from_profile": true
+   },
+   "status": 200,
+   "body": {
+    "id": 5,
+    "title": "Foundation",
+    "author": "Isaac Asimov",
+    "exclusive_shelf": "read",
+    "app_rating": null,
+    "goodreads_rating": 3,
+    "effective_rating": 3,
+    "app_review": null,
+    "date_read": null,
+    "feedback_updated_at": "2026-08-04T18:40:40.622679",
+    "exclude_from_profile": true
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /books?rated_only=true",
+   "json": null,
+   "status": 200,
+   "body": [
+    {
+     "id": 1,
+     "title": "Dune",
+     "author": "Frank Herbert",
+     "isbn13": "9780441013593",
+     "exclusive_shelf": "read",
+     "goodreads_rating": 5,
+     "app_rating": 4,
+     "app_review": "Rereads well.",
+     "effective_rating": 4,
+     "year_published": 1965,
+     "page_count": 412,
+     "date_read": "2026-01-15",
+     "date_added": "2025-10-01",
+     "cover_url": "https://covers.example/dune.jpg",
+     "description": "Melange, sandworms, prophecy.",
+     "confidence_label": "HIGH",
+     "resolution_confidence": 0.95,
+     "exclude_from_profile": false,
+     "is_favorite": true
+    },
+    {
+     "id": 2,
+     "title": "The Dispossessed",
+     "author": "Ursula K. Le Guin",
+     "isbn13": "9780061054884",
+     "exclusive_shelf": "read",
+     "goodreads_rating": 5,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": 5,
+     "year_published": 1974,
+     "page_count": 387,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": "https://covers.example/dispossessed.jpg",
+     "description": "An ambiguous utopia.",
+     "confidence_label": "HIGH",
+     "resolution_confidence": 0.95,
+     "exclude_from_profile": false,
+     "is_favorite": true
+    },
+    {
+     "id": 3,
+     "title": "Project Hail Mary",
+     "author": "Andy Weir",
+     "isbn13": "9780593135204",
+     "exclusive_shelf": "read",
+     "goodreads_rating": 4,
+     "app_rating": null,
+     "app_review": "Loved the problem-solving.",
+     "effective_rating": 4,
+     "year_published": 2021,
+     "page_count": 476,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": "https://covers.example/phm.jpg",
+     "description": "An amnesiac astronaut saves the world.",
+     "confidence_label": "MEDIUM",
+     "resolution_confidence": 0.7,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 4,
+     "title": "The Left Hand of Darkness",
+     "author": "Ursula K. Le Guin",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 4,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": 4,
+     "year_published": 1969,
+     "page_count": 304,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "HIGH",
+     "resolution_confidence": 0.95,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 5,
+     "title": "Foundation",
+     "author": "Isaac Asimov",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 3,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": 3,
+     "year_published": 1951,
+     "page_count": 244,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "LOW",
+     "resolution_confidence": 0.3,
+     "exclude_from_profile": true,
+     "is_favorite": false
+    },
+    {
+     "id": 6,
+     "title": "Gideon the Ninth",
+     "author": "Tamsyn Muir",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 2,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": 2,
+     "year_published": 2019,
+     "page_count": 448,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "MEDIUM",
+     "resolution_confidence": 0.7,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 7,
+     "title": "The Hobbit",
+     "author": "J.R.R. Tolkien",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 0,
+     "app_rating": 5,
+     "app_review": null,
+     "effective_rating": 5,
+     "year_published": 1937,
+     "page_count": 310,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "HIGH",
+     "resolution_confidence": 0.95,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 10,
+     "title": "The Emperor's Soul",
+     "author": "Brandon Sanderson",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 4,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": 4,
+     "year_published": 2012,
+     "page_count": 96,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "HIGH",
+     "resolution_confidence": 0.95,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 11,
+     "title": "Exhalation",
+     "author": "Ted Chiang",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 5,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": 5,
+     "year_published": 2019,
+     "page_count": 368,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "HIGH",
+     "resolution_confidence": 0.95,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 12,
+     "title": "The Fifth Season",
+     "author": "N.K. Jemisin",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 5,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": 5,
+     "year_published": 2015,
+     "page_count": 468,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "HIGH",
+     "resolution_confidence": 0.95,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 13,
+     "title": "Kindred",
+     "author": "Octavia E. Butler",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 5,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": 5,
+     "year_published": 1979,
+     "page_count": null,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "MEDIUM",
+     "resolution_confidence": 0.7,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 14,
+     "title": "Small Gods",
+     "author": "Terry Pratchett",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 4,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": 4,
+     "year_published": 1992,
+     "page_count": 389,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": null,
+     "resolution_confidence": null,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    }
+   ],
+   "maskDetail": false
+  }
+ ],
+ "book-feedback-invalid": [
+  {
+   "req": "PATCH /books/8/feedback",
+   "json": {
+    "review": "unrated review"
+   },
+   "status": 422,
+   "body": {
+    "detail": "A review requires a rating. Rate the book 1-5 (same update is fine) before saving a review."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/1/feedback",
+   "json": {},
+   "status": 422,
+   "body": {
+    "detail": "Nothing to update: pass a rating, review, date read, exclude flag, and/or favorite."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/1/feedback",
+   "json": {
+    "rating": 7
+   },
+   "status": 422,
+   "body": {
+    "detail": "rating must be between 1 and 5 (or 0 to clear)."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/101/feedback",
+   "json": {
+    "rating": 3
+   },
+   "status": 404,
+   "body": {
+    "detail": "Book 101 not found."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/999/feedback",
+   "json": {
+    "rating": 3
+   },
+   "status": 404,
+   "body": {
+    "detail": "Book 999 not found."
+   },
+   "maskDetail": false
+  }
+ ],
+ "book-shelf": [
+  {
+   "req": "PATCH /books/8/shelf",
+   "json": {
+    "shelf": "currently-reading"
+   },
+   "status": 200,
+   "body": {
+    "id": 8,
+    "title": "Piranesi",
+    "author": "Susanna Clarke",
+    "exclusive_shelf": "currently-reading",
+    "app_rating": null,
+    "goodreads_rating": 0,
+    "effective_rating": null,
+    "app_review": null,
+    "date_read": null,
+    "feedback_updated_at": null,
+    "exclude_from_profile": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/8/shelf",
+   "json": {
+    "shelf": "bogus"
+   },
+   "status": 422,
+   "body": {
+    "detail": "shelf must be one of ['currently-reading', 'did-not-finish', 'read', 'to-read']."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/101/shelf",
+   "json": {
+    "shelf": "read"
+   },
+   "status": 404,
+   "body": {
+    "detail": "Book 101 not found."
+   },
+   "maskDetail": false
+  }
+ ],
+ "enrichment-correction": [
+  {
+   "req": "PATCH /books/5/enrichment",
+   "json": {
+    "catalog_source": "openlibrary",
+    "catalog_id": "/works/OL46125W-fixed",
+    "cover_url": "https://covers.example/foundation-fixed.jpg",
+    "subjects": [
+     "science fiction",
+     "psychohistory"
+    ],
+    "description": "The right Foundation."
+   },
+   "status": 200,
+   "body": {
+    "id": 5,
+    "title": "Foundation",
+    "author": "Isaac Asimov",
+    "isbn13": null,
+    "exclusive_shelf": "read",
+    "goodreads_rating": 3,
+    "app_rating": null,
+    "app_review": null,
+    "effective_rating": 3,
+    "year_published": 1951,
+    "page_count": 244,
+    "date_read": null,
+    "date_added": null,
+    "cover_url": "https://covers.example/foundation-fixed.jpg",
+    "description": "The right Foundation.",
+    "confidence_label": "CORRECTED",
+    "resolution_confidence": 1.0,
+    "exclude_from_profile": false,
+    "is_favorite": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /profile/status",
+   "json": null,
+   "status": 200,
+   "body": {
+    "dirty": true,
+    "changed_books": 3,
+    "changed_book_ids": [
+     2,
+     3,
+     9
+    ],
+    "last_profiled_at": "2026-07-01T12:00:00",
+    "last_profile_kind": "full"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/14/enrichment",
+   "json": {
+    "catalog_source": "googlebooks",
+    "catalog_id": "gb-smallgods"
+   },
+   "status": 200,
+   "body": {
+    "id": 14,
+    "title": "Small Gods",
+    "author": "Terry Pratchett",
+    "isbn13": null,
+    "exclusive_shelf": "read",
+    "goodreads_rating": 4,
+    "app_rating": null,
+    "app_review": null,
+    "effective_rating": 4,
+    "year_published": 1992,
+    "page_count": 389,
+    "date_read": null,
+    "date_added": null,
+    "cover_url": null,
+    "description": null,
+    "confidence_label": "CORRECTED",
+    "resolution_confidence": 1.0,
+    "exclude_from_profile": false,
+    "is_favorite": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/1/enrichment",
+   "json": {
+    "catalog_source": "",
+    "catalog_id": ""
+   },
+   "status": 422,
+   "body": {
+    "detail": "catalog_source and catalog_id are required."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /books/101/enrichment",
+   "json": {
+    "catalog_source": "x",
+    "catalog_id": "y"
+   },
+   "status": 404,
+   "body": {
+    "detail": "Book 101 not found."
+   },
+   "maskDetail": false
+  }
+ ],
+ "delete-book": [
+  {
+   "req": "DELETE /books/8",
+   "json": null,
+   "status": 200,
+   "body": {
+    "id": 8,
+    "title": "Piranesi",
+    "removed": true
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /books?shelf=to-read",
+   "json": null,
+   "status": 200,
+   "body": [],
+   "maskDetail": false
+  },
+  {
+   "req": "DELETE /books/8",
+   "json": null,
+   "status": 404,
+   "body": {
+    "detail": "Book 8 not found."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "DELETE /books/101",
+   "json": null,
+   "status": 404,
+   "body": {
+    "detail": "Book 101 not found."
+   },
+   "maskDetail": false
+  }
+ ],
+ "rec-feedback-accept": [
+  {
+   "req": "PATCH /recommendations/3/feedback",
+   "json": {
+    "status": "accepted"
+   },
+   "status": 200,
+   "body": {
+    "status": "accepted",
+    "user_note": null,
+    "book": {
+     "id": 103,
+     "title": "Ancillary Justice",
+     "author": "Ann Leckie",
+     "isbn13": "9780316246620",
+     "exclusive_shelf": "to-read",
+     "goodreads_rating": 0,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": null,
+     "year_published": 2013,
+     "page_count": null,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": "https://covers.example/aj.jpg",
+     "description": "A ship's AI seeks revenge.",
+     "confidence_label": "RECOMMENDATION",
+     "resolution_confidence": 1.0,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    }
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /recommendations/3/feedback",
+   "json": {
+    "status": "accepted"
+   },
+   "status": 200,
+   "body": {
+    "status": "accepted",
+    "user_note": null,
+    "book": {
+     "id": 103,
+     "title": "Ancillary Justice",
+     "author": "Ann Leckie",
+     "isbn13": "9780316246620",
+     "exclusive_shelf": "to-read",
+     "goodreads_rating": 0,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": null,
+     "year_published": 2013,
+     "page_count": null,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": "https://covers.example/aj.jpg",
+     "description": "A ship's AI seeks revenge.",
+     "confidence_label": "RECOMMENDATION",
+     "resolution_confidence": 1.0,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    }
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /books?shelf=to-read",
+   "json": null,
+   "status": 200,
+   "body": [
+    {
+     "id": 8,
+     "title": "Piranesi",
+     "author": "Susanna Clarke",
+     "isbn13": null,
+     "exclusive_shelf": "to-read",
+     "goodreads_rating": 0,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": null,
+     "year_published": 2020,
+     "page_count": 272,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": null,
+     "confidence_label": "MEDIUM",
+     "resolution_confidence": 0.7,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    },
+    {
+     "id": 103,
+     "title": "Ancillary Justice",
+     "author": "Ann Leckie",
+     "isbn13": "9780316246620",
+     "exclusive_shelf": "to-read",
+     "goodreads_rating": 0,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": null,
+     "year_published": 2013,
+     "page_count": null,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": "https://covers.example/aj.jpg",
+     "description": "A ship's AI seeks revenge.",
+     "confidence_label": "RECOMMENDATION",
+     "resolution_confidence": 1.0,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    }
+   ],
+   "maskDetail": false
+  }
+ ],
+ "rec-feedback-already-read": [
+  {
+   "req": "PATCH /recommendations/4/feedback",
+   "json": {
+    "status": "already_read"
+   },
+   "status": 200,
+   "body": {
+    "status": "already_read",
+    "user_note": null,
+    "book": {
+     "id": 103,
+     "title": "Children of Time",
+     "author": "Adrian Tchaikovsky",
+     "isbn13": null,
+     "exclusive_shelf": "read",
+     "goodreads_rating": 0,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": null,
+     "year_published": 2015,
+     "page_count": null,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": "Terraforming gone sideways.",
+     "confidence_label": "RECOMMENDATION",
+     "resolution_confidence": 1.0,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    }
+   },
+   "maskDetail": false
+  }
+ ],
+ "rec-feedback-note-on-accepted": [
+  {
+   "req": "PATCH /recommendations/2/feedback",
+   "json": {
+    "user_note": "started it"
+   },
+   "status": 200,
+   "body": {
+    "status": "accepted",
+    "user_note": "started it",
+    "book": {
+     "id": 103,
+     "title": "A Fire Upon the Deep",
+     "author": "Vernor Vinge",
+     "isbn13": null,
+     "exclusive_shelf": "to-read",
+     "goodreads_rating": 0,
+     "app_rating": null,
+     "app_review": null,
+     "effective_rating": null,
+     "year_published": 1992,
+     "page_count": null,
+     "date_read": null,
+     "date_added": null,
+     "cover_url": null,
+     "description": "Galaxy-spanning intelligence gradients.",
+     "confidence_label": "RECOMMENDATION",
+     "resolution_confidence": 1.0,
+     "exclude_from_profile": false,
+     "is_favorite": false
+    }
+   },
+   "maskDetail": false
+  }
+ ],
+ "rec-feedback-reject-reasons": [
+  {
+   "req": "PATCH /recommendations/3/feedback",
+   "json": {
+    "status": "rejected",
+    "reject_reasons": [
+     "too_long",
+     "not_now"
+    ]
+   },
+   "status": 200,
+   "body": {
+    "status": "rejected",
+    "user_note": null,
+    "book": null
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /recommendations/rejected",
+   "json": null,
+   "status": 200,
+   "body": [
+    {
+     "id": 5,
+     "run_id": "runB",
+     "rank": 3,
+     "title": "Consider Phlebas",
+     "author": "Iain M. Banks",
+     "year": 1987,
+     "isbn13": null,
+     "cover_url": null,
+     "subjects": [
+      "science fiction",
+      "space opera"
+     ],
+     "description": "A shapeshifter picks the wrong side.",
+     "catalog_source": "openlibrary",
+     "catalog_id": "/works/OL2603721W",
+     "retrieval_pool": "metadata",
+     "seed_reason": "space opera affinity",
+     "score": 0.74,
+     "rationale": "The Culture, from outside.",
+     "grounded_trait_ids": [
+      1
+     ],
+     "grounded_book_ids": [
+      1
+     ],
+     "status": "rejected",
+     "user_note": null,
+     "created_at": "2026-07-19T12:00:00"
+    },
+    {
+     "id": 3,
+     "run_id": "runB",
+     "rank": 1,
+     "title": "Ancillary Justice",
+     "author": "Ann Leckie",
+     "year": 2013,
+     "isbn13": "9780316246620",
+     "cover_url": "https://covers.example/aj.jpg",
+     "subjects": [
+      "science fiction",
+      "space opera",
+      "artificial intelligence"
+     ],
+     "description": "A ship's AI seeks revenge.",
+     "catalog_source": "openlibrary",
+     "catalog_id": "/works/OL16813953W",
+     "retrieval_pool": "claude_seed",
+     "seed_reason": "political sf",
+     "score": 0.92,
+     "rationale": "Empire, identity, and tea.",
+     "grounded_trait_ids": [
+      1,
+      3
+     ],
+     "grounded_book_ids": [
+      2,
+      4
+     ],
+     "status": "rejected",
+     "user_note": null,
+     "created_at": "2026-07-19T12:00:00"
+    },
+    {
+     "id": 1,
+     "run_id": "runA",
+     "rank": 1,
+     "title": "Blindsight",
+     "author": "Peter Watts",
+     "year": 2006,
+     "isbn13": null,
+     "cover_url": null,
+     "subjects": [
+      "science fiction",
+      "first contact"
+     ],
+     "description": "Vampires in space, consciousness as bug.",
+     "catalog_source": "openlibrary",
+     "catalog_id": "/works/OL5714058W",
+     "retrieval_pool": "metadata",
+     "seed_reason": "hard sf affinity",
+     "score": 0.81,
+     "rationale": "Idea-dense first contact.",
+     "grounded_trait_ids": [
+      1
+     ],
+     "grounded_book_ids": [
+      1
+     ],
+     "status": "rejected",
+     "user_note": "not for me",
+     "created_at": "2026-07-05T12:00:00"
+    }
+   ],
+   "maskDetail": false
+  }
+ ],
+ "rec-feedback-invalid": [
+  {
+   "req": "PATCH /recommendations/3/feedback",
+   "json": {},
+   "status": 422,
+   "body": {
+    "detail": "Provide status and/or user_note"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /recommendations/3/feedback",
+   "json": {
+    "status": "meh"
+   },
+   "status": 422,
+   "body": {
+    "detail": "status must be one of {'rejected', 'already_read', 'accepted'}"
+   },
+   "maskDetail": true
+  },
+  {
+   "req": "PATCH /recommendations/3/feedback",
+   "json": {
+    "status": "accepted",
+    "reject_reasons": [
+     "too_long"
+    ]
+   },
+   "status": 422,
+   "body": {
+    "detail": "reject_reasons may only be provided when status is 'rejected'"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /recommendations/3/feedback",
+   "json": {
+    "status": "rejected",
+    "reject_reasons": []
+   },
+   "status": 422,
+   "body": {
+    "detail": "reject_reasons must be a non-empty list. Valid codes: ['wrong_genre', 'too_dark', 'tried_author', 'too_long', 'not_now', 'overhyped', 'wrong_vibe']"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /recommendations/3/feedback",
+   "json": {
+    "status": "rejected",
+    "reject_reasons": [
+     "bogus_reason"
+    ]
+   },
+   "status": 422,
+   "body": {
+    "detail": "Unknown reject_reasons: ['bogus_reason']. Valid codes: ['wrong_genre', 'too_dark', 'tried_author', 'too_long', 'not_now', 'overhyped', 'wrong_vibe']"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /recommendations/101/feedback",
+   "json": {
+    "status": "accepted"
+   },
+   "status": 404,
+   "body": {
+    "detail": "Recommendation 101 not found"
+   },
+   "maskDetail": false
+  }
+ ],
+ "api-key": [
+  {
+   "req": "PUT /settings/api-key",
+   "json": {
+    "api_key": "sk-ant-test-wave2-key"
+   },
+   "status": 200,
+   "body": {
+    "configured": true
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /settings/api-key/status",
+   "json": null,
+   "status": 200,
+   "body": {
+    "configured": true
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "DELETE /settings/api-key",
+   "json": null,
+   "status": 200,
+   "body": {
+    "configured": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PUT /settings/api-key",
+   "json": {
+    "api_key": "   "
+   },
+   "status": 422,
+   "body": {
+    "detail": "API key must not be empty."
+   },
+   "maskDetail": false
+  }
+ ],
+ "display-name": [
+  {
+   "req": "PUT /settings/profile",
+   "json": {
+    "display_name": "Wave Two"
+   },
+   "status": 200,
+   "body": {
+    "display_name": "Wave Two"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PUT /settings/profile",
+   "json": {
+    "display_name": "  "
+   },
+   "status": 422,
+   "body": {
+    "detail": "Display name must not be empty."
+   },
+   "maskDetail": false
+  }
+ ],
+ "directive": [
+  {
+   "req": "PUT /directive",
+   "json": {
+    "nl_text": "  Standalone literary sci-fi.  ",
+    "constraints": {
+     "languages": [
+      "EN",
+      " fr "
+     ],
+     "min_year": "1990",
+     "max_year": 2020,
+     "page_max": 400,
+     "exclude_subjects": [
+      "Grimdark "
+     ],
+     "exclude_authors": [
+      "Ringo"
+     ]
+    }
+   },
+   "status": 200,
+   "body": {
+    "nl_text": "Standalone literary sci-fi.",
+    "constraints": {
+     "languages": [
+      "en",
+      "fr"
+     ],
+     "min_year": 1990,
+     "max_year": 2020,
+     "exclude_subjects": [
+      "grimdark"
+     ],
+     "exclude_authors": [
+      "ringo"
+     ]
+    },
+    "updated_at": "2026-08-04T18:40:40.884460"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /directive",
+   "json": null,
+   "status": 200,
+   "body": {
+    "nl_text": "Standalone literary sci-fi.",
+    "constraints": {
+     "languages": [
+      "en",
+      "fr"
+     ],
+     "min_year": 1990,
+     "max_year": 2020,
+     "exclude_subjects": [
+      "grimdark"
+     ],
+     "exclude_authors": [
+      "ringo"
+     ]
+    },
+    "updated_at": "2026-08-04T18:40:40.884460"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PUT /directive",
+   "json": {
+    "nl_text": "  ",
+    "constraints": {}
+   },
+   "status": 422,
+   "body": {
+    "detail": "Custom instructions must not be empty."
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "DELETE /directive",
+   "json": null,
+   "status": 200,
+   "body": {
+    "nl_text": null,
+    "constraints": {},
+    "updated_at": null
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /directive",
+   "json": null,
+   "status": 200,
+   "body": {
+    "nl_text": null,
+    "constraints": {},
+    "updated_at": null
+   },
+   "maskDetail": false
+  }
+ ],
+ "trait-patch": [
+  {
+   "req": "PATCH /profile/traits/1",
+   "json": {
+    "status": "confirmed"
+   },
+   "status": 200,
+   "body": {
+    "id": 1,
+    "claim": "Drawn to idea-driven science fiction that interrogates political systems.",
+    "reveal_line": "You read to argue with civilizations.",
+    "polarity": "positive",
+    "exhibits": [
+     1,
+     2
+    ],
+    "contrasts": null,
+    "inference_confidence": 0.95,
+    "status": "confirmed",
+    "user_note": null,
+    "user_weight": 1.0,
+    "verdict_updated_at": "2026-08-04T18:40:40.920935",
+    "created_at": "2026-07-01T12:00:00"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /profile/traits/1",
+   "json": {
+    "claim": "  Edited claim.  "
+   },
+   "status": 200,
+   "body": {
+    "id": 1,
+    "claim": "Edited claim.",
+    "reveal_line": "You read to argue with civilizations.",
+    "polarity": "positive",
+    "exhibits": [
+     1,
+     2
+    ],
+    "contrasts": null,
+    "inference_confidence": 0.95,
+    "status": "edited",
+    "user_note": null,
+    "user_weight": 1.0,
+    "verdict_updated_at": "2026-08-04T18:40:40.920935",
+    "created_at": "2026-07-01T12:00:00"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /profile/traits/3",
+   "json": {
+    "user_weight": 0.5,
+    "user_note": "sort of"
+   },
+   "status": 200,
+   "body": {
+    "id": 3,
+    "claim": "Prefers standalone novels over long series commitments.",
+    "reveal_line": null,
+    "polarity": "positive",
+    "exhibits": [
+     2,
+     13
+    ],
+    "contrasts": [
+     12
+    ],
+    "inference_confidence": 0.8,
+    "status": "proposed",
+    "user_note": "sort of",
+    "user_weight": 0.5,
+    "verdict_updated_at": "2026-08-04T18:40:40.927141",
+    "created_at": "2026-07-01T12:00:00"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /profile/status",
+   "json": null,
+   "status": 200,
+   "body": {
+    "dirty": true,
+    "changed_books": 3,
+    "changed_book_ids": [
+     2,
+     3,
+     9
+    ],
+    "last_profiled_at": "2026-07-01T12:00:00",
+    "last_profile_kind": "full"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /profile/traits/1",
+   "json": {},
+   "status": 422,
+   "body": {
+    "detail": "at least one field (claim, user_note, status, user_weight) must be provided"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "PATCH /profile/traits/101",
+   "json": {
+    "status": "confirmed"
+   },
+   "status": 404,
+   "body": {
+    "detail": "Trait 101 not found"
+   },
+   "maskDetail": false
+  }
+ ],
+ "feedback-flow": [
+  {
+   "req": "GET /feedback/prompt?trigger=post-setup",
+   "json": null,
+   "status": 200,
+   "body": {
+    "show": true
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /feedback",
+   "json": {
+    "category": "Bug",
+    "body": "It broke.",
+    "trigger": "post-setup",
+    "page": "/setup"
+   },
+   "status": 201,
+   "body": {},
+   "maskDetail": false
+  },
+  {
+   "req": "GET /feedback/prompt?trigger=post-setup",
+   "json": null,
+   "status": 200,
+   "body": {
+    "show": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /feedback/dismiss",
+   "json": {
+    "trigger": "post-first-profile",
+    "mode": "dont_ask"
+   },
+   "status": 204,
+   "body": null,
+   "maskDetail": false
+  },
+  {
+   "req": "GET /feedback/prompt?trigger=post-first-profile",
+   "json": null,
+   "status": 200,
+   "body": {
+    "show": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /feedback/dismiss",
+   "json": {
+    "trigger": "post-recs",
+    "run_id": "runB",
+    "mode": "ask_later"
+   },
+   "status": 204,
+   "body": null,
+   "maskDetail": false
+  },
+  {
+   "req": "GET /feedback/prompt?trigger=post-recs&run_id=runB",
+   "json": null,
+   "status": 200,
+   "body": {
+    "show": false
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /feedback/prompt?trigger=post-recs&run_id=runC",
+   "json": null,
+   "status": 200,
+   "body": {
+    "show": true
+   },
+   "maskDetail": false
+  }
+ ],
+ "feedback-invalid": [
+  {
+   "req": "POST /feedback",
+   "json": {
+    "category": "nonsense",
+    "body": "x"
+   },
+   "status": 422,
+   "body": {
+    "detail": "category must be one of ['bug', 'confusing', 'idea', 'praise', 'targeted']"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /feedback",
+   "json": {
+    "category": "bug",
+    "body": "   "
+   },
+   "status": 422,
+   "body": {
+    "detail": "body must be a non-empty string"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /feedback",
+   "json": {
+    "category": "bug",
+    "body": "x",
+    "trigger": "post-recs"
+   },
+   "status": 422,
+   "body": {
+    "detail": "run_id is required when trigger='post-recs'"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "GET /feedback/prompt?trigger=post-recs",
+   "json": null,
+   "status": 422,
+   "body": {
+    "detail": "run_id is required when trigger='post-recs'"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /feedback/dismiss",
+   "json": {
+    "trigger": "post-setup",
+    "mode": "whenever"
+   },
+   "status": 422,
+   "body": {
+    "detail": "mode must be 'ask_later' or 'dont_ask'"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /feedback/dismiss",
+   "json": {
+    "trigger": "post-recs",
+    "mode": "ask_later"
+   },
+   "status": 422,
+   "body": {
+    "detail": "run_id is required when trigger='post-recs' and mode='ask_later'"
+   },
+   "maskDetail": false
+  }
+ ],
+ "taste-signal": [
+  {
+   "req": "POST /taste-signal",
+   "json": {
+    "direction": "more",
+    "target_kind": "book",
+    "target_book_id": 1
+   },
+   "status": 201,
+   "body": {
+    "id": 1,
+    "direction": "more",
+    "target_kind": "book",
+    "target_book_id": 1,
+    "snapshot": null,
+    "created_at": "2026-08-04T18:40:41"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /taste-signal",
+   "json": {
+    "direction": "less",
+    "target_kind": "rec",
+    "snapshot": {
+     "title": "Blindsight",
+     "author": "Peter Watts",
+     "subjects": [
+      "science fiction"
+     ]
+    }
+   },
+   "status": 201,
+   "body": {
+    "id": 2,
+    "direction": "less",
+    "target_kind": "rec",
+    "target_book_id": null,
+    "snapshot": {
+     "title": "Blindsight",
+     "author": "Peter Watts",
+     "subjects": [
+      "science fiction"
+     ]
+    },
+    "created_at": "2026-08-04T18:40:41"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /taste-signal",
+   "json": {
+    "direction": "more",
+    "target_kind": "book"
+   },
+   "status": 422,
+   "body": {
+    "detail": "target_book_id is required for book-kind signals"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /taste-signal",
+   "json": {
+    "direction": "more",
+    "target_kind": "book",
+    "target_book_id": 101
+   },
+   "status": 404,
+   "body": {
+    "detail": "Book 101 not found"
+   },
+   "maskDetail": false
+  },
+  {
+   "req": "POST /taste-signal",
+   "json": {
+    "direction": "more",
+    "target_kind": "rec"
+   },
+   "status": 422,
+   "body": {
+    "detail": "snapshot is required for rec-kind signals"
+   },
+   "maskDetail": false
+  }
+ ]
+}

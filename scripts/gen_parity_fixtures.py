@@ -57,9 +57,12 @@ from mylibrary.api import app  # noqa: E402
 from mylibrary.db import (  # noqa: E402
     Book,
     Enrichment,
+    Feedback,
+    FeedbackPromptState,
     ProfileMeta,
     ReaderArchetype,
     Recommendation,
+    TasteSignal,
     TasteTrait,
     UsageEvent,
     UserDirective,
@@ -179,6 +182,158 @@ SEED: dict = {
     ],
 }
 
+WRITE_SCENARIOS: dict[str, list[dict]] = {
+    "add-book-basic": [
+        {"req": "POST /books", "json": {
+            "title": "Ancillary Justice", "author": "Ann Leckie", "year": 2013,
+            "isbn13": "9780316246620", "shelf": "to-read",
+            "cover_url": "https://covers.example/aj.jpg",
+            "subjects": ["science fiction", "space opera"],
+            "catalog_source": "openlibrary", "catalog_id": "/works/OL16813953W"}},
+        {"req": "GET /books?shelf=to-read"},
+    ],
+    "add-book-rated-review": [
+        {"req": "POST /books", "json": {
+            "title": "The Player of Games", "author": "Iain M. Banks",
+            "shelf": "read", "rating": 5, "review": "The Culture at its best."}},
+        {"req": "GET /profile/status"},
+    ],
+    "add-book-duplicate": [
+        {"req": "POST /books", "json": {"title": "DUNE: Special Edition", "author": "Herbert"}},
+    ],
+    "add-book-sibling-subtitle": [
+        {"req": "POST /books", "json": {"title": "Exodus: The Archimedes Engine", "author": "Peter F. Hamilton"}},
+        {"req": "POST /books", "json": {"title": "Exodus: The Helium Sea", "author": "Peter F. Hamilton"}},
+    ],
+    "add-book-invalid": [
+        {"req": "POST /books", "json": {"title": "X", "shelf": "nonsense"}},
+        {"req": "POST /books", "json": {"title": "X", "rating": 9}},
+        {"req": "POST /books", "json": {"title": "X", "review": "no rating"}},
+        {"req": "POST /books", "json": {"title": "   "}},
+    ],
+    "book-feedback": [
+        {"req": "PATCH /books/1/feedback", "json": {"rating": 4, "review": "Rereads well."}},
+        {"req": "PATCH /books/3/feedback", "json": {"rating": 0}},
+        {"req": "PATCH /books/1/feedback", "json": {"date_read": "2026-01-15", "is_favorite": True}},
+        {"req": "PATCH /books/5/feedback", "json": {"exclude_from_profile": True}},
+        {"req": "GET /books?rated_only=true"},
+    ],
+    "book-feedback-invalid": [
+        {"req": "PATCH /books/8/feedback", "json": {"review": "unrated review"}},
+        {"req": "PATCH /books/1/feedback", "json": {}},
+        {"req": "PATCH /books/1/feedback", "json": {"rating": 7}},
+        {"req": "PATCH /books/101/feedback", "json": {"rating": 3}},
+        {"req": "PATCH /books/999/feedback", "json": {"rating": 3}},
+    ],
+    "book-shelf": [
+        {"req": "PATCH /books/8/shelf", "json": {"shelf": "currently-reading"}},
+        {"req": "PATCH /books/8/shelf", "json": {"shelf": "bogus"}},
+        {"req": "PATCH /books/101/shelf", "json": {"shelf": "read"}},
+    ],
+    "enrichment-correction": [
+        {"req": "PATCH /books/5/enrichment", "json": {
+            "catalog_source": "openlibrary", "catalog_id": "/works/OL46125W-fixed",
+            "cover_url": "https://covers.example/foundation-fixed.jpg",
+            "subjects": ["science fiction", "psychohistory"],
+            "description": "The right Foundation."}},
+        {"req": "GET /profile/status"},
+        {"req": "PATCH /books/14/enrichment", "json": {
+            "catalog_source": "googlebooks", "catalog_id": "gb-smallgods"}},
+        {"req": "PATCH /books/1/enrichment", "json": {"catalog_source": "", "catalog_id": ""}},
+        {"req": "PATCH /books/101/enrichment", "json": {"catalog_source": "x", "catalog_id": "y"}},
+    ],
+    "delete-book": [
+        {"req": "DELETE /books/8"},
+        {"req": "GET /books?shelf=to-read"},
+        {"req": "DELETE /books/8"},
+        {"req": "DELETE /books/101"},
+    ],
+    "rec-feedback-accept": [
+        {"req": "PATCH /recommendations/3/feedback", "json": {"status": "accepted"}},
+        {"req": "PATCH /recommendations/3/feedback", "json": {"status": "accepted"}},
+        {"req": "GET /books?shelf=to-read"},
+    ],
+    "rec-feedback-already-read": [
+        {"req": "PATCH /recommendations/4/feedback", "json": {"status": "already_read"}},
+    ],
+    "rec-feedback-note-on-accepted": [
+        {"req": "PATCH /recommendations/2/feedback", "json": {"user_note": "started it"}},
+    ],
+    "rec-feedback-reject-reasons": [
+        {"req": "PATCH /recommendations/3/feedback",
+         "json": {"status": "rejected", "reject_reasons": ["too_long", "not_now"]}},
+        {"req": "GET /recommendations/rejected"},
+    ],
+    "rec-feedback-invalid": [
+        {"req": "PATCH /recommendations/3/feedback", "json": {}},
+        {"req": "PATCH /recommendations/3/feedback", "json": {"status": "meh"}, "maskDetail": True},
+        {"req": "PATCH /recommendations/3/feedback",
+         "json": {"status": "accepted", "reject_reasons": ["too_long"]}},
+        {"req": "PATCH /recommendations/3/feedback",
+         "json": {"status": "rejected", "reject_reasons": []}},
+        {"req": "PATCH /recommendations/3/feedback",
+         "json": {"status": "rejected", "reject_reasons": ["bogus_reason"]}},
+        {"req": "PATCH /recommendations/101/feedback", "json": {"status": "accepted"}},
+    ],
+    "api-key": [
+        {"req": "PUT /settings/api-key", "json": {"api_key": "sk-ant-test-wave2-key"}},
+        {"req": "GET /settings/api-key/status"},
+        {"req": "DELETE /settings/api-key"},
+        {"req": "PUT /settings/api-key", "json": {"api_key": "   "}},
+    ],
+    "display-name": [
+        {"req": "PUT /settings/profile", "json": {"display_name": "Wave Two"}},
+        {"req": "PUT /settings/profile", "json": {"display_name": "  "}},
+    ],
+    "directive": [
+        {"req": "PUT /directive", "json": {
+            "nl_text": "  Standalone literary sci-fi.  ",
+            "constraints": {"languages": ["EN", " fr "], "min_year": "1990",
+                             "max_year": 2020, "page_max": 400,
+                             "exclude_subjects": ["Grimdark "],
+                             "exclude_authors": ["Ringo"]}}},
+        {"req": "GET /directive"},
+        {"req": "PUT /directive", "json": {"nl_text": "  ", "constraints": {}}},
+        {"req": "DELETE /directive"},
+        {"req": "GET /directive"},
+    ],
+    "trait-patch": [
+        {"req": "PATCH /profile/traits/1", "json": {"status": "confirmed"}},
+        {"req": "PATCH /profile/traits/1", "json": {"claim": "  Edited claim.  "}},
+        {"req": "PATCH /profile/traits/3", "json": {"user_weight": 0.5, "user_note": "sort of"}},
+        {"req": "GET /profile/status"},
+        {"req": "PATCH /profile/traits/1", "json": {}},
+        {"req": "PATCH /profile/traits/101", "json": {"status": "confirmed"}},
+    ],
+    "feedback-flow": [
+        {"req": "GET /feedback/prompt?trigger=post-setup"},
+        {"req": "POST /feedback", "json": {"category": "Bug", "body": "It broke.",
+                                            "trigger": "post-setup", "page": "/setup"}},
+        {"req": "GET /feedback/prompt?trigger=post-setup"},
+        {"req": "POST /feedback/dismiss", "json": {"trigger": "post-first-profile", "mode": "dont_ask"}},
+        {"req": "GET /feedback/prompt?trigger=post-first-profile"},
+        {"req": "POST /feedback/dismiss", "json": {"trigger": "post-recs", "run_id": "runB", "mode": "ask_later"}},
+        {"req": "GET /feedback/prompt?trigger=post-recs&run_id=runB"},
+        {"req": "GET /feedback/prompt?trigger=post-recs&run_id=runC"},
+    ],
+    "feedback-invalid": [
+        {"req": "POST /feedback", "json": {"category": "nonsense", "body": "x"}},
+        {"req": "POST /feedback", "json": {"category": "bug", "body": "   "}},
+        {"req": "POST /feedback", "json": {"category": "bug", "body": "x", "trigger": "post-recs"}},
+        {"req": "GET /feedback/prompt?trigger=post-recs"},
+        {"req": "POST /feedback/dismiss", "json": {"trigger": "post-setup", "mode": "whenever"}},
+        {"req": "POST /feedback/dismiss", "json": {"trigger": "post-recs", "mode": "ask_later"}},
+    ],
+    "taste-signal": [
+        {"req": "POST /taste-signal", "json": {"direction": "more", "target_kind": "book", "target_book_id": 1}},
+        {"req": "POST /taste-signal", "json": {"direction": "less", "target_kind": "rec",
+            "snapshot": {"title": "Blindsight", "author": "Peter Watts", "subjects": ["science fiction"]}}},
+        {"req": "POST /taste-signal", "json": {"direction": "more", "target_kind": "book"}},
+        {"req": "POST /taste-signal", "json": {"direction": "more", "target_kind": "book", "target_book_id": 101}},
+        {"req": "POST /taste-signal", "json": {"direction": "more", "target_kind": "rec"}},
+    ],
+}
+
 _TS_FIELDS = {
     "feedback_updated_at", "created_at", "updated_at", "verdict_updated_at",
     "last_profiled_at", "rec_feedback_updated_at", "enrichment_corrected_at",
@@ -226,6 +381,36 @@ def record(client: TestClient) -> dict:
     return out
 
 
+def reset_db() -> None:
+    """Wipe every table and reload SEED — fresh state per write scenario."""
+    with session_scope() as session:
+        for model in (Enrichment, TasteTrait, Recommendation, ProfileMeta,
+                      UserSettings, ReaderArchetype, UserDirective, UsageEvent,
+                      TasteSignal, Feedback, FeedbackPromptState, Book):
+            session.query(model).delete()
+    load_seed()
+
+
+def run_scenarios(client: TestClient) -> dict:
+    out: dict = {}
+    for name, steps in WRITE_SCENARIOS.items():
+        reset_db()
+        recorded = []
+        for step in steps:
+            method, path = step["req"].split(" ", 1)
+            r = client.request(method, path, json=step.get("json"))
+            body = r.json() if r.status_code != 204 and r.content else None
+            recorded.append({
+                "req": step["req"],
+                "json": step.get("json"),
+                "status": r.status_code,
+                "body": body,
+                "maskDetail": step.get("maskDetail", False),
+            })
+        out[name] = recorded
+    return out
+
+
 def main() -> None:
     init_db()
     fixtures = {}
@@ -239,9 +424,16 @@ def main() -> None:
         load_seed()
         fixtures["seeded"] = record(client)
 
+        # reset_db() re-reads the SAME module-level SEED dict via load_seed(), and the
+        # encrypted-key mutation above already happened in-place on
+        # SEED["user_settings"][0] — so every scenario reset below still seeds the
+        # encrypted key without any extra plumbing.
+        fixtures_writes = run_scenarios(client)
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "seed.json").write_text(json.dumps(SEED, indent=1))
     (OUT_DIR / "python-responses.json").write_text(json.dumps(fixtures, indent=1))
+    (OUT_DIR / "write-scenarios.json").write_text(json.dumps(fixtures_writes, indent=1))
     print(f"wrote {OUT_DIR}/seed.json and python-responses.json")
     print("empty-stage statuses:", {k: v["status"] for k, v in fixtures["empty"].items()})
 
