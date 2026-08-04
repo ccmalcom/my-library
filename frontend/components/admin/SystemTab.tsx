@@ -32,7 +32,12 @@ export function SystemTab() {
     python: null,
     node: null,
   });
-  const { data: config, mutate, isLoading } = useSWR(ADMIN_CONFIG_KEY, getAdminConfig);
+  const {
+    data: config,
+    error: configError,
+    mutate,
+    isLoading,
+  } = useSWR(ADMIN_CONFIG_KEY, getAdminConfig);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -105,7 +110,11 @@ export function SystemTab() {
           Verbose structured logs and Server-Timing headers on the Node backend. Off = quiet
           standard logs.
         </p>
-        {isLoading || !config ? (
+        {configError ? (
+          <p className="text-sm text-danger">
+            Couldn&apos;t load debug mode: {configError instanceof Error ? configError.message : 'request failed'}
+          </p>
+        ) : isLoading || !config ? (
           <Spinner label="Loading" />
         ) : (
           <Button variant="secondary" loading={saving} onClick={toggleDebug}>
