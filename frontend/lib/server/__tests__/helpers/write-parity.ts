@@ -16,7 +16,10 @@ import * as bookEnrichmentRoute from '../../../../app/api/books/[id]/enrichment/
 import * as bookByIdRoute from '../../../../app/api/books/[id]/route';
 import * as recFeedbackRoute from '../../../../app/api/recommendations/[id]/feedback/route';
 import * as recommendationsRejectedRoute from '../../../../app/api/recommendations/rejected/route';
-// (Tasks 9–12 add imports here: ... )
+import * as apiKeyRoute from '../../../../app/api/settings/api-key/route';
+import * as apiKeyStatusRoute from '../../../../app/api/settings/api-key/status/route';
+import * as profileSettingsRoute from '../../../../app/api/settings/profile/route';
+// (Tasks 10–12 add imports here: ... )
 
 interface RegistryRow {
   method: string;
@@ -37,6 +40,10 @@ export const REGISTRY: RegistryRow[] = [
   { method: 'PATCH', pattern: /^\/books\/(?<id>\d+)\/enrichment$/, handler: () => bookEnrichmentRoute.PATCH as Handler },
   { method: 'DELETE', pattern: /^\/books\/(?<id>\d+)$/, handler: () => bookByIdRoute.DELETE as Handler },
   { method: 'PATCH', pattern: /^\/recommendations\/(?<id>\d+)\/feedback$/, handler: () => recFeedbackRoute.PATCH as Handler },
+  { method: 'PUT', pattern: /^\/settings\/api-key$/, handler: () => apiKeyRoute.PUT as Handler },
+  { method: 'DELETE', pattern: /^\/settings\/api-key$/, handler: () => apiKeyRoute.DELETE as Handler },
+  { method: 'GET', pattern: /^\/settings\/api-key\/status$/, handler: () => apiKeyStatusRoute.GET as Handler },
+  { method: 'PUT', pattern: /^\/settings\/profile$/, handler: () => profileSettingsRoute.PUT as Handler },
 ];
 
 /** Mask volatile server-generated values; preserve the null/non-null distinction. */

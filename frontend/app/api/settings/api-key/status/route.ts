@@ -1,7 +1,6 @@
-import { eq } from 'drizzle-orm';
 import { withApi } from '@/lib/server/http';
-import { getDb, schema } from '@/lib/server/db';
-import { decrypt } from '@/lib/server/crypto';
+import { getDb } from '@/lib/server/db';
+import { keyConfigured } from '@/lib/server/settings';
 
 /**
  * Port of user_settings.py::anthropic_key_status / resolve_anthropic_key.
@@ -11,18 +10,7 @@ import { decrypt } from '@/lib/server/crypto';
  */
 export const GET = withApi('/api/settings/api-key/status', async (_req, ctx) => {
   const db = getDb();
-  const rows = await db
-    .select()
-    .from(schema.userSettings)
-    .where(eq(schema.userSettings.userId, ctx.user.userId));
+  const configured = await keyConfigured(db, ctx.user.userId);
   ctx.timer.mark('db');
-  const row = rows[0];
-  let configured: boolean;
-  if (row?.anthropicApiKeyEncrypted) {
-    decrypt(row.anthropicApiKeyEncrypted);
-    configured = true;
-  } else {
-    configured = process.env.ANTHROPIC_API_KEY !== undefined;
-  }
   return Response.json({ configured });
 });
