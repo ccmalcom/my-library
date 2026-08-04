@@ -162,6 +162,36 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       created_at timestamp not null default current_timestamp,
       updated_at timestamp
     );
+    create table taste_signal (
+      id serial primary key,
+      user_id text not null default 'local',
+      direction text not null,
+      target_kind text not null,
+      target_book_id integer,
+      snapshot json,
+      created_at timestamp default current_timestamp
+    );
+    create table feedback (
+      id serial primary key,
+      user_id text not null default 'local',
+      category text not null,
+      body text not null,
+      trigger text,
+      run_id text,
+      page text,
+      app_version text,
+      created_at timestamp not null default current_timestamp
+    );
+    create table feedback_prompt_state (
+      id serial primary key,
+      user_id text not null default 'local',
+      trigger text not null,
+      run_id text not null default '',
+      status text not null,
+      snooze_until timestamp,
+      updated_at timestamp not null default current_timestamp,
+      constraint uq_feedback_prompt_state unique (user_id, trigger, run_id)
+    );
   `);
   const db = drizzle(pg, { schema }) as unknown as Db;
   return { db, close: () => pg.close() };
@@ -179,6 +209,9 @@ export interface Seed {
   reader_archetypes?: Record<string, unknown>[];
   user_directive?: Record<string, unknown>[];
   usage_events?: Record<string, unknown>[];
+  taste_signals?: Record<string, unknown>[];
+  feedback?: Record<string, unknown>[];
+  feedback_prompt_state?: Record<string, unknown>[];
 }
 
 function resolveTs(v: SeedTimestamp): string | null {
@@ -197,7 +230,7 @@ export async function loadSeed(db: Db, seed: Seed): Promise<void> {
   const TS_COLS = new Set([
     'feedback_updated_at', 'created_at', 'updated_at', 'verdict_updated_at',
     'last_profiled_at', 'rec_feedback_updated_at', 'enrichment_corrected_at',
-    'derived_at', 'resolved_at',
+    'derived_at', 'resolved_at', 'snooze_until',
   ]);
   const JSON_COLS = new Set([
     'subjects', 'exhibits', 'contrasts', 'grounded_trait_ids',
@@ -206,9 +239,12 @@ export async function loadSeed(db: Db, seed: Seed): Promise<void> {
   const order = [
     'books', 'enrichment', 'taste_traits', 'recommendations', 'profile_meta',
     'user_settings', 'reader_archetypes', 'user_directive', 'usage_events',
+    'taste_signals', 'feedback', 'feedback_prompt_state',
   ] as const;
-  for (const table of order) {
-    for (const row of seed[table] ?? []) {
+  const TABLE_FOR_KEY: Record<string, string> = { taste_signals: 'taste_signal' };
+  for (const key of order) {
+    const table = TABLE_FOR_KEY[key] ?? key;
+    for (const row of seed[key] ?? []) {
       const cols = Object.keys(row);
       const vals = cols.map((c) => {
         const v = (row as Record<string, unknown>)[c];
@@ -224,5 +260,15 @@ export async function loadSeed(db: Db, seed: Seed): Promise<void> {
         vals
       );
     }
+  }
+  const SEQ_TABLES = [
+    'books', 'enrichment', 'taste_traits', 'recommendations', 'profile_meta',
+    'user_settings', 'reader_archetypes', 'user_directive', 'usage_events',
+    'taste_signal', 'feedback', 'feedback_prompt_state',
+  ];
+  for (const t of SEQ_TABLES) {
+    await (db as any).$client.query(
+      `select setval(pg_get_serial_sequence('${t}', 'id'), greatest((select coalesce(max(id), 0) from ${t}), 1))`
+    );
   }
 }
