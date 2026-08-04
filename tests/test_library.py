@@ -501,3 +501,37 @@ def test_list_books_does_not_n_plus_one_on_enrichment():
     # With a lazy relationship this is ~21 (1 list + 20 per-row). Eager join => a small
     # constant. Allow generous headroom but well under the per-row blowup.
     assert counter["n"] <= 5, f"expected eager load, got {counter['n']} queries"
+
+
+# --- backfill_recommendation_descriptions ----------------------------------
+
+
+def test_backfill_descriptions_skips_sibling_subtitle_rec():
+    """The backfill matcher must not copy a description from a rec that names a
+    different work sharing the book's pre-colon base title and author."""
+    from mylibrary.db import LOCAL_USER_ID, Recommendation
+    from mylibrary.library import backfill_recommendation_descriptions
+
+    bid = add_book(title="Exodus: The Helium Sea", author="Peter F. Hamilton")
+    with session_scope() as session:
+        session.add(
+            Enrichment(book_id=bid, confidence_label="RECOMMENDATION", description=None)
+        )
+        session.add(
+            Recommendation(
+                user_id=LOCAL_USER_ID,
+                run_id="testrun",
+                rank=1,
+                title="Exodus: The Archimedes Engine",
+                author="Peter F. Hamilton",
+                description="A different book's description.",
+                status="served",
+            )
+        )
+
+    out = backfill_recommendation_descriptions()
+    assert out["filled"] == 0
+
+    with session_scope() as session:
+        enr = session.query(Enrichment).filter(Enrichment.book_id == bid).one()
+        assert enr.description is None
