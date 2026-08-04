@@ -20,7 +20,8 @@ import * as apiKeyRoute from '../../../../app/api/settings/api-key/route';
 import * as apiKeyStatusRoute from '../../../../app/api/settings/api-key/status/route';
 import * as profileSettingsRoute from '../../../../app/api/settings/profile/route';
 import * as directiveRoute from '../../../../app/api/directive/route';
-// (Tasks 11–12 add imports here: ... )
+import * as traitByIdRoute from '../../../../app/api/profile/traits/[id]/route';
+// (Task 12 adds imports here: ... )
 
 interface RegistryRow {
   method: string;
@@ -48,6 +49,7 @@ export const REGISTRY: RegistryRow[] = [
   { method: 'GET', pattern: /^\/directive$/, handler: () => directiveRoute.GET as Handler },
   { method: 'PUT', pattern: /^\/directive$/, handler: () => directiveRoute.PUT as Handler },
   { method: 'DELETE', pattern: /^\/directive$/, handler: () => directiveRoute.DELETE as Handler },
+  { method: 'PATCH', pattern: /^\/profile\/traits\/(?<id>\d+)$/, handler: () => traitByIdRoute.PATCH as Handler },
 ];
 
 /** Mask volatile server-generated values; preserve the null/non-null distinction. */
