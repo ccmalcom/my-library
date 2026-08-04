@@ -279,6 +279,46 @@
    "exclude_from_profile": false,
    "is_favorite": false,
    "goodreads_book_id": "gr-14"
+  },
+  {
+   "id": 101,
+   "user_id": "other",
+   "title": "Someone Else's Book",
+   "author": "Other Author",
+   "isbn13": null,
+   "exclusive_shelf": "read",
+   "goodreads_rating": 5,
+   "app_rating": null,
+   "app_review": null,
+   "feedback_updated_at": null,
+   "date_read": null,
+   "date_added": null,
+   "page_count": 300,
+   "year_published": 2000,
+   "source": "goodreads",
+   "exclude_from_profile": false,
+   "is_favorite": false,
+   "goodreads_book_id": "gr-other-1"
+  },
+  {
+   "id": 102,
+   "user_id": "other",
+   "title": "Another Tenant's Book",
+   "author": "Other Author Two",
+   "isbn13": null,
+   "exclusive_shelf": "read",
+   "goodreads_rating": 4,
+   "app_rating": null,
+   "app_review": null,
+   "feedback_updated_at": null,
+   "date_read": null,
+   "date_added": null,
+   "page_count": 250,
+   "year_published": 2005,
+   "source": "goodreads",
+   "exclude_from_profile": false,
+   "is_favorite": false,
+   "goodreads_book_id": "gr-other-2"
   }
  ],
  "enrichment": [
@@ -501,6 +541,23 @@
    "confidence_label": "MEDIUM",
    "match_method": "search:openlibrary",
    "resolved_at": "2026-05-01T12:00:00"
+  },
+  {
+   "id": 101,
+   "book_id": 101,
+   "resolved_source": "openlibrary",
+   "resolved_id": "/works/OL_OTHER1",
+   "subjects": [
+    "mystery"
+   ],
+   "series": null,
+   "series_position": null,
+   "description": "Other tenant's book \u2014 must never leak into local's /profile/subjects.",
+   "cover_url": null,
+   "resolution_confidence": 0.9,
+   "confidence_label": "HIGH",
+   "match_method": "isbn:openlibrary",
+   "resolved_at": "2026-05-01T12:00:00"
   }
  ],
  "taste_traits": [
@@ -574,6 +631,23 @@
    "created_at": "2026-07-01T12:00:00",
    "user_weight": 0.0,
    "verdict_updated_at": "2026-06-15T12:00:00",
+   "reveal_line": null
+  },
+  {
+   "id": 101,
+   "user_id": "other",
+   "claim": "Other tenant's trait \u2014 must never appear in local's /profile.",
+   "polarity": "positive",
+   "exhibits": [
+    101
+   ],
+   "contrasts": null,
+   "inference_confidence": 0.9,
+   "status": "confirmed",
+   "user_note": null,
+   "created_at": "2026-07-01T12:00:00",
+   "user_weight": 1.0,
+   "verdict_updated_at": null,
    "reveal_line": null
   }
  ],
@@ -745,6 +819,70 @@
    "reject_reasons": [
     "pacing"
    ]
+  },
+  {
+   "id": 101,
+   "user_id": "other",
+   "run_id": "runOther",
+   "rank": 1,
+   "title": "Other Tenant Rec",
+   "author": "Other Author",
+   "year": 2010,
+   "isbn13": null,
+   "cover_url": null,
+   "subjects": [
+    "mystery"
+   ],
+   "catalog_source": "openlibrary",
+   "catalog_id": "/works/OL_OTHERREC",
+   "retrieval_pool": "metadata",
+   "seed_reason": "other tenant affinity",
+   "score": 0.5,
+   "rationale": "Must never leak into local's /recommendations.",
+   "grounded_trait_ids": [
+    101
+   ],
+   "grounded_book_ids": [
+    101
+   ],
+   "status": "served",
+   "user_note": null,
+   "created_at": "2026-07-05T12:00:00",
+   "description": "Other tenant only.",
+   "reject_reasons": null
+  },
+  {
+   "id": 102,
+   "user_id": "other",
+   "run_id": "runOther",
+   "rank": 2,
+   "title": "Other Tenant Rejected Rec",
+   "author": "Other Author",
+   "year": 2011,
+   "isbn13": null,
+   "cover_url": null,
+   "subjects": [
+    "mystery"
+   ],
+   "catalog_source": "openlibrary",
+   "catalog_id": "/works/OL_OTHERREC2",
+   "retrieval_pool": "metadata",
+   "seed_reason": "other tenant affinity",
+   "score": 0.4,
+   "rationale": "Must never leak into local's /recommendations/rejected.",
+   "grounded_trait_ids": [
+    101
+   ],
+   "grounded_book_ids": [
+    101
+   ],
+   "status": "rejected",
+   "user_note": null,
+   "created_at": "2026-07-05T12:00:00",
+   "description": "Other tenant only.",
+   "reject_reasons": [
+    "not-interested"
+   ]
   }
  ],
  "profile_meta": [
@@ -755,6 +893,14 @@
    "last_profile_kind": "full",
    "rec_feedback_updated_at": "2026-07-10T12:00:00",
    "enrichment_corrected_at": null
+  },
+  {
+   "id": 101,
+   "user_id": "other",
+   "last_profiled_at": "2026-07-01T12:00:00",
+   "last_profile_kind": "full",
+   "rec_feedback_updated_at": null,
+   "enrichment_corrected_at": null
   }
  ],
  "user_settings": [
@@ -764,7 +910,15 @@
    "display_name": "Chase Test",
    "created_at": "2026-06-01T12:00:00",
    "updated_at": null,
-   "anthropic_api_key_encrypted": "tGjjfPGWcWosCbU9N852a5e6Rejf7AUNYxDOuUBfNqwsA7bh6Dzi4zyAqe7SSy+8OYIrBA5N8XPCoA=="
+   "anthropic_api_key_encrypted": "tHNocqcDnQDZjpap/368UfNZ0uI9/4eLVnf/buVuXH3vP8Q5BBbqLRrz6xhOROdISfbeykVkYtBp6Q=="
+  },
+  {
+   "id": 101,
+   "user_id": "other",
+   "display_name": "Other Tenant",
+   "anthropic_api_key_encrypted": null,
+   "created_at": "2026-06-01T12:00:00",
+   "updated_at": null
   }
  ],
  "reader_archetypes": [
@@ -783,6 +937,22 @@
    "range_rationale": "Roams across genres.",
    "resonance_rationale": "Feeling over structure.",
    "derived_at": "2026-06-20T12:00:00"
+  },
+  {
+   "id": 101,
+   "user_id": "other",
+   "code": "XXXX",
+   "archetype_name": "Other Archetype",
+   "archetype_tagline": "Must never leak into local's /profile/archetype.",
+   "axis_lens": 0.0,
+   "axis_engine": 0.0,
+   "axis_range": 0.0,
+   "axis_resonance": 0.0,
+   "lens_rationale": "",
+   "engine_rationale": "",
+   "range_rationale": "",
+   "resonance_rationale": "",
+   "derived_at": "2026-06-20T12:00:00"
   }
  ],
  "user_directive": [
@@ -793,6 +963,18 @@
    "constraints": {
     "exclude_authors": [
      "john ringo"
+    ]
+   },
+   "created_at": "2026-07-12T12:00:00",
+   "updated_at": "2026-07-12T12:00:00"
+  },
+  {
+   "id": 101,
+   "user_id": "other",
+   "nl_text": "Other tenant directive \u2014 must never leak into local's /directive.",
+   "constraints": {
+    "exclude_authors": [
+     "someone else"
     ]
    },
    "created_at": "2026-07-12T12:00:00",
@@ -840,6 +1022,20 @@
    "cost_usd": 1.0,
    "created_at": {
     "$hoursAgo": 1080
+   }
+  },
+  {
+   "id": 101,
+   "user_id": "other",
+   "model": "claude-sonnet-5",
+   "operation": "profile",
+   "input_tokens": 100,
+   "output_tokens": 100,
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 0,
+   "cost_usd": 5.55,
+   "created_at": {
+    "$hoursAgo": 0
    }
   }
  ]
