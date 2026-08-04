@@ -267,8 +267,11 @@ export async function loadSeed(db: Db, seed: Seed): Promise<void> {
     'taste_signal', 'feedback', 'feedback_prompt_state',
   ];
   for (const t of SEQ_TABLES) {
+    // is_called=false + (max+1) — NOT the two-arg setval(seq, greatest(max,1)) idiom,
+    // which is off-by-one for empty tables: with is_called defaulting to true, the
+    // first insert into an unseeded table would get id=2 instead of id=1.
     await (db as any).$client.query(
-      `select setval(pg_get_serial_sequence('${t}', 'id'), greatest((select coalesce(max(id), 0) from ${t}), 1))`
+      `select setval(pg_get_serial_sequence('${t}', 'id'), (select coalesce(max(id), 0) from ${t}) + 1, false)`
     );
   }
 }

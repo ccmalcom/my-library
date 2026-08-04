@@ -21,7 +21,10 @@ import * as apiKeyStatusRoute from '../../../../app/api/settings/api-key/status/
 import * as profileSettingsRoute from '../../../../app/api/settings/profile/route';
 import * as directiveRoute from '../../../../app/api/directive/route';
 import * as traitByIdRoute from '../../../../app/api/profile/traits/[id]/route';
-// (Task 12 adds imports here: ... )
+import * as feedbackRoute from '../../../../app/api/feedback/route';
+import * as feedbackPromptRoute from '../../../../app/api/feedback/prompt/route';
+import * as feedbackDismissRoute from '../../../../app/api/feedback/dismiss/route';
+import * as tasteSignalRoute from '../../../../app/api/taste-signal/route';
 
 interface RegistryRow {
   method: string;
@@ -50,6 +53,10 @@ export const REGISTRY: RegistryRow[] = [
   { method: 'PUT', pattern: /^\/directive$/, handler: () => directiveRoute.PUT as Handler },
   { method: 'DELETE', pattern: /^\/directive$/, handler: () => directiveRoute.DELETE as Handler },
   { method: 'PATCH', pattern: /^\/profile\/traits\/(?<id>\d+)$/, handler: () => traitByIdRoute.PATCH as Handler },
+  { method: 'POST', pattern: /^\/feedback$/, handler: () => feedbackRoute.POST as Handler },
+  { method: 'GET', pattern: /^\/feedback\/prompt$/, handler: () => feedbackPromptRoute.GET as Handler },
+  { method: 'POST', pattern: /^\/feedback\/dismiss$/, handler: () => feedbackDismissRoute.POST as Handler },
+  { method: 'POST', pattern: /^\/taste-signal$/, handler: () => tasteSignalRoute.POST as Handler },
 ];
 
 /** Mask volatile server-generated values; preserve the null/non-null distinction. */

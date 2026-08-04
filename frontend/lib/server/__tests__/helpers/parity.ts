@@ -11,6 +11,7 @@ const ENV_KEYS = [
   'SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_JWKS_URL',
   'ENCRYPTION_KEY', 'ANTHROPIC_API_KEY', 'ADMIN_EMAILS',
   'MYLIBRARY_MONTHLY_SOFT_CAP_USD', 'MYLIBRARY_USAGE_WARN_THRESHOLD',
+  'FEEDBACK_PROMPTS_ENABLED', 'FEEDBACK_SNOOZE_HOURS',
 ];
 
 /** Local-mode env identical to the Python fixture run. Registers hooks. */
@@ -23,6 +24,8 @@ export function setupParityEnv(): void {
     delete process.env.SUPABASE_JWKS_URL;
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.ADMIN_EMAILS;
+    delete process.env.FEEDBACK_PROMPTS_ENABLED;
+    delete process.env.FEEDBACK_SNOOZE_HOURS;
     process.env.ENCRYPTION_KEY = FIXED_TEST_KEY;
     process.env.MYLIBRARY_MONTHLY_SOFT_CAP_USD = '5.0';
     process.env.MYLIBRARY_USAGE_WARN_THRESHOLD = '0.8';
