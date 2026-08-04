@@ -16,6 +16,7 @@ export interface ApiCtx {
   requestId: string;
   timer: ReturnType<typeof makeTimer>;
   debug: boolean;
+  params: Record<string, string>;
 }
 
 export interface WithApiOpts {
@@ -35,10 +36,10 @@ export function withApi(
   route: string,
   handler: (req: Request, ctx: ApiCtx) => Promise<Response>,
   opts: WithApiOpts = {}
-): (req: Request) => Promise<Response> {
+): (req: Request, routeCtx?: { params?: Promise<Record<string, string>> | Record<string, string> }) => Promise<Response> {
   const requireAuth = opts.requireAuth ?? true;
 
-  return async (req: Request): Promise<Response> => {
+  return async (req: Request, routeCtx?: { params?: Promise<Record<string, string>> | Record<string, string> }): Promise<Response> => {
     const requestId = newRequestId();
     const timer = makeTimer();
     let user: AuthUser | undefined;
@@ -55,11 +56,13 @@ export function withApi(
           throw new ApiError(403, 'Admin access required');
         }
       }
+      const params = (await routeCtx?.params) ?? {};
       response = await handler(req, {
         user: user ?? { userId: 'anonymous', email: null, isAdmin: false },
         requestId,
         timer,
         debug,
+        params,
       });
     } catch (err) {
       if (err instanceof AuthError) {

@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, it } from 'vitest';
 import {
   tsToIso, pyTitle, effectiveRating, round2, round4, parseBoolParam,
+  utcnowTs, todayIsoDate, pyList,
 } from '../serialize';
 
 describe('tsToIso', () => {
@@ -53,4 +54,15 @@ describe('parseBoolParam', () => {
     for (const v of ['true', 'True', '1', 'yes', 'on']) expect(parseBoolParam(v)).toBe(true);
     for (const v of ['false', '0', 'no', 'off', undefined]) expect(parseBoolParam(v as any)).toBe(false);
   });
+});
+
+it('utcnowTs returns space-separated UTC timestamp', () => {
+  expect(utcnowTs()).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/);
+});
+it('todayIsoDate returns YYYY-MM-DD', () => {
+  expect(todayIsoDate()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+});
+it('pyList formats like Python list repr', () => {
+  expect(pyList(['a', 'b'])).toBe("['a', 'b']");
+  expect(pyList([])).toBe('[]');
 });

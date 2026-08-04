@@ -46,3 +46,19 @@ export function parseBoolParam(v: string | undefined): boolean {
   if (!v) return false;
   return ['true', '1', 'yes', 'on'].includes(v.toLowerCase());
 }
+
+/** Naive-UTC storage format matching drizzle timestamp mode 'string' reads.
+ *  Python stores microseconds; ms precision is a documented invisible deviation. */
+export function utcnowTs(): string {
+  return new Date().toISOString().replace('T', ' ').replace('Z', '');
+}
+
+/** Python date.today() twin (server runs UTC). */
+export function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Python repr of a list of strings: ['a', 'b'] — for 422 detail parity. */
+export function pyList(xs: string[]): string {
+  return '[' + xs.map((x) => `'${x}'`).join(', ') + ']';
+}
