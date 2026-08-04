@@ -26,7 +26,7 @@ from .db import (
     session_scope,
     utcnow,
 )
-from .enrich import _normalize_title, _surname
+from .enrich import _same_work
 from .profile import books_changed_since, get_profile_meta
 
 
@@ -81,8 +81,10 @@ def add_book(
     No extra network call happens here — the search already resolved the book — so adding
     is fast and works offline.
 
-    Dedup mirrors the recommender: normalized title + author surname. A duplicate raises
-    `BookExistsError` rather than silently creating a second row.
+    Dedup matches on same-work identity (normalized title + author surname, where an
+    edition variant like "Dune: Special Edition" equals "Dune" but sibling subtitles are
+    distinct works). A duplicate raises `BookExistsError` rather than silently creating
+    a second row.
 
     A `rating` (1-5) sets `app_rating` and bumps `feedback_updated_at`, making the taste
     profile show as dirty — the same ownership model as in-app re-rating/reviewing (locked
@@ -110,14 +112,12 @@ def add_book(
 
     init_db()
     with session_scope() as session:
-        norm_title = _normalize_title(title)
-        norm_surname = _surname(author)
         # Dedup is scoped to this user — one user's add never scans another's books.
         dupe_q = session.query(Book).filter(
             Book.user_id == user_id, Book.title.isnot(None)
         )
         for b in dupe_q.all():
-            if _normalize_title(b.title) == norm_title and _surname(b.author) == norm_surname:
+            if _same_work(b.title, b.author, title, author):
                 raise BookExistsError(f'"{title}" is already in your library.')
 
         book = Book(
@@ -298,17 +298,12 @@ def backfill_recommendation_descriptions(*, user_id: str | None = LOCAL_USER_ID)
 
         for book, enr in q.all():
             scanned += 1
-            norm_title = _normalize_title(book.title)
-            norm_surname = _surname(book.author)
             recs = session.query(Recommendation).filter(
                 Recommendation.user_id == book.user_id,
                 Recommendation.description.isnot(None),
             )
             for rec in recs.all():
-                if (
-                    _normalize_title(rec.title) == norm_title
-                    and _surname(rec.author) == norm_surname
-                ):
+                if _same_work(rec.title, rec.author, book.title, book.author):
                     enr.description = rec.description
                     filled += 1
                     break

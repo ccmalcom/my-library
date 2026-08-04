@@ -372,6 +372,40 @@ def test_update_no_changes_short_circuits(monkeypatch):
     assert result["changed_books"] == 0
 
 
+def test_update_rebuilds_when_only_enrichment_correction_dirtied(monkeypatch):
+    """A correction-only dirty profile must trigger a real (full) rebuild that clears
+    the dirty state — not short-circuit with 'already up to date' while the banner
+    stays stuck (the update button spun forever with nothing happening)."""
+    ingest_csv(SAMPLE_CSV)
+    with session_scope() as session:
+        session.add(TasteTrait(claim="x", polarity="reward", exhibits=[], contrasts=[],
+                               inference_confidence=0.5, status="proposed"))
+        meta = get_profile_meta(session)
+        meta.last_profiled_at = datetime(2000, 1, 1)
+        meta.last_profile_kind = "full"
+        # A LOW-confidence match correction lands after the build...
+        meta.enrichment_corrected_at = datetime(2001, 1, 1)
+
+    # ...so the banner shows (status is dirty),
+    assert profile_status()["dirty"] is True
+
+    captured = {}
+    _install_fake_anthropic(
+        monkeypatch, captured,
+        [{"claim": "x", "polarity": "reward", "exhibits": [], "contrasts": [],
+          "inference_confidence": 0.5}],
+    )
+    from mylibrary.profile import update_taste_profile
+
+    result = update_taste_profile()
+
+    # ...and the update must rebuild for real: corrected metadata can only reach the
+    # traits through a full extract, and the dirty state must clear.
+    assert result["mode"] == "full"
+    assert "prompt" in captured  # Claude was actually called
+    assert profile_status()["dirty"] is False
+
+
 def test_update_only_sends_changed_and_cited_books(monkeypatch):
     ingest_csv(SAMPLE_CSV)
     dune = _book_id("Dune")
@@ -467,3 +501,37 @@ def test_list_books_does_not_n_plus_one_on_enrichment():
     # With a lazy relationship this is ~21 (1 list + 20 per-row). Eager join => a small
     # constant. Allow generous headroom but well under the per-row blowup.
     assert counter["n"] <= 5, f"expected eager load, got {counter['n']} queries"
+
+
+# --- backfill_recommendation_descriptions ----------------------------------
+
+
+def test_backfill_descriptions_skips_sibling_subtitle_rec():
+    """The backfill matcher must not copy a description from a rec that names a
+    different work sharing the book's pre-colon base title and author."""
+    from mylibrary.db import LOCAL_USER_ID, Recommendation
+    from mylibrary.library import backfill_recommendation_descriptions
+
+    bid = add_book(title="Exodus: The Helium Sea", author="Peter F. Hamilton")
+    with session_scope() as session:
+        session.add(
+            Enrichment(book_id=bid, confidence_label="RECOMMENDATION", description=None)
+        )
+        session.add(
+            Recommendation(
+                user_id=LOCAL_USER_ID,
+                run_id="testrun",
+                rank=1,
+                title="Exodus: The Archimedes Engine",
+                author="Peter F. Hamilton",
+                description="A different book's description.",
+                status="served",
+            )
+        )
+
+    out = backfill_recommendation_descriptions()
+    assert out["filled"] == 0
+
+    with session_scope() as session:
+        enr = session.query(Enrichment).filter(Enrichment.book_id == bid).one()
+        assert enr.description is None
