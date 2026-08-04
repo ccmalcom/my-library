@@ -13,8 +13,15 @@ export { schema };
 export type Db = PostgresJsDatabase<typeof schema>;
 
 let db: Db | null = null;
+let testDb: Db | null = null;
+
+/** Test seam: makes getDb() return this instance (null restores normal behavior). */
+export function _setDbForTests(override: Db | null): void {
+  testDb = override;
+}
 
 export function getDb(): Db {
+  if (testDb) return testDb;
   if (!db) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error('DATABASE_URL is not set — the Node backend requires Postgres');
