@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { makeTestDb } from '@/lib/server/__tests__/helpers/pglite';
 import { _resetDebugCache } from '@/lib/server/config';
-import { GET, PUT, _setDbForTests } from './route';
-import type { Db } from '@/lib/server/db';
+import { GET, PUT } from './route';
+import { _setDbForTests, type Db } from '@/lib/server/db';
 
 let db: Db;
 let close: () => Promise<void>;
