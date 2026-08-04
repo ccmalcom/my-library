@@ -713,8 +713,17 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
             )
         )
 
+        # A LOW-confidence match correction changes a book's metadata without touching
+        # its feedback timestamps, so it never shows up in `changed`. profile_status
+        # still reports dirty for it — without this check the update would short-circuit
+        # below and leave the banner dirty forever.
+        enrichment_corrected = (
+            meta_for_check.enrichment_corrected_at is not None
+            and meta_for_check.enrichment_corrected_at > since
+        )
+
         if not changed_ids:
-            if not changed and not has_feedback_since:
+            if not changed and not has_feedback_since and not enrichment_corrected:
                 return {
                     "mode": "update",
                     "changed_books": 0,
@@ -724,8 +733,9 @@ def update_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_ID
                     "model": settings.model,
                 }
             if not has_feedback_since:
-                # Only exclusion toggles changed; incremental update cannot remove their
-                # signal, so fall back to a full rebuild.
+                # Only exclusion toggles or enrichment corrections changed; the
+                # incremental prompt cannot re-derive their (removed or corrected)
+                # metadata signal, so fall back to a full rebuild.
                 return extract_taste_profile(max_tokens=max_tokens, user_id=user_id)
             # Feedback-only update: no changed books, but verdicts/signals need incorporation.
             # Fall through with empty changed_ids so the prompt carries current traits +
