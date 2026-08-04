@@ -6,7 +6,7 @@ import { getConfigValue, setConfigValue, DEBUG_MODE_KEY } from '@/lib/server/con
 const PutBody = z.object({ debug_mode: z.boolean() });
 
 export const GET = withApi(
-  'admin/config',
+  '/api/admin/config',
   async () => {
     const value = await getConfigValue(getDb(), DEBUG_MODE_KEY);
     return Response.json({ debug_mode: value === true });
@@ -15,7 +15,7 @@ export const GET = withApi(
 );
 
 export const PUT = withApi(
-  'admin/config',
+  '/api/admin/config',
   async (req) => {
     let raw: unknown;
     try {
