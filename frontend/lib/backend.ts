@@ -13,19 +13,27 @@ export interface BackendRule {
   prefix: string;
   /** When set, only these methods route to Node; otherwise all methods do. */
   methods?: string[];
+  /** When true, the path must equal prefix exactly (no sub-paths). */
+  exact?: boolean;
 }
 
 /**
  * Routes that default to Node in auto mode. Waves append here as groups flip.
  * Wave 1: every read is Node; writes on the same prefixes stay Python until wave 2/3.
+ * Wave 2: the write routes ported in tasks 1-12 flip too. `/books` and `/directive`
+ * need `exact` on their write rules because wave-3 Python routes share the same
+ * prefix (`POST /books/{id}/similar`, `POST /directive/draft`).
  */
 export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/stats' },
-  { prefix: '/books', methods: ['GET'] },
-  { prefix: '/profile', methods: ['GET'] },
-  { prefix: '/recommendations', methods: ['GET'] },
-  { prefix: '/settings', methods: ['GET'] },
-  { prefix: '/directive', methods: ['GET'] },
+  { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
+  { prefix: '/books', methods: ['POST'], exact: true }, // POST /books/{id}/similar stays Python (wave 3)
+  { prefix: '/profile', methods: ['GET', 'PATCH'] },
+  { prefix: '/recommendations', methods: ['GET', 'PATCH'] },
+  { prefix: '/settings', methods: ['GET', 'PUT', 'DELETE'] },
+  { prefix: '/directive', methods: ['GET', 'PUT', 'DELETE'], exact: true }, // POST /directive/draft stays Python
+  { prefix: '/feedback' },
+  { prefix: '/taste-signal' },
 ];
 
 /** Routes that only exist on the Node backend. */
@@ -54,8 +62,10 @@ export function baseFor(path: string, method: string = 'GET'): string {
   const useNode =
     choice === 'node' ||
     (choice === 'auto' &&
-      NODE_DEFAULT_ROUTES.some(
-        (r) => path.startsWith(r.prefix) && (!r.methods || r.methods.includes(m))
-      ));
+      NODE_DEFAULT_ROUTES.some((r) => {
+        const pathOnly = path.split('?')[0];
+        const matches = r.exact ? pathOnly === r.prefix : pathOnly.startsWith(r.prefix);
+        return matches && (!r.methods || r.methods.includes(m));
+      }));
   return useNode ? '/api' : pythonBase();
 }
