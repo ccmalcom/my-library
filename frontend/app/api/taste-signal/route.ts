@@ -38,15 +38,18 @@ export const POST = withApi('/api/taste-signal', async (req, ctx) => {
     }
   }
 
-  const [signal] = await db.insert(schema.tasteSignal).values({
-    userId: ctx.user.userId, direction: b.direction, targetKind: b.target_kind,
-    targetBookId: b.target_book_id ?? null, snapshot: b.snapshot ?? null,
-    createdAt: utcnowTs(),
-  }).returning();
+  const signal = await db.transaction(async (tx) => {
+    const [signal] = await tx.insert(schema.tasteSignal).values({
+      userId: ctx.user.userId, direction: b.direction, targetKind: b.target_kind,
+      targetBookId: b.target_book_id ?? null, snapshot: b.snapshot ?? null,
+      createdAt: utcnowTs(),
+    }).returning();
 
-  const meta = await ensureProfileMeta(db, ctx.user.userId);
-  await db.update(schema.profileMeta).set({ recFeedbackUpdatedAt: utcnowTs() })
-    .where(eq(schema.profileMeta.id, meta.id));
+    const meta = await ensureProfileMeta(tx, ctx.user.userId);
+    await tx.update(schema.profileMeta).set({ recFeedbackUpdatedAt: utcnowTs() })
+      .where(eq(schema.profileMeta.id, meta.id));
+    return signal;
+  });
 
   ctx.timer.mark('db');
   return Response.json({

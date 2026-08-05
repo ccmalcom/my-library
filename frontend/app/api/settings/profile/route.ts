@@ -18,9 +18,12 @@ export const PUT = withApi('/api/settings/profile', async (req, ctx) => {
   const name = typeof raw?.display_name === 'string' ? raw.display_name.trim() : '';
   if (!name) throw new ApiError(422, 'Display name must not be empty.');
   const db = getDb();
-  await upsertUserSettings(db, ctx.user.userId, { displayName: name });
-  const rows = await db.select().from(schema.userSettings)
-    .where(eq(schema.userSettings.userId, ctx.user.userId));
+  const displayName = await db.transaction(async (tx) => {
+    await upsertUserSettings(tx, ctx.user.userId, { displayName: name });
+    const rows = await tx.select().from(schema.userSettings)
+      .where(eq(schema.userSettings.userId, ctx.user.userId));
+    return rows[0]?.displayName ?? null;
+  });
   ctx.timer.mark('db');
-  return Response.json({ display_name: rows[0]?.displayName ?? null });
+  return Response.json({ display_name: displayName });
 });

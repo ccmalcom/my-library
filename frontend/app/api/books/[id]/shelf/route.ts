@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { withApi, ApiError } from '@/lib/server/http';
 import { getDb, schema } from '@/lib/server/db';
 import { bookSummary, VALID_SHELVES } from '@/lib/server/books';
-import { effectiveRating, pyList } from '@/lib/server/serialize';
+import { effectiveRating, parseIdParam, pyList } from '@/lib/server/serialize';
 
 export const PATCH = withApi('/api/books/[id]/shelf', async (req, ctx) => {
   const raw = await req.json().catch(() => null);
@@ -11,7 +11,7 @@ export const PATCH = withApi('/api/books/[id]/shelf', async (req, ctx) => {
   if (!VALID_SHELVES.includes(shelf)) {
     throw new ApiError(422, `shelf must be one of ${pyList(VALID_SHELVES)}.`);
   }
-  const bookId = Number(ctx.params.id);
+  const bookId = parseIdParam(ctx.params.id);
   const db = getDb();
   const rows = await db.select().from(schema.books)
     .where(and(eq(schema.books.id, bookId), eq(schema.books.userId, ctx.user.userId)));

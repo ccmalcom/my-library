@@ -35,24 +35,26 @@ export const PUT = withApi('/api/directive', async (req, ctx) => {
     throw new ApiError(422, 'Custom instructions must not be empty.');
   }
   const db = getDb();
-  const rows = await db.select().from(schema.userDirective)
-    .where(eq(schema.userDirective.userId, ctx.user.userId));
-  if (rows[0]) {
-    await db.update(schema.userDirective).set({
-      nlText: text || null,
-      constraints: Object.keys(cleaned).length ? cleaned : null,
-      updatedAt: utcnowTs(), // ORM onupdate twin — only the update branch stamps it
-    }).where(eq(schema.userDirective.id, rows[0].id));
-  } else {
-    await db.insert(schema.userDirective).values({
-      userId: ctx.user.userId,
-      nlText: text || null,
-      constraints: Object.keys(cleaned).length ? cleaned : null,
-    });
-  }
-  // Python re-reads via get_directive and returns the same shape as GET.
-  const after = (await db.select().from(schema.userDirective)
-    .where(eq(schema.userDirective.userId, ctx.user.userId)))[0];
+  const after = await db.transaction(async (tx) => {
+    const rows = await tx.select().from(schema.userDirective)
+      .where(eq(schema.userDirective.userId, ctx.user.userId));
+    if (rows[0]) {
+      await tx.update(schema.userDirective).set({
+        nlText: text || null,
+        constraints: Object.keys(cleaned).length ? cleaned : null,
+        updatedAt: utcnowTs(), // ORM onupdate twin — only the update branch stamps it
+      }).where(eq(schema.userDirective.id, rows[0].id));
+    } else {
+      await tx.insert(schema.userDirective).values({
+        userId: ctx.user.userId,
+        nlText: text || null,
+        constraints: Object.keys(cleaned).length ? cleaned : null,
+      });
+    }
+    // Python re-reads via get_directive and returns the same shape as GET.
+    return (await tx.select().from(schema.userDirective)
+      .where(eq(schema.userDirective.userId, ctx.user.userId)))[0];
+  });
   const constraints = (after?.constraints ?? {}) as Record<string, unknown>;
   const meaningful = after && (after.nlText || Object.keys(constraints).length > 0);
   ctx.timer.mark('db');

@@ -1,8 +1,9 @@
 import { describe, expect, test, it } from 'vitest';
 import {
   tsToIso, pyTitle, effectiveRating, round2, round4, parseBoolParam,
-  utcnowTs, todayIsoDate, pyList,
+  utcnowTs, todayIsoDate, pyList, parseIdParam,
 } from '../serialize';
+import { ApiError } from '../errors';
 
 describe('tsToIso', () => {
   test('converts postgres timestamp string to ISO T form', () => {
@@ -65,4 +66,32 @@ it('todayIsoDate returns YYYY-MM-DD', () => {
 it('pyList formats like Python list repr', () => {
   expect(pyList(['a', 'b'])).toBe("['a', 'b']");
   expect(pyList([])).toBe('[]');
+});
+
+describe('parseIdParam', () => {
+  test('accepts plain integer strings', () => {
+    expect(parseIdParam('7')).toBe(7);
+    expect(parseIdParam('0')).toBe(0);
+    expect(parseIdParam('-3')).toBe(-3);
+    expect(parseIdParam('007')).toBe(7); // Number() coercion, same as old bare Number(id)
+  });
+  test('rejects non-numeric ids with a 422 ApiError instead of yielding NaN', () => {
+    expect(() => parseIdParam('abc')).toThrow(ApiError);
+    try {
+      parseIdParam('abc');
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError);
+      expect((err as ApiError).status).toBe(422);
+      expect((err as ApiError).detail).toBe('validation error: id must be an integer');
+    }
+  });
+  test('rejects non-integer numeric strings', () => {
+    expect(() => parseIdParam('1.5')).toThrow(ApiError);
+  });
+  test('documents the Number("") === 0 edge case (matches Number.isInteger, not rejected)', () => {
+    // A blank [id] segment can't actually reach a route handler through Next.js
+    // routing, so this quirk of Number() is inherited, not specifically guarded.
+    expect(parseIdParam('')).toBe(0);
+  });
 });

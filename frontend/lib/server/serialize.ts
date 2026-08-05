@@ -3,6 +3,7 @@
  * Drizzle timestamps (mode: 'string') come back as '2026-07-01 12:00:00[.ffffff]';
  * Pydantic serializes the same stored value as '2026-07-01T12:00:00[.ffffff]'.
  */
+import { ApiError } from './errors';
 
 export function tsToIso(ts: string | null): string | null {
   return ts === null ? null : ts.replace(' ', 'T');
@@ -61,4 +62,18 @@ export function todayIsoDate(): string {
 /** Python repr of a list of strings: ['a', 'b'] — for 422 detail parity. */
 export function pyList(xs: string[]): string {
   return '[' + xs.map((x) => `'${x}'`).join(', ') + ']';
+}
+
+/**
+ * Validates a route `[id]` param the way FastAPI's `id: int` path converter would:
+ * a non-numeric id gets a clean 422 instead of reaching Postgres as `Number(id)`
+ * NaN, which the driver rejects with an uncaught "invalid input syntax for type
+ * integer" error that withApi can only surface as a generic 500.
+ */
+export function parseIdParam(id: string): number {
+  const n = Number(id);
+  if (!Number.isInteger(n)) {
+    throw new ApiError(422, 'validation error: id must be an integer');
+  }
+  return n;
 }

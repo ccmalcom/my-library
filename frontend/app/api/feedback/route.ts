@@ -20,14 +20,16 @@ export const POST = withApi('/api/feedback', async (req, ctx) => {
     throw new ApiError(422, "run_id is required when trigger='post-recs'");
   }
   const db = getDb();
-  await db.insert(schema.feedback).values({
-    userId: ctx.user.userId, category, body, trigger, runId,
-    page: typeof raw.page === 'string' ? raw.page : null,
-    appVersion: typeof raw.app_version === 'string' ? raw.app_version : null,
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.feedback).values({
+      userId: ctx.user.userId, category, body, trigger, runId,
+      page: typeof raw.page === 'string' ? raw.page : null,
+      appVersion: typeof raw.app_version === 'string' ? raw.app_version : null,
+    });
+    if (trigger && ONE_TIME_TRIGGERS.includes(trigger)) {
+      await upsertPromptState(tx, { userId: ctx.user.userId, trigger, runId: '', status: 'submitted' });
+    }
   });
-  if (trigger && ONE_TIME_TRIGGERS.includes(trigger)) {
-    await upsertPromptState(db, { userId: ctx.user.userId, trigger, runId: '', status: 'submitted' });
-  }
   ctx.timer.mark('db');
   return Response.json({}, { status: 201 });
 });

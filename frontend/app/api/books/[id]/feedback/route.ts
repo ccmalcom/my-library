@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { withApi, ApiError } from '@/lib/server/http';
 import { getDb, schema } from '@/lib/server/db';
 import { bookSummary } from '@/lib/server/books';
-import { effectiveRating, utcnowTs } from '@/lib/server/serialize';
+import { effectiveRating, parseIdParam, utcnowTs } from '@/lib/server/serialize';
 import { z } from 'zod';
 
 const Body = z.object({
@@ -21,7 +21,7 @@ export const PATCH = withApi('/api/books/[id]/feedback', async (req, ctx) => {
     throw new ApiError(422, `validation error: ${parsed.error.issues[0]?.message ?? 'invalid body'}`);
   }
   const b = parsed.data;
-  const bookId = Number(ctx.params.id);
+  const bookId = parseIdParam(ctx.params.id);
 
   // Port of library.set_book_feedback — validation order matters.
   if (b.rating != null && b.rating !== 0 && !(b.rating >= 1 && b.rating <= 5)) {

@@ -4,7 +4,7 @@ import { getDb, schema } from '@/lib/server/db';
 import { bookOut } from '@/lib/server/books';
 import { ensureLibraryBook, REJECT_REASONS } from '@/lib/server/recs';
 import { ensureProfileMeta } from '@/lib/server/profileMeta';
-import { utcnowTs, pyList } from '@/lib/server/serialize';
+import { parseIdParam, utcnowTs, pyList } from '@/lib/server/serialize';
 
 /** Port of api.py::feedback (PATCH /recommendations/{id}/feedback) — the swipe-decision
  *  route. "Provided" means key present in the raw JSON body (Pydantic's
@@ -45,40 +45,43 @@ export const PATCH = withApi('/api/recommendations/[id]/feedback', async (req, c
     }
   }
 
-  const recId = Number(ctx.params.id);
+  const recId = parseIdParam(ctx.params.id);
   const db = getDb();
-  const recs = await db.select().from(schema.recommendations)
-    .where(eq(schema.recommendations.id, recId));
-  const rec = recs[0];
-  if (!rec || rec.userId !== ctx.user.userId) {
-    throw new ApiError(404, `Recommendation ${recId} not found`);
-  }
-
-  const updates: Partial<typeof rec> = {};
-  if (statusProvided) updates.status = status as string;
-  if (userNoteProvided) updates.userNote = userNote;
-  if (rejectReasonsProvided) {
-    updates.rejectReasons = rejectReasons;
-    const meta = await ensureProfileMeta(db, ctx.user.userId);
-    await db.update(schema.profileMeta).set({ recFeedbackUpdatedAt: utcnowTs() })
-      .where(eq(schema.profileMeta.id, meta.id));
-  }
-  if (Object.keys(updates).length) {
-    await db.update(schema.recommendations).set(updates)
+  const result = await db.transaction(async (tx) => {
+    const recs = await tx.select().from(schema.recommendations)
       .where(eq(schema.recommendations.id, recId));
-  }
-  const updated = { ...rec, ...updates };
+    const rec = recs[0];
+    if (!rec || rec.userId !== ctx.user.userId) {
+      throw new ApiError(404, `Recommendation ${recId} not found`);
+    }
 
-  // Python: `req.status or rec.status` — falls back when status wasn't provided.
-  const effective = (statusProvided && status) || updated.status;
-  let book: unknown = null;
-  if (effective === 'accepted') {
-    const r = await ensureLibraryBook(db, updated, 'to-read', ctx.user.userId);
-    book = bookOut(r.book, r.enrichment);
-  } else if (effective === 'already_read') {
-    const r = await ensureLibraryBook(db, updated, 'read', ctx.user.userId);
-    book = bookOut(r.book, r.enrichment);
-  }
+    const updates: Partial<typeof rec> = {};
+    if (statusProvided) updates.status = status as string;
+    if (userNoteProvided) updates.userNote = userNote;
+    if (rejectReasonsProvided) {
+      updates.rejectReasons = rejectReasons;
+      const meta = await ensureProfileMeta(tx, ctx.user.userId);
+      await tx.update(schema.profileMeta).set({ recFeedbackUpdatedAt: utcnowTs() })
+        .where(eq(schema.profileMeta.id, meta.id));
+    }
+    if (Object.keys(updates).length) {
+      await tx.update(schema.recommendations).set(updates)
+        .where(eq(schema.recommendations.id, recId));
+    }
+    const updated = { ...rec, ...updates };
+
+    // Python: `req.status or rec.status` — falls back when status wasn't provided.
+    const effective = (statusProvided && status) || updated.status;
+    let book: unknown = null;
+    if (effective === 'accepted') {
+      const r = await ensureLibraryBook(tx, updated, 'to-read', ctx.user.userId);
+      book = bookOut(r.book, r.enrichment);
+    } else if (effective === 'already_read') {
+      const r = await ensureLibraryBook(tx, updated, 'read', ctx.user.userId);
+      book = bookOut(r.book, r.enrichment);
+    }
+    return { status: updated.status, user_note: updated.userNote, book };
+  });
   ctx.timer.mark('db');
-  return Response.json({ status: updated.status, user_note: updated.userNote, book });
+  return Response.json(result);
 });

@@ -100,41 +100,44 @@ export const POST = withApi('/api/books', async (req, ctx) => {
   }
 
   const rated = b.rating != null && b.rating !== 0;
-  const [book] = await db
-    .insert(schema.books)
-    .values({
-      userId: ctx.user.userId,
-      title,
-      author,
-      isbn13,
-      yearPublished: b.year ?? null,
-      exclusiveShelf: b.shelf,
-      source: 'manual',
-      goodreadsRating: 0,
-      dateAdded: todayIsoDate(),
-      appRating: rated ? b.rating : null,
-      appReview: review,
-      feedbackUpdatedAt: rated || review ? utcnowTs() : null,
-    })
-    .returning();
-
-  let enr = null;
-  if (b.cover_url || b.subjects || b.catalog_source || b.catalog_id) {
-    [enr] = await db
-      .insert(schema.enrichment)
+  const { book, enr } = await db.transaction(async (tx) => {
+    const [book] = await tx
+      .insert(schema.books)
       .values({
-        bookId: book.id,
-        resolvedSource: b.catalog_source ?? null,
-        resolvedId: b.catalog_id ?? null,
-        subjects: b.subjects ?? [],
-        coverUrl: b.cover_url ?? null,
-        resolutionConfidence: 1.0,
-        confidenceLabel: 'MANUAL',
-        matchMethod: 'manual_add',
-        resolvedAt: utcnowTs(),
+        userId: ctx.user.userId,
+        title,
+        author,
+        isbn13,
+        yearPublished: b.year ?? null,
+        exclusiveShelf: b.shelf,
+        source: 'manual',
+        goodreadsRating: 0,
+        dateAdded: todayIsoDate(),
+        appRating: rated ? b.rating : null,
+        appReview: review,
+        feedbackUpdatedAt: rated || review ? utcnowTs() : null,
       })
       .returning();
-  }
+
+    let enr = null;
+    if (b.cover_url || b.subjects || b.catalog_source || b.catalog_id) {
+      [enr] = await tx
+        .insert(schema.enrichment)
+        .values({
+          bookId: book.id,
+          resolvedSource: b.catalog_source ?? null,
+          resolvedId: b.catalog_id ?? null,
+          subjects: b.subjects ?? [],
+          coverUrl: b.cover_url ?? null,
+          resolutionConfidence: 1.0,
+          confidenceLabel: 'MANUAL',
+          matchMethod: 'manual_add',
+          resolvedAt: utcnowTs(),
+        })
+        .returning();
+    }
+    return { book, enr };
+  });
   ctx.timer.mark('db');
   return Response.json(bookOut(book, enr), { status: 201 });
 });

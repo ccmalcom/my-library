@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { withApi, ApiError } from '@/lib/server/http';
 import { getDb, schema } from '@/lib/server/db';
 import { bookOut } from '@/lib/server/books';
-import { utcnowTs } from '@/lib/server/serialize';
+import { parseIdParam, utcnowTs } from '@/lib/server/serialize';
 import { ensureProfileMeta } from '@/lib/server/profileMeta';
 
 const Body = z.object({
@@ -30,7 +30,7 @@ export const PATCH = withApi('/api/books/[id]/enrichment', async (req, ctx) => {
   if (!catalogSource || !catalogId) {
     throw new ApiError(422, 'catalog_source and catalog_id are required.');
   }
-  const bookId = Number(ctx.params.id);
+  const bookId = parseIdParam(ctx.params.id);
   const db = getDb();
   const rows = await db.select().from(schema.books)
     .where(and(eq(schema.books.id, bookId), eq(schema.books.userId, ctx.user.userId)));
@@ -44,21 +44,23 @@ export const PATCH = withApi('/api/books/[id]/enrichment', async (req, ctx) => {
     confidenceLabel: 'CORRECTED', resolutionConfidence: 1.0,
     matchMethod: 'user_correction', resolvedAt: utcnowTs(),
   };
-  const existing = await db.select().from(schema.enrichment)
-    .where(eq(schema.enrichment.bookId, bookId));
-  if (existing[0]) {
-    await db.update(schema.enrichment).set(fields)
+  const enr = await db.transaction(async (tx) => {
+    const existing = await tx.select().from(schema.enrichment)
       .where(eq(schema.enrichment.bookId, bookId));
-  } else {
-    await db.insert(schema.enrichment).values({ bookId, ...fields });
-  }
+    if (existing[0]) {
+      await tx.update(schema.enrichment).set(fields)
+        .where(eq(schema.enrichment.bookId, bookId));
+    } else {
+      await tx.insert(schema.enrichment).values({ bookId, ...fields });
+    }
 
-  const meta = await ensureProfileMeta(db, ctx.user.userId);
-  await db.update(schema.profileMeta).set({ enrichmentCorrectedAt: utcnowTs() })
-    .where(eq(schema.profileMeta.id, meta.id));
+    const meta = await ensureProfileMeta(tx, ctx.user.userId);
+    await tx.update(schema.profileMeta).set({ enrichmentCorrectedAt: utcnowTs() })
+      .where(eq(schema.profileMeta.id, meta.id));
 
-  const enr = (await db.select().from(schema.enrichment)
-    .where(eq(schema.enrichment.bookId, bookId)))[0] ?? null;
+    return (await tx.select().from(schema.enrichment)
+      .where(eq(schema.enrichment.bookId, bookId)))[0] ?? null;
+  });
   ctx.timer.mark('db');
   return Response.json(bookOut(book, enr));
 });
