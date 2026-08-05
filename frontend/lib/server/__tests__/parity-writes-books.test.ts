@@ -30,6 +30,7 @@ describe('write parity: books', () => {
 // affected route is enough here — the exhaustive input-shape coverage lives in
 // serialize.test.ts's parseIdParam unit tests.
 describe('malformed [id] path params return 422, not 500', () => {
+  setupParityEnv();
   afterEach(() => vi.restoreAllMocks());
   function silenceLogs() {
     vi.spyOn(console, 'log').mockImplementation(() => {});
