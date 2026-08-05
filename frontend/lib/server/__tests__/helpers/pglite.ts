@@ -200,6 +200,7 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
 type SeedTimestamp = string | { $hoursAgo: number } | null;
 
 export interface Seed {
+  catalog_cache?: Record<string, unknown>[];
   books?: Record<string, unknown>[];
   enrichment?: Record<string, unknown>[];
   taste_traits?: Record<string, unknown>[];
@@ -237,7 +238,7 @@ export async function loadSeed(db: Db, seed: Seed): Promise<void> {
     'grounded_book_ids', 'reject_reasons', 'raw_response', 'constraints', 'snapshot',
   ]);
   const order = [
-    'books', 'enrichment', 'taste_traits', 'recommendations', 'profile_meta',
+    'catalog_cache', 'books', 'enrichment', 'taste_traits', 'recommendations', 'profile_meta',
     'user_settings', 'reader_archetypes', 'user_directive', 'usage_events',
     'taste_signals', 'feedback', 'feedback_prompt_state',
   ] as const;
