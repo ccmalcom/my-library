@@ -28,10 +28,14 @@ export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/stats' },
   { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
   { prefix: '/books', methods: ['POST'], exact: true }, // Load-bearing: without exact, POST /books/{id}/similar (wave-3 Claude flow) would incorrectly match this rule via prefix+method and flip to Node
+  { prefix: '/catalog/search' },
+  { prefix: '/profile/archetype', methods: ['POST'], exact: true },
+  { prefix: '/profile/reveal-lines', methods: ['POST'], exact: true },
+  { prefix: '/directive/draft', methods: ['POST'], exact: true },
   { prefix: '/profile', methods: ['GET', 'PATCH'] },
   { prefix: '/recommendations', methods: ['GET', 'PATCH'] },
   { prefix: '/settings', methods: ['GET', 'PUT', 'DELETE'] },
-  { prefix: '/directive', methods: ['GET', 'PUT', 'DELETE'], exact: true }, // Redundant exact here (POST not in methods list anyway), but documents wave-3 intent: POST /directive/draft stays Python
+  { prefix: '/directive', methods: ['GET', 'PUT', 'DELETE'], exact: true }, // exact ensures this rule doesn't match /directive/draft POST (which has its own rule)
   { prefix: '/feedback' },
   { prefix: '/taste-signal' },
 ];

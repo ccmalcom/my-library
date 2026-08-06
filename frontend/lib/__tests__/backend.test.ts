@@ -1,10 +1,5 @@
 /** @jest-environment jsdom */
-import {
-  baseFor,
-  getBackendChoice,
-  setBackendChoice,
-  NODE_DEFAULT_ROUTES,
-} from '../backend';
+import { baseFor, getBackendChoice, setBackendChoice, NODE_DEFAULT_ROUTES } from '../backend';
 
 const PY = 'https://python.example';
 
@@ -43,17 +38,14 @@ describe('backend switcher (method-aware)', () => {
   });
 
   test('auto: wave-3/wave-4 paths (and books/directive siblings) stay on Python', () => {
-    expect(baseFor('/books/12/similar', 'POST')).toBe(PY); // wave-3 Claude flow
-    expect(baseFor('/catalog/search?q=x', 'GET')).toBe(PY); // wave-3 catalog cache
-    expect(baseFor('/directive/draft', 'POST')).toBe(PY); // wave-3 distill
-    expect(baseFor('/profile', 'POST')).toBe(PY); // profile build
-    expect(baseFor('/profile/archetype', 'POST')).toBe(PY); // profile build (sub-path)
+    expect(baseFor('/books/12/similar', 'POST')).toBe(PY); // wave-3 Claude flow (wave-3c)
+    expect(baseFor('/profile', 'POST')).toBe(PY); // profile build (wave-3b)
+    expect(baseFor('/profile/update', 'POST')).toBe(PY); // profile build (wave-3b)
     expect(baseFor('/library', 'DELETE')).toBe(PY); // wave-4 purge
     expect(baseFor('/account', 'DELETE')).toBe(PY);
   });
 
   test('auto: unflipped paths stay on Python', () => {
-    expect(baseFor('/catalog/search?q=x', 'GET')).toBe(PY);
     expect(baseFor('/export', 'GET')).toBe(PY);
   });
 
@@ -76,11 +68,15 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/stats')).toBe('/api');
   });
 
-  test('wave-2 flip list is exactly as designed', () => {
+  test('wave-2/3a flip list is exactly as designed', () => {
     expect(NODE_DEFAULT_ROUTES).toEqual([
       { prefix: '/stats' },
       { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
       { prefix: '/books', methods: ['POST'], exact: true },
+      { prefix: '/catalog/search' },
+      { prefix: '/profile/archetype', methods: ['POST'], exact: true },
+      { prefix: '/profile/reveal-lines', methods: ['POST'], exact: true },
+      { prefix: '/directive/draft', methods: ['POST'], exact: true },
       { prefix: '/profile', methods: ['GET', 'PATCH'] },
       { prefix: '/recommendations', methods: ['GET', 'PATCH'] },
       { prefix: '/settings', methods: ['GET', 'PUT', 'DELETE'] },
@@ -88,5 +84,24 @@ describe('backend switcher (method-aware)', () => {
       { prefix: '/feedback' },
       { prefix: '/taste-signal' },
     ]);
+  });
+
+  test('wave-3a: catalog search and POST routes flip to Node', () => {
+    // wave-3a: flipped to Node
+    expect(baseFor('/catalog/search?q=dune', 'GET')).toBe('/api');
+    expect(baseFor('/directive/draft', 'POST')).toBe('/api');
+    expect(baseFor('/profile/archetype', 'POST')).toBe('/api');
+    expect(baseFor('/profile/reveal-lines', 'POST')).toBe('/api');
+    // still Python — 3b/3c/4/5
+    expect(baseFor('/profile', 'POST')).toBe(PY); // 3b full build
+    expect(baseFor('/profile/update', 'POST')).toBe(PY); // 3b
+    expect(baseFor('/recommend', 'POST')).toBe(PY); // 3c
+    expect(baseFor('/books/12/similar', 'POST')).toBe(PY); // 3c
+    expect(baseFor('/discover', 'POST')).toBe(PY); // 3c
+    expect(baseFor('/enrich/start', 'POST')).toBe(PY); // wave 4
+    expect(baseFor('/admin/users', 'GET')).toBe(PY); // wave 5
+    // unchanged from waves 1-2
+    expect(baseFor('/directive', 'PUT')).toBe('/api');
+    expect(baseFor('/profile/archetype', 'GET')).toBe('/api');
   });
 });
