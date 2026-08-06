@@ -100,3 +100,172 @@ export function isbn13FromGoogleItem(item: Record<string, any> | null): string |
   }
   return null;
 }
+
+// --- search_books: user-facing book search (add-a-book flow) --------------
+// Ports of catalog.py:254-300, 336-363, 436-506, 512-614.
+
+export interface Candidate {
+  source: string; resolved_id: string | null; title: string | null;
+  author: string | null; subjects: string[]; description?: string | null;
+  cover_url: string | null; year: number | null; isbn13?: string | null;
+  language: string | null; raw: unknown;
+}
+
+const SEARCH_FETCH = 25;
+
+export async function googleBooksQuery(db: Db, q: string, maxResults = 5): Promise<Candidate[]> {
+  const capped = Math.max(1, Math.min(maxResults, 40)); // Google caps at 40
+  const params = new URLSearchParams({ q, maxResults: String(capped) });
+  const key = process.env.GOOGLE_BOOKS_API_KEY;
+  if (key) params.set('key', key);
+  const url = `https://www.googleapis.com/books/v1/volumes?${params}`;
+  const data = (await getJson(db, url, 'googlebooks')) as any;
+  if (!data) return [];
+  return (data.items ?? []).slice(0, capped).map((item: any) => {
+    const info = item.volumeInfo ?? {};
+    return {
+      source: 'googlebooks',
+      resolved_id: item.id ?? null,
+      title: info.title ?? null,
+      author: (info.authors ?? [null])[0] ?? null,
+      subjects: info.categories ?? [],
+      description: info.description ?? null,
+      cover_url: (info.imageLinks ?? {}).thumbnail ?? null,
+      year: yearFromGoogle(info.publishedDate),
+      language: normLang(info.language),
+      raw: item,
+    };
+  });
+}
+
+const OL_FIELDS = 'key,title,author_name,first_publish_year,cover_i,isbn,subject,language';
+
+function olDocToCandidate(doc: any): Candidate {
+  const coverId = doc.cover_i;
+  const isbns: string[] = doc.isbn ?? [];
+  return {
+    source: 'openlibrary',
+    resolved_id: doc.key ?? null,
+    title: doc.title ?? null,
+    author: (doc.author_name ?? [null])[0] ?? null,
+    subjects: (doc.subject ?? []).slice(0, 25),
+    cover_url: coverId ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg` : null,
+    year: doc.first_publish_year ?? null,
+    isbn13: isbns.find((i) => i.length === 13 && /^\d+$/.test(i)) ?? null,
+    language: normLang(doc.language),
+    raw: doc,
+  };
+}
+
+export async function openlibraryQuery(db: Db, query: string, maxResults = 8): Promise<Candidate[]> {
+  const q = (query ?? '').trim();
+  if (!q) return [];
+  const params = new URLSearchParams({ q, limit: String(maxResults), fields: OL_FIELDS });
+  const data = (await getJson(db, `https://openlibrary.org/search.json?${params}`, 'openlibrary')) as any;
+  if (!data) return [];
+  return (data.docs ?? []).slice(0, maxResults).map(olDocToCandidate);
+}
+
+export async function openlibraryTitle(db: Db, title: string, maxResults = 20): Promise<Candidate[]> {
+  const t = (title ?? '').trim();
+  if (!t) return [];
+  const params = new URLSearchParams({ title: t, limit: String(maxResults), fields: OL_FIELDS });
+  const data = (await getJson(db, `https://openlibrary.org/search.json?${params}`, 'openlibrary')) as any;
+  if (!data) return [];
+  return (data.docs ?? []).slice(0, maxResults).map(olDocToCandidate);
+}
+
+function normFull(s: string | null | undefined): string {
+  return (s ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function searchDedupKey(title: string | null, author: string | null): string {
+  const surname = author ? normFull(author).split(' ').slice(-1)[0] : '';
+  return `${normFull(title)} ${surname}`;
+}
+
+function matchScore(query: string, cand: Candidate): number {
+  const q = normFull(query);
+  const title = normFull(cand.title);
+  const author = normFull(cand.author);
+  if (!q || !title) return 0;
+  if (title === q) return 100;
+  if (title.startsWith(q)) return 80;
+  const qTokens = new Set(q.split(' ').filter(Boolean));
+  const tTokens = new Set(title.split(' ').filter(Boolean));
+  if (qTokens.size && [...qTokens].every((t) => tTokens.has(t))) return 60;
+  if (title.includes(q)) return 40;
+  if (author && author.includes(q)) return 20;
+  return 0;
+}
+
+function volumeNumber(title: string | null): number | null {
+  if (!title) return null;
+  const m = title.toLowerCase().match(/(?:#|book|vol\.?|volume)\s*(\d{1,3})/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function applySeriesGrouping(query: string, ranked: Candidate[]): Candidate[] {
+  const q = normFull(query);
+  if (!q) return ranked;
+  const idx = ranked.map((c, i) => [i, c] as const)
+    .filter(([, c]) => normFull(c.title).startsWith(q)).map(([i]) => i);
+  if (idx.length < 3) return ranked;
+  const cluster = idx.map((i) => ranked[i]);
+  cluster.sort((a, b) => {
+    const va = volumeNumber(a.title) ?? 1e6, vb = volumeNumber(b.title) ?? 1e6;
+    if (va !== vb) return va - vb;
+    return normFull(a.title) < normFull(b.title) ? -1 : normFull(a.title) > normFull(b.title) ? 1 : 0;
+  });
+  const anchor = idx[0];
+  const inCluster = new Set(idx);
+  const rest = ranked.filter((_, i) => !inCluster.has(i));
+  return [...rest.slice(0, anchor), ...cluster, ...rest.slice(anchor)];
+}
+
+function mergeInto(keep: Candidate, extra: Candidate): void {
+  for (const f of ['cover_url', 'isbn13', 'author', 'description', 'year'] as const) {
+    if (!(keep as any)[f] && (extra as any)[f]) (keep as any)[f] = (extra as any)[f];
+  }
+  if (!keep.subjects?.length && extra.subjects?.length) keep.subjects = extra.subjects;
+}
+
+export async function searchBooks(db: Db, query: string, maxResults = 8): Promise<Candidate[]> {
+  const q = (query ?? '').trim();
+  if (!q) return [];
+
+  const results: Candidate[] = [];
+  for (const c of await googleBooksQuery(db, q, SEARCH_FETCH)) {
+    c.isbn13 = isbn13FromGoogleItem(c.raw as any); results.push(c);
+  }
+  results.push(...(await openlibraryQuery(db, q, SEARCH_FETCH)));
+  for (const c of await googleBooksQuery(db, `intitle:"${q}"`, SEARCH_FETCH)) {
+    c.isbn13 = isbn13FromGoogleItem(c.raw as any); results.push(c);
+  }
+  results.push(...(await openlibraryTitle(db, q, SEARCH_FETCH)));
+
+  const byKey = new Map<string, Candidate>();
+  const byIsbn = new Map<string, Candidate>();
+  const deduped: Candidate[] = [];
+  for (const cand of results) {
+    if (!cand.title) continue;
+    const isbn = cand.isbn13;
+    if (isbn && byIsbn.has(isbn)) { mergeInto(byIsbn.get(isbn)!, cand); continue; }
+    const key = searchDedupKey(cand.title, cand.author);
+    if (byKey.has(key)) { mergeInto(byKey.get(key)!, cand); continue; }
+    byKey.set(key, cand);
+    if (isbn) byIsbn.set(isbn, cand);
+    deduped.push(cand);
+  }
+
+  // Python sorts by the tuple (match, hasCover, hasIsbn, year) DESCENDING.
+  // Python's sort is STABLE, so equal keys keep insertion order — Array.sort is
+  // also stable in modern V8, so returning 0 for ties reproduces it exactly.
+  deduped.sort((a, b) => {
+    const ka = [matchScore(query, a), a.cover_url ? 1 : 0, a.isbn13 ? 1 : 0, a.year ?? 0];
+    const kb = [matchScore(query, b), b.cover_url ? 1 : 0, b.isbn13 ? 1 : 0, b.year ?? 0];
+    for (let i = 0; i < 4; i++) if (ka[i] !== kb[i]) return kb[i] - ka[i];
+    return 0;
+  });
+  return applySeriesGrouping(query, deduped).slice(0, maxResults);
+}

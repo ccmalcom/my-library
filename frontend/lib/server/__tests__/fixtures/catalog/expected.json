@@ -1,0 +1,1545 @@
+{
+ "dune": [
+  {
+   "source": "openlibrary",
+   "resolved_id": "/works/OL20832265W",
+   "title": "Dune",
+   "author": "Kevin J. Anderson",
+   "subjects": [
+    "Fiction, science fiction, action & adventure",
+    "Fiction, fantasy, epic",
+    "Fiction, science fiction, space opera",
+    "Fiction, science fiction, general",
+    "Dune (Imaginary place)",
+    "Comic books, strips",
+    "Feudalism",
+    "Nobility",
+    "Space flight"
+   ],
+   "cover_url": "https://covers.openlibrary.org/b/id/10533165-M.jpg",
+   "year": 2004,
+   "isbn13": "9781250771926",
+   "language": "en",
+   "raw": {
+    "author_name": [
+     "Kevin J. Anderson",
+     "Brian Herbert"
+    ],
+    "cover_i": 10533165,
+    "first_publish_year": 2004,
+    "isbn": [
+     "1250771927",
+     "9781250771926",
+     "1419731505",
+     "9780765309792",
+     "0593159616",
+     "0593354966",
+     "9781680571776",
+     "9781680571790",
+     "0765309793",
+     "0593354958",
+     "1250764769",
+     "9780765311764",
+     "9780593354964",
+     "9780593159613",
+     "9781250764768",
+     "0765311763",
+     "9781250764751",
+     "1250764742",
+     "9780593354940",
+     "168057177X",
+     "1680571796",
+     "9781250764744",
+     "1250764750",
+     "9780593354957",
+     "059335494X",
+     "9781419731501"
+    ],
+    "key": "/works/OL20832265W",
+    "language": [
+     "eng"
+    ],
+    "title": "Dune",
+    "subject": [
+     "Fiction, science fiction, action & adventure",
+     "Fiction, fantasy, epic",
+     "Fiction, science fiction, space opera",
+     "Fiction, science fiction, general",
+     "Dune (Imaginary place)",
+     "Comic books, strips",
+     "Feudalism",
+     "Nobility",
+     "Space flight"
+    ]
+   }
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "tJzgQQAACAAJ",
+   "title": "Dune",
+   "author": "Frank Herbert",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": "Frank Herbert\u2019s classic masterpiece\u2014a triumph of the imagination and one of the bestselling science fiction novels of all time. Set on the desert planet Arrakis, Dune is the story of Paul Atreides\u2014who would become known as Muad'Dib\u2014and of a great family's ambition to bring to fruition humankind's most ancient and unattainable dream. A stunning blend of adventure and mysticism, environmentalism and politics, Dune won the first Nebula Award, shared the Hugo Award, and formed the basis of what is undoubtedly the grandest epic in science fiction.",
+   "cover_url": "http://books.google.com/books/content?id=tJzgQQAACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+   "year": 2003,
+   "language": "es",
+   "raw": {
+    "kind": "books#volume",
+    "id": "tJzgQQAACAAJ",
+    "etag": "5ouuLbxx+Eg",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/tJzgQQAACAAJ",
+    "volumeInfo": {
+     "title": "Dune",
+     "authors": [
+      "Frank Herbert",
+      "Domingo Santos"
+     ],
+     "publisher": "DEBOLSILLO",
+     "publishedDate": "2003-04-04",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_10",
+       "identifier": "849759682X"
+      },
+      {
+       "type": "ISBN_13",
+       "identifier": "9788497596824"
+      }
+     ],
+     "readingModes": {
+      "text": false,
+      "image": false
+     },
+     "pageCount": 704,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "averageRating": 4,
+     "ratingsCount": 3,
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "preview-1.0.0",
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=tJzgQQAACAAJ&printsec=frontcover&img=1&zoom=5&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=tJzgQQAACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+     },
+     "language": "es",
+     "previewLink": "http://books.google.com/books?id=tJzgQQAACAAJ&dq=dune&hl=&cd=4&source=gbs_api",
+     "infoLink": "http://books.google.com/books?id=tJzgQQAACAAJ&dq=dune&hl=&source=gbs_api",
+     "canonicalVolumeLink": "https://books.google.com/books/about/Dune.html?hl=&id=tJzgQQAACAAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "NOT_FOR_SALE",
+     "isEbook": false
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "NO_PAGES",
+     "embeddable": false,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": false
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=tJzgQQAACAAJ&hl=&source=gbs_api",
+     "accessViewStatus": "NONE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "Dune es una novela de ciencia ficci\u00f3n escrita por Frank Herbert en 1965. Su \u00e9xito fue rotundo; en 1966 gan\u00f3 el Premio Hugo y en 1965 la primera edici\u00f3n del Premio N\u00e9bula a la mejor novela de ciencia ficci\u00f3n."
+    }
+   },
+   "isbn13": "9788497596824"
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "0cY9AAAAIAAJ",
+   "title": "Dune and Desert Folk",
+   "author": "Bruce William McDaniel",
+   "subjects": [
+    "Desert plants"
+   ],
+   "description": null,
+   "cover_url": "http://books.google.com/books/content?id=0cY9AAAAIAAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "year": 1926,
+   "language": "en",
+   "raw": {
+    "kind": "books#volume",
+    "id": "0cY9AAAAIAAJ",
+    "etag": "+542ZOgSj/I",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/0cY9AAAAIAAJ",
+    "volumeInfo": {
+     "title": "Dune and Desert Folk",
+     "authors": [
+      "Bruce William McDaniel"
+     ],
+     "publishedDate": "1926",
+     "industryIdentifiers": [
+      {
+       "type": "OTHER",
+       "identifier": "STANFORD:36105011592057"
+      }
+     ],
+     "readingModes": {
+      "text": false,
+      "image": true
+     },
+     "pageCount": 40,
+     "printType": "BOOK",
+     "categories": [
+      "Desert plants"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "0.5.6.0.full.1",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=0cY9AAAAIAAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=0cY9AAAAIAAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=0cY9AAAAIAAJ&pg=PA23&dq=dune&hl=&cd=13&source=gbs_api",
+     "infoLink": "https://play.google.com/store/books/details?id=0cY9AAAAIAAJ&source=gbs_api",
+     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=0cY9AAAAIAAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "FREE",
+     "isEbook": true,
+     "buyLink": "https://play.google.com/store/books/details?id=0cY9AAAAIAAJ&rdid=book-0cY9AAAAIAAJ&rdot=1&source=gbs_api"
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "ALL_PAGES",
+     "embeddable": true,
+     "publicDomain": true,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": false,
+      "downloadLink": "http://books.google.com/books/download/Dune_and_Desert_Folk.epub?id=0cY9AAAAIAAJ&hl=&output=epub&source=gbs_api"
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=0cY9AAAAIAAJ&hl=&source=gbs_api",
+     "accessViewStatus": "FULL_PUBLIC_DOMAIN",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "... <b>DUNE</b>. and. DESERT. FOLK. Page Twenty - three. The. Joshua. ( Cleistoyucca Ar- borescens ) and [ <b>DUNE</b> and DESERT FOLK Page Twenty - five. mass . are added : YUCCA- BISNAGA- MISTLETOE- SMOKE - TREE- CREOSOTE."
+    }
+   },
+   "isbn13": null
+  },
+  {
+   "source": "openlibrary",
+   "resolved_id": "/works/OL893444W",
+   "title": "Dune, Dune Messiah, Children of Dune",
+   "author": "Frank Herbert",
+   "subjects": [
+    "Fiction, science fiction, general",
+    "Dune (imaginary place), fiction"
+   ],
+   "cover_url": "https://covers.openlibrary.org/b/id/379932-M.jpg",
+   "year": 1969,
+   "isbn13": "9788466356985",
+   "language": "en",
+   "raw": {
+    "author_name": [
+     "Frank Herbert"
+    ],
+    "cover_i": 379932,
+    "first_publish_year": 1969,
+    "isbn": [
+     "9788466356985",
+     "0575025867",
+     "9781473224469",
+     "0905712803",
+     "9780575070707",
+     "0425039323",
+     "8466367942",
+     "9788466367943",
+     "1473224462",
+     "9780905712802",
+     "0425045161",
+     "9780425039328",
+     "9780425035702",
+     "0593201892",
+     "0575070706",
+     "9780575025868",
+     "9780425045169",
+     "9788466359481",
+     "8466356983",
+     "9780593201893",
+     "8466359486",
+     "0425035700"
+    ],
+    "key": "/works/OL893444W",
+    "language": [
+     "eng",
+     "spa"
+    ],
+    "title": "Dune, Dune Messiah, Children of Dune",
+    "subject": [
+     "Fiction, science fiction, general",
+     "Dune (imaginary place), fiction"
+    ]
+   }
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "77nxEAAAQBAJ",
+   "title": "Dune: Exposures",
+   "author": "Josh Brolin",
+   "subjects": [
+    "Art"
+   ],
+   "description": "Explore the creation of Denis Villeneuve\u2019s film adaptations of Dune through this evocative fusion of actor Josh Brolin\u2019s sublime writing and cinematographer Greig Fraser\u2019s intimate set photography. During the shooting of Dune: Part One and Dune: Part Two, Greig Fraser went beyond standard unit photography and documented the filming process using still photography on a variety of cameras. This led the cinematographer on an unexpected creative journey that yielded an electrifying gallery of photographs. Meanwhile, Brolin, who plays Warmaster Gurney Halleck in the two films, shares his on-set experience through his vivid, poignant writing. Brolin and Fraser developed a unique bond during production, solidifying a connection that led to this remarkable collaboration that seamlessly juxtaposes the actor\u2019s enthralling writing with the cinematographer\u2019s striking images. An exceptional new way to experience life on the set of the Dune film adaptations, this thrilling ode to the art of filmmaking from two of the most revered artists in the industry is an unmissable publishing event. STUNNING IMAGES: Curated from photos shot throughout the filming of Dune and Dune: Part Two by cinematographer Greig Fraser, this remarkable volume features his intimate images coupled with Josh Brolin\u2019s poignant writing. EXCLUSIVE CONTENT: Witness candid moments between director Denis Villeneuve and key cast members, including Timoth\u00e9e Chalamet, Rebecca Ferguson, Oscar Isaac, Josh Brolin, Zendaya, and Javier Bardem. UNPARALLELED COLLECTOR\u2019S ITEM: Singular and unprecedented, Dune: Exposures is a powerful tribute to the films that offers fans a rare and unique look into the experience of creating the movies. COMPLETE YOUR DUNE FILM COLLECTION: Dune: Exposures is the perfect companion volume to the acclaimed Insight Editions book The Art and Soul of Dune and its sequel The Art and Soul of Dune: Part Two",
+   "cover_url": "http://books.google.com/books/content?id=77nxEAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "year": 2024,
+   "language": "en",
+   "raw": {
+    "kind": "books#volume",
+    "id": "77nxEAAAQBAJ",
+    "etag": "sbw4ifRNU+4",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/77nxEAAAQBAJ",
+    "volumeInfo": {
+     "title": "Dune: Exposures",
+     "authors": [
+      "Josh Brolin"
+     ],
+     "publisher": "Simon and Schuster",
+     "publishedDate": "2024-02-13",
+     "description": "Explore the creation of Denis Villeneuve\u2019s film adaptations of Dune through this evocative fusion of actor Josh Brolin\u2019s sublime writing and cinematographer Greig Fraser\u2019s intimate set photography. During the shooting of Dune: Part One and Dune: Part Two, Greig Fraser went beyond standard unit photography and documented the filming process using still photography on a variety of cameras. This led the cinematographer on an unexpected creative journey that yielded an electrifying gallery of photographs. Meanwhile, Brolin, who plays Warmaster Gurney Halleck in the two films, shares his on-set experience through his vivid, poignant writing. Brolin and Fraser developed a unique bond during production, solidifying a connection that led to this remarkable collaboration that seamlessly juxtaposes the actor\u2019s enthralling writing with the cinematographer\u2019s striking images. An exceptional new way to experience life on the set of the Dune film adaptations, this thrilling ode to the art of filmmaking from two of the most revered artists in the industry is an unmissable publishing event. STUNNING IMAGES: Curated from photos shot throughout the filming of Dune and Dune: Part Two by cinematographer Greig Fraser, this remarkable volume features his intimate images coupled with Josh Brolin\u2019s poignant writing. EXCLUSIVE CONTENT: Witness candid moments between director Denis Villeneuve and key cast members, including Timoth\u00e9e Chalamet, Rebecca Ferguson, Oscar Isaac, Josh Brolin, Zendaya, and Javier Bardem. UNPARALLELED COLLECTOR\u2019S ITEM: Singular and unprecedented, Dune: Exposures is a powerful tribute to the films that offers fans a rare and unique look into the experience of creating the movies. COMPLETE YOUR DUNE FILM COLLECTION: Dune: Exposures is the perfect companion volume to the acclaimed Insight Editions book The Art and Soul of Dune and its sequel The Art and Soul of Dune: Part Two",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_13",
+       "identifier": "9781647229276"
+      },
+      {
+       "type": "ISBN_10",
+       "identifier": "1647229278"
+      }
+     ],
+     "readingModes": {
+      "text": true,
+      "image": true
+     },
+     "pageCount": 208,
+     "printType": "BOOK",
+     "categories": [
+      "Art"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": true,
+     "contentVersion": "1.2.1.0.preview.3",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=77nxEAAAQBAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=77nxEAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=77nxEAAAQBAJ&printsec=frontcover&dq=dune&hl=&cd=17&source=gbs_api",
+     "infoLink": "https://play.google.com/store/books/details?id=77nxEAAAQBAJ&source=gbs_api",
+     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=77nxEAAAQBAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "FOR_SALE",
+     "isEbook": true,
+     "listPrice": {
+      "amount": 18.99,
+      "currencyCode": "USD"
+     },
+     "retailPrice": {
+      "amount": 18.99,
+      "currencyCode": "USD"
+     },
+     "buyLink": "https://play.google.com/store/books/details?id=77nxEAAAQBAJ&rdid=book-77nxEAAAQBAJ&rdot=1&source=gbs_api",
+     "offers": [
+      {
+       "finskyOfferType": 1,
+       "listPrice": {
+        "amountInMicros": 18990000,
+        "currencyCode": "USD"
+       },
+       "retailPrice": {
+        "amountInMicros": 18990000,
+        "currencyCode": "USD"
+       },
+       "giftable": true
+      }
+     ]
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "PARTIAL",
+     "embeddable": true,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED_FOR_ACCESSIBILITY",
+     "epub": {
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/Dune_Exposures-sample-epub.acsm?id=77nxEAAAQBAJ&format=epub&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+     },
+     "pdf": {
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/Dune_Exposures-sample-pdf.acsm?id=77nxEAAAQBAJ&format=pdf&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=77nxEAAAQBAJ&hl=&source=gbs_api",
+     "accessViewStatus": "SAMPLE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "STUNNING IMAGES: Curated from photos shot throughout the filming of Dune and Dune: Part Two by cinematographer Greig Fraser, this remarkable volume features his intimate images coupled with Josh Brolin\u2019s poignant writing."
+    }
+   },
+   "isbn13": "9781647229276"
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "nriEi9MPlswC",
+   "title": "Dune: House Atreides",
+   "author": "Brian Herbert",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": "Book One of the Epic Prequel to the Classic Novel Dune\u2014Soon to Be a Major Motion Picture Step into the universe of Frank Herbert\u2019s Dune, one of the greatest science fiction novels of all time. Before Paul Atreides became Muad\u2019Dib, the dynamic leader who unified the wild Fremen on the desert planet known as Dune . . . Before the evil Baron Harkonnen overthrew House Atreides and sent Paul and his mother Jessica fleeing into the deadly wasteland of sand . . . Before the secrets of the spice and the sandworms were discovered . . . There was another story . . . The tale of young Leto Atreides learning to become a ruler in the shadow of his great father. The tale of Baron Vladimir Harkonnen, ruthless tyrant who becomes a pawn of Bene Gesserit breeding schemes. The tale of Pardot Kynes, ambitious planetologist dispatched to the sands of Arrakis to understand the origins of the spice melange, the most valuable substance in the known universe. And the tale of Crown Prince Shaddam Corrino, whose lust for power leads him to plot the assassination of his own father and to create a plan that will replace the spice and disrupt the Imperium forever . . . Dune: House Atreides begins the epic worldwide bestselling trilogy that tells of the generation before Dune and sows the seeds for great heroes, vile enemies, and terrible tyrants. Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO",
+   "cover_url": "http://books.google.com/books/content?id=nriEi9MPlswC&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "year": 2003,
+   "language": "en",
+   "raw": {
+    "kind": "books#volume",
+    "id": "nriEi9MPlswC",
+    "etag": "qGDsBKm/vNQ",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/nriEi9MPlswC",
+    "volumeInfo": {
+     "title": "Dune: House Atreides",
+     "authors": [
+      "Brian Herbert",
+      "Kevin J. Anderson"
+     ],
+     "publisher": "Spectra",
+     "publishedDate": "2003-03-18",
+     "description": "Book One of the Epic Prequel to the Classic Novel Dune\u2014Soon to Be a Major Motion Picture Step into the universe of Frank Herbert\u2019s Dune, one of the greatest science fiction novels of all time. Before Paul Atreides became Muad\u2019Dib, the dynamic leader who unified the wild Fremen on the desert planet known as Dune . . . Before the evil Baron Harkonnen overthrew House Atreides and sent Paul and his mother Jessica fleeing into the deadly wasteland of sand . . . Before the secrets of the spice and the sandworms were discovered . . . There was another story . . . The tale of young Leto Atreides learning to become a ruler in the shadow of his great father. The tale of Baron Vladimir Harkonnen, ruthless tyrant who becomes a pawn of Bene Gesserit breeding schemes. The tale of Pardot Kynes, ambitious planetologist dispatched to the sands of Arrakis to understand the origins of the spice melange, the most valuable substance in the known universe. And the tale of Crown Prince Shaddam Corrino, whose lust for power leads him to plot the assassination of his own father and to create a plan that will replace the spice and disrupt the Imperium forever . . . Dune: House Atreides begins the epic worldwide bestselling trilogy that tells of the generation before Dune and sows the seeds for great heroes, vile enemies, and terrible tyrants. Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_13",
+       "identifier": "9780553897821"
+      },
+      {
+       "type": "ISBN_10",
+       "identifier": "0553897829"
+      }
+     ],
+     "readingModes": {
+      "text": true,
+      "image": true
+     },
+     "pageCount": 716,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": true,
+     "contentVersion": "0.8.7.0.preview.3",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=nriEi9MPlswC&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=nriEi9MPlswC&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=nriEi9MPlswC&printsec=frontcover&dq=intitle:%22dune%22&hl=&cd=6&source=gbs_api",
+     "infoLink": "https://play.google.com/store/books/details?id=nriEi9MPlswC&source=gbs_api",
+     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=nriEi9MPlswC"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "FOR_SALE",
+     "isEbook": true,
+     "listPrice": {
+      "amount": 8.99,
+      "currencyCode": "USD"
+     },
+     "retailPrice": {
+      "amount": 8.99,
+      "currencyCode": "USD"
+     },
+     "buyLink": "https://play.google.com/store/books/details?id=nriEi9MPlswC&rdid=book-nriEi9MPlswC&rdot=1&source=gbs_api",
+     "offers": [
+      {
+       "finskyOfferType": 1,
+       "listPrice": {
+        "amountInMicros": 8990000,
+        "currencyCode": "USD"
+       },
+       "retailPrice": {
+        "amountInMicros": 8990000,
+        "currencyCode": "USD"
+       },
+       "giftable": true
+      }
+     ]
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "PARTIAL",
+     "embeddable": true,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/Dune_House_Atreides-sample-epub.acsm?id=nriEi9MPlswC&format=epub&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+     },
+     "pdf": {
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/Dune_House_Atreides-sample-pdf.acsm?id=nriEi9MPlswC&format=pdf&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=nriEi9MPlswC&hl=&source=gbs_api",
+     "accessViewStatus": "SAMPLE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": ". . There was another story . . . The tale of young Leto Atreides learning to become a ruler in the shadow of his great father. The tale of Baron Vladimir Harkonnen, ruthless tyrant who becomes a pawn of Bene Gesserit breeding schemes."
+    }
+   },
+   "isbn13": "9780553897821"
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "--8cBYaNlA4C",
+   "title": "Dune: House Corrino",
+   "author": "Brian Herbert",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": "Book Three of the Epic Prequel to the Classic Novel Dune\u2014Soon to Be a Major Motion Picture The grand finale of the complex epic trilogy of the generation before Frank Herbert\u2019s masterwork Dune. Shaddam Corrino IV, Emperor of the Known Universe, has risked everything to create a substitute for the spice melange . . . The substance that makes space travel possible . . . That prolongs life . . . That allows prescience . . . A substance that is found only on the desert planet Arrakis, a harsh world of storms and monstrous sandworms. Shaddam has used the noble houses as chess pieces for his scheme, causing the overthrow of powerful families, raising other houses to power. The Bene Gesserit Sisterhood works their own plans, manipulating bloodlines, trying to create their long-awaited messiah, the Kwisatz Haderach. Duke Leto Atreides battles his mortal enemy, Baron Vladimir Harkonnen, while his love for the beautiful and wise Jessica grows even in the face of bloodshed and betrayal. But are they all just pawns of an inevitable future centered around the planet Dune? Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO",
+   "cover_url": "http://books.google.com/books/content?id=--8cBYaNlA4C&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "year": 2002,
+   "language": "en",
+   "raw": {
+    "kind": "books#volume",
+    "id": "--8cBYaNlA4C",
+    "etag": "ffEyYg63XpE",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/--8cBYaNlA4C",
+    "volumeInfo": {
+     "title": "Dune: House Corrino",
+     "authors": [
+      "Brian Herbert",
+      "Kevin J. Anderson"
+     ],
+     "publisher": "Spectra",
+     "publishedDate": "2002-08-27",
+     "description": "Book Three of the Epic Prequel to the Classic Novel Dune\u2014Soon to Be a Major Motion Picture The grand finale of the complex epic trilogy of the generation before Frank Herbert\u2019s masterwork Dune. Shaddam Corrino IV, Emperor of the Known Universe, has risked everything to create a substitute for the spice melange . . . The substance that makes space travel possible . . . That prolongs life . . . That allows prescience . . . A substance that is found only on the desert planet Arrakis, a harsh world of storms and monstrous sandworms. Shaddam has used the noble houses as chess pieces for his scheme, causing the overthrow of powerful families, raising other houses to power. The Bene Gesserit Sisterhood works their own plans, manipulating bloodlines, trying to create their long-awaited messiah, the Kwisatz Haderach. Duke Leto Atreides battles his mortal enemy, Baron Vladimir Harkonnen, while his love for the beautiful and wise Jessica grows even in the face of bloodshed and betrayal. But are they all just pawns of an inevitable future centered around the planet Dune? Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_13",
+       "identifier": "9780553896954"
+      },
+      {
+       "type": "ISBN_10",
+       "identifier": "0553896954"
+      }
+     ],
+     "readingModes": {
+      "text": true,
+      "image": false
+     },
+     "pageCount": 685,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "averageRating": 3,
+     "ratingsCount": 1,
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": true,
+     "contentVersion": "0.8.7.0.preview.2",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=--8cBYaNlA4C&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=--8cBYaNlA4C&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=--8cBYaNlA4C&printsec=frontcover&dq=dune&hl=&cd=19&source=gbs_api",
+     "infoLink": "https://play.google.com/store/books/details?id=--8cBYaNlA4C&source=gbs_api",
+     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=--8cBYaNlA4C"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "FOR_SALE",
+     "isEbook": true,
+     "listPrice": {
+      "amount": 7.99,
+      "currencyCode": "USD"
+     },
+     "retailPrice": {
+      "amount": 7.99,
+      "currencyCode": "USD"
+     },
+     "buyLink": "https://play.google.com/store/books/details?id=--8cBYaNlA4C&rdid=book---8cBYaNlA4C&rdot=1&source=gbs_api",
+     "offers": [
+      {
+       "finskyOfferType": 1,
+       "listPrice": {
+        "amountInMicros": 7990000,
+        "currencyCode": "USD"
+       },
+       "retailPrice": {
+        "amountInMicros": 7990000,
+        "currencyCode": "USD"
+       },
+       "giftable": true
+      }
+     ]
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "PARTIAL",
+     "embeddable": true,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/Dune_House_Corrino-sample-epub.acsm?id=--8cBYaNlA4C&format=epub&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=--8cBYaNlA4C&hl=&source=gbs_api",
+     "accessViewStatus": "SAMPLE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "But are they all just pawns of an inevitable future centered around the planet Dune? Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO"
+    }
+   },
+   "isbn13": "9780553896954"
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "45c1sYGmXcMC",
+   "title": "DUNE MESSIAH",
+   "author": "FRANK HERBERT",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": "The sisterhood of the Bene Gesserit plots to seize control of the galaxy-wide empire of their supernatural leader, while on Arrakis, the Maud'dib, the heir to an unimaginable power, confronts new challenges.",
+   "cover_url": "http://books.google.com/books/content?id=45c1sYGmXcMC&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+   "year": 1969,
+   "language": "en",
+   "raw": {
+    "kind": "books#volume",
+    "id": "45c1sYGmXcMC",
+    "etag": "zoTIgMj/ptk",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/45c1sYGmXcMC",
+    "volumeInfo": {
+     "title": "DUNE MESSIAH",
+     "authors": [
+      "FRANK HERBERT"
+     ],
+     "publishedDate": "1969",
+     "readingModes": {
+      "text": false,
+      "image": false
+     },
+     "pageCount": 260,
+     "printType": "BOOK",
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "0.5.1.0.preview.0",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=45c1sYGmXcMC&printsec=frontcover&img=1&zoom=5&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=45c1sYGmXcMC&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=45c1sYGmXcMC&dq=intitle:%22dune%22&hl=&cd=12&source=gbs_api",
+     "infoLink": "http://books.google.com/books?id=45c1sYGmXcMC&dq=intitle:%22dune%22&hl=&source=gbs_api",
+     "canonicalVolumeLink": "https://books.google.com/books/about/DUNE_MESSIAH.html?hl=&id=45c1sYGmXcMC"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "NOT_FOR_SALE",
+     "isEbook": false
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "NO_PAGES",
+     "embeddable": false,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": false
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=45c1sYGmXcMC&hl=&source=gbs_api",
+     "accessViewStatus": "NONE",
+     "quoteSharingAllowed": false
+    }
+   },
+   "isbn13": "9780441015610"
+  }
+ ],
+ "ancillary justice": [
+  {
+   "source": "googlebooks",
+   "resolved_id": "obAHf43THvQC",
+   "title": "Ancillary Justice",
+   "author": "Ann Leckie",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": "Winner of the Hugo, Nebula, and Arthur C. Clarke Awards: This record-breaking novel follows a warship trapped in a human body on a quest for revenge. A must read for fans of Ursula K. Le Guin and James S. A. Corey. \"There are few who write science fiction like Ann Leckie can. There are few who ever could.\" -- John Scalzi On a remote, icy planet, the soldier known as Breq is drawing closer to completing her quest. Once, she was the Justice of Toren -- a colossal starship with an artificial intelligence linking thousands of soldiers in the service of the Radch, the empire that conquered the galaxy. Now, an act of treachery has ripped it all away, leaving her with one fragile human body, unanswered questions, and a burning desire for vengeance.",
+   "cover_url": "http://books.google.com/books/content?id=obAHf43THvQC&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "year": 2013,
+   "language": "en",
+   "raw": {
+    "kind": "books#volume",
+    "id": "obAHf43THvQC",
+    "etag": "XZOxYqEDDKY",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/obAHf43THvQC",
+    "volumeInfo": {
+     "title": "Ancillary Justice",
+     "authors": [
+      "Ann Leckie"
+     ],
+     "publisher": "Orbit",
+     "publishedDate": "2013-10-01",
+     "description": "Winner of the Hugo, Nebula, and Arthur C. Clarke Awards: This record-breaking novel follows a warship trapped in a human body on a quest for revenge. A must read for fans of Ursula K. Le Guin and James S. A. Corey. \"There are few who write science fiction like Ann Leckie can. There are few who ever could.\" -- John Scalzi On a remote, icy planet, the soldier known as Breq is drawing closer to completing her quest. Once, she was the Justice of Toren -- a colossal starship with an artificial intelligence linking thousands of soldiers in the service of the Radch, the empire that conquered the galaxy. Now, an act of treachery has ripped it all away, leaving her with one fragile human body, unanswered questions, and a burning desire for vengeance.",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_13",
+       "identifier": "9780316246637"
+      },
+      {
+       "type": "ISBN_10",
+       "identifier": "0316246638"
+      }
+     ],
+     "readingModes": {
+      "text": true,
+      "image": false
+     },
+     "pageCount": 304,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "averageRating": 4,
+     "ratingsCount": 1,
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": true,
+     "contentVersion": "1.14.18.0.preview.2",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=obAHf43THvQC&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=obAHf43THvQC&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=obAHf43THvQC&printsec=frontcover&dq=ancillary+justice&hl=&cd=1&source=gbs_api",
+     "infoLink": "https://play.google.com/store/books/details?id=obAHf43THvQC&source=gbs_api",
+     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=obAHf43THvQC"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "FOR_SALE",
+     "isEbook": true,
+     "listPrice": {
+      "amount": 9.99,
+      "currencyCode": "USD"
+     },
+     "retailPrice": {
+      "amount": 9.99,
+      "currencyCode": "USD"
+     },
+     "buyLink": "https://play.google.com/store/books/details?id=obAHf43THvQC&rdid=book-obAHf43THvQC&rdot=1&source=gbs_api",
+     "offers": [
+      {
+       "finskyOfferType": 1,
+       "listPrice": {
+        "amountInMicros": 9990000,
+        "currencyCode": "USD"
+       },
+       "retailPrice": {
+        "amountInMicros": 9990000,
+        "currencyCode": "USD"
+       },
+       "giftable": true
+      }
+     ]
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "PARTIAL",
+     "embeddable": false,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/Ancillary_Justice-sample-epub.acsm?id=obAHf43THvQC&format=epub&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=obAHf43THvQC&hl=&source=gbs_api",
+     "accessViewStatus": "SAMPLE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "Winner of the Hugo, Nebula, and Arthur C. Clarke Awards This record-breaking novel following a warship trapped in a human body on a quest for revenge is a must-read for fans of Ursula K. Le Guin and James S. A. Corey."
+    }
+   },
+   "isbn13": "9780316246637"
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "pk_poAEACAAJ",
+   "title": "Ancillary Justice. La vendetta di Breq",
+   "author": "Ann Leckie",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": null,
+   "cover_url": "http://books.google.com/books/content?id=pk_poAEACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+   "year": 2014,
+   "language": "it",
+   "raw": {
+    "kind": "books#volume",
+    "id": "pk_poAEACAAJ",
+    "etag": "TlubFxkEz3E",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/pk_poAEACAAJ",
+    "volumeInfo": {
+     "title": "Ancillary Justice. La vendetta di Breq",
+     "authors": [
+      "Ann Leckie"
+     ],
+     "publishedDate": "2014",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_10",
+       "identifier": "8834727428"
+      },
+      {
+       "type": "ISBN_13",
+       "identifier": "9788834727423"
+      }
+     ],
+     "readingModes": {
+      "text": false,
+      "image": false
+     },
+     "pageCount": 377,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "preview-1.0.0",
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=pk_poAEACAAJ&printsec=frontcover&img=1&zoom=5&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=pk_poAEACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+     },
+     "language": "it",
+     "previewLink": "http://books.google.com/books?id=pk_poAEACAAJ&dq=intitle:%22ancillary+justice%22&hl=&cd=4&source=gbs_api",
+     "infoLink": "http://books.google.com/books?id=pk_poAEACAAJ&dq=intitle:%22ancillary+justice%22&hl=&source=gbs_api",
+     "canonicalVolumeLink": "https://books.google.com/books/about/Ancillary_Justice_La_vendetta_di_Breq.html?hl=&id=pk_poAEACAAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "NOT_FOR_SALE",
+     "isEbook": false
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "NO_PAGES",
+     "embeddable": false,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": false
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=pk_poAEACAAJ&hl=&source=gbs_api",
+     "accessViewStatus": "NONE",
+     "quoteSharingAllowed": false
+    }
+   },
+   "isbn13": "9788834727423"
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "KFbXygEACAAJ",
+   "title": "Ancillary. Justice-Sword-Mercy. Trilogia Imperial Radch. Titan edition",
+   "author": "Ann Leckie",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": null,
+   "cover_url": "http://books.google.com/books/content?id=KFbXygEACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+   "year": 2019,
+   "language": "it",
+   "raw": {
+    "kind": "books#volume",
+    "id": "KFbXygEACAAJ",
+    "etag": "1nCwdHCKgTQ",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/KFbXygEACAAJ",
+    "volumeInfo": {
+     "title": "Ancillary. Justice-Sword-Mercy. Trilogia Imperial Radch. Titan edition",
+     "authors": [
+      "Ann Leckie"
+     ],
+     "publishedDate": "2019",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_10",
+       "identifier": "8804712368"
+      },
+      {
+       "type": "ISBN_13",
+       "identifier": "9788804712367"
+      }
+     ],
+     "readingModes": {
+      "text": false,
+      "image": false
+     },
+     "pageCount": 708,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "preview-1.0.0",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=KFbXygEACAAJ&printsec=frontcover&img=1&zoom=5&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=KFbXygEACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+     },
+     "language": "it",
+     "previewLink": "http://books.google.com/books?id=KFbXygEACAAJ&dq=intitle:%22ancillary+justice%22&hl=&cd=6&source=gbs_api",
+     "infoLink": "http://books.google.com/books?id=KFbXygEACAAJ&dq=intitle:%22ancillary+justice%22&hl=&source=gbs_api",
+     "canonicalVolumeLink": "https://books.google.com/books/about/Ancillary_Justice_Sword_Mercy_Trilogia_I.html?hl=&id=KFbXygEACAAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "NOT_FOR_SALE",
+     "isEbook": false
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "NO_PAGES",
+     "embeddable": false,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": false
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=KFbXygEACAAJ&hl=&source=gbs_api",
+     "accessViewStatus": "NONE",
+     "quoteSharingAllowed": false
+    }
+   },
+   "isbn13": "9788804712367"
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "YmPTDwAAQBAJ",
+   "title": "Ancillary Justice (Urania Jumbo)",
+   "author": "Ann Leckie",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": "ANCILLARY JUSTICE Su un lontanissimo pianeta coperto di ghiaccio, Breq sta per recuperare l'oggetto di cui \u00e8 in cerca da tempo - un prezioso manufatto costruito dall'inconoscibile e temutissima specie aliena Presger -, quando si imbatte in un corpo semiassiderato nella neve: \u00e8 Seivarden Vendaai, una persona che Breq credeva morta da mille anni. Perch\u00e9 Breq non \u00e8 ci\u00f2 che sembra: diciannove anni, tre mesi e una settimana prima di quel giorno era la Justice of Toren, una gigantesca astronave da trasporto truppe. Come tutte le navi dell'impero Radchaai, la Justice \u00e8 un'intelligenza artificiale che controlla ancelle umane, ma ora che \u00e8 stata distrutta della sua coscienza pensante \u00e8 rimasto solo un frammento: Breq.",
+   "cover_url": "http://books.google.com/books/content?id=YmPTDwAAQBAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+   "year": 2020,
+   "language": "it",
+   "raw": {
+    "kind": "books#volume",
+    "id": "YmPTDwAAQBAJ",
+    "etag": "C237JucStm4",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/YmPTDwAAQBAJ",
+    "volumeInfo": {
+     "title": "Ancillary Justice (Urania Jumbo)",
+     "authors": [
+      "Ann Leckie"
+     ],
+     "publisher": "Edizioni Mondadori",
+     "publishedDate": "2020-03-04",
+     "description": "ANCILLARY JUSTICE Su un lontanissimo pianeta coperto di ghiaccio, Breq sta per recuperare l'oggetto di cui \u00e8 in cerca da tempo - un prezioso manufatto costruito dall'inconoscibile e temutissima specie aliena Presger -, quando si imbatte in un corpo semiassiderato nella neve: \u00e8 Seivarden Vendaai, una persona che Breq credeva morta da mille anni. Perch\u00e9 Breq non \u00e8 ci\u00f2 che sembra: diciannove anni, tre mesi e una settimana prima di quel giorno era la Justice of Toren, una gigantesca astronave da trasporto truppe. Come tutte le navi dell'impero Radchaai, la Justice \u00e8 un'intelligenza artificiale che controlla ancelle umane, ma ora che \u00e8 stata distrutta della sua coscienza pensante \u00e8 rimasto solo un frammento: Breq.",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_13",
+       "identifier": "9788835700562"
+      },
+      {
+       "type": "ISBN_10",
+       "identifier": "8835700566"
+      }
+     ],
+     "readingModes": {
+      "text": true,
+      "image": false
+     },
+     "pageCount": 329,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": true,
+     "contentVersion": "1.3.3.0.preview.2",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=YmPTDwAAQBAJ&printsec=frontcover&img=1&zoom=5&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=YmPTDwAAQBAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+     },
+     "language": "it",
+     "previewLink": "http://books.google.com/books?id=YmPTDwAAQBAJ&dq=intitle:%22ancillary+justice%22&hl=&cd=9&source=gbs_api",
+     "infoLink": "http://books.google.com/books?id=YmPTDwAAQBAJ&dq=intitle:%22ancillary+justice%22&hl=&source=gbs_api",
+     "canonicalVolumeLink": "https://books.google.com/books/about/Ancillary_Justice_Urania_Jumbo.html?hl=&id=YmPTDwAAQBAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "NOT_FOR_SALE",
+     "isEbook": false
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "NO_PAGES",
+     "embeddable": false,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": true
+     },
+     "pdf": {
+      "isAvailable": true
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=YmPTDwAAQBAJ&hl=&source=gbs_api",
+     "accessViewStatus": "NONE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "ANCILLARY JUSTICE Su un lontanissimo pianeta coperto di ghiaccio, Breq sta per recuperare l&#39;oggetto di cui \u00e8 in cerca da tempo - un prezioso manufatto costruito dall&#39;inconoscibile e temutissima specie aliena Presger -, quando si imbatte in ..."
+    }
+   },
+   "isbn13": "9788835700562"
+  },
+  {
+   "source": "openlibrary",
+   "resolved_id": "/works/OL28807563W",
+   "title": "Ann Leckie's Ancillary Justice",
+   "author": "David M. Higgins",
+   "subjects": [
+    "Fiction"
+   ],
+   "cover_url": "https://covers.openlibrary.org/b/id/13179605-M.jpg",
+   "year": 2022,
+   "isbn13": "9783031182600",
+   "language": "en",
+   "raw": {
+    "author_name": [
+     "David M. Higgins"
+    ],
+    "cover_i": 13179605,
+    "first_publish_year": 2022,
+    "isbn": [
+     "9783031182600",
+     "303118260X"
+    ],
+    "key": "/works/OL28807563W",
+    "language": [
+     "eng"
+    ],
+    "title": "Ann Leckie's Ancillary Justice"
+   },
+   "description": "This book argues that Ann Leckie\u2019s novel Ancillary Justice offers a devastating rebuke to the political, social, cultural, and economic injustices of American imperialism in the post 9/11 era. Following an introductory overview, the study offers four chapters that examine key themes central to the novel: gender, imperial economics, race, and revolutionary agency. Ancillary Justice\u2019s exploration of these four themes, and the way it reveals how these issues are all fundamentally entangled with the problem of contemporary imperial power, warrants its status as a canonical work of science fiction for the twenty-first century. The book concludes with a brief interview with Leckie herself touching on each of the topics examined during the preceding chapters."
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "5m-REAAAQBAJ",
+   "title": "Justicia auxiliar / Ancillary Justice",
+   "author": "Ann Leckie",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": "En un planeta helado y remoto, la soldado conocida como BREQ est\u00e1 cerca de completar su misi\u00f3n. Hace alg\u00fan tiempo ella fue la justicia de Toren, una nave colosal con una inteligencia artificial que une a miles de soldados al servicio de Radch, el imperio que conquist\u00f3 la galaxia. Ahora, un acto de traici\u00f3n ha tirado todo por la borda, dej\u00e1ndola con un fr\u00e1gil cuerpo humano, preguntas sin respuestas, y un ardiente deseo de venganza ENGLISH DESCRIPTION Breq is drawing closer to completing her quest. She was the Justice of Toren - a colossal starship with an artificial intelligence linking thousands of soldiers in the service of the Radch, the empire that conquered the galaxy. An act of treachery has ripped it all away, leaving her with a fragile human body, unanswered questions, and a burning desire for vengeance",
+   "cover_url": "http://books.google.com/books/content?id=5m-REAAAQBAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+   "year": 2015,
+   "language": "es",
+   "raw": {
+    "kind": "books#volume",
+    "id": "5m-REAAAQBAJ",
+    "etag": "jvB6qWGEChs",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/5m-REAAAQBAJ",
+    "volumeInfo": {
+     "title": "Justicia auxiliar / Ancillary Justice",
+     "authors": [
+      "Ann Leckie"
+     ],
+     "publisher": "National Geographic Books",
+     "publishedDate": "2015-08-31",
+     "description": "En un planeta helado y remoto, la soldado conocida como BREQ est\u00e1 cerca de completar su misi\u00f3n. Hace alg\u00fan tiempo ella fue la justicia de Toren, una nave colosal con una inteligencia artificial que une a miles de soldados al servicio de Radch, el imperio que conquist\u00f3 la galaxia. Ahora, un acto de traici\u00f3n ha tirado todo por la borda, dej\u00e1ndola con un fr\u00e1gil cuerpo humano, preguntas sin respuestas, y un ardiente deseo de venganza ENGLISH DESCRIPTION Breq is drawing closer to completing her quest. She was the Justice of Toren - a colossal starship with an artificial intelligence linking thousands of soldiers in the service of the Radch, the empire that conquered the galaxy. An act of treachery has ripped it all away, leaving her with a fragile human body, unanswered questions, and a burning desire for vengeance",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_13",
+       "identifier": "9788466656887"
+      },
+      {
+       "type": "ISBN_10",
+       "identifier": "846665688X"
+      }
+     ],
+     "readingModes": {
+      "text": true,
+      "image": false
+     },
+     "pageCount": 0,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "preview-1.0.0",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=5m-REAAAQBAJ&printsec=frontcover&img=1&zoom=5&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=5m-REAAAQBAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+     },
+     "language": "es",
+     "previewLink": "http://books.google.com/books?id=5m-REAAAQBAJ&dq=intitle:%22ancillary+justice%22&hl=&cd=5&source=gbs_api",
+     "infoLink": "http://books.google.com/books?id=5m-REAAAQBAJ&dq=intitle:%22ancillary+justice%22&hl=&source=gbs_api",
+     "canonicalVolumeLink": "https://books.google.com/books/about/Justicia_auxiliar_Ancillary_Justice.html?hl=&id=5m-REAAAQBAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "NOT_FOR_SALE",
+     "isEbook": false
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "NO_PAGES",
+     "embeddable": false,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": false
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=5m-REAAAQBAJ&hl=&source=gbs_api",
+     "accessViewStatus": "NONE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "En un planeta helado y remoto, la soldado conocida como BREQ est\u00e1 cerca de completar su misi\u00f3n."
+    }
+   },
+   "isbn13": "9788466656887"
+  },
+  {
+   "source": "openlibrary",
+   "resolved_id": "/works/OL28309897W",
+   "title": "Criminal Justice (Scotland) Act 2016 (Modification of Part 1 and Ancillary Provision) Regulations 2017",
+   "author": "Scotland",
+   "subjects": [
+    "Criminal justice, administration of"
+   ],
+   "cover_url": null,
+   "year": 2017,
+   "isbn13": "9780111037157",
+   "language": "en",
+   "raw": {
+    "author_name": [
+     "Scotland"
+    ],
+    "first_publish_year": 2017,
+    "isbn": [
+     "0111037158",
+     "9780111037157"
+    ],
+    "key": "/works/OL28309897W",
+    "language": [
+     "eng"
+    ],
+    "title": "Criminal Justice (Scotland) Act 2016 (Modification of Part 1 and Ancillary Provision) Regulations 2017",
+    "subject": [
+     "Criminal justice, administration of"
+    ]
+   }
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "gbmVEQAAQBAJ",
+   "title": "Wars We Never Fought",
+   "author": "Matthew B. Hill",
+   "subjects": [
+    "Literary Criticism"
+   ],
+   "description": "A collection of 16 essays examining how armed conflict functions as a subject, theme, metaphor, symbol, or plot device in works of science fiction, fantasy, and other speculative fictions.",
+   "cover_url": "http://books.google.com/books/content?id=gbmVEQAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "year": 2025,
+   "language": "en",
+   "raw": {
+    "kind": "books#volume",
+    "id": "gbmVEQAAQBAJ",
+    "etag": "QhynIZLOGww",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/gbmVEQAAQBAJ",
+    "volumeInfo": {
+     "title": "Wars We Never Fought",
+     "subtitle": "Armed Conflict in Speculative Fiction",
+     "authors": [
+      "Matthew B. Hill",
+      "Leigha H. McReynolds"
+     ],
+     "publisher": "Bloomsbury Publishing USA",
+     "publishedDate": "2025-11-13",
+     "description": "A collection of 16 essays examining how armed conflict functions as a subject, theme, metaphor, symbol, or plot device in works of science fiction, fantasy, and other speculative fictions.",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_13",
+       "identifier": "9798765121559"
+      }
+     ],
+     "readingModes": {
+      "text": true,
+      "image": true
+     },
+     "pageCount": 411,
+     "printType": "BOOK",
+     "categories": [
+      "Literary Criticism"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "preview-1.0.0",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=gbmVEQAAQBAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=gbmVEQAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=gbmVEQAAQBAJ&pg=RA1-PT85&dq=ancillary+justice&hl=&cd=4&source=gbs_api",
+     "infoLink": "https://play.google.com/store/books/details?id=gbmVEQAAQBAJ&source=gbs_api",
+     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=gbmVEQAAQBAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "FOR_SALE",
+     "isEbook": true,
+     "listPrice": {
+      "amount": 117,
+      "currencyCode": "USD"
+     },
+     "retailPrice": {
+      "amount": 117,
+      "currencyCode": "USD"
+     },
+     "buyLink": "https://play.google.com/store/books/details?id=gbmVEQAAQBAJ&rdid=book-gbmVEQAAQBAJ&rdot=1&source=gbs_api",
+     "offers": [
+      {
+       "finskyOfferType": 1,
+       "listPrice": {
+        "amountInMicros": 117000000,
+        "currencyCode": "USD"
+       },
+       "retailPrice": {
+        "amountInMicros": 117000000,
+        "currencyCode": "USD"
+       },
+       "giftable": true
+      }
+     ]
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "PARTIAL",
+     "embeddable": true,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": true
+     },
+     "pdf": {
+      "isAvailable": true
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=gbmVEQAAQBAJ&hl=&source=gbs_api",
+     "accessViewStatus": "SAMPLE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "... <b>Ancillary Justice</b> Critical Companion , 43. Emphasis removed . 15 Despina Kakoudaki , Anatomy of a Robot : Literature , Cinema , and the Cultural Work of Artificial People ( New Brunswick ... <b>Ancillary Justice</b> Critical Companion , 21 ,"
+    }
+   },
+   "isbn13": "9798765121559"
+  }
+ ],
+ "9780316246620": [
+  {
+   "source": "openlibrary",
+   "resolved_id": "/works/OL17062644W",
+   "title": "Ancillary Justice",
+   "author": "Ann Leckie",
+   "subjects": [
+    "Science Fiction",
+    "Fiction",
+    "Quests (Expeditions)",
+    "Ebook",
+    "Space Opera",
+    "Revenge",
+    "Adult",
+    "General",
+    "Adventure",
+    "Fiction, science fiction, general",
+    "award:nebula_award=novel",
+    "Artificial intelligence",
+    "Large type books",
+    "Hugo Award Winner",
+    "award:hugo_award=2014",
+    "award:hugo_award=novel",
+    "Life on other planets",
+    "Space flight",
+    "Qu\u00eate",
+    "Romans, nouvelles",
+    "Vengeance",
+    "Vie extraterrestre",
+    "Vol spatial",
+    "collection:otherwise_tiptree_award=honor"
+   ],
+   "cover_url": "https://covers.openlibrary.org/b/id/7355949-M.jpg",
+   "year": 2013,
+   "isbn13": "9782290111437",
+   "language": "en",
+   "raw": {
+    "author_name": [
+     "Ann Leckie"
+    ],
+    "cover_i": 7355949,
+    "first_publish_year": 2013,
+    "isbn": [
+     "9782290111437",
+     "2290111430",
+     "1470397471",
+     "1306759439",
+     "9788576573968",
+     "0356523845",
+     "9780356502403",
+     "0356502406",
+     "9788466656887",
+     "9780316246637",
+     "0316246638",
+     "9781410475862",
+     "2290111341",
+     "1405525843",
+     "8576573962",
+     "9781405525848",
+     "1410475867",
+     "9781306759434",
+     "0316565172",
+     "9781549176746",
+     "9780356523842",
+     "9780316565172",
+     "9781470397470",
+     "9782290111345",
+     "0316574260",
+     "9780316574266",
+     "1549176749",
+     "031624662X",
+     "846665688X",
+     "9780316246620"
+    ],
+    "key": "/works/OL17062644W",
+    "language": [
+     "eng",
+     "fre"
+    ],
+    "title": "Ancillary Justice",
+    "subject": [
+     "Science Fiction",
+     "Fiction",
+     "Quests (Expeditions)",
+     "Ebook",
+     "Space Opera",
+     "Revenge",
+     "Adult",
+     "General",
+     "Adventure",
+     "Fiction, science fiction, general",
+     "award:nebula_award=novel",
+     "Artificial intelligence",
+     "Large type books",
+     "Hugo Award Winner",
+     "award:hugo_award=2014",
+     "award:hugo_award=novel",
+     "Life on other planets",
+     "Space flight",
+     "Qu\u00eate",
+     "Romans, nouvelles",
+     "Vengeance",
+     "Vie extraterrestre",
+     "Vol spatial",
+     "collection:otherwise_tiptree_award=honor"
+    ]
+   }
+  },
+  {
+   "source": "googlebooks",
+   "resolved_id": "Ww3CEQAAQBAJ",
+   "title": "SciBle",
+   "author": "Rishabh Dubey",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": "SciBle THE SCIENCE FICTION BIBLE For centuries, science fiction has been dismissed as entertainment, speculation, or fantasy. Yet time and again, the future arrives bearing its fingerprints. SciBle: The Science Fiction Bible is a definitive cross-disciplinary investigation into one of the most underestimated forces shaping modern civilisation: the power of imagined futures. Drawing on an unprecedented, systematically classified corpus of over 500 real-world technologies, systems, policies, and cultural shifts, this book demonstrates how science fiction has repeatedly preceded\u2014and quietly guided\u2014breakthroughs in science, governance, warfare, ethics, space exploration, artificial intelligence, and human self-understanding. Spanning ancient myth, early speculative philosophy, industrial-age literature, cyberpunk, modern cinema, and contemporary technological reality, SciBle reveals a striking pattern: societies do not innovate blindly. They rehearse the future first\u2014through stories. This is not a book about prediction. It is a book about infrastructure. Through rigorous classification, historical analysis, and ethical synthesis, SciBle shows how fiction functions as a cognitive sandbox for engineers and scientists, a moral rehearsal space for policymakers and institutions, and a cultural interface through which humanity negotiates power, risk, and responsibility. As technological acceleration begins to outpace governance, and capability threatens to eclipse conscience, SciBle makes a compelling case for why imagination must no longer sit at the margins of civilisation\u2014but at its operational core. This book is for readers who believe the future is not merely built\u2014it is first imagined.",
+   "cover_url": "http://books.google.com/books/content?id=Ww3CEQAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "year": null,
+   "language": "en",
+   "raw": {
+    "kind": "books#volume",
+    "id": "Ww3CEQAAQBAJ",
+    "etag": "cNxgWVBcfHM",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/Ww3CEQAAQBAJ",
+    "volumeInfo": {
+     "title": "SciBle",
+     "authors": [
+      "Rishabh Dubey"
+     ],
+     "publisher": "Ukiyoto Publishing",
+     "description": "SciBle THE SCIENCE FICTION BIBLE For centuries, science fiction has been dismissed as entertainment, speculation, or fantasy. Yet time and again, the future arrives bearing its fingerprints. SciBle: The Science Fiction Bible is a definitive cross-disciplinary investigation into one of the most underestimated forces shaping modern civilisation: the power of imagined futures. Drawing on an unprecedented, systematically classified corpus of over 500 real-world technologies, systems, policies, and cultural shifts, this book demonstrates how science fiction has repeatedly preceded\u2014and quietly guided\u2014breakthroughs in science, governance, warfare, ethics, space exploration, artificial intelligence, and human self-understanding. Spanning ancient myth, early speculative philosophy, industrial-age literature, cyberpunk, modern cinema, and contemporary technological reality, SciBle reveals a striking pattern: societies do not innovate blindly. They rehearse the future first\u2014through stories. This is not a book about prediction. It is a book about infrastructure. Through rigorous classification, historical analysis, and ethical synthesis, SciBle shows how fiction functions as a cognitive sandbox for engineers and scientists, a moral rehearsal space for policymakers and institutions, and a cultural interface through which humanity negotiates power, risk, and responsibility. As technological acceleration begins to outpace governance, and capability threatens to eclipse conscience, SciBle makes a compelling case for why imagination must no longer sit at the margins of civilisation\u2014but at its operational core. This book is for readers who believe the future is not merely built\u2014it is first imagined.",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_13",
+       "identifier": "9789353535520"
+      },
+      {
+       "type": "ISBN_10",
+       "identifier": "9353535522"
+      }
+     ],
+     "readingModes": {
+      "text": false,
+      "image": true
+     },
+     "pageCount": 307,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "0.1.1.0.preview.1",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=Ww3CEQAAQBAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=Ww3CEQAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=Ww3CEQAAQBAJ&pg=PA276&dq=9780316246620&hl=&cd=1&source=gbs_api",
+     "infoLink": "https://play.google.com/store/books/details?id=Ww3CEQAAQBAJ&source=gbs_api",
+     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=Ww3CEQAAQBAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "FOR_SALE",
+     "isEbook": true,
+     "listPrice": {
+      "amount": 2.99,
+      "currencyCode": "USD"
+     },
+     "retailPrice": {
+      "amount": 2.99,
+      "currencyCode": "USD"
+     },
+     "buyLink": "https://play.google.com/store/books/details?id=Ww3CEQAAQBAJ&rdid=book-Ww3CEQAAQBAJ&rdot=1&source=gbs_api",
+     "offers": [
+      {
+       "finskyOfferType": 1,
+       "listPrice": {
+        "amountInMicros": 2990000,
+        "currencyCode": "USD"
+       },
+       "retailPrice": {
+        "amountInMicros": 2990000,
+        "currencyCode": "USD"
+       },
+       "giftable": true
+      }
+     ]
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "PARTIAL",
+     "embeddable": true,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": false
+     },
+     "pdf": {
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/SciBle-sample-pdf.acsm?id=Ww3CEQAAQBAJ&format=pdf&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=Ww3CEQAAQBAJ&hl=&source=gbs_api",
+     "accessViewStatus": "SAMPLE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "... <b>9780316246620</b>. [972] Google Magenta, https://magenta.tensorflow.org \u201cResearch Publications,\u201d 2016-2024. [Online]. Available: [973] A. C. Clarke, 2001: A Space Odyssey. London, UK: Hutchinson, 1968. ISBN: 9780451457998. [974] R. Chesney&nbsp;..."
+    }
+   },
+   "isbn13": "9789353535520"
+  }
+ ]
+}
