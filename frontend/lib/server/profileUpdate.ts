@@ -1,16 +1,30 @@
 /**
- * Port of profile.py's incremental re-profile change detection and revise
- * prompt (books_changed_since, _REVISE_TOOL, _REVISE_SYSTEM, _build_update_prompt).
- * Strings are copied verbatim from Python — prompt parity is asserted byte-for-byte
- * in parity-prompts.test.ts. The actual Claude call (update_taste_profile) is wired
- * up by a later task; this file only covers what changed and what to ask Claude.
+ * Port of profile.py's incremental re-profile: change detection, the revise
+ * prompt (books_changed_since, _REVISE_TOOL, _REVISE_SYSTEM, _build_update_prompt),
+ * and update_taste_profile's branch table + Claude call. Strings are copied
+ * verbatim from Python — prompt parity is asserted byte-for-byte in
+ * parity-prompts.test.ts.
  */
 import { and, asc, eq, gt, inArray, isNotNull } from 'drizzle-orm';
 import { schema, type Db } from './db';
 import { effectiveRating, pyFloat, pyJsonDumps, pyRepr } from './serialize';
 import { bookPayload, type BookRow, type EnrichmentRow } from './profileTiers';
-import { feedbackBlock, type FeedbackContext } from './profileFeedback';
-import { TRAIT_INPUT_SCHEMA } from './profileBuild';
+import {
+  feedbackBlock,
+  feedbackContext,
+  removeRejectedClaims,
+  type FeedbackContext,
+} from './profileFeedback';
+import {
+  TRAIT_INPUT_SCHEMA,
+  extractTasteProfile,
+  markProfiled,
+  profileModel,
+  PROFILE_MAX_TOKENS,
+} from './profileBuild';
+import { ensureProfileMeta } from './profileMeta';
+import { trackedCreate } from './anthropic';
+import { toolInput, type ClaudeClient } from './claude';
 
 export const REVISE_TOOL = {
   name: 'revise_taste_traits',
@@ -158,4 +172,140 @@ export async function collectUpdateInputs(
   }
 
   return { currentTraits, booksMeta, changedIds };
+}
+
+/**
+ * Twin of profile.update_taste_profile. Four of its six branches never reach Claude;
+ * see the branch table in the wave-3b plan. Like extractTasteProfile, the Claude call
+ * runs outside any transaction and all writes land in one transaction afterwards.
+ */
+export async function updateTasteProfile(
+  db: Db,
+  client: ClaudeClient,
+  userId: string,
+  maxTokens: number = PROFILE_MAX_TOKENS
+): Promise<Record<string, unknown>> {
+  const model = profileModel();
+
+  const existing = await db
+    .select({ id: schema.tasteTraits.id })
+    .from(schema.tasteTraits)
+    .where(and(eq(schema.tasteTraits.userId, userId), eq(schema.tasteTraits.status, 'proposed')));
+
+  // Python's get_profile_meta creates the row on first use and commits it.
+  const meta = await ensureProfileMeta(db, userId);
+  const since = meta.lastProfiledAt;
+
+  if (!existing.length || since === null) {
+    return extractTasteProfile(db, client, userId, maxTokens);
+  }
+
+  const changed = await booksChangedSince(db, since, userId);
+  const changedIds = changed.filter((b) => !b.excludeFromProfile).map((b) => b.id);
+
+  const traitVerdicts = await db
+    .select({ id: schema.tasteTraits.id })
+    .from(schema.tasteTraits)
+    .where(and(eq(schema.tasteTraits.userId, userId), gt(schema.tasteTraits.verdictUpdatedAt, since)))
+    .limit(1);
+  const newSignals = await db
+    .select({ id: schema.tasteSignal.id })
+    .from(schema.tasteSignal)
+    .where(and(eq(schema.tasteSignal.userId, userId), gt(schema.tasteSignal.createdAt, since)))
+    .limit(1);
+  const hasFeedbackSince =
+    traitVerdicts.length > 0 ||
+    newSignals.length > 0 ||
+    (meta.recFeedbackUpdatedAt !== null && meta.recFeedbackUpdatedAt > since);
+
+  // A LOW-confidence match correction changes metadata without touching feedback
+  // timestamps, so it never shows up in `changed`; force a full rebuild.
+  if (meta.enrichmentCorrectedAt !== null && meta.enrichmentCorrectedAt > since) {
+    return extractTasteProfile(db, client, userId, maxTokens);
+  }
+
+  if (!changedIds.length) {
+    if (!changed.length && !hasFeedbackSince) {
+      return {
+        mode: 'update',
+        changed_books: 0,
+        traits_before: existing.length,
+        traits_after: existing.length,
+        note: 'Profile already up to date — no rating/review changes since last build.',
+        model,
+      };
+    }
+    if (!hasFeedbackSince) {
+      // Only exclusion toggles changed; the incremental prompt cannot re-derive
+      // their (removed) metadata signal.
+      return extractTasteProfile(db, client, userId, maxTokens);
+    }
+    // Feedback-only update: fall through with an empty changedIds list.
+  }
+
+  const inputs = await collectUpdateInputs(db, userId, since);
+  const feedback = await feedbackContext(db, userId);
+  const prompt = buildUpdatePrompt(
+    inputs.currentTraits,
+    inputs.booksMeta,
+    inputs.changedIds,
+    feedback
+  );
+
+  const message = await trackedCreate(
+    client,
+    db,
+    { userId, operation: 'profile_update' },
+    {
+      model,
+      max_tokens: maxTokens,
+      system: REVISE_SYSTEM,
+      tools: [REVISE_TOOL],
+      tool_choice: { type: 'tool', name: 'revise_taste_traits' },
+      messages: [{ role: 'user', content: prompt }],
+    }
+  );
+
+  const input = toolInput(message, '');
+  let traits = (Array.isArray(input?.traits) ? input.traits : []) as Record<string, unknown>[];
+  traits = removeRejectedClaims(traits, feedback.rejected);
+  traits = removeRejectedClaims(traits, [...feedback.confirmed, ...feedback.edited]);
+
+  // Unlike the full build, valid ids come from books_meta, not the tiers.
+  const validIds = new Set<number>([...inputs.booksMeta.keys()].map((k) => Number(k)));
+
+  const saved = await db.transaction(async (tx) => {
+    await tx
+      .delete(schema.tasteTraits)
+      .where(and(eq(schema.tasteTraits.userId, userId), eq(schema.tasteTraits.status, 'proposed')));
+    let n = 0;
+    for (const t of traits) {
+      await tx.insert(schema.tasteTraits).values({
+        userId,
+        claim: String(t.claim ?? '').trim(),
+        polarity: String(t.polarity ?? 'reward'),
+        exhibits: filterIds(t.exhibits, validIds),
+        contrasts: filterIds(t.contrasts, validIds),
+        inferenceConfidence: Number(t.inference_confidence ?? 0.0),
+        status: 'proposed',
+      });
+      n++;
+    }
+    await markProfiled(tx, 'update', userId);
+    return n;
+  });
+
+  return {
+    mode: 'update',
+    changed_books: inputs.changedIds.length,
+    books_sent: inputs.booksMeta.size,
+    traits_before: existing.length,
+    traits_after: saved,
+    model,
+  };
+}
+
+function filterIds(raw: unknown, validIds: Set<number>): number[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((i): i is number => typeof i === 'number' && validIds.has(i));
 }
