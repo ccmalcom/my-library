@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { describe, it, expect } from 'vitest';
 import prompts from './fixtures/claude/prompts.json';
 import { makeTestDb, loadSeed } from './helpers/pglite';
@@ -17,6 +17,7 @@ import {
   ARCHETYPE_TOOL,
   ARCHETYPE_MODEL,
 } from '../archetypeDerive';
+import { buildRevealPrompt, REVEAL_SYSTEM, REVEAL_TOOL, REVEAL_MODEL } from '../revealLines';
 
 describe('prompt parity: directive distill', () => {
   it('builds a byte-identical request to Python', async () => {
@@ -76,6 +77,40 @@ describe('prompt parity: archetype derive', () => {
       expect(ARCHETYPE_TOOL).toEqual(py.tools[0]);
       expect(ARCHETYPE_MODEL).toBe(py.model);
       expect(512).toBe(py.max_tokens);
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('prompt parity: reveal lines', () => {
+  it('builds a byte-identical request to Python', async () => {
+    const py = (prompts as any).reveal_lines.kwargs;
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as any);
+      // Python's `pending` query (reveal.py:110-114) has no explicit ORDER BY. The seed's
+      // 'local' taste_traits (ids 1-4, inserted in that order) have ids 1 and 2 already
+      // carrying a reveal_line, so only 3 and 4 are pending — id-ascending reproduces the
+      // insertion/primary-key order SQLite's unordered query produced when the fixture was
+      // captured (confirmed against the real fixture below: ids [3, 4] in that order).
+      const pending = await db
+        .select({
+          id: schema.tasteTraits.id,
+          claim: schema.tasteTraits.claim,
+          polarity: schema.tasteTraits.polarity,
+        })
+        .from(schema.tasteTraits)
+        .where(and(eq(schema.tasteTraits.userId, 'local'), isNull(schema.tasteTraits.revealLine)))
+        .orderBy(asc(schema.tasteTraits.id));
+      expect(pending.map((t) => t.id)).toEqual([3, 4]);
+
+      const prompt = buildRevealPrompt(pending);
+      expect(prompt).toBe(py.messages[0].content);
+      expect(REVEAL_SYSTEM).toBe(py.system);
+      expect(REVEAL_TOOL).toEqual(py.tools[0]);
+      expect(REVEAL_MODEL).toBe(py.model);
+      expect(1200).toBe(py.max_tokens);
     } finally {
       await close();
     }
