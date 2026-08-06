@@ -547,7 +547,9 @@ def extract_taste_profile(*, max_tokens: int = 3000, user_id: str = LOCAL_USER_I
             traits, feedback["confirmed"] + feedback["edited"]
         )
 
-        valid_ids = {b["id"] for tier in tiers.values() for b in tier}
+        # `rejected` (and `less_like`, when build_tiers is given one) hold
+        # non-book entries with no "id" key — skip them rather than KeyError.
+        valid_ids = {b["id"] for tier in tiers.values() for b in tier if "id" in b}
 
         # Replace prior proposed traits (this user's only).
         session.query(TasteTrait).filter(
