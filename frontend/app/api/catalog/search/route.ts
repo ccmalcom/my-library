@@ -24,11 +24,15 @@ const Query = z.object({
 export const GET = withApi('/api/catalog/search', async (req, ctx) => {
   const parsed = Query.safeParse(Object.fromEntries(new URL(req.url).searchParams));
   if (!parsed.success) {
-    throw new ApiError(422, `validation error: ${parsed.error.issues[0]?.message ?? 'invalid query'}`);
+    throw new ApiError(
+      422,
+      `validation error: ${parsed.error.issues[0]?.message ?? 'invalid query'}`
+    );
   }
   const db = getDb();
   const rl = await checkRateLimit(db, {
-    key: `catalog_search:${ctx.user.userId}`, ...RATE_LIMITS.catalogSearch,
+    key: `catalog_search:${ctx.user.userId}`,
+    ...RATE_LIMITS.catalogSearch,
   });
   if (!rl.allowed) {
     // Parity note: this is NOT the usual {"detail": ...} shape every other route
@@ -53,16 +57,18 @@ export const GET = withApi('/api/catalog/search', async (req, ctx) => {
   const hits = await searchBooks(db, parsed.data.q, parsed.data.limit);
   ctx.timer.mark('catalog');
   return Response.json(
-    hits.filter((h) => h.title).map((h) => ({
-      source: h.source ?? 'unknown',
-      catalog_id: h.resolved_id ?? null,
-      title: h.title ?? '',
-      author: h.author ?? null,
-      year: h.year ?? null,
-      isbn13: h.isbn13 ?? null,
-      cover_url: h.cover_url ?? null,
-      subjects: h.subjects ?? null,
-      description: h.description ?? null,
-    }))
+    hits
+      .filter((h) => h.title)
+      .map((h) => ({
+        source: h.source ?? 'unknown',
+        catalog_id: h.resolved_id ?? null,
+        title: h.title ?? '',
+        author: h.author ?? null,
+        year: h.year ?? null,
+        isbn13: h.isbn13 ?? null,
+        cover_url: h.cover_url ?? null,
+        subjects: h.subjects ?? null,
+        description: h.description ?? null,
+      }))
   );
 });
