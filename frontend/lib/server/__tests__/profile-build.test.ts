@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { makeTestDb, loadSeed } from './helpers/pglite';
+import { fakeClaude } from './helpers/fakeClaude';
 import seedJson from './fixtures/parity/seed.json';
 import type { Seed } from './helpers/pglite';
 import { tierFor, buildTiers } from '../profileTiers';
 import { pyJsonDumps } from '../serialize';
 import { feedbackContext, feedbackBlock, claimTokens, removeRejectedClaims } from '../profileFeedback';
+import { extractTasteProfile } from '../profileBuild';
 import { schema } from '../db';
 
 describe('tierFor', () => {
@@ -266,5 +268,116 @@ describe('claimTokens', () => {
     expect([...claimTokens('The reader, above all, is NOT a fan of X-99.')].sort()).toEqual(
       ['99', 'fan', 'reader', 'x'].sort()
     );
+  });
+});
+
+function traitsResponse(traits: unknown[]) {
+  return {
+    content: [{ type: 'tool_use', name: 'record_taste_traits', input: { traits } }],
+    usage: { input_tokens: 10, output_tokens: 20 },
+  };
+}
+
+describe('extractTasteProfile', () => {
+  it('persists returned traits, replaces prior proposed ones, and stamps profile_meta', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as Seed);
+      const client = fakeClaude([
+        traitsResponse([
+          {
+            claim: '  Rewards dense political world-building.  ',
+            polarity: 'reward',
+            exhibits: [1, 2, 9999], // 9999 is not in the library and must be filtered
+            contrasts: [6],
+            inference_confidence: 0.87,
+          },
+        ]),
+      ]);
+
+      const out = await extractTasteProfile(db, client, 'local');
+
+      expect(out.mode).toBe('full');
+      expect(out.traits_saved).toBe(1);
+      expect(out.model).toBe('claude-sonnet-5');
+      expect(out.rated_books).toBe(13); // every tier except `rejected`
+
+      const rows = await db
+        .select()
+        .from(schema.tasteTraits)
+        .where(eq(schema.tasteTraits.userId, 'local'))
+        .orderBy(asc(schema.tasteTraits.id));
+
+      const proposed = rows.filter((r) => r.status === 'proposed');
+      expect(proposed).toHaveLength(1);
+      expect(proposed[0].claim).toBe('Rewards dense political world-building.'); // trimmed
+      expect(proposed[0].exhibits).toEqual([1, 2]); // 9999 filtered out
+      expect(proposed[0].contrasts).toEqual([6]);
+
+      // Seeded confirmed (id 2) and rejected (id 4) traits survive; proposed 1 and 3 are gone.
+      const statuses = rows.map((r) => r.status).sort();
+      expect(statuses).toEqual(['confirmed', 'proposed', 'rejected']);
+
+      const meta = await db
+        .select()
+        .from(schema.profileMeta)
+        .where(eq(schema.profileMeta.userId, 'local'));
+      expect(meta[0].lastProfileKind).toBe('full');
+      expect(meta[0].lastProfiledAt).not.toBe('2026-07-01 12:00:00');
+    } finally {
+      await close();
+    }
+  });
+
+  it('drops traits that paraphrase a rejected or user-locked claim', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as Seed);
+      const client = fakeClaude([
+        traitsResponse([
+          { claim: 'Avoids grimdark tone entirely.', polarity: 'aversion', exhibits: [6], contrasts: [], inference_confidence: 0.5 },
+          { claim: 'Values competence and problem-solving protagonists.', polarity: 'reward', exhibits: [3], contrasts: [], inference_confidence: 0.9 },
+          { claim: 'Rewards slow, atmospheric fiction.', polarity: 'reward', exhibits: [1], contrasts: [], inference_confidence: 0.6 },
+        ]),
+      ]);
+
+      const out = await extractTasteProfile(db, client, 'local');
+      expect(out.traits_saved).toBe(1);
+
+      const proposed = await db
+        .select()
+        .from(schema.tasteTraits)
+        .where(and(eq(schema.tasteTraits.userId, 'local'), eq(schema.tasteTraits.status, 'proposed')));
+      expect(proposed.map((p) => p.claim)).toEqual(['Rewards slow, atmospheric fiction.']);
+    } finally {
+      await close();
+    }
+  });
+
+  it('records a usage_events row under operation profile_full', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as Seed);
+      await extractTasteProfile(db, fakeClaude([traitsResponse([])]), 'local');
+      const events = await db.select().from(schema.usageEvents);
+      expect(events.some((e) => e.operation === 'profile_full' && e.userId === 'local')).toBe(true);
+    } finally {
+      await close();
+    }
+  });
+
+  it('throws a 400-shaped error when the user has no rated books', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      // No seed at all: zero books.
+      const client = fakeClaude([]);
+      await expect(extractTasteProfile(db, client, 'local')).rejects.toThrow(
+        'No rated books found. Run ingest (and enrich) first.'
+      );
+      // And it must fail BEFORE any Claude call.
+      expect(client.calls).toHaveLength(0);
+    } finally {
+      await close();
+    }
   });
 });

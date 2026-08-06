@@ -157,3 +157,113 @@ export function buildProfilePrompt(tiers: Tiers, feedback: FeedbackContext | nul
     feedbackBlock(feedback)
   );
 }
+
+/** Twin of profile.mark_profiled — clears the 'dirty' state. Must run inside a tx. */
+export async function markProfiled(tx: Db, kind: string, userId: string): Promise<void> {
+  const rows = await tx
+    .select({ id: schema.profileMeta.id })
+    .from(schema.profileMeta)
+    .where(eq(schema.profileMeta.userId, userId));
+  const stamp = { lastProfiledAt: utcnowTs(), lastProfileKind: kind };
+  if (rows[0]) {
+    await tx.update(schema.profileMeta).set(stamp).where(eq(schema.profileMeta.id, rows[0].id));
+  } else {
+    await tx.insert(schema.profileMeta).values({ userId, ...stamp });
+  }
+}
+
+/**
+ * Twin of profile.extract_taste_profile, minus key resolution (the route does that,
+ * matching the wave-3a pattern, so this takes an already-built client and is
+ * directly testable with fakeClaude).
+ *
+ * Python holds one session across the Claude call; Node cannot (db.ts uses max: 1,
+ * so touching `db` inside an open transaction deadlocks). Reads happen first, the
+ * Claude call runs with no transaction open, and all writes land in one transaction
+ * afterwards. Python writes nothing before the call either, so this is equivalent.
+ */
+export async function extractTasteProfile(
+  db: Db,
+  client: ClaudeClient,
+  userId: string,
+  maxTokens: number = PROFILE_MAX_TOKENS
+): Promise<Record<string, unknown>> {
+  const tiers = await buildTiers(db, userId);
+  let totalRated = 0;
+  for (const [k, v] of tiers) if (k !== 'rejected') totalRated += v.length;
+  if (totalRated === 0) throw new ApiError(400, NO_RATED_BOOKS_MESSAGE);
+
+  const feedback = await feedbackContext(db, userId);
+  const prompt = buildProfilePrompt(tiers, feedback);
+  const model = profileModel();
+
+  const message = await trackedCreate(
+    client,
+    db,
+    { userId, operation: 'profile_full' },
+    {
+      model,
+      max_tokens: maxTokens,
+      system: PROFILE_SYSTEM,
+      tools: [PROFILE_TOOL],
+      tool_choice: { type: 'tool', name: 'record_taste_traits' },
+      messages: [{ role: 'user', content: prompt }],
+    }
+  );
+
+  // Python breaks on the FIRST tool_use block regardless of its name.
+  const input = toolInput(message, '');
+  let traits = (Array.isArray(input?.traits) ? input.traits : []) as Record<string, unknown>[];
+
+  traits = removeRejectedClaims(traits, feedback.rejected);
+  traits = removeRejectedClaims(traits, [...feedback.confirmed, ...feedback.edited]);
+
+  const validIds = new Set<number>();
+  for (const [, list] of tiers) {
+    for (const b of list) {
+      if (typeof b.id === 'number') validIds.add(b.id);
+    }
+  }
+
+  const saved = await db.transaction(async (tx) => {
+    await tx
+      .delete(schema.tasteTraits)
+      .where(and(eq(schema.tasteTraits.userId, userId), eq(schema.tasteTraits.status, 'proposed')));
+
+    let n = 0;
+    for (const t of traits) {
+      await tx.insert(schema.tasteTraits).values({
+        userId,
+        claim: String(t.claim ?? '').trim(),
+        // Python's `t.get("polarity", "reward")` returns None on an explicit `null`
+        // polarity, which would violate the NOT NULL column — Node's `?? 'reward'`
+        // falls back instead. Deliberately safer, not a bug to reconcile with Python.
+        polarity: String(t.polarity ?? 'reward'),
+        exhibits: asIdList(t.exhibits, validIds),
+        contrasts: asIdList(t.contrasts, validIds),
+        inferenceConfidence: Number(t.inference_confidence ?? 0.0),
+        status: 'proposed',
+      });
+      n++;
+    }
+    await markProfiled(tx, 'full', userId);
+    return n;
+  });
+
+  const tierCounts: Record<string, number> = {};
+  for (const [k, v] of tiers) tierCounts[k] = v.length;
+
+  return {
+    mode: 'full',
+    rated_books: totalRated,
+    tiers: tierCounts,
+    traits_saved: saved,
+    model,
+  };
+}
+
+/** Python: `[i for i in t.get("exhibits", []) if i in valid_ids]`. */
+function asIdList(raw: unknown, validIds: Set<number>): number[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((i): i is number => typeof i === 'number' && validIds.has(i));
+}
