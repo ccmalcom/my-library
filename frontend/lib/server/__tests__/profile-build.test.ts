@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { makeTestDb, loadSeed } from './helpers/pglite';
 import seedJson from './fixtures/parity/seed.json';
 import type { Seed } from './helpers/pglite';
 import { tierFor, buildTiers } from '../profileTiers';
 import { pyJsonDumps } from '../serialize';
+import { feedbackContext, feedbackBlock } from '../profileFeedback';
+import { schema } from '../db';
 
 describe('tierFor', () => {
   it('buckets ratings the way profile._tier does', () => {
@@ -104,5 +107,118 @@ describe('buildTiers', () => {
     } finally {
       await close();
     }
+  });
+});
+
+describe('feedbackContext', () => {
+  it('buckets trait verdicts, favorites and the directive from the seed', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as Seed);
+      const ctx = await feedbackContext(db, 'local');
+
+      expect(ctx.confirmed).toEqual(['Values competence and problem-solving protagonists.']);
+      expect(ctx.edited).toEqual([]);
+      expect(ctx.rejected).toEqual(['Avoids grimdark tone.']);
+      // Trait 4 has user_weight 0.0 but status 'rejected', so it is NOT downweighted.
+      expect(ctx.downweighted).toEqual([]);
+      expect(ctx.favorites).toEqual(['The Dispossessed by Ursula K. Le Guin']);
+      expect(ctx.directive_text).toBe('More literary sci-fi, no grimdark.');
+      // The shared seed has no taste_signal rows.
+      expect(ctx.more_like).toEqual([]);
+      expect(ctx.less_like).toEqual([]);
+    } finally {
+      await close();
+    }
+  });
+
+  it('splits taste signals into more/less by direction, in id order', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as Seed);
+      // Seeded out of id order on purpose: an unordered query could pass by luck.
+      await db.insert(schema.tasteSignal).values([
+        { id: 2, userId: 'local', targetKind: 'book', targetBookId: 5, direction: 'less' },
+        { id: 1, userId: 'local', targetKind: 'book', targetBookId: 1, direction: 'more' },
+        { id: 3, userId: 'local', targetKind: 'book', targetBookId: 12, direction: 'more' },
+        // Another tenant's signal must be ignored.
+        { id: 4, userId: 'other', targetKind: 'book', targetBookId: 101, direction: 'more' },
+        // A rec-kind signal is out of scope for this bucket.
+        { id: 5, userId: 'local', targetKind: 'rec', targetBookId: 2, direction: 'more' },
+      ]);
+
+      const ctx = await feedbackContext(db, 'local');
+      expect(ctx.more_like).toEqual([
+        'Dune by Frank Herbert',
+        'The Fifth Season by N.K. Jemisin',
+      ]);
+      expect(ctx.less_like).toEqual(['Foundation by Isaac Asimov']);
+    } finally {
+      await close();
+    }
+  });
+
+  it('treats an empty constraints object as no directive (Python dict falsiness)', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as Seed);
+      await db
+        .update(schema.userDirective)
+        .set({ nlText: null, constraints: {} })
+        .where(eq(schema.userDirective.userId, 'local'));
+      const ctx = await feedbackContext(db, 'local');
+      expect(ctx.directive_text).toBeNull();
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('feedbackBlock', () => {
+  const empty = {
+    confirmed: [], edited: [], rejected: [], downweighted: [],
+    more_like: [], less_like: [], favorites: [], directive_text: null,
+  };
+
+  it('returns an empty string when nothing is set', () => {
+    expect(feedbackBlock(empty)).toBe('');
+    expect(feedbackBlock(null)).toBe('');
+  });
+
+  it('merges confirmed and edited into one locked-traits line', () => {
+    const out = feedbackBlock({ ...empty, confirmed: ['A.'], edited: ['B.'] });
+    expect(out).toBe(
+      '\n\n## User Feedback\n' +
+        '- The following traits are already locked in by the user and are stored ' +
+        'separately — do NOT output them (or reworded variants) in your trait ' +
+        'list, and do not contradict them: A.; B.\n'
+    );
+  });
+
+  it('renders a downweighted float the way Python str(float) does', () => {
+    const out = feedbackBlock({
+      ...empty,
+      downweighted: [{ claim: 'Likes long books.', user_weight: 0.5 }, { claim: 'X.', user_weight: 1 }],
+    });
+    expect(out).toContain('Likes long books. (weight 0.5); X. (weight 1.0)');
+  });
+
+  it('emits one dash-prefixed line per populated bucket, in Python order', () => {
+    const out = feedbackBlock({
+      ...empty,
+      rejected: ['R.'],
+      more_like: ['M by A'],
+      less_like: ['L by B'],
+      favorites: ['F by C'],
+      directive_text: '  Keep it literary.  ',
+    });
+    const lines = out.split('\n').filter((l) => l.startsWith('- '));
+    expect(lines).toHaveLength(5);
+    expect(lines[0]).toContain('rejected by the user');
+    expect(lines[1]).toContain('MORE recommendations like: M by A');
+    expect(lines[2]).toContain('FEWER recommendations like: L by B');
+    expect(lines[3]).toContain('all-time favorite books');
+    expect(lines[4]).toContain('custom instructions');
+    expect(lines[4]).toContain('Keep it literary.'); // trimmed
   });
 });
