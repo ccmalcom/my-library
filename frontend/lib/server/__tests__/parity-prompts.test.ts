@@ -18,6 +18,14 @@ import {
   ARCHETYPE_MODEL,
 } from '../archetypeDerive';
 import { buildRevealPrompt, REVEAL_SYSTEM, REVEAL_TOOL, REVEAL_MODEL } from '../revealLines';
+import { buildTiers } from '../profileTiers';
+import { feedbackContext } from '../profileFeedback';
+import {
+  buildProfilePrompt,
+  PROFILE_SYSTEM,
+  PROFILE_TOOL,
+  profileModel,
+} from '../profileBuild';
 
 describe('prompt parity: directive distill', () => {
   it('builds a byte-identical request to Python', async () => {
@@ -111,6 +119,26 @@ describe('prompt parity: reveal lines', () => {
       expect(REVEAL_TOOL).toEqual(py.tools[0]);
       expect(REVEAL_MODEL).toBe(py.model);
       expect(1200).toBe(py.max_tokens);
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('prompt parity: full taste-profile build', () => {
+  it('builds a byte-identical request to Python', async () => {
+    const py = (prompts as any).profile_full.kwargs;
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as any);
+      const tiers = await buildTiers(db, 'local');
+      const feedback = await feedbackContext(db, 'local');
+      expect(buildProfilePrompt(tiers, feedback)).toBe(py.messages[0].content);
+      expect(PROFILE_SYSTEM).toBe(py.system);
+      expect(PROFILE_TOOL).toEqual(py.tools[0]);
+      expect(profileModel()).toBe(py.model);
+      expect(3000).toBe(py.max_tokens);
+      expect(py.tool_choice).toEqual({ type: 'tool', name: 'record_taste_traits' });
     } finally {
       await close();
     }

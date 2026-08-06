@@ -23,6 +23,13 @@ os.environ["SUPABASE_JWT_SECRET"] = ""
 os.environ["REDIS_URL"] = ""
 os.environ["ENCRYPTION_KEY"] = FIXED_TEST_KEY
 os.environ["MYLIBRARY_DATA_DIR"] = tempfile.mkdtemp(prefix="claude-fixtures-")
+# Pin to config.DEFAULT_MODEL regardless of a developer's local .env override (e.g. a
+# temporary cost/availability substitution). Without this, profile_full/profile_update's
+# captured `model` leaks whatever MYLIBRARY_MODEL happens to be set to on the machine that
+# ran this script, making the checked-in prompts.json fixture non-reproducible — Node's
+# profileModel() falls back to the same 'claude-sonnet-5' default when its own env doesn't
+# set MYLIBRARY_MODEL, so pinning here is what keeps profile-prompt parity deterministic.
+os.environ["MYLIBRARY_MODEL"] = "claude-sonnet-5"
 LIVE = "--live" in sys.argv
 if not LIVE:
     os.environ["ANTHROPIC_API_KEY"] = "sk-ant-fixture-not-used"
@@ -33,6 +40,7 @@ assert settings.db_url.startswith("sqlite"), f"NOT ISOLATED: {settings.db_url}"
 
 from mylibrary import usage as usage_mod, directive as directive_mod  # noqa: E402
 from mylibrary import archetype as archetype_mod, reveal as reveal_mod  # noqa: E402
+from mylibrary import profile as profile_mod  # noqa: E402
 from mylibrary.db import init_db  # noqa: E402
 from gen_parity_fixtures import SEED, load_seed  # noqa: E402
 
@@ -69,7 +77,7 @@ class _StopBeforeCall(Exception):
     """Raised to abort a flow right after its prompt is captured (offline mode)."""
 
 # Patch every module that imported tracked_create by name.
-for mod in (directive_mod, archetype_mod, reveal_mod):
+for mod in (directive_mod, archetype_mod, reveal_mod, profile_mod):
     mod.tracked_create = _capture
 
 SCENARIOS = {
@@ -79,6 +87,8 @@ SCENARIOS = {
     ),
     "archetype": lambda: archetype_mod.derive_archetype(),
     "reveal_lines": lambda: reveal_mod.generate_reveal_lines(),
+    "profile_full": lambda: profile_mod.extract_taste_profile(),
+    "profile_update": lambda: profile_mod.update_taste_profile(),
 }
 
 def main() -> None:

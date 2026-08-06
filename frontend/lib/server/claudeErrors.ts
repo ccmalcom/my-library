@@ -15,3 +15,9 @@ export const REVEAL_NO_KEY_MESSAGE =
 
 export const ARCHETYPE_NO_KEY_MESSAGE =
   'No Anthropic API key configured. Add one at /settings or set ANTHROPIC_API_KEY.';
+
+export const PROFILE_NO_KEY_MESSAGE =
+  'No Anthropic API key configured. Add your key in Settings (or set ' +
+  'ANTHROPIC_API_KEY) before running the taste-profile step.';
+
+export const NO_RATED_BOOKS_MESSAGE = 'No rated books found. Run ingest (and enrich) first.';
