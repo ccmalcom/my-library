@@ -12,6 +12,7 @@ from mylibrary import profile
 from mylibrary.db import (
     Book,
     ProfileMeta,
+    Recommendation,
     TasteSignal,
     TasteTrait,
     session_scope,
@@ -312,3 +313,40 @@ def test_extract_taste_profile_no_duplicate_of_confirmed_or_edited(monkeypatch):
     # The echoed locked traits did NOT become new proposed rows.
     proposed_claims = [t.claim for t in proposed]
     assert proposed_claims == ["Rewards propulsive, witty space opera."]
+
+
+def test_extract_taste_profile_survives_rejected_rec_with_note(monkeypatch):
+    """A rejected recommendation carrying a user note lands in tiers['rejected'] as
+    {title, author, note} — with no 'id' key. Building valid_ids must not blow up on it."""
+    with session_scope() as session:
+        session.add(Book(title="Dune", author="Frank Herbert", goodreads_rating=5))
+        session.add(
+            Recommendation(
+                run_id="r1",
+                rank=1,
+                title="Blindsight",
+                author="Peter Watts",
+                status="rejected",
+                user_note="too grim for me",
+            )
+        )
+
+    payload = {
+        "traits": [
+            {
+                "claim": "Rewards dense political world-building.",
+                "polarity": "reward",
+                "exhibits": [],
+                "contrasts": [],
+                "inference_confidence": 0.9,
+            }
+        ]
+    }
+    monkeypatch.setattr(profile, "resolve_anthropic_key", lambda uid: "test-key")
+    monkeypatch.setattr(profile, "Anthropic", lambda **kw: _FakeClient(payload))
+
+    out = profile.extract_taste_profile()
+
+    assert out["mode"] == "full"
+    assert out["traits_saved"] == 1
+    assert out["tiers"]["rejected"] == 1
