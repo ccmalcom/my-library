@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { baseFor, getBackendChoice, setBackendChoice, NODE_DEFAULT_ROUTES } from '../backend';
+import { baseFor, getBackendChoice, setBackendChoice, NODE_DEFAULT_ROUTES, pythonBase } from '../backend';
 
 const PY = 'https://python.example';
 
@@ -39,8 +39,6 @@ describe('backend switcher (method-aware)', () => {
 
   test('auto: wave-3/wave-4 paths (and books/directive siblings) stay on Python', () => {
     expect(baseFor('/books/12/similar', 'POST')).toBe(PY); // wave-3 Claude flow (wave-3c)
-    expect(baseFor('/profile', 'POST')).toBe(PY); // profile build (wave-3b)
-    expect(baseFor('/profile/update', 'POST')).toBe(PY); // profile build (wave-3b)
     expect(baseFor('/library', 'DELETE')).toBe(PY); // wave-4 purge
     expect(baseFor('/account', 'DELETE')).toBe(PY);
   });
@@ -77,6 +75,8 @@ describe('backend switcher (method-aware)', () => {
       { prefix: '/profile/archetype', methods: ['POST'], exact: true },
       { prefix: '/profile/reveal-lines', methods: ['POST'], exact: true },
       { prefix: '/directive/draft', methods: ['POST'], exact: true },
+      { prefix: '/profile', methods: ['POST'], exact: true },
+      { prefix: '/profile/update', methods: ['POST'], exact: true },
       { prefix: '/profile', methods: ['GET', 'PATCH'] },
       { prefix: '/recommendations', methods: ['GET', 'PATCH'] },
       { prefix: '/settings', methods: ['GET', 'PUT', 'DELETE'] },
@@ -92,9 +92,7 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/directive/draft', 'POST')).toBe('/api');
     expect(baseFor('/profile/archetype', 'POST')).toBe('/api');
     expect(baseFor('/profile/reveal-lines', 'POST')).toBe('/api');
-    // still Python — 3b/3c/4/5
-    expect(baseFor('/profile', 'POST')).toBe(PY); // 3b full build
-    expect(baseFor('/profile/update', 'POST')).toBe(PY); // 3b
+    // still Python — 3c/4/5
     expect(baseFor('/recommend', 'POST')).toBe(PY); // 3c
     expect(baseFor('/books/12/similar', 'POST')).toBe(PY); // 3c
     expect(baseFor('/discover', 'POST')).toBe(PY); // 3c
@@ -103,5 +101,20 @@ describe('backend switcher (method-aware)', () => {
     // unchanged from waves 1-2
     expect(baseFor('/directive', 'PUT')).toBe('/api');
     expect(baseFor('/profile/archetype', 'GET')).toBe('/api');
+  });
+
+  it('routes POST /profile and POST /profile/update to Node in auto mode', () => {
+    expect(baseFor('/profile', 'POST')).toBe('/api');
+    expect(baseFor('/profile/update', 'POST')).toBe('/api');
+  });
+
+  it('leaves DELETE /profile on Python (not ported in wave 3b)', () => {
+    expect(baseFor('/profile', 'DELETE')).toBe(pythonBase());
+  });
+
+  it('does not let the exact POST /profile rule swallow sub-paths', () => {
+    // /profile/subjects has no POST in Python; the point is that the exact rule
+    // must not match sub-paths generically.
+    expect(baseFor('/profile/subjects', 'POST')).toBe(pythonBase());
   });
 });

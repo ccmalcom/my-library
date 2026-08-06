@@ -23,6 +23,7 @@ export interface BackendRule {
  * Wave 2: the write routes ported in tasks 1-12 flip too. `/books` and `/directive`
  * need `exact` on their write rules because wave-3 Python routes share the same
  * prefix (`POST /books/{id}/similar`, `POST /directive/draft`).
+ * Wave 3b: `POST /profile` and `POST /profile/update` (full and incremental re-profile) flip to Node.
  */
 export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/stats' },
@@ -32,6 +33,8 @@ export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/profile/archetype', methods: ['POST'], exact: true },
   { prefix: '/profile/reveal-lines', methods: ['POST'], exact: true },
   { prefix: '/directive/draft', methods: ['POST'], exact: true },
+  { prefix: '/profile', methods: ['POST'], exact: true }, // wave 3b: full build. exact keeps it off /profile/* sub-paths
+  { prefix: '/profile/update', methods: ['POST'], exact: true }, // wave 3b: incremental re-profile
   { prefix: '/profile', methods: ['GET', 'PATCH'] },
   { prefix: '/recommendations', methods: ['GET', 'PATCH'] },
   { prefix: '/settings', methods: ['GET', 'PUT', 'DELETE'] },
