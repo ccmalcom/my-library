@@ -1,0 +1,207 @@
+{
+ "directive_distill": {
+  "operation": "directive_distill",
+  "user_id": "local",
+  "kwargs": {
+   "model": "claude-haiku-4-5-20251001",
+   "max_tokens": 1200,
+   "system": "You are an authoring aid for a personal reading app. Your job is to turn a reader's messy, natural-language message about what they want to read into a clean, durable 'custom instructions' record that steers their book recommendations. You do NOT recommend books and you do NOT chat for its own sake; you distill.\n\nReturn, via the record_directive tool:\n- proposed_text: a tightened rewrite of the reader's standing preferences in their own voice, second person, a few plain sentences. Fold in anything still true from their CURRENT instructions; drop anything they just contradicted. This is the durable record, so write it to stand on its own without the chat.\n- constraints: ONLY hard, catalog-filterable filters the reader actually stated: languages (ISO 639-1), min_year / max_year, exclude_subjects, exclude_authors (surnames). Do NOT invent filters. Do NOT emit page-count or series filters; those are not filterable, so leave length or series wishes in proposed_text as soft guidance.\n- conflicts: short plain-language notes when the new request contradicts something in the reader's EXISTING SIGNALS (a rejected taste trait, or a book they marked less-like-this). One sentence each; empty list when there is no clash. Never resolve a conflict yourself; just surface it.\n- assistant_message: one short, friendly line to the reader: confirm what you captured and, only if useful, ask one clarifying question.\n\nUse plain punctuation only. No em dashes.",
+   "tools": [
+    {
+     "name": "record_directive",
+     "description": "Record the distilled custom-instructions text, derived hard constraints, any conflicts with existing signals, and one short message back to the reader.",
+     "input_schema": {
+      "type": "object",
+      "properties": {
+       "proposed_text": {
+        "type": "string",
+        "description": "The durable custom-instructions record, second person, plain sentences. Stands on its own without the chat."
+       },
+       "constraints": {
+        "type": "object",
+        "description": "Hard filters the reader stated. Omit any not stated.",
+        "properties": {
+         "languages": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          },
+          "description": "ISO 639-1 codes, only when a language is named."
+         },
+         "min_year": {
+          "type": "integer"
+         },
+         "max_year": {
+          "type": "integer"
+         },
+         "exclude_subjects": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         },
+         "exclude_authors": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          },
+          "description": "Author surnames to avoid."
+         }
+        }
+       },
+       "conflicts": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        },
+        "description": "One-sentence notes where the request clashes with existing signals."
+       },
+       "assistant_message": {
+        "type": "string",
+        "description": "One short line back to the reader."
+       }
+      },
+      "required": [
+       "proposed_text"
+      ]
+     }
+    }
+   ],
+   "tool_choice": {
+    "type": "tool",
+    "name": "record_directive"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "CURRENT INSTRUCTIONS (may be empty):\nStandalone novels preferred.\n\nEXISTING SIGNALS (JSON - for conflict detection only):\n{\"rejected_traits\": [\"Avoids grimdark tone.\"], \"more_like\": [], \"less_like\": []}\n\nREADER MESSAGE:\n\"I want more literary sci-fi, nothing grimdark, and no John Ringo.\""
+    }
+   ]
+  }
+ },
+ "archetype": {
+  "operation": "archetype",
+  "user_id": "local",
+  "kwargs": {
+   "model": "claude-haiku-4-5-20251001",
+   "max_tokens": 512,
+   "system": "You are a literary analyst scoring a reader's personality across 4 axes based on their taste traits. Each axis is a float from -1.0 (left pole) to +1.0 (right pole). Use the full range; avoid clustering near 0 unless the evidence is genuinely mixed. Call record_archetype_scores with all 8 fields.",
+   "tools": [
+    {
+     "name": "record_archetype_scores",
+     "description": "Record the reader's axis scores derived from their taste profile.",
+     "input_schema": {
+      "type": "object",
+      "properties": {
+       "lens": {
+        "type": "number",
+        "description": "-1=Immersive (transported, escape), +1=Reflective (ideas, craft, challenge)"
+       },
+       "engine": {
+        "type": "number",
+        "description": "-1=Plot-first (momentum, twists), +1=Character-first (interiority, relationships)"
+       },
+       "range": {
+        "type": "number",
+        "description": "-1=Broad (genre eclectic), +1=Deep (genre loyal, series reader)"
+       },
+       "resonance": {
+        "type": "number",
+        "description": "-1=Heart (emotional resonance, mood), +1=Mind (intellectual craft, structure)"
+       },
+       "lens_rationale": {
+        "type": "string",
+        "description": "Brief rationale for the lens score."
+       },
+       "engine_rationale": {
+        "type": "string",
+        "description": "Brief rationale for the engine score."
+       },
+       "range_rationale": {
+        "type": "string",
+        "description": "Brief rationale for the range score."
+       },
+       "resonance_rationale": {
+        "type": "string",
+        "description": "Brief rationale for the resonance score."
+       }
+      },
+      "required": [
+       "lens",
+       "engine",
+       "range",
+       "resonance",
+       "lens_rationale",
+       "engine_rationale",
+       "range_rationale",
+       "resonance_rationale"
+      ]
+     }
+    }
+   ],
+   "tool_choice": {
+    "type": "tool",
+    "name": "record_archetype_scores"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "Score this reader's taste profile across 4 axes.\n\nTaste traits:\n- Drawn to idea-driven science fiction that interrogates political systems. [positive]\n- Values competence and problem-solving protagonists. [positive]\n- Prefers standalone novels over long series commitments. [positive]\n- Avoids grimdark tone. [negative]\n\nAxes:\n  lens:      -1=Immersive (escape/absorption), +1=Reflective (ideas/craft)\n  engine:    -1=Plot-first (events/twists), +1=Character-first (interiority)\n  range:     -1=Broad (eclectic genres), +1=Deep (genre loyal, series)\n  resonance: -1=Heart (emotional/mood), +1=Mind (intellectual/structural)\n"
+    }
+   ]
+  }
+ },
+ "reveal_lines": {
+  "operation": "reveal_lines",
+  "user_id": "local",
+  "kwargs": {
+   "model": "claude-haiku-4-5-20251001",
+   "max_tokens": 1200,
+   "system": "You rewrite a reader's analytic taste traits as short, second-person reveal lines for a personal reading app. Each line addresses the reader directly ('You...'), uses concrete nouns over abstractions, contains no hedging words, and asserts nothing the source claim doesn't already say. Never gush; the delight is in the specificity. Use plain punctuation only: no em dashes. Return one line per trait id via the record_reveal_lines tool.",
+   "tools": [
+    {
+     "name": "record_reveal_lines",
+     "description": "Record one second-person reveal line per trait id.",
+     "input_schema": {
+      "type": "object",
+      "properties": {
+       "lines": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "id": {
+           "type": "integer",
+           "description": "The trait id being rewritten."
+          },
+          "reveal_line": {
+           "type": "string",
+           "description": "<=14 words, second person, concrete, no hedging, derivable from the claim. Plain punctuation, no em dashes."
+          }
+         },
+         "required": [
+          "id",
+          "reveal_line"
+         ]
+        }
+       }
+      },
+      "required": [
+       "lines"
+      ]
+     }
+    }
+   ],
+   "tool_choice": {
+    "type": "tool",
+    "name": "record_reveal_lines"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "Rewrite each analytic taste claim below as a second-person reveal line.\n\nRules for every line:\n  - 14 words or fewer.\n  - Address the reader as 'You'. Present tense.\n  - Concrete nouns over abstractions ('slow first chapters', not 'gradual pacing').\n  - No hedging words inside the line (no 'maybe', 'probably', 'we think').\n  - Assert nothing the claim doesn't already say. No new facts.\n  - For an aversion, keep a knowing tone: 'not for you', never 'you failed to appreciate'.\n  - Plain punctuation only. No em dashes.\n\nExamples:\n  claim: \"Rewards dense, stylized prose; rates workmanlike prose lower\"\n  line:  \"You notice sentences. Plain prose has to work twice as hard.\"\n  claim: \"Reader consistently rewards character interiority over plot momentum\"\n  line:  \"You'll forgive a slow plot if the people feel real.\"\n  claim: \"Rewards completed series over standalones\"\n  line:  \"When you commit, you commit. Standalones rarely make your top shelf.\"\n  claim: \"Penalizes romance subplots that interrupt the main narrative\"\n  line:  \"Love stories that stall the plot lose you fast.\"\n  claim: \"Possible preference for translated fiction; sample is small\"\n  line:  \"You keep drifting toward books written in other languages first.\"\n\nReturn exactly one line per id via record_reveal_lines.\n\nTRAITS (JSON):\n[{\"id\": 3, \"claim\": \"Prefers standalone novels over long series commitments.\", \"polarity\": \"positive\"}, {\"id\": 4, \"claim\": \"Avoids grimdark tone.\", \"polarity\": \"negative\"}]"
+    }
+   ]
+  }
+ }
+}

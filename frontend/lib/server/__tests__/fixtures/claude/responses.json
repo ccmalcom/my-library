@@ -1,0 +1,91 @@
+{
+ "directive_distill": {
+  "id": "msg_fixture_directive_distill",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "content": [
+   {
+    "type": "tool_use",
+    "id": "toolu_fixture_directive_distill",
+    "name": "record_directive",
+    "input": {
+     "proposed_text": "You want literary, idea-driven science fiction. You steer away from grimdark tone and skip anything by John Ringo. Standalone novels are still preferred over long series commitments.",
+     "constraints": {
+      "exclude_authors": ["ringo"]
+     },
+     "conflicts": [
+      "You previously marked 'Avoids grimdark tone' as not really true, but this message reaffirms wanting to avoid grimdark."
+     ],
+     "assistant_message": "Got it, steering toward literary sci-fi and away from grimdark and John Ringo. Keeping your standalone-over-series preference too."
+    }
+   }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+   "input_tokens": 512,
+   "output_tokens": 148,
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 0
+  }
+ },
+ "archetype": {
+  "id": "msg_fixture_archetype",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "content": [
+   {
+    "type": "tool_use",
+    "id": "toolu_fixture_archetype",
+    "name": "record_archetype_scores",
+    "input": {
+     "lens": 0.6,
+     "engine": 0.3,
+     "range": -0.5,
+     "resonance": -0.2,
+     "lens_rationale": "Traits emphasize idea-driven, political science fiction over pure escapism.",
+     "engine_rationale": "Values competence and problem-solving protagonists, a mild character-first lean.",
+     "range_rationale": "Prefers standalone novels over long series commitments, favoring breadth over depth.",
+     "resonance_rationale": "A mix of emotional and intellectual signals, tilted slightly toward heart."
+    }
+   }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+   "input_tokens": 340,
+   "output_tokens": 96,
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 0
+  }
+ },
+ "reveal_lines": {
+  "id": "msg_fixture_reveal_lines",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "content": [
+   {
+    "type": "tool_use",
+    "id": "toolu_fixture_reveal_lines",
+    "name": "record_reveal_lines",
+    "input": {
+     "lines": [
+      {"id": 3, "reveal_line": "You commit once and rarely wander back for a series."},
+      {"id": 4, "reveal_line": "Grimdark just isn't for you. You'd rather find light in the dark."}
+     ]
+    }
+   }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+   "input_tokens": 780,
+   "output_tokens": 61,
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 0
+  }
+ }
+}
