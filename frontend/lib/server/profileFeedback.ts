@@ -172,3 +172,60 @@ export function feedbackBlock(feedback: FeedbackContext | null): string {
   if (!lines.length) return '';
   return '\n\n## User Feedback\n' + lines.map((l) => `- ${l}`).join('\n') + '\n';
 }
+
+// Copied verbatim from profile._REJECT_STOPWORDS.
+const REJECT_STOPWORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'of', 'to', 'in', 'on', 'for', 'with',
+  'above', 'all', 'over', 'under', 'this', 'that', 'these', 'those', 'its',
+  'it', 'is', 'are', 'be', 'as', 'than', 'but', 'not', 'no',
+]);
+
+/** Twin of profile._claim_tokens: re.findall(r"[a-z0-9]+", text.lower()) minus stopwords. */
+export function claimTokens(text: string): Set<string> {
+  const words = (text || '').toLowerCase().match(/[a-z0-9]+/g) ?? [];
+  return new Set(words.filter((w) => !REJECT_STOPWORDS.has(w)));
+}
+
+/**
+ * Twin of profile._remove_rejected_claims. Drops traits that either contain (or are
+ * contained by) a rejected claim case-insensitively, or share >= 60% of the rejected
+ * claim's significant tokens — so a paraphrase of a killed trait cannot come back.
+ */
+export function removeRejectedClaims<T extends { claim?: unknown }>(
+  newTraits: T[],
+  rejectedClaims: string[]
+): T[] {
+  if (!rejectedClaims.length) return newTraits;
+  const rejected = rejectedClaims.filter((r) => r && r.trim());
+  const rejLower = rejected.map((r) => r.trim().toLowerCase());
+  // Python tokenizes the UNTRIMMED string here; tokenizing ignores whitespace, so
+  // this matches, but keep the parallel obvious.
+  const rejTokens = rejected.map((r) => claimTokens(r));
+
+  const kept: T[] = [];
+  for (const trait of newTraits) {
+    const claim = String(trait.claim ?? '').trim();
+    const claimLower = claim.toLowerCase();
+    const ct = claimTokens(claim);
+    let matched = false;
+    for (let i = 0; i < rejLower.length; i++) {
+      const rl = rejLower[i];
+      const rt = rejTokens[i];
+      // Guard on a non-empty claim: '' is a substring of everything.
+      if (claimLower && (claimLower.includes(rl) || rl.includes(claimLower))) {
+        matched = true;
+        break;
+      }
+      if (rt.size) {
+        let overlap = 0;
+        for (const w of rt) if (ct.has(w)) overlap++;
+        if (overlap / rt.size >= 0.6) {
+          matched = true;
+          break;
+        }
+      }
+    }
+    if (!matched) kept.push(trait);
+  }
+  return kept;
+}

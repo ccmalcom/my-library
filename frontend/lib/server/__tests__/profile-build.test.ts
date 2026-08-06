@@ -5,7 +5,7 @@ import seedJson from './fixtures/parity/seed.json';
 import type { Seed } from './helpers/pglite';
 import { tierFor, buildTiers } from '../profileTiers';
 import { pyJsonDumps } from '../serialize';
-import { feedbackContext, feedbackBlock } from '../profileFeedback';
+import { feedbackContext, feedbackBlock, claimTokens, removeRejectedClaims } from '../profileFeedback';
 import { schema } from '../db';
 
 describe('tierFor', () => {
@@ -220,5 +220,51 @@ describe('feedbackBlock', () => {
     expect(lines[3]).toContain('all-time favorite books');
     expect(lines[4]).toContain('custom instructions');
     expect(lines[4]).toContain('Keep it literary.'); // trimmed
+  });
+});
+
+describe('removeRejectedClaims', () => {
+  const t = (claim: string) => ({ claim });
+
+  it('returns the input untouched when there is nothing rejected', () => {
+    const traits = [t('A.')];
+    expect(removeRejectedClaims(traits, [])).toBe(traits);
+  });
+
+  it('drops a case-insensitive substring match in either direction', () => {
+    const kept = removeRejectedClaims(
+      [t('Loves SPARKLY VAMPIRE romance above all.'), t('Rewards dense world-building.')],
+      ['sparkly vampire romance']
+    );
+    expect(kept.map((x) => x.claim)).toEqual(['Rewards dense world-building.']);
+  });
+
+  it('drops a reworded variant on >=60% significant-token overlap', () => {
+    // rejected tokens: {enjoys, sparkly, vampire, romance} -> 3/4 = 0.75
+    const kept = removeRejectedClaims(
+      [t('Sparkly vampire stories are a romance staple here.')],
+      ['Enjoys sparkly vampire romance.']
+    );
+    expect(kept).toEqual([]);
+  });
+
+  it('keeps a trait below the overlap threshold', () => {
+    // 1/4 = 0.25
+    const kept = removeRejectedClaims([t('Enjoys hard science fiction.')], ['Enjoys sparkly vampire romance.']);
+    expect(kept.map((x) => x.claim)).toEqual(['Enjoys hard science fiction.']);
+  });
+
+  it('keeps a trait whose claim is empty rather than matching everything', () => {
+    // Guard on Python's `if claim_lower and ...`: '' is a substring of every string.
+    const kept = removeRejectedClaims([{ claim: '' }], ['Anything at all.']);
+    expect(kept).toHaveLength(1);
+  });
+});
+
+describe('claimTokens', () => {
+  it('lowercases, splits on non-alphanumerics and drops stopwords', () => {
+    expect([...claimTokens('The reader, above all, is NOT a fan of X-99.')].sort()).toEqual(
+      ['99', 'fan', 'reader', 'x'].sort()
+    );
   });
 });
