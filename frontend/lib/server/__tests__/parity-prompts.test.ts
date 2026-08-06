@@ -1,7 +1,9 @@
+import { asc, eq } from 'drizzle-orm';
 import { describe, it, expect } from 'vitest';
 import prompts from './fixtures/claude/prompts.json';
 import { makeTestDb, loadSeed } from './helpers/pglite';
 import seedJson from './fixtures/parity/seed.json';
+import { schema } from '../db';
 import {
   existingSignals,
   buildDistillPrompt,
@@ -9,6 +11,12 @@ import {
   DISTILL_TOOL,
   DISTILL_MODEL,
 } from '../directiveDistill';
+import {
+  buildArchetypePrompt,
+  ARCHETYPE_SYSTEM,
+  ARCHETYPE_TOOL,
+  ARCHETYPE_MODEL,
+} from '../archetypeDerive';
 
 describe('prompt parity: directive distill', () => {
   it('builds a byte-identical request to Python', async () => {
@@ -45,5 +53,31 @@ describe('prompt parity: directive distill', () => {
         '{"rejected_traits": [], "more_like": [], "less_like": []}' +
         '\n\nREADER MESSAGE:\n"hello"'
     );
+  });
+});
+
+describe('prompt parity: archetype derive', () => {
+  it('builds a byte-identical request to Python', async () => {
+    const py = (prompts as any).archetype.kwargs;
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as any);
+      // Same unfiltered-by-status, id-ordered query deriveArchetype runs (archetype.py's
+      // query has no status filter either — all 4 seeded 'local' traits, including the
+      // rejected one, are scored).
+      const traits = await db
+        .select({ claim: schema.tasteTraits.claim, polarity: schema.tasteTraits.polarity })
+        .from(schema.tasteTraits)
+        .where(eq(schema.tasteTraits.userId, 'local'))
+        .orderBy(asc(schema.tasteTraits.id));
+      const prompt = buildArchetypePrompt(traits);
+      expect(prompt).toBe(py.messages[0].content);
+      expect(ARCHETYPE_SYSTEM).toBe(py.system);
+      expect(ARCHETYPE_TOOL).toEqual(py.tools[0]);
+      expect(ARCHETYPE_MODEL).toBe(py.model);
+      expect(512).toBe(py.max_tokens);
+    } finally {
+      await close();
+    }
   });
 });
