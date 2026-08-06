@@ -7,9 +7,9 @@ import { resolveAnthropicKey, makeAnthropicClient } from '@/lib/server/claude';
 import { ARCHETYPE_NO_KEY_MESSAGE } from '@/lib/server/claudeErrors';
 import { deriveArchetype } from '@/lib/server/archetypeDerive';
 
-// Single Haiku call — parity twin has no timeout of its own, but Vercel's default
-// function duration is too short for a live model round trip (see directive/draft/route.ts).
-export const maxDuration = 60;
+// Single Haiku call, well under 30s in practice — parity twin has no timeout of
+// its own. 300s = Hobby's max/default (see directive/draft/route.ts for the full note).
+export const maxDuration = 300;
 
 type ReaderArchetypeRow = typeof schema.readerArchetypes.$inferSelect;
 

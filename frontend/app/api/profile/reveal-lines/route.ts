@@ -5,9 +5,9 @@ import { traitOut } from '@/lib/server/traits';
 import { resolveAnthropicKey, makeAnthropicClient } from '@/lib/server/claude';
 import { generateRevealLines } from '@/lib/server/revealLines';
 
-// Single Haiku call — parity twin has no timeout of its own, but Vercel's default
-// function duration is too short for a live model round trip (see directive/draft/route.ts).
-export const maxDuration = 60;
+// Single Haiku call, well under 30s in practice — parity twin has no timeout of
+// its own. 300s = Hobby's max/default (see directive/draft/route.ts for the full note).
+export const maxDuration = 300;
 
 /**
  * Port of api.py::post_reveal_lines (1132-1153). Resolves the key optimistically (cheap, no

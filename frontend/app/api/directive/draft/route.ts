@@ -6,9 +6,11 @@ import { resolveAnthropicKey, makeAnthropicClient } from '@/lib/server/claude';
 import { DISTILL_NO_KEY_MESSAGE } from '@/lib/server/claudeErrors';
 import { distillDirective } from '@/lib/server/directiveDistill';
 
-// Single Haiku call — parity twin has no timeout of its own, but Vercel's default
-// function duration is too short for a live model round trip.
-export const maxDuration = 60;
+// Single Haiku call, well under 30s in practice — parity twin has no timeout of
+// its own. Set to 300s (Hobby's max/default, confirmed via Vercel's docs as of
+// this wave's verification) rather than a tighter number, so this route is safe
+// on any plan tier without needing to know which one is active.
+export const maxDuration = 300;
 
 const Body = z.object({
   message: z.string().min(1).max(1000),
