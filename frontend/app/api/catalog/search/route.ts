@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { withApi, ApiError } from '@/lib/server/http';
 import { getDb } from '@/lib/server/db';
 import { searchBooks } from '@/lib/server/catalog';
-import { checkRateLimit, RATE_LIMITS } from '@/lib/server/ratelimit';
+import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse } from '@/lib/server/ratelimit';
 
 const Query = z.object({
   q: z.string().min(1),
@@ -35,24 +35,12 @@ export const GET = withApi('/api/catalog/search', async (req, ctx) => {
     ...RATE_LIMITS.catalogSearch,
   });
   if (!rl.allowed) {
-    // Parity note: this is NOT the usual {"detail": ...} shape every other route
-    // uses (see errors.ts). SlowAPI's default `_rate_limit_exceeded_handler` (wired
-    // up unmodified at mylibrary/api.py:182) hardcodes {"error": f"Rate limit
-    // exceeded: {exc.detail}"} with status 429 -- a separate FastAPI exception-handler
-    // path with its own shape that was never overridden. Also: mylibrary/api.py:148
-    // constructs Limiter(key_func=_rate_limit_key) with no headers_enabled=True, and
-    // slowapi.Limiter defaults headers_enabled=False, so the real response carries
-    // NO extra headers -- no Retry-After, no X-RateLimit-*. Verified by reading the
-    // installed slowapi package and mylibrary/api.py directly. Do not "fix" this back
-    // to {"detail": ...} or add a Retry-After header; that would be a fabricated
-    // deviation from Python, not parity. The literal string below is exc.detail for
-    // this route's specific @limiter.limit("30/minute") decorator (confirmed via
-    // `limits.parse("30/minute")` -> "30 per 1 minute"); it's hardcoded rather than
-    // built generically because this route only ever uses this one limit.
-    return new Response(JSON.stringify({ error: 'Rate limit exceeded: 30 per 1 minute' }), {
-      status: 429,
-      headers: { 'content-type': 'application/json' },
-    });
+    // Corrected 429 shape (not the usual {"detail": ...}) -- see rateLimitExceededResponse's
+    // doc comment in ratelimit.ts for the full parity note against slowapi's behavior.
+    return rateLimitExceededResponse(
+      RATE_LIMITS.catalogSearch.limit,
+      RATE_LIMITS.catalogSearch.windowSeconds
+    );
   }
   const hits = await searchBooks(db, parsed.data.q, parsed.data.limit);
   ctx.timer.mark('catalog');

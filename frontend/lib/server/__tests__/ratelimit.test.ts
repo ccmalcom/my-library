@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { makeTestDb } from './helpers/pglite';
-import { checkRateLimit, RATE_LIMITS } from '../ratelimit';
+import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse } from '../ratelimit';
 import type { Db } from '../db';
 
 let db: Db;
@@ -44,5 +44,25 @@ describe('checkRateLimit', () => {
   it('exposes the Python parity limits', () => {
     expect(RATE_LIMITS.catalogSearch).toEqual({ limit: 30, windowSeconds: 60 });
     expect(RATE_LIMITS.enrichStart).toEqual({ limit: 5, windowSeconds: 60 });
+  });
+});
+
+describe('rateLimitExceededResponse', () => {
+  it('builds the corrected {"error": ...} body, status 429, content-type only', async () => {
+    const res = rateLimitExceededResponse(30, 60);
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: 'Rate limit exceeded: 30 per 1 minute' });
+    expect(res.headers.get('content-type')).toBe('application/json');
+    // No slowapi headers_enabled extras — see the helper's doc comment.
+    expect(res.headers.get('retry-after')).toBeNull();
+    expect(res.headers.get('x-ratelimit-limit')).toBeNull();
+    expect(res.headers.get('x-ratelimit-remaining')).toBeNull();
+    const headerNames = [...res.headers.keys()];
+    expect(headerNames).toEqual(['content-type']);
+  });
+
+  it('pluralizes minutes for a multi-minute window', async () => {
+    const res = rateLimitExceededResponse(5, 300);
+    expect(await res.json()).toEqual({ error: 'Rate limit exceeded: 5 per 5 minutes' });
   });
 });

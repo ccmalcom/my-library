@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { withApi, ApiError } from '@/lib/server/http';
 import { getDb } from '@/lib/server/db';
-import { checkRateLimit, RATE_LIMITS } from '@/lib/server/ratelimit';
+import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse } from '@/lib/server/ratelimit';
 import { resolveAnthropicKey, makeAnthropicClient } from '@/lib/server/claude';
 import { DISTILL_NO_KEY_MESSAGE } from '@/lib/server/claudeErrors';
 import { distillDirective } from '@/lib/server/directiveDistill';
@@ -33,14 +33,12 @@ export const POST = withApi('/api/directive/draft', async (req, ctx) => {
     ...RATE_LIMITS.directiveDraft,
   });
   if (!rl.allowed) {
-    // Same corrected 429 shape as catalog/search/route.ts: SlowAPI's unmodified default
-    // handler ({"error": f"Rate limit exceeded: {exc.detail}"}, no extra headers) — see
-    // that file's 429 branch for the full parity note. This route shares the Limiter
-    // instance but not the bucket; "30 per 1 minute" is this decorator's own detail string.
-    return new Response(JSON.stringify({ error: 'Rate limit exceeded: 30 per 1 minute' }), {
-      status: 429,
-      headers: { 'content-type': 'application/json' },
-    });
+    // Corrected 429 shape (not the usual {"detail": ...}) -- see rateLimitExceededResponse's
+    // doc comment in ratelimit.ts for the full parity note against slowapi's behavior.
+    return rateLimitExceededResponse(
+      RATE_LIMITS.directiveDraft.limit,
+      RATE_LIMITS.directiveDraft.windowSeconds
+    );
   }
 
   // Port of api.py:358-361's try/except RuntimeError -> HTTPException(400): Python raises

@@ -22,6 +22,31 @@ export interface RateLimitResult {
   retryAfterSeconds: number;
 }
 
+/**
+ * Builds the 429 response for a blocked request. Parity note: this is NOT the usual
+ * {"detail": ...} shape every other route uses (see errors.ts). SlowAPI's default
+ * `_rate_limit_exceeded_handler` (wired up unmodified at mylibrary/api.py:182)
+ * hardcodes {"error": f"Rate limit exceeded: {exc.detail}"} with status 429 -- a
+ * separate FastAPI exception-handler path with its own shape that was never
+ * overridden. Also: mylibrary/api.py:148 constructs Limiter(key_func=_rate_limit_key)
+ * with no headers_enabled=True, and slowapi.Limiter defaults headers_enabled=False, so
+ * the real response carries NO extra headers -- no Retry-After, no X-RateLimit-*.
+ * Verified by reading the installed slowapi package and mylibrary/api.py directly. Do
+ * not "fix" this back to {"detail": ...} or add a Retry-After header; that would be a
+ * fabricated deviation from Python, not parity. The "N per M minute(s)" phrasing below
+ * is exc.detail for a `@limiter.limit("N/minute")` decorator (confirmed via
+ * `limits.parse("30/minute")` -> "30 per 1 minute"); every current call site uses a
+ * 60-second window, so this only needs to handle the minute-granularity case.
+ */
+export function rateLimitExceededResponse(limit: number, windowSeconds: number): Response {
+  const minutes = windowSeconds / 60;
+  const unit = minutes === 1 ? 'minute' : 'minutes';
+  return new Response(
+    JSON.stringify({ error: `Rate limit exceeded: ${limit} per ${minutes} ${unit}` }),
+    { status: 429, headers: { 'content-type': 'application/json' } }
+  );
+}
+
 export async function checkRateLimit(
   db: Db,
   opts: { key: string; limit: number; windowSeconds: number; nowMs?: number }

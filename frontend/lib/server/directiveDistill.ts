@@ -3,7 +3,7 @@
  * free-text message into a proposed custom-instructions record. Ephemeral — never writes
  * the directive; the caller shows the proposal and only PUT /directive persists it.
  */
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { schema, type Db } from './db';
 import type { ClaudeClient } from './claude';
 import { toolInput } from './claude';
@@ -110,6 +110,11 @@ export function buildDistillPrompt(
  * Port of directive.py:_existing_signals (187-214): the rejected traits + more/less-like
  * books used as conflict-detection context. Key insertion order (rejected_traits,
  * more_like, less_like) must match Python's dict literal for prompt-string parity.
+ *
+ * Both queries below feed lists straight into the byte-exact Claude prompt (via
+ * pyJsonDumps), so row order must be deterministic — `ORDER BY id ASC` on both, same
+ * convention Tasks 7/8 adopted for their own prompt-feeding queries (archetypeDerive.ts,
+ * revealLines.ts), since an unordered query is at the mercy of the Postgres query plan.
  */
 export async function existingSignals(db: Db, userId: string): Promise<Record<string, unknown>> {
   const rejectedTraits = (
@@ -117,12 +122,14 @@ export async function existingSignals(db: Db, userId: string): Promise<Record<st
       .select({ claim: schema.tasteTraits.claim })
       .from(schema.tasteTraits)
       .where(and(eq(schema.tasteTraits.userId, userId), eq(schema.tasteTraits.status, 'rejected')))
+      .orderBy(asc(schema.tasteTraits.id))
   ).map((r) => r.claim);
 
   const signals = await db
     .select()
     .from(schema.tasteSignal)
-    .where(and(eq(schema.tasteSignal.userId, userId), eq(schema.tasteSignal.targetKind, 'book')));
+    .where(and(eq(schema.tasteSignal.userId, userId), eq(schema.tasteSignal.targetKind, 'book')))
+    .orderBy(asc(schema.tasteSignal.id));
 
   const bookIds = [
     ...new Set(

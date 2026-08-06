@@ -48,10 +48,20 @@ export async function getJson(db: Db, url: string, source: string): Promise<unkn
     await throttle();
     let resp: Response;
     try {
-      resp = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(15_000) });
-    } catch {
+      resp = await fetch(url, {
+        headers: { 'User-Agent': USER_AGENT },
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch (err) {
+      // A test's httpReplay stub (helpers/httpReplay.ts) throws a distinctively-named
+      // error for a URL with no fixture — that's a broken/incomplete test, not a
+      // network failure, and retrying it into a silently degraded `null` would defeat
+      // the harness's "any unfixtured URL fails loudly" guarantee. Duck-typed on
+      // `.name` (not imported) so this file never depends on a test helper.
+      if (err instanceof Error && err.name === 'HttpReplayMissError') throw err;
       if (attempt === MAX_RETRIES) return null;
-      await sleep(backoff); backoff *= 2;
+      await sleep(backoff);
+      backoff *= 2;
       continue;
     }
     if (resp.status === 404) {
@@ -62,11 +72,16 @@ export async function getJson(db: Db, url: string, source: string): Promise<unkn
       if (attempt === MAX_RETRIES) return null;
       const ra = resp.headers.get('Retry-After');
       const wait = ra && /^\d+$/.test(ra) ? Number(ra) * 1000 : backoff;
-      await sleep(wait); backoff *= 2;
+      await sleep(wait);
+      backoff *= 2;
       continue;
     }
     let data: unknown;
-    try { data = await resp.json(); } catch { return null; }
+    try {
+      data = await resp.json();
+    } catch {
+      return null;
+    }
     await cachePut(db, url, source, data);
     return data;
   }
@@ -74,9 +89,24 @@ export async function getJson(db: Db, url: string, source: string): Promise<unkn
 }
 
 const LANG_MAP: Record<string, string> = {
-  eng: 'en', spa: 'es', fre: 'fr', fra: 'fr', ger: 'de', deu: 'de',
-  ita: 'it', por: 'pt', rus: 'ru', jpn: 'ja', chi: 'zh', zho: 'zh',
-  dut: 'nl', nld: 'nl', swe: 'sv', nor: 'no', dan: 'da', pol: 'pl',
+  eng: 'en',
+  spa: 'es',
+  fre: 'fr',
+  fra: 'fr',
+  ger: 'de',
+  deu: 'de',
+  ita: 'it',
+  por: 'pt',
+  rus: 'ru',
+  jpn: 'ja',
+  chi: 'zh',
+  zho: 'zh',
+  dut: 'nl',
+  nld: 'nl',
+  swe: 'sv',
+  nor: 'no',
+  dan: 'da',
+  pol: 'pl',
 };
 
 export function normLang(code: string | string[] | null | undefined): string | null {
@@ -105,10 +135,17 @@ export function isbn13FromGoogleItem(item: Record<string, any> | null): string |
 // Ports of catalog.py:254-300, 336-363, 436-506, 512-614.
 
 export interface Candidate {
-  source: string; resolved_id: string | null; title: string | null;
-  author: string | null; subjects: string[]; description?: string | null;
-  cover_url: string | null; year: number | null; isbn13?: string | null;
-  language: string | null; raw: unknown;
+  source: string;
+  resolved_id: string | null;
+  title: string | null;
+  author: string | null;
+  subjects: string[];
+  description?: string | null;
+  cover_url: string | null;
+  year: number | null;
+  isbn13?: string | null;
+  language: string | null;
+  raw: unknown;
 }
 
 const SEARCH_FETCH = 25;
@@ -157,26 +194,46 @@ function olDocToCandidate(doc: any): Candidate {
   };
 }
 
-export async function openlibraryQuery(db: Db, query: string, maxResults = 8): Promise<Candidate[]> {
+export async function openlibraryQuery(
+  db: Db,
+  query: string,
+  maxResults = 8
+): Promise<Candidate[]> {
   const q = (query ?? '').trim();
   if (!q) return [];
   const params = new URLSearchParams({ q, limit: String(maxResults), fields: OL_FIELDS });
-  const data = (await getJson(db, `https://openlibrary.org/search.json?${params}`, 'openlibrary')) as any;
+  const data = (await getJson(
+    db,
+    `https://openlibrary.org/search.json?${params}`,
+    'openlibrary'
+  )) as any;
   if (!data) return [];
   return (data.docs ?? []).slice(0, maxResults).map(olDocToCandidate);
 }
 
-export async function openlibraryTitle(db: Db, title: string, maxResults = 20): Promise<Candidate[]> {
+export async function openlibraryTitle(
+  db: Db,
+  title: string,
+  maxResults = 20
+): Promise<Candidate[]> {
   const t = (title ?? '').trim();
   if (!t) return [];
   const params = new URLSearchParams({ title: t, limit: String(maxResults), fields: OL_FIELDS });
-  const data = (await getJson(db, `https://openlibrary.org/search.json?${params}`, 'openlibrary')) as any;
+  const data = (await getJson(
+    db,
+    `https://openlibrary.org/search.json?${params}`,
+    'openlibrary'
+  )) as any;
   if (!data) return [];
   return (data.docs ?? []).slice(0, maxResults).map(olDocToCandidate);
 }
 
 function normFull(s: string | null | undefined): string {
-  return (s ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  return (s ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function searchDedupKey(title: string | null, author: string | null): string {
@@ -208,14 +265,21 @@ function volumeNumber(title: string | null): number | null {
 function applySeriesGrouping(query: string, ranked: Candidate[]): Candidate[] {
   const q = normFull(query);
   if (!q) return ranked;
-  const idx = ranked.map((c, i) => [i, c] as const)
-    .filter(([, c]) => normFull(c.title).startsWith(q)).map(([i]) => i);
+  const idx = ranked
+    .map((c, i) => [i, c] as const)
+    .filter(([, c]) => normFull(c.title).startsWith(q))
+    .map(([i]) => i);
   if (idx.length < 3) return ranked;
   const cluster = idx.map((i) => ranked[i]);
   cluster.sort((a, b) => {
-    const va = volumeNumber(a.title) ?? 1e6, vb = volumeNumber(b.title) ?? 1e6;
+    const va = volumeNumber(a.title) ?? 1e6,
+      vb = volumeNumber(b.title) ?? 1e6;
     if (va !== vb) return va - vb;
-    return normFull(a.title) < normFull(b.title) ? -1 : normFull(a.title) > normFull(b.title) ? 1 : 0;
+    return normFull(a.title) < normFull(b.title)
+      ? -1
+      : normFull(a.title) > normFull(b.title)
+        ? 1
+        : 0;
   });
   const anchor = idx[0];
   const inCluster = new Set(idx);
@@ -236,11 +300,13 @@ export async function searchBooks(db: Db, query: string, maxResults = 8): Promis
 
   const results: Candidate[] = [];
   for (const c of await googleBooksQuery(db, q, SEARCH_FETCH)) {
-    c.isbn13 = isbn13FromGoogleItem(c.raw as any); results.push(c);
+    c.isbn13 = isbn13FromGoogleItem(c.raw as any);
+    results.push(c);
   }
   results.push(...(await openlibraryQuery(db, q, SEARCH_FETCH)));
   for (const c of await googleBooksQuery(db, `intitle:"${q}"`, SEARCH_FETCH)) {
-    c.isbn13 = isbn13FromGoogleItem(c.raw as any); results.push(c);
+    c.isbn13 = isbn13FromGoogleItem(c.raw as any);
+    results.push(c);
   }
   results.push(...(await openlibraryTitle(db, q, SEARCH_FETCH)));
 
@@ -250,9 +316,15 @@ export async function searchBooks(db: Db, query: string, maxResults = 8): Promis
   for (const cand of results) {
     if (!cand.title) continue;
     const isbn = cand.isbn13;
-    if (isbn && byIsbn.has(isbn)) { mergeInto(byIsbn.get(isbn)!, cand); continue; }
+    if (isbn && byIsbn.has(isbn)) {
+      mergeInto(byIsbn.get(isbn)!, cand);
+      continue;
+    }
     const key = searchDedupKey(cand.title, cand.author);
-    if (byKey.has(key)) { mergeInto(byKey.get(key)!, cand); continue; }
+    if (byKey.has(key)) {
+      mergeInto(byKey.get(key)!, cand);
+      continue;
+    }
     byKey.set(key, cand);
     if (isbn) byIsbn.set(isbn, cand);
     deduped.push(cand);
