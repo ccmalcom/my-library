@@ -225,7 +225,43 @@ export async function extractTasteProfile(
     }
   }
 
-  const saved = await db.transaction(async (tx) => {
+  const saved = await persistProposedTraits(db, userId, traits, validIds, 'full');
+
+  // Deliberately a plain object, not a Map: this becomes the `tiers` field of the
+  // HTTP response body via JSON.stringify, and V8 emits key order 3,4,5,<=2,dnf,
+  // rejected instead of Python's dict-literal insertion order 5,4,3,<=2,dnf,rejected.
+  // Every consumer reads this JSON by key, never by position, so the deviation is
+  // harmless — unlike the Claude PROMPT payloads above (`tiers`, `booksMeta`), where
+  // key order is semantically significant and a Map is mandatory.
+  const tierCounts: Record<string, number> = {};
+  for (const [k, v] of tiers) tierCounts[k] = v.length;
+
+  return {
+    mode: 'full',
+    rated_books: totalRated,
+    tiers: tierCounts,
+    traits_saved: saved,
+    model,
+  };
+}
+
+/**
+ * Shared persistence tail of profile.extract_taste_profile and
+ * profile.update_taste_profile: replace the user's prior 'proposed' traits with the
+ * newly derived set and stamp profile_meta, all inside one transaction. Node cannot
+ * hold a single Python-style session across the Claude call (db.ts uses max: 1, so
+ * touching `db` inside an open transaction deadlocks) — both callers run this only
+ * AFTER their Claude call has already resolved, matching Python's own write-nothing-
+ * before-the-call behavior. Returns the number of traits saved.
+ */
+export async function persistProposedTraits(
+  db: Db,
+  userId: string,
+  traits: Record<string, unknown>[],
+  validIds: Set<number>,
+  kind: 'full' | 'update'
+): Promise<number> {
+  return db.transaction(async (tx) => {
     await tx
       .delete(schema.tasteTraits)
       .where(and(eq(schema.tasteTraits.userId, userId), eq(schema.tasteTraits.status, 'proposed')));
@@ -246,24 +282,13 @@ export async function extractTasteProfile(
       });
       n++;
     }
-    await markProfiled(tx, 'full', userId);
+    await markProfiled(tx, kind, userId);
     return n;
   });
-
-  const tierCounts: Record<string, number> = {};
-  for (const [k, v] of tiers) tierCounts[k] = v.length;
-
-  return {
-    mode: 'full',
-    rated_books: totalRated,
-    tiers: tierCounts,
-    traits_saved: saved,
-    model,
-  };
 }
 
 /** Python: `[i for i in t.get("exhibits", []) if i in valid_ids]`. */
-function asIdList(raw: unknown, validIds: Set<number>): number[] {
+export function asIdList(raw: unknown, validIds: Set<number>): number[] {
   if (!Array.isArray(raw)) return [];
   return raw.filter((i): i is number => typeof i === 'number' && validIds.has(i));
 }

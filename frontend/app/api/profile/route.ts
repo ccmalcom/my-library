@@ -6,6 +6,10 @@ import { resolveAnthropicKey, makeAnthropicClient } from '@/lib/server/claude';
 import { PROFILE_NO_KEY_MESSAGE } from '@/lib/server/claudeErrors';
 import { extractTasteProfile } from '@/lib/server/profileBuild';
 
+// A full Sonnet build over a whole library is the longest Claude call in the app.
+// 300s is Vercel Hobby's maximum and the default on every tier (verified 2026-08-06).
+export const maxDuration = 300;
+
 export const GET = withApi('/api/profile', async (_req, ctx) => {
   const db = getDb();
   const rows = await db
@@ -16,10 +20,6 @@ export const GET = withApi('/api/profile', async (_req, ctx) => {
   ctx.timer.mark('db');
   return Response.json(rows.map(traitOut));
 });
-
-// A full Sonnet build over a whole library is the longest Claude call in the app.
-// 300s is Vercel Hobby's maximum and the default on every tier (verified 2026-08-06).
-export const maxDuration = 300;
 
 /** Port of api.py::profile (642-645): RuntimeError -> 400. */
 export const POST = withApi('/api/profile', async (_req, ctx) => {

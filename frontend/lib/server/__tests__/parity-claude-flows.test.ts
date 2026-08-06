@@ -13,6 +13,8 @@ import {
   DISTILL_NO_KEY_MESSAGE,
   ARCHETYPE_NO_KEY_MESSAGE,
   REVEAL_NO_KEY_MESSAGE,
+  PROFILE_NO_KEY_MESSAGE,
+  NO_RATED_BOOKS_MESSAGE,
 } from '../claudeErrors';
 import { makeAnthropicClient } from '../claude';
 import { traitOut } from '../traits';
@@ -23,6 +25,8 @@ import { setupParityEnv } from './helpers/parity';
 import { POST as postRevealLines } from '../../../app/api/profile/reveal-lines/route';
 import { POST as postDirectiveDraft } from '../../../app/api/directive/draft/route';
 import { POST as postArchetype } from '../../../app/api/profile/archetype/route';
+import { POST as postProfile } from '../../../app/api/profile/route';
+import { POST as postProfileUpdate } from '../../../app/api/profile/update/route';
 
 // finding 3 (wave-3a final review): directive/draft and profile/archetype's POST handlers
 // had zero end-to-end route coverage (unlike reveal-lines' POST below), only service-level
@@ -941,4 +945,186 @@ describe('POST /api/profile/archetype route', () => {
   // exactly that userId before returning (archetypeDerive.ts:246-259), and the route re-queries
   // with that same userId immediately after. Structurally unreachable through the real route,
   // confirming Task 7's own report; not forcing an artificial/awkward test for it.
+});
+
+// Finding 1 (wave-3b final review): neither of this wave's two new POST routes had any
+// route-level coverage — only GET /api/profile (parity-profile.test.ts) and the
+// extractTasteProfile/updateTasteProfile service functions (profile-build.test.ts,
+// profile-update.test.ts) were exercised directly. Follows the exact pattern established
+// above for directive/draft and profile/archetype: the vi.mock('@/lib/server/claude', ...)
+// at the top of this file leaves resolveAnthropicKey/toolInput real, so the no-key path
+// below runs real code, and only makeAnthropicClient's return value is swapped for
+// fakeClaude on the success path.
+function traitsToolResponse(traits: unknown[]) {
+  return {
+    content: [{ type: 'tool_use', name: 'record_taste_traits', input: { traits } }],
+    usage: { input_tokens: 10, output_tokens: 20 },
+  };
+}
+
+function reviseToolResponse(traits: unknown[]) {
+  return {
+    content: [{ type: 'tool_use', name: 'revise_taste_traits', input: { traits } }],
+    usage: { input_tokens: 5, output_tokens: 5 },
+  };
+}
+
+describe('POST /api/profile route', () => {
+  setupParityEnv();
+
+  it('400s with the exact PROFILE_NO_KEY_MESSAGE when no key is configured (api.py:642-645)', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      _setDbForTests(db);
+      // Deliberately does NOT load seedJson — see the identical note on the directive/draft
+      // and archetype no-key tests above. resolveAnthropicKey resolves before extractTasteProfile
+      // ever touches book data, so no seed is needed: an empty user_settings table falls
+      // through to ANTHROPIC_API_KEY, which setupParityEnv's beforeEach has already deleted.
+      const res = await postProfile(new Request('http://test/api/profile', { method: 'POST' }));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ detail: PROFILE_NO_KEY_MESSAGE });
+    } finally {
+      _setDbForTests(null);
+      await close();
+    }
+  });
+
+  it('400s with the exact NO_RATED_BOOKS_MESSAGE when a key IS configured but the user has zero rated books', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      // No loadSeed at all — zero books for 'local'. extractTasteProfile's own guard fires
+      // before ever touching Claude (mirrors the archetype route's "no taste traits" test),
+      // so makeAnthropicClient's default (real, unmocked-for-this-test) passthrough is fine.
+      _setDbForTests(db);
+      process.env.ANTHROPIC_API_KEY = 'sk-test-not-a-real-key';
+      const res = await postProfile(new Request('http://test/api/profile', { method: 'POST' }));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ detail: NO_RATED_BOOKS_MESSAGE });
+    } finally {
+      _setDbForTests(null);
+      await close();
+    }
+  });
+
+  it(
+    'succeeds end-to-end via fakeClaude wired into the real makeAnthropicClient(apiKey) ' +
+      'construction path, returning the {mode, rated_books, tiers, traits_saved, model} shape',
+    async () => {
+      const { db, close } = await makeTestDb();
+      try {
+        await loadSeed(db, seedJson as any);
+        _setDbForTests(db);
+        process.env.ANTHROPIC_API_KEY = 'sk-test-not-a-real-key';
+        vi.mocked(makeAnthropicClient).mockReturnValueOnce(
+          fakeClaude([
+            traitsToolResponse([
+              {
+                claim: 'Rewards dense political world-building.',
+                polarity: 'reward',
+                exhibits: [1, 2],
+                contrasts: [6],
+                inference_confidence: 0.87,
+              },
+            ]),
+          ])
+        );
+
+        const res = await postProfile(new Request('http://test/api/profile', { method: 'POST' }));
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.mode).toBe('full');
+        expect(body.rated_books).toBe(13); // every tier except `rejected`, per profile-build.test.ts
+        expect(body.traits_saved).toBe(1);
+        expect(body.model).toBe('claude-sonnet-5');
+        expect(body.tiers).toEqual({ '5': 7, '4': 3, '3': 1, '<=2': 1, dnf: 1, rejected: 1 });
+      } finally {
+        _setDbForTests(null);
+        await close();
+      }
+    }
+  );
+});
+
+describe('POST /api/profile/update route', () => {
+  setupParityEnv();
+
+  it('400s with the exact PROFILE_NO_KEY_MESSAGE when no key is configured (api.py:909-916)', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      _setDbForTests(db);
+      // Same rationale as the /api/profile no-key test above — no seed needed.
+      const res = await postProfileUpdate(
+        new Request('http://test/api/profile/update', { method: 'POST' })
+      );
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ detail: PROFILE_NO_KEY_MESSAGE });
+    } finally {
+      _setDbForTests(null);
+      await close();
+    }
+  });
+
+  it(
+    '400s with the exact NO_RATED_BOOKS_MESSAGE when a key IS configured, there is no prior ' +
+      'profile, and the user has zero rated books: updateTasteProfile.py\'s own "no prior profile" ' +
+      'branch (existing.length === 0) delegates straight to extractTasteProfile, which is the ' +
+      'most direct no-Claude-call scenario this route naturally exercises',
+    async () => {
+      const { db, close } = await makeTestDb();
+      try {
+        // No loadSeed: zero proposed traits and no profile_meta row yet, so
+        // updateTasteProfile falls through to extractTasteProfile before any Claude call.
+        _setDbForTests(db);
+        process.env.ANTHROPIC_API_KEY = 'sk-test-not-a-real-key';
+        const res = await postProfileUpdate(
+          new Request('http://test/api/profile/update', { method: 'POST' })
+        );
+        expect(res.status).toBe(400);
+        expect(await res.json()).toEqual({ detail: NO_RATED_BOOKS_MESSAGE });
+      } finally {
+        _setDbForTests(null);
+        await close();
+      }
+    }
+  );
+
+  it(
+    'succeeds end-to-end via fakeClaude wired into the real makeAnthropicClient(apiKey) ' +
+      'construction path, revising the seeded profile from its detected book changes',
+    async () => {
+      const { db, close } = await makeTestDb();
+      try {
+        await loadSeed(db, seedJson as any);
+        _setDbForTests(db);
+        process.env.ANTHROPIC_API_KEY = 'sk-test-not-a-real-key';
+        vi.mocked(makeAnthropicClient).mockReturnValueOnce(
+          fakeClaude([
+            reviseToolResponse([
+              {
+                claim: 'Rewards problem-solving under pressure.',
+                polarity: 'reward',
+                exhibits: [3],
+                contrasts: [],
+                inference_confidence: 0.9,
+              },
+            ]),
+          ])
+        );
+
+        const res = await postProfileUpdate(
+          new Request('http://test/api/profile/update', { method: 'POST' })
+        );
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.mode).toBe('update');
+        expect(body.changed_books).toBe(3); // seeded books 2, 3, 9 — see profile-update.test.ts
+        expect(body.traits_before).toBe(2); // seeded proposed traits 1 and 3
+        expect(body.traits_after).toBe(1);
+        expect(body.model).toBe('claude-sonnet-5');
+      } finally {
+        _setDbForTests(null);
+        await close();
+      }
+    }
+  );
 });

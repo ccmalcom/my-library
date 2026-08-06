@@ -18,7 +18,7 @@ import {
 import {
   TRAIT_INPUT_SCHEMA,
   extractTasteProfile,
-  markProfiled,
+  persistProposedTraits,
   profileModel,
   PROFILE_MAX_TOKENS,
 } from './profileBuild';
@@ -274,26 +274,7 @@ export async function updateTasteProfile(
   // Unlike the full build, valid ids come from books_meta, not the tiers.
   const validIds = new Set<number>([...inputs.booksMeta.keys()].map((k) => Number(k)));
 
-  const saved = await db.transaction(async (tx) => {
-    await tx
-      .delete(schema.tasteTraits)
-      .where(and(eq(schema.tasteTraits.userId, userId), eq(schema.tasteTraits.status, 'proposed')));
-    let n = 0;
-    for (const t of traits) {
-      await tx.insert(schema.tasteTraits).values({
-        userId,
-        claim: String(t.claim ?? '').trim(),
-        polarity: String(t.polarity ?? 'reward'),
-        exhibits: filterIds(t.exhibits, validIds),
-        contrasts: filterIds(t.contrasts, validIds),
-        inferenceConfidence: Number(t.inference_confidence ?? 0.0),
-        status: 'proposed',
-      });
-      n++;
-    }
-    await markProfiled(tx, 'update', userId);
-    return n;
-  });
+  const saved = await persistProposedTraits(db, userId, traits, validIds, 'update');
 
   return {
     mode: 'update',
@@ -303,9 +284,4 @@ export async function updateTasteProfile(
     traits_after: saved,
     model,
   };
-}
-
-function filterIds(raw: unknown, validIds: Set<number>): number[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((i): i is number => typeof i === 'number' && validIds.has(i));
 }
