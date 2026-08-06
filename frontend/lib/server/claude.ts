@@ -7,6 +7,10 @@
  * raises), while GET /settings/api-key/status still reports configured:true for
  * the same value (Python's `is not None`). That inconsistency is Python's and is
  * reproduced on purpose — do not harmonize them.
+ *
+ * DEVIATION: if decrypt() fails on a stored key, Node falls through to env var
+ * instead of propagating the error (Python would raise). This gracefully degrades
+ * if the stored key is corrupted while an env key exists.
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { eq } from 'drizzle-orm';

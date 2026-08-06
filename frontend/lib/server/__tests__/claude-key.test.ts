@@ -49,4 +49,21 @@ describe('resolveAnthropicKey', () => {
       await close();
     }
   });
+
+  it('falls back to env key when stored key fails to decrypt', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      // Seed an invalid encrypted value (garbage that will fail to decrypt)
+      await loadSeed(db, {
+        user_settings: [
+          { id: 1, user_id: 'local', anthropic_api_key_encrypted: 'not-valid-base64!!!invalid' },
+        ],
+      });
+      process.env.ANTHROPIC_API_KEY = 'sk-ant-fallback';
+      // Should catch the decrypt error and fall through to env var
+      expect(await resolveAnthropicKey(db, 'local')).toBe('sk-ant-fallback');
+    } finally {
+      await close();
+    }
+  });
 });
