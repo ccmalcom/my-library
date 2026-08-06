@@ -26,6 +26,12 @@ import {
   PROFILE_TOOL,
   profileModel,
 } from '../profileBuild';
+import {
+  buildUpdatePrompt,
+  REVISE_SYSTEM,
+  REVISE_TOOL,
+  collectUpdateInputs,
+} from '../profileUpdate';
 
 describe('prompt parity: directive distill', () => {
   it('builds a byte-identical request to Python', async () => {
@@ -139,6 +145,28 @@ describe('prompt parity: full taste-profile build', () => {
       expect(profileModel()).toBe(py.model);
       expect(3000).toBe(py.max_tokens);
       expect(py.tool_choice).toEqual({ type: 'tool', name: 'record_taste_traits' });
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('prompt parity: incremental profile update', () => {
+  it('builds a byte-identical request to Python', async () => {
+    const py = (prompts as any).profile_update.kwargs;
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as any);
+      const inputs = await collectUpdateInputs(db, 'local', '2026-07-01 12:00:00');
+      const feedback = await feedbackContext(db, 'local');
+      expect(
+        buildUpdatePrompt(inputs.currentTraits, inputs.booksMeta, inputs.changedIds, feedback)
+      ).toBe(py.messages[0].content);
+      expect(REVISE_SYSTEM).toBe(py.system);
+      expect(REVISE_TOOL).toEqual(py.tools[0]);
+      expect(profileModel()).toBe(py.model);
+      expect(3000).toBe(py.max_tokens);
+      expect(py.tool_choice).toEqual({ type: 'tool', name: 'revise_taste_traits' });
     } finally {
       await close();
     }
