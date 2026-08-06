@@ -26,10 +26,7 @@ export function pyTitle(s: string): string {
 }
 
 /** Mirror of Book.effective_rating: app_rating wins; goodreads_rating 0 = unrated. */
-export function effectiveRating(
-  appRating: number | null,
-  goodreadsRating: number
-): number | null {
+export function effectiveRating(appRating: number | null, goodreadsRating: number): number | null {
   if (appRating !== null && appRating !== undefined) return appRating;
   return goodreadsRating || null;
 }
@@ -62,6 +59,26 @@ export function todayIsoDate(): string {
 /** Python repr of a list of strings: ['a', 'b'] — for 422 detail parity. */
 export function pyList(xs: string[]): string {
   return '[' + xs.map((x) => `'${x}'`).join(', ') + ']';
+}
+
+/**
+ * Twin of Python's `json.dumps(v, ensure_ascii=False)`: a space after `:` and
+ * after `,`, unlike `JSON.stringify`'s compact separators. Recursive rather than
+ * a regex patch over `JSON.stringify` output, since a regex would also rewrite
+ * `:`/`,` characters that happen to appear inside string values.
+ */
+export function pyJsonDumps(v: unknown): string {
+  if (v === null) return 'null';
+  if (typeof v === 'number' || typeof v === 'boolean') return JSON.stringify(v);
+  if (typeof v === 'string') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(pyJsonDumps).join(', ') + ']';
+  if (typeof v === 'object') {
+    const entries = Object.entries(v as Record<string, unknown>).map(
+      ([k, val]) => `${JSON.stringify(k)}: ${pyJsonDumps(val)}`
+    );
+    return '{' + entries.join(', ') + '}';
+  }
+  return 'null';
 }
 
 /**
