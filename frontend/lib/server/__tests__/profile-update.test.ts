@@ -131,6 +131,11 @@ describe('updateTasteProfile', () => {
       const client = fakeClaude([reviseResponse([])]);
       const out = await updateTasteProfile(db, client, 'local');
       expect(out.mode).toBe('full');
+      // The full builder must have been the one that called Claude, not the revise path.
+      expect(client.calls[0].params.tool_choice).toEqual({
+        type: 'tool',
+        name: 'record_taste_traits',
+      });
     } finally {
       await close();
     }
@@ -182,6 +187,43 @@ describe('updateTasteProfile', () => {
       const client = fakeClaude([reviseResponse([])]);
       const out = await updateTasteProfile(db, client, 'local');
       expect(out.mode).toBe('full');
+      // The full builder must have been the one that called Claude, not the revise path.
+      expect(client.calls[0].params.tool_choice).toEqual({
+        type: 'tool',
+        name: 'record_taste_traits',
+      });
+    } finally {
+      await close();
+    }
+  });
+
+  it('falls through to the revise call with an empty changed-ids list when only feedback changed', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      await loadSeed(db, seedJson as Seed);
+      // Push the last-profiled stamp past every book change in the seed, but stamp
+      // rec_feedback_updated_at AFTER that cutoff: no changed books, but feedback
+      // arrived since the last build. Branch-table row 5.
+      await db
+        .update(schema.profileMeta)
+        .set({ lastProfiledAt: '2027-01-01 00:00:00', recFeedbackUpdatedAt: '2027-02-01 00:00:00' })
+        .where(eq(schema.profileMeta.userId, 'local'));
+
+      const client = fakeClaude([reviseResponse([])]);
+      const out = await updateTasteProfile(db, client, 'local');
+
+      expect(out.mode).toBe('update');
+      expect(out.changed_books).toBe(0);
+      // Must have fallen through to the Claude call (not the early-return note path).
+      expect(client.calls).toHaveLength(1);
+      expect(client.calls[0].params.tool_choice).toEqual({
+        type: 'tool',
+        name: 'revise_taste_traits',
+      });
+      const messages = client.calls[0].params.messages as { content: string }[];
+      expect(messages[0].content).toContain(
+        'CHANGED BOOK IDS (the edits driving this update): []'
+      );
     } finally {
       await close();
     }
