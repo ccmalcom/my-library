@@ -34,6 +34,21 @@ traits/status/subjects/highlights/archetype, recommendations, settings, directiv
 Next.js route handlers, backed by a fixture-replay parity test harness that proves
 field-for-field equality against real recorded FastAPI responses; the frontend's `auto`
 mode now serves those GETs from Node by default.
+Wave 2 flipped the write routes on those same prefixes (books, settings, directive,
+feedback, taste-signal, recommendations), each handler wrapped in a transaction.
+Wave 3 ports the Claude-calling flows and is split in three. Wave 3a shipped the catalog
+layer (search + a Postgres-backed response cache), per-user Anthropic key resolution with
+an injectable client, and `POST /directive/draft`, `/profile/archetype`,
+`/profile/reveal-lines`. Wave 3b shipped `POST /profile` and `POST /profile/update`.
+Wave 3c (`/recommend`, `/books/{id}/similar`, `/discover`) is next, then wave 4
+(jobs + imports) and wave 5 (admin + cutover).
+Because Claude output is nondeterministic, "parity" for these flows means the _request_ is
+byte-identical: `scripts/gen_claude_fixtures.py` monkeypatches `tracked_create` to record
+real Python `create()` kwargs into `fixtures/claude/prompts.json`, and
+`parity-prompts.test.ts` asserts the Node-built prompt/system/tool-schema/model matches
+exactly. That makes Python-vs-JS serialization differences load-bearing — see
+`lib/server/serialize.ts` for the `pyRepr`/`pyFloatStr`/`pyJsonDumps` primitives and why
+ordered mappings bound for a prompt must be a `Map` (V8 reorders integer-like object keys).
 
 ## Sub-documents (load when relevant)
 

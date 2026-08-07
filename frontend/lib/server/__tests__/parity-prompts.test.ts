@@ -2,6 +2,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 import { describe, it, expect } from 'vitest';
 import prompts from './fixtures/claude/prompts.json';
 import { makeTestDb, loadSeed } from './helpers/pglite';
+import { setupParityEnv } from './helpers/parity';
 import seedJson from './fixtures/parity/seed.json';
 import { schema } from '../db';
 import {
@@ -20,12 +21,7 @@ import {
 import { buildRevealPrompt, REVEAL_SYSTEM, REVEAL_TOOL, REVEAL_MODEL } from '../revealLines';
 import { buildTiers } from '../profileTiers';
 import { feedbackContext } from '../profileFeedback';
-import {
-  buildProfilePrompt,
-  PROFILE_SYSTEM,
-  PROFILE_TOOL,
-  profileModel,
-} from '../profileBuild';
+import { buildProfilePrompt, PROFILE_SYSTEM, PROFILE_TOOL, profileModel } from '../profileBuild';
 import {
   buildUpdatePrompt,
   REVISE_SYSTEM,
@@ -132,6 +128,10 @@ describe('prompt parity: reveal lines', () => {
 });
 
 describe('prompt parity: full taste-profile build', () => {
+  // profileModel() reads MYLIBRARY_MODEL; this clears it so the assertion below
+  // compares against the same default the fixture was recorded with.
+  setupParityEnv();
+
   it('builds a byte-identical request to Python', async () => {
     const py = (prompts as any).profile_full.kwargs;
     const { db, close } = await makeTestDb();
@@ -152,6 +152,10 @@ describe('prompt parity: full taste-profile build', () => {
 });
 
 describe('prompt parity: incremental profile update', () => {
+  // profileModel() reads MYLIBRARY_MODEL; this clears it so the assertion below
+  // compares against the same default the fixture was recorded with.
+  setupParityEnv();
+
   it('builds a byte-identical request to Python', async () => {
     const py = (prompts as any).profile_update.kwargs;
     const { db, close } = await makeTestDb();

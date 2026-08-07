@@ -8,10 +8,17 @@ import { _resetDebugCache } from '../../config';
 const FIXED_TEST_KEY = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=';
 
 const ENV_KEYS = [
-  'SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_JWKS_URL',
-  'ENCRYPTION_KEY', 'ANTHROPIC_API_KEY', 'ADMIN_EMAILS',
-  'MYLIBRARY_MONTHLY_SOFT_CAP_USD', 'MYLIBRARY_USAGE_WARN_THRESHOLD',
-  'FEEDBACK_PROMPTS_ENABLED', 'FEEDBACK_SNOOZE_HOURS',
+  'SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'SUPABASE_JWKS_URL',
+  'ENCRYPTION_KEY',
+  'ANTHROPIC_API_KEY',
+  'ADMIN_EMAILS',
+  'MYLIBRARY_MONTHLY_SOFT_CAP_USD',
+  'MYLIBRARY_USAGE_WARN_THRESHOLD',
+  'FEEDBACK_PROMPTS_ENABLED',
+  'FEEDBACK_SNOOZE_HOURS',
+  'MYLIBRARY_MODEL',
 ];
 
 /** Local-mode env identical to the Python fixture run. Registers hooks. */
@@ -26,6 +33,12 @@ export function setupParityEnv(): void {
     delete process.env.ADMIN_EMAILS;
     delete process.env.FEEDBACK_PROMPTS_ENABLED;
     delete process.env.FEEDBACK_SNOOZE_HOURS;
+    // Deleted, not pinned: gen_claude_fixtures.py pins MYLIBRARY_MODEL to
+    // config.DEFAULT_MODEL when recording, so leaving this unset makes
+    // profileModel() exercise its own fallback and fail loudly if the two
+    // defaults ever drift apart. A developer with MYLIBRARY_MODEL exported
+    // (it lives in .env) would otherwise fail the profile prompt-parity tests.
+    delete process.env.MYLIBRARY_MODEL;
     process.env.ENCRYPTION_KEY = FIXED_TEST_KEY;
     process.env.MYLIBRARY_MONTHLY_SOFT_CAP_USD = '5.0';
     process.env.MYLIBRARY_USAGE_WARN_THRESHOLD = '0.8';
@@ -55,9 +68,7 @@ export async function checkParity(
     if (stage === 'seeded') await loadSeed(db, seedJson as unknown as Seed);
     _setDbForTests(db);
     const [method, pathAndQuery] = requestKey.split(' ');
-    const res = await handler(
-      new Request(`http://test/api${pathAndQuery}`, { method })
-    );
+    const res = await handler(new Request(`http://test/api${pathAndQuery}`, { method }));
     expect(res.status).toBe(fixture.status);
     let body: unknown = await res.json();
     let expected: unknown = fixture.body;
