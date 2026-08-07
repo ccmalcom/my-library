@@ -24,6 +24,7 @@ export interface BackendRule {
  * need `exact` on their write rules because wave-3 Python routes share the same
  * prefix (`POST /books/{id}/similar`, `POST /directive/draft`).
  * Wave 3b: `POST /profile` and `POST /profile/update` (full and incremental re-profile) flip to Node.
+ * Wave 3c-1: `POST /recommend` (the two-stage recommender) flips to Node.
  */
 export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/stats' },
@@ -35,6 +36,9 @@ export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/directive/draft', methods: ['POST'], exact: true },
   { prefix: '/profile', methods: ['POST'], exact: true }, // wave 3b: full build. exact keeps it off /profile/* sub-paths
   { prefix: '/profile/update', methods: ['POST'], exact: true }, // wave 3b: incremental re-profile
+  // Wave 3c-1: the two-stage recommender. `exact` is LOAD-BEARING -- '/recommendations'
+  // starts with '/recommend', so a prefix rule here would capture that group too.
+  { prefix: '/recommend', methods: ['POST'], exact: true },
   { prefix: '/profile', methods: ['GET', 'PATCH'] },
   { prefix: '/recommendations', methods: ['GET', 'PATCH'] },
   { prefix: '/settings', methods: ['GET', 'PUT', 'DELETE'] },

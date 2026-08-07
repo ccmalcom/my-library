@@ -1,5 +1,11 @@
 /** @jest-environment jsdom */
-import { baseFor, getBackendChoice, setBackendChoice, NODE_DEFAULT_ROUTES, pythonBase } from '../backend';
+import {
+  baseFor,
+  getBackendChoice,
+  setBackendChoice,
+  NODE_DEFAULT_ROUTES,
+  pythonBase,
+} from '../backend';
 
 const PY = 'https://python.example';
 
@@ -66,7 +72,7 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/stats')).toBe('/api');
   });
 
-  test('wave-2/3a flip list is exactly as designed', () => {
+  test('wave-2/3a/3c-1 flip list is exactly as designed', () => {
     expect(NODE_DEFAULT_ROUTES).toEqual([
       { prefix: '/stats' },
       { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
@@ -77,6 +83,7 @@ describe('backend switcher (method-aware)', () => {
       { prefix: '/directive/draft', methods: ['POST'], exact: true },
       { prefix: '/profile', methods: ['POST'], exact: true },
       { prefix: '/profile/update', methods: ['POST'], exact: true },
+      { prefix: '/recommend', methods: ['POST'], exact: true },
       { prefix: '/profile', methods: ['GET', 'PATCH'] },
       { prefix: '/recommendations', methods: ['GET', 'PATCH'] },
       { prefix: '/settings', methods: ['GET', 'PUT', 'DELETE'] },
@@ -92,9 +99,12 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/directive/draft', 'POST')).toBe('/api');
     expect(baseFor('/profile/archetype', 'POST')).toBe('/api');
     expect(baseFor('/profile/reveal-lines', 'POST')).toBe('/api');
-    // still Python — 3c/4/5
-    expect(baseFor('/recommend', 'POST')).toBe(PY); // 3c
-    expect(baseFor('/books/12/similar', 'POST')).toBe(PY); // 3c
+    expect(baseFor('/recommend', 'POST')).toBe('/api'); // wave 3c-1
+    // Guard the exact-match rule: the recommendations group must NOT follow it to Node.
+    expect(baseFor('/recommendations', 'POST')).toBe(PY);
+    expect(baseFor('/recommendations/12/feedback', 'POST')).toBe(PY);
+    // still Python — 3c-2/3c-3/4/5
+    expect(baseFor('/books/12/similar', 'POST')).toBe(PY); // 3c-2
     expect(baseFor('/discover', 'POST')).toBe(PY); // 3c
     expect(baseFor('/enrich/start', 'POST')).toBe(PY); // wave 4
     expect(baseFor('/admin/users', 'GET')).toBe(PY); // wave 5

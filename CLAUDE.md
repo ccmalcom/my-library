@@ -40,8 +40,15 @@ Wave 3 ports the Claude-calling flows and is split in three. Wave 3a shipped the
 layer (search + a Postgres-backed response cache), per-user Anthropic key resolution with
 an injectable client, and `POST /directive/draft`, `/profile/archetype`,
 `/profile/reveal-lines`. Wave 3b shipped `POST /profile` and `POST /profile/update`.
-Wave 3c (`/recommend`, `/books/{id}/similar`, `/discover`) is next, then wave 4
-(jobs + imports) and wave 5 (admin + cutover).
+Wave 3c is split in three. Wave 3c-1 shipped the shared deterministic retrieval core
+(`similarity.ts`'s `difflib.SequenceMatcher` port, `recFilters.ts`, `recSignal.ts`,
+`recAssemble.ts`) plus `POST /recommend`. Its parity test replays catalog HTTP recorded
+from the Python run, so the byte-identical rerank prompt also proves the whole retrieval
+pipeline — pool order, dedup, language/series/fuzzy/learner filters, author caps and cap
+ordering. `scripts/gen_claude_fixtures.py` now feeds canned responses to earlier Claude
+calls so a multi-call flow's later prompt can be captured. Wave 3c-2
+(`/books/{id}/similar`, which must also reproduce Python's 15/minute rate limit) and 3c-3
+(`/discover`) are next, then wave 4 (jobs + imports) and wave 5 (admin + cutover).
 Because Claude output is nondeterministic, "parity" for these flows means the _request_ is
 byte-identical: `scripts/gen_claude_fixtures.py` monkeypatches `tracked_create` to record
 real Python `create()` kwargs into `fixtures/claude/prompts.json`, and
