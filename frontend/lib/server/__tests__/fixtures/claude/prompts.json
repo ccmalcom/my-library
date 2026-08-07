@@ -359,5 +359,156 @@
     }
    ]
   }
+ },
+ "recommend_seed": {
+  "operation": "recommend_seed",
+  "user_id": "local",
+  "kwargs": {
+   "model": "claude-haiku-4-5-20251001",
+   "max_tokens": 1500,
+   "system": "You expand a reader's taste profile into catalog search queries for discovery. You propose search TERMS, never specific titles, and you aim the queries at the reader's distinguishing traits (what separates their 5-star from 4-star books), not generic bestsellers.",
+   "tools": [
+    {
+     "name": "propose_search_queries",
+     "description": "Propose catalog SEARCH queries that would surface books this reader is likely to love next. These are search terms (subjects, micro-genres, comp-author phrasings), NOT specific book titles. Each is run against a live book catalog.",
+     "input_schema": {
+      "type": "object",
+      "properties": {
+       "queries": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "query": {
+           "type": "string",
+           "description": "A catalog search query, e.g. 'literary science fiction first contact' or 'inauthor:\"Ursula K. Le Guin\"'. Avoid naming books the reader already owns."
+          },
+          "reason": {
+           "type": "string",
+           "description": "Which trait/pattern this query chases."
+          }
+         },
+         "required": [
+          "query",
+          "reason"
+         ]
+        }
+       }
+      },
+      "required": [
+       "queries"
+      ]
+     }
+    }
+   ],
+   "tool_choice": {
+    "type": "tool",
+    "name": "propose_search_queries"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "TASTE TRAITS (JSON):\n[{\"id\": 1, \"claim\": \"Drawn to idea-driven science fiction that interrogates political systems.\", \"polarity\": \"positive\", \"confidence\": 0.95, \"user_weight\": 1.0, \"status\": \"proposed\"}, {\"id\": 2, \"claim\": \"Values competence and problem-solving protagonists.\", \"polarity\": \"positive\", \"confidence\": 0.9, \"user_weight\": 1.0, \"status\": \"confirmed\"}, {\"id\": 3, \"claim\": \"Prefers standalone novels over long series commitments.\", \"polarity\": \"positive\", \"confidence\": 0.8, \"user_weight\": 1.0, \"status\": \"proposed\"}]\n\nLOVED BOOKS (JSON):\n[{\"id\": 1, \"title\": \"Dune\", \"author\": \"Frank Herbert\", \"rating\": 5, \"year\": 1965, \"subjects\": [\"science fiction\", \"space opera\", \"politics\"], \"read_year\": 2025}, {\"id\": 2, \"title\": \"The Dispossessed\", \"author\": \"Ursula K. Le Guin\", \"rating\": 5, \"year\": 1974, \"subjects\": [\"science fiction\", \"utopian fiction\", \"anarchism\"], \"read_year\": null}, {\"id\": 3, \"title\": \"Project Hail Mary\", \"author\": \"Andy Weir\", \"rating\": 5, \"year\": 2021, \"subjects\": [\"science fiction\", \"space\", \"survival\"], \"read_year\": null}, {\"id\": 7, \"title\": \"The Hobbit\", \"author\": \"J.R.R. Tolkien\", \"rating\": 5, \"year\": 1937, \"subjects\": [\"fantasy\", \"adventure\"], \"read_year\": null}, {\"id\": 11, \"title\": \"Exhalation\", \"author\": \"Ted Chiang\", \"rating\": 5, \"year\": 2019, \"subjects\": [\"science fiction\", \"short stories\"], \"read_year\": null}, {\"id\": 12, \"title\": \"The Fifth Season\", \"author\": \"N.K. Jemisin\", \"rating\": 5, \"year\": 2015, \"subjects\": [\"fantasy\", \"apocalyptic fiction\"], \"read_year\": null}, {\"id\": 13, \"title\": \"Kindred\", \"author\": \"Octavia E. Butler\", \"rating\": 5, \"year\": 1979, \"subjects\": [\"science fiction\", \"time travel\"], \"read_year\": null}, {\"id\": 4, \"title\": \"The Left Hand of Darkness\", \"author\": \"Ursula K. Le Guin\", \"rating\": 4, \"year\": 1969, \"subjects\": [\"science fiction\", \"gender\", \"anthropological sf\"], \"read_year\": null}, {\"id\": 10, \"title\": \"The Emperor's Soul\", \"author\": \"Brandon Sanderson\", \"rating\": 4, \"year\": 2012, \"subjects\": [\"fantasy\", \"novellas\"], \"read_year\": null}, {\"id\": 14, \"title\": \"Small Gods\", \"author\": \"Terry Pratchett\", \"rating\": 4, \"year\": 1992, \"subjects\": [], \"read_year\": null}]",
+       "cache_control": {
+        "type": "ephemeral"
+       }
+      },
+      {
+       "type": "text",
+       "text": "A reader's taste profile and a sample of their loved books are above. Propose up to 8 CATALOG SEARCH QUERIES (search terms, not book titles) that would surface books they are likely to rate highly. Chase their distinguishing traits, cover their range, and avoid generic bestseller terms."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "recommend_rerank": {
+  "operation": "recommend_rerank",
+  "user_id": "local",
+  "kwargs": {
+   "model": "claude-sonnet-5",
+   "max_tokens": 4000,
+   "system": "You are a book recommender. You rank a fixed list of real catalog candidates against a reader's evidence-backed taste profile. You never invent books; you only rank the candidates given. Every pick cites the trait ids and library book ids it is grounded in, drawn only from the provided data. You prefer specific fit over popularity, and you respect aversion traits (penalize candidates that trip them).\n\nWrite each rationale like a well-read friend pressing the book into their hands, in 1-2 sentences: lead with what the book does, then anchor it to at most two of their library books by title. Name the mechanism of the fit (pace, voice, structure, mood: whatever the trait actually is), never just shared genre. If the pick is a stretch, say so honestly and name what still connects. Use plain punctuation only: no em dashes. Never write \"you'll love this\", generic praise, or clinical trait language.\n\nExamples of the target voice:\n- Technically sci-fi, but it moves like the quiet family novels you rate highest: one household, twenty years, every chapter a knife slid in slowly.\n- A reach: you rarely go for war fiction. But it's told in the clipped, unsentimental voice that carried The Remains of the Day for you, and it's short enough to bail on cheap.\n- Romance-adjacent without the love-triangle stall you keep one-starring: the couple is together by chapter three, and the book is about what happens after.",
+   "tools": [
+    {
+     "name": "rank_recommendations",
+     "description": "Rank the provided real catalog candidates by how well they fit this reader's taste profile, and explain each pick. Choose ONLY from the given candidates.",
+     "input_schema": {
+      "type": "object",
+      "properties": {
+       "recommendations": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "candidate_index": {
+           "type": "integer",
+           "description": "The `idx` of a provided candidate. Must exist."
+          },
+          "score": {
+           "type": "number",
+           "description": "0..1 fit with the reader's taste profile."
+          },
+          "rationale": {
+           "type": "string",
+           "description": "1-2 sentences in the voice of a well-read friend: what the book does, anchored to at most two library books by title, naming the mechanism of the fit. Honest about stretch picks. Plain punctuation, no em dashes. No generic praise, no clinical trait-speak."
+          },
+          "grounded_trait_ids": {
+           "type": "array",
+           "items": {
+            "type": "integer"
+           },
+           "description": "Trait ids (from the profile) this pick leans on."
+          },
+          "grounded_book_ids": {
+           "type": "array",
+           "items": {
+            "type": "integer"
+           },
+           "description": "Library book ids this candidate is most like."
+          }
+         },
+         "required": [
+          "candidate_index",
+          "score",
+          "rationale",
+          "grounded_trait_ids",
+          "grounded_book_ids"
+         ]
+        }
+       }
+      },
+      "required": [
+       "recommendations"
+      ]
+     }
+    }
+   ],
+   "tool_choice": {
+    "type": "tool",
+    "name": "rank_recommendations"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "TASTE TRAITS (JSON):\n[{\"id\": 1, \"claim\": \"Drawn to idea-driven science fiction that interrogates political systems.\", \"polarity\": \"positive\", \"confidence\": 0.95, \"user_weight\": 1.0, \"status\": \"proposed\"}, {\"id\": 2, \"claim\": \"Values competence and problem-solving protagonists.\", \"polarity\": \"positive\", \"confidence\": 0.9, \"user_weight\": 1.0, \"status\": \"confirmed\"}, {\"id\": 3, \"claim\": \"Prefers standalone novels over long series commitments.\", \"polarity\": \"positive\", \"confidence\": 0.8, \"user_weight\": 1.0, \"status\": \"proposed\"}]\n\nLOVED BOOKS (JSON):\n[{\"id\": 1, \"title\": \"Dune\", \"author\": \"Frank Herbert\", \"rating\": 5, \"year\": 1965, \"subjects\": [\"science fiction\", \"space opera\", \"politics\"], \"read_year\": 2025}, {\"id\": 2, \"title\": \"The Dispossessed\", \"author\": \"Ursula K. Le Guin\", \"rating\": 5, \"year\": 1974, \"subjects\": [\"science fiction\", \"utopian fiction\", \"anarchism\"], \"read_year\": null}, {\"id\": 3, \"title\": \"Project Hail Mary\", \"author\": \"Andy Weir\", \"rating\": 5, \"year\": 2021, \"subjects\": [\"science fiction\", \"space\", \"survival\"], \"read_year\": null}, {\"id\": 7, \"title\": \"The Hobbit\", \"author\": \"J.R.R. Tolkien\", \"rating\": 5, \"year\": 1937, \"subjects\": [\"fantasy\", \"adventure\"], \"read_year\": null}, {\"id\": 11, \"title\": \"Exhalation\", \"author\": \"Ted Chiang\", \"rating\": 5, \"year\": 2019, \"subjects\": [\"science fiction\", \"short stories\"], \"read_year\": null}, {\"id\": 12, \"title\": \"The Fifth Season\", \"author\": \"N.K. Jemisin\", \"rating\": 5, \"year\": 2015, \"subjects\": [\"fantasy\", \"apocalyptic fiction\"], \"read_year\": null}, {\"id\": 13, \"title\": \"Kindred\", \"author\": \"Octavia E. Butler\", \"rating\": 5, \"year\": 1979, \"subjects\": [\"science fiction\", \"time travel\"], \"read_year\": null}, {\"id\": 4, \"title\": \"The Left Hand of Darkness\", \"author\": \"Ursula K. Le Guin\", \"rating\": 4, \"year\": 1969, \"subjects\": [\"science fiction\", \"gender\", \"anthropological sf\"], \"read_year\": null}, {\"id\": 10, \"title\": \"The Emperor's Soul\", \"author\": \"Brandon Sanderson\", \"rating\": 4, \"year\": 2012, \"subjects\": [\"fantasy\", \"novellas\"], \"read_year\": null}, {\"id\": 14, \"title\": \"Small Gods\", \"author\": \"Terry Pratchett\", \"rating\": 4, \"year\": 1992, \"subjects\": [], \"read_year\": null}]\n\nREJECTED RECOMMENDATIONS WITH NOTES (JSON):\nThese are books the reader explicitly skipped with an explanation. Treat each note as direct testimony about what to avoid; heavily penalize candidates that share the same qualities.\n[{\"title\": \"Blindsight\", \"author\": \"Peter Watts\", \"note\": \"not for me\"}]\n\n## User Steering\n\nFREQUENT REJECT REASONS: too-grim: 1 times, pacing: 1 times\n\nCUSTOM INSTRUCTIONS (the reader's own standing guidance, in their words; honor it as direct high-priority intent, second only to the hard constraints already applied to the candidate set):\nMore literary sci-fi, no grimdark.\n\nFavor candidates resembling the more-like books; penalize candidates resembling the less-like books; penalize candidates matching frequent reject reasons; weight trait influence by each trait's `user_weight`: traits with a lower weight should influence the score less (0.0 = ignore, 1.0 = normal).",
+       "cache_control": {
+        "type": "ephemeral"
+       }
+      },
+      {
+       "type": "text",
+       "text": "Rank the best 10 candidates for this reader and explain each. Choose ONLY from the CANDIDATES list (cite each by its `idx`). Score 0..1 for fit. Penalize anything that trips an aversion trait or resembles a rejected book's noted reason. Ground every pick in specific trait ids and the library book ids it most resembles - use only ids that appear above.\n\nCANDIDATES (JSON):\n[{\"idx\": 0, \"title\": \"Alice's Adventures in Wonderland\", \"author\": \"Lewis Carroll\", \"year\": 1865, \"subjects\": [\"science fiction\"]}, {\"idx\": 1, \"title\": \"Frankenstein; or, The Modern Prometheus\", \"author\": \"Mary Shelley\", \"year\": 1818, \"subjects\": [\"science fiction\"]}, {\"idx\": 2, \"title\": \"The Wonderful Wizard of Oz\", \"author\": \"L. Frank Baum\", \"year\": 1899, \"subjects\": [\"science fiction\"]}, {\"idx\": 3, \"title\": \"Dracula\", \"author\": \"Bram Stoker\", \"year\": 1897, \"subjects\": [\"science fiction\"]}, {\"idx\": 4, \"title\": \"The Time Machine\", \"author\": \"H. G. Wells\", \"year\": 1895, \"subjects\": [\"science fiction\"]}, {\"idx\": 5, \"title\": \"The Lost World\", \"author\": \"Arthur Conan Doyle\", \"year\": 1900, \"subjects\": [\"science fiction\"]}, {\"idx\": 6, \"title\": \"Brave New World\", \"author\": \"Aldous Huxley\", \"year\": 1932, \"subjects\": [\"science fiction\"]}, {\"idx\": 7, \"title\": \"The Jewel of Seven Stars\", \"author\": \"Bram Stoker\", \"year\": 1902, \"subjects\": [\"science fiction\"]}, {\"idx\": 8, \"title\": \"Treasure Island\", \"author\": \"Robert Louis Stevenson\", \"year\": 1880, \"subjects\": [\"fantasy\"]}, {\"idx\": 9, \"title\": \"Gulliver's Travels\", \"author\": \"Jonathan Swift\", \"year\": 1726, \"subjects\": [\"fantasy\"]}, {\"idx\": 10, \"title\": \"A Midsummer Night's Dream\", \"author\": \"William Shakespeare\", \"year\": 1600, \"subjects\": [\"fantasy\"]}, {\"idx\": 11, \"title\": \"The Prince\", \"author\": \"Niccolò Machiavelli\", \"year\": 1515, \"subjects\": [\"fantasy\"]}, {\"idx\": 12, \"title\": \"Through the Looking-Glass\", \"author\": \"Lewis Carroll\", \"year\": 1865, \"subjects\": [\"fantasy\"]}, {\"idx\": 13, \"title\": \"The Wind in the Willows\", \"author\": \"Kenneth Grahame\", \"year\": 1908, \"subjects\": [\"fantasy\"]}, {\"idx\": 14, \"title\": \"The Hitchhiker's Guide to the Galaxy\", \"author\": \"Douglas Adams\", \"year\": 1979, \"subjects\": [\"space opera\"]}, {\"idx\": 15, \"title\": \"Space Viking\", \"author\": \"H. Beam Piper\", \"year\": 1963, \"subjects\": [\"space opera\"]}, {\"idx\": 16, \"title\": \"Heretics of Dune\", \"author\": \"Frank Herbert\", \"year\": 1984, \"subjects\": [\"space opera\"]}, {\"idx\": 17, \"title\": \"Children Of The Lens (Lensman Series, No 6)\", \"author\": \"Edward E. Smith\", \"year\": 1954, \"subjects\": [\"space opera\"]}, {\"idx\": 18, \"title\": \"The Long Way to a Small, Angry Planet\", \"author\": \"Becky Chambers\", \"year\": 2014, \"subjects\": [\"space opera\"]}, {\"idx\": 19, \"title\": \"Fallen Dragon\", \"author\": \"Peter F. Hamilton\", \"year\": 2001, \"subjects\": [\"space opera\"]}, {\"idx\": 20, \"title\": \"2312\", \"author\": \"Kim Stanley Robinson\", \"year\": 2012, \"subjects\": [\"space opera\"]}, {\"idx\": 21, \"title\": \"Redshirts\", \"author\": \"John Scalzi\", \"year\": 2012, \"subjects\": [\"space opera\"]}, {\"idx\": 22, \"title\": \"The Art of War\", \"author\": \"孙武 (Sun Tzu)\", \"year\": 1900, \"subjects\": [\"politics\"]}, {\"idx\": 23, \"title\": \"The Autobiography of Benjamin Franklin\", \"author\": \"Benjamin Franklin\", \"year\": 1791, \"subjects\": [\"politics\"]}, {\"idx\": 24, \"title\": \"The Jungle\", \"author\": \"Upton Sinclair\", \"year\": 1791, \"subjects\": [\"politics\"]}, {\"idx\": 25, \"title\": \"On Liberty\", \"author\": \"John Stuart Mill\", \"year\": 1859, \"subjects\": [\"politics\"]}, {\"idx\": 26, \"title\": \"Manifest der Kommunistischen Partei\", \"author\": \"Karl Marx\", \"year\": 1848, \"subjects\": [\"politics\"]}, {\"idx\": 27, \"title\": \"De la démocratie en Amérique\", \"author\": \"Alexis de Tocqueville\", \"year\": 1835, \"subjects\": [\"politics\"]}, {\"idx\": 28, \"title\": \"Herland\", \"author\": \"Charlotte Perkins Gilman\", \"year\": 1915, \"subjects\": [\"utopian fiction\"]}, {\"idx\": 29, \"title\": \"Erewhon\", \"author\": \"Samuel Butler\", \"year\": 1700, \"subjects\": [\"utopian fiction\"]}, {\"idx\": 30, \"title\": \"The Coming Race\", \"author\": \"Edward Bulwer Lytton, Baron Lytton\", \"year\": 1871, \"subjects\": [\"utopian fiction\"]}, {\"idx\": 31, \"title\": \"Erewhon Revisited\", \"author\": \"Samuel Butler\", \"year\": 1901, \"subjects\": [\"utopian fiction\"]}, {\"idx\": 32, \"title\": \"B.F. Skinner's Walden 2\", \"author\": \"B. F. Skinner\", \"year\": 1948, \"subjects\": [\"utopian fiction\"]}, {\"idx\": 33, \"title\": \"Ready Player Two\", \"author\": \"Ernest Cline\", \"year\": 2019, \"subjects\": [\"utopian fiction\"]}, {\"idx\": 34, \"title\": \"Burning Kingdoms\", \"author\": \"Lauren DeStefano\", \"year\": 2015, \"subjects\": [\"utopian fiction\"]}, {\"idx\": 35, \"title\": \"Der Würfel\", \"author\": \"Bijan Moini\", \"year\": 2018, \"subjects\": [\"utopian fiction\"]}, {\"idx\": 36, \"title\": \"The Man Who Was Thursday\", \"author\": \"Gilbert Keith Chesterton\", \"year\": 1908, \"subjects\": [\"anarchism\"]}, {\"idx\": 37, \"title\": \"La conquête du pain\", \"author\": \"Peter Kropotkin\", \"year\": 1892, \"subjects\": [\"anarchism\"]}, {\"idx\": 38, \"title\": \"Der Einzige und sein Eigentum\", \"author\": \"Max Stirner\", \"year\": 1845, \"subjects\": [\"anarchism\"]}, {\"idx\": 39, \"title\": \"Proposed Roads to Freedom\", \"author\": \"Bertrand Russell\", \"year\": 1918, \"subjects\": [\"anarchism\"]}, {\"idx\": 40, \"title\": \"Dieu et l’État\", \"author\": \"Mikhail Aleksandrovich Bakunin\", \"year\": 1882, \"subjects\": [\"anarchism\"]}, {\"idx\": 41, \"title\": \"Memoirs of a Revolutionist\", \"author\": \"Peter Kropotkin\", \"year\": 1899, \"subjects\": [\"anarchism\"]}, {\"idx\": 42, \"title\": \"Anarchism and Other Essays\", \"author\": \"Emma Goldman\", \"year\": 1910, \"subjects\": [\"anarchism\"]}, {\"idx\": 43, \"title\": \"City\", \"author\": \"Clifford D. Simak\", \"year\": 1952, \"subjects\": [\"space\"]}, {\"idx\": 44, \"title\": \"The Currents of Space\", \"author\": \"Isaac Asimov\", \"year\": 1952, \"subjects\": [\"space\"]}, {\"idx\": 45, \"title\": \"2010, odyssey two\", \"author\": \"Arthur C. Clarke\", \"year\": 1982, \"subjects\": [\"space\"]}, {\"idx\": 46, \"title\": \"CatStronauts\", \"author\": \"Drew Brockington\", \"year\": 2017, \"subjects\": [\"space\"]}, {\"idx\": 47, \"title\": \"The Magic School Bus\", \"author\": \"Joanna Cole\", \"year\": 1990, \"subjects\": [\"space\"]}, {\"idx\": 48, \"title\": \"Cloud Cuckoo Land\", \"author\": \"Anthony Doerr\", \"year\": 2021, \"subjects\": [\"space\"]}, {\"idx\": 49, \"title\": \"The nature of space and time\", \"author\": \"Stephen Hawking\", \"year\": 1996, \"subjects\": [\"space\"]}, {\"idx\": 50, \"title\": \"The Mayflower Project\", \"author\": \"Katherine Applegate\", \"year\": 2001, \"subjects\": [\"space\"]}, {\"idx\": 51, \"title\": \"Robinson Crusoe\", \"author\": \"Daniel Defoe\", \"year\": 1686, \"subjects\": [\"survival\"]}, {\"idx\": 52, \"title\": \"The Tempest\", \"author\": \"William Shakespeare\", \"year\": 1611, \"subjects\": [\"survival\"]}, {\"idx\": 53, \"title\": \"Villette, a novel\", \"author\": \"Charlotte Brontë\", \"year\": 1853, \"subjects\": [\"survival\"]}, {\"idx\": 54, \"title\": \"The Coral Island\", \"author\": \"Robert Michael Ballantyne\", \"year\": 1858, \"subjects\": [\"survival\"]}, {\"idx\": 55, \"title\": \"White Fang\", \"author\": \"Jack London\", \"year\": 1905, \"subjects\": [\"survival\"]}, {\"idx\": 56, \"title\": \"Gone With the Wind\", \"author\": \"Margaret Mitchell\", \"year\": 1936, \"subjects\": [\"survival\"]}]"
+      }
+     ]
+    }
+   ]
+  }
  }
 }
