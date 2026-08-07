@@ -1,7 +1,16 @@
 import { describe, expect, test, it } from 'vitest';
 import {
-  tsToIso, pyTitle, effectiveRating, round2, round4, parseBoolParam,
-  utcnowTs, todayIsoDate, pyList, parseIdParam,
+  tsToIso,
+  pyTitle,
+  effectiveRating,
+  round2,
+  round4,
+  pyRoundHalfEven,
+  parseBoolParam,
+  utcnowTs,
+  todayIsoDate,
+  pyList,
+  parseIdParam,
 } from '../serialize';
 import { ApiError } from '../errors';
 
@@ -43,8 +52,36 @@ describe('effectiveRating', () => {
 });
 
 describe('rounding', () => {
-  test('round2 / round4', () => {
+  test('round2 matches Python round(x, 2), including banker-rounded ties', () => {
     expect(round2(4.333333)).toBe(4.33);
+    // Exact binary ties -- the only place Math.round(x*100)/100 can be wrong.
+    // Ties round to EVEN: 12.5 -> 12, 37.5 -> 38, 62.5 -> 62, 87.5 -> 88.
+    expect(round2(0.125)).toBe(0.12);
+    expect(round2(0.375)).toBe(0.38);
+    expect(round2(0.625)).toBe(0.62);
+    expect(round2(0.875)).toBe(0.88);
+    expect(round2(-0.125)).toBe(-0.12);
+    // NOT ties: 0.015*100 is 1.4999999999999998 in binary, so it rounds DOWN,
+    // which Math.round(0.015*100) gets wrong by scaling first.
+    expect(round2(0.015)).toBe(0.01);
+    expect(round2(0.045)).toBe(0.04);
+    expect(round2(2.675)).toBe(2.67);
+    expect(round2(0.95)).toBe(0.95);
+    expect(round2(1)).toBe(1);
+  });
+
+  test('pyRoundHalfEven matches Python round(x)', () => {
+    expect(pyRoundHalfEven(0.5)).toBe(0);
+    expect(pyRoundHalfEven(1.5)).toBe(2);
+    expect(pyRoundHalfEven(2.5)).toBe(2);
+    expect(pyRoundHalfEven(4.5)).toBe(4);
+    expect(pyRoundHalfEven(-0.5)).toBe(0);
+    expect(pyRoundHalfEven(-1.5)).toBe(-2);
+    expect(pyRoundHalfEven(18)).toBe(18);
+    expect(pyRoundHalfEven(17.9)).toBe(18);
+  });
+
+  test('round4', () => {
     expect(round4(0.123456)).toBe(0.1235);
     expect(round4(0)).toBe(0);
   });
@@ -53,7 +90,8 @@ describe('rounding', () => {
 describe('parseBoolParam', () => {
   test('FastAPI-style truthy strings', () => {
     for (const v of ['true', 'True', '1', 'yes', 'on']) expect(parseBoolParam(v)).toBe(true);
-    for (const v of ['false', '0', 'no', 'off', undefined]) expect(parseBoolParam(v as any)).toBe(false);
+    for (const v of ['false', '0', 'no', 'off', undefined])
+      expect(parseBoolParam(v as any)).toBe(false);
   });
 });
 
