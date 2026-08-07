@@ -19,6 +19,7 @@ const ENV_KEYS = [
   'FEEDBACK_PROMPTS_ENABLED',
   'FEEDBACK_SNOOZE_HOURS',
   'MYLIBRARY_MODEL',
+  'GOOGLE_BOOKS_API_KEY',
 ];
 
 /** Local-mode env identical to the Python fixture run. Registers hooks. */
@@ -39,6 +40,10 @@ export function setupParityEnv(): void {
     // defaults ever drift apart. A developer with MYLIBRARY_MODEL exported
     // (it lives in .env) would otherwise fail the profile prompt-parity tests.
     delete process.env.MYLIBRARY_MODEL;
+    // The Python fixture generator forces this empty so no live key is baked into a
+    // recorded URL; a developer with it exported would build `...&key=...` URLs that
+    // match no fixture entry and fail every replayed catalog fetch.
+    delete process.env.GOOGLE_BOOKS_API_KEY;
     process.env.ENCRYPTION_KEY = FIXED_TEST_KEY;
     process.env.MYLIBRARY_MONTHLY_SOFT_CAP_USD = '5.0';
     process.env.MYLIBRARY_USAGE_WARN_THRESHOLD = '0.8';
