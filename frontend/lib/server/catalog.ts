@@ -341,3 +341,85 @@ export async function searchBooks(db: Db, query: string, maxResults = 8): Promis
   });
   return applySeriesGrouping(query, deduped).slice(0, maxResults);
 }
+
+// --- Discovery retrieval (the two-stage recommender) -----------------------
+// Ports of catalog.py:215-236, 403-419, 617-649. Unlike the enrichment helpers
+// above (which resolve a KNOWN book), these surface NEW candidates and return the
+// same normalized Candidate shape, so recommendRun.ts treats every source uniformly.
+// catalog.py::googlebooks_query needs no wrapper here — googleBooksQuery already is it.
+
+export async function googleBooksSubject(
+  db: Db,
+  subject: string,
+  maxResults = 10
+): Promise<Candidate[]> {
+  return googleBooksQuery(db, `subject:"${subject}"`, maxResults);
+}
+
+export async function googleBooksAuthor(
+  db: Db,
+  author: string,
+  maxResults = 10
+): Promise<Candidate[]> {
+  return googleBooksQuery(db, `inauthor:"${author}"`, maxResults);
+}
+
+/** catalog.py::_ol_subject_slug — Open Library's subjects API keys on lowercase,
+ *  underscore-joined slugs. Python's `.strip("_")` removes leading AND trailing runs. */
+function olSubjectSlug(subject: string): string {
+  return subject
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+export async function openlibrarySubject(
+  db: Db,
+  subject: string,
+  maxResults = 10
+): Promise<Candidate[]> {
+  const slug = olSubjectSlug(subject);
+  if (!slug) return [];
+  const url = `https://openlibrary.org/subjects/${slug}.json?limit=${maxResults}`;
+  const data = (await getJson(db, url, 'openlibrary')) as any;
+  if (!data) return [];
+  return (data.works ?? []).slice(0, maxResults).map((work: any): Candidate => {
+    const coverId = work.cover_id;
+    return {
+      source: 'openlibrary',
+      resolved_id: work.key ?? null,
+      title: work.title ?? null,
+      // Python: ((work.get("authors") or [{}])[0].get("name") if work.get("authors") else None)
+      // -> an empty or missing authors list yields None, as does a first entry with no name.
+      author: work.authors?.length ? (work.authors[0]?.name ?? null) : null,
+      // Python echoes the CALLER's subject string, not the slug.
+      subjects: [subject],
+      cover_url: coverId ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg` : null,
+      year: work.first_publish_year ?? null,
+      // Python's dict has no "language" key at all, so cand.get("language") is None
+      // and _language_ok always passes these through. null reproduces that.
+      language: null,
+      raw: work,
+    };
+  });
+}
+
+/** catalog.py::_ol_description — description wins over notes; a typed dict unwraps to .value. */
+function olDescription(record: any): string | null {
+  const desc = record?.description || record?.notes;
+  if (desc && typeof desc === 'object' && !Array.isArray(desc)) return desc.value ?? null;
+  return typeof desc === 'string' ? desc : null;
+}
+
+/**
+ * Fetch a description from an OL Work record (e.g. '/works/OL82584W').
+ * OL Edition/ISBN records rarely carry descriptions; the Work record is the
+ * authoritative place. Cached in catalog_cache, so repeat calls are free.
+ */
+export async function openlibraryWorkDescription(db: Db, workKey: string): Promise<string | null> {
+  if (!workKey) return null;
+  const key = workKey.replace(/^\/+/, ''); // Python's lstrip("/")
+  const data = await getJson(db, `https://openlibrary.org/${key}.json`, 'openlibrary');
+  if (!data) return null;
+  return olDescription(data);
+}
