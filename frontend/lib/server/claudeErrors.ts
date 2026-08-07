@@ -21,3 +21,16 @@ export const PROFILE_NO_KEY_MESSAGE =
   'ANTHROPIC_API_KEY) before running the taste-profile step.';
 
 export const NO_RATED_BOOKS_MESSAGE = 'No rated books found. Run ingest (and enrich) first.';
+
+/** recommend._client's RuntimeError, surfaced by api.py as a 400. */
+export const RECOMMEND_NO_KEY_MESSAGE =
+  'No Anthropic API key configured. Add your key in Settings (or set ' +
+  'ANTHROPIC_API_KEY) before running recommend.';
+
+export const NO_LOVED_BOOKS_MESSAGE =
+  'No loved books found (need books rated >= 4). Run ingest + enrich ' +
+  '(and ideally profile) first.';
+
+export const NO_PROFILE_MESSAGE =
+  "No taste profile found. Run 'profile' (or POST /profile) before " +
+  'generating recommendations.';
