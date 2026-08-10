@@ -10,6 +10,8 @@
  */
 import { and, asc, desc, eq, isNotNull } from 'drizzle-orm';
 import { schema, type Db } from './db';
+// Type-only, so there is no runtime cycle even though recAssemble imports RecSignal back.
+import type { AssembleSignal } from './recAssemble';
 import { surname } from './dedup';
 import { dedupKey, seriesInfo } from './recFilters';
 import { effectiveRating, pyFloat, round2, type PyFloat } from './serialize';
@@ -274,5 +276,100 @@ export async function buildSignal(db: Db, userId: string): Promise<RecSignal> {
     rejected_with_notes,
     directive_text,
     directive_constraints,
+  };
+}
+
+/** recommend._build_book_signal's `anchor` dict. */
+export interface BookAnchor {
+  id: number;
+  title: string;
+  author: string | null;
+  year: number | null;
+  subjects: string[];
+  description: string | null;
+  series: string | null;
+}
+
+/**
+ * The signal shape for the per-book "more like this" path. It satisfies both
+ * assemble()'s AssembleSignal and metadataPool()'s {top_subjects, top_authors},
+ * so the whole 3c-1 retrieval core is reused unchanged.
+ */
+export interface BookSignal extends AssembleSignal {
+  top_subjects: string[];
+  top_authors: string[];
+  anchor: BookAnchor;
+}
+
+/**
+ * Port of recommend._build_book_signal. Discovery seeds (top_subjects,
+ * top_authors, anchor) come from ONE book; the exclusion/permission sets still
+ * cover the whole library, so we never recommend a book the reader already owns
+ * and we respect their reading languages.
+ *
+ * Returns null when the book is not this user's — Python raises
+ * `RuntimeError("Book N not found.")` from recommend_similar() instead, but the
+ * route 404s before that ever runs (see the route handler), so the caller
+ * decides which error to raise.
+ *
+ * DEVIATION (deliberate, same as buildSignal): the ORDER BY is explicit. Python
+ * relies on Postgres's arbitrary row order, which is not good enough for a
+ * byte-identical prompt assertion.
+ */
+export async function buildBookSignal(
+  db: Db,
+  userId: string,
+  bookId: number
+): Promise<BookSignal | null> {
+  const rows = await db
+    .select({ b: schema.books, enr: schema.enrichment })
+    .from(schema.books)
+    // Safe against fan-out: enrichment.book_id carries a UNIQUE index, so this is 1:1.
+    .leftJoin(schema.enrichment, eq(schema.enrichment.bookId, schema.books.id))
+    .where(eq(schema.books.userId, userId))
+    .orderBy(asc(schema.books.id));
+
+  const library_keys = new Set<string>();
+  const library_isbns = new Set<string>();
+  const library_languages = new Set<string>();
+  const library_authors = new Set<string>();
+  let anchorRow: (typeof rows)[number] | undefined;
+
+  for (const row of rows) {
+    const { b, enr } = row;
+    library_keys.add(dedupKey(b.title, b.author));
+    if (b.isbn13) library_isbns.add(b.isbn13);
+    const enrLang = enr?.language ?? null;
+    if (enrLang) library_languages.add(enrLang);
+    if (b.author) library_authors.add(surname(b.author));
+    if (b.id === bookId) anchorRow = row;
+  }
+
+  if (!anchorRow) return null;
+
+  const { b, enr } = anchorRow;
+  const subjects = ((enr?.subjects as string[] | null) ?? []) as string[];
+
+  return {
+    library_keys,
+    library_isbns,
+    library_authors,
+    library_languages,
+    // PYTHON QUIRK (do not "fix"): _build_book_signal returns neither key, and
+    // _assemble defaults them to {} / []. The series filter and the
+    // fuzzy-duplicate filter are therefore INERT on this path.
+    library_series: new Map<string, Set<number>>(),
+    library_titles: [],
+    top_subjects: subjects.slice(0, TOP_SUBJECTS),
+    top_authors: b.author ? [b.author] : [],
+    anchor: {
+      id: b.id,
+      title: b.title,
+      author: b.author,
+      year: b.yearPublished,
+      subjects: subjects.slice(0, 8),
+      description: enr?.description ?? null,
+      series: enr?.series ?? null,
+    },
   };
 }
