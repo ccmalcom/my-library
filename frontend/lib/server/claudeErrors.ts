@@ -34,3 +34,7 @@ export const NO_LOVED_BOOKS_MESSAGE =
 export const NO_PROFILE_MESSAGE =
   "No taste profile found. Run 'profile' (or POST /profile) before " +
   'generating recommendations.';
+
+/** recommend_similar's metadata gate, surfaced by api.py as a 400. */
+export const SIMILAR_NOT_ENOUGH_METADATA_MESSAGE =
+  'Not enough metadata on this book to find similar reads. Enrich it first.';
