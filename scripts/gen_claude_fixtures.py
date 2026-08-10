@@ -241,6 +241,35 @@ def _run_recommend():
     return recommend_mod.recommend(n=10)  # n=10 is RecommendRequest's default
 
 
+# A fixed stand-in for what Claude would propose in the per-book stage 1b. Like
+# _SEED_QUERIES_CANNED, these strings determine which Google Books URLs land in
+# recommend-http.json, so changing them requires a regeneration run AND the same
+# edit in parity-similar-prompts.test.ts.
+_SIMILAR_QUERIES_CANNED = _CannedMessage(
+    "propose_search_queries",
+    {
+        "queries": [
+            {"query": "desert planet political intrigue science fiction", "reason": "fixture"},
+            {"query": "ecological science fiction messianic prophecy", "reason": "fixture"},
+        ]
+    },
+)
+
+# Book 1 (Dune) is the anchor: the only SEED book whose enrichment carries BOTH
+# subjects and a description, so the anchor JSON exercises every populated field.
+# `series` stays null -- no SEED book is both enriched with a series and richly
+# described -- and that null is itself asserted in the Node parity test.
+SIMILAR_BOOK_ID = 1
+
+
+def _run_similar():
+    # No _prepare_recommend() call: recommend_similar() has no profile-missing or
+    # profile-stale gate and no cold-start gating (verified by probe), so it runs
+    # against the SEED as-is. Keeping it out also means these scenarios cannot
+    # perturb the earlier profile_* fixtures.
+    return recommend_mod.recommend_similar(SIMILAR_BOOK_ID, n=8)  # n=8 is SimilarRequest's default
+
+
 # name -> (flow, canned responses fed to earlier Claude calls, index of the call to capture)
 SCENARIOS = {
     "directive_distill": (
@@ -258,6 +287,8 @@ SCENARIOS = {
     # --- append below this line only (see _prepare_recommend) ---
     "recommend_seed": (_run_recommend, [], 0),
     "recommend_rerank": (_run_recommend, [_SEED_QUERIES_CANNED], 1),
+    "similar_seed": (_run_similar, [], 0),
+    "similar_rerank": (_run_similar, [_SIMILAR_QUERIES_CANNED], 1),
 }
 
 
