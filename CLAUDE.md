@@ -43,12 +43,33 @@ an injectable client, and `POST /directive/draft`, `/profile/archetype`,
 Wave 3c is split in three. Wave 3c-1 shipped the shared deterministic retrieval core
 (`similarity.ts`'s `difflib.SequenceMatcher` port, `recFilters.ts`, `recSignal.ts`,
 `recAssemble.ts`) plus `POST /recommend`. Its parity test replays catalog HTTP recorded
-from the Python run, so the byte-identical rerank prompt also proves the whole retrieval
+from the Python run, so the byte-identical rerank prompt also proves the retrieval
 pipeline — pool order, dedup, language/series/fuzzy/learner filters, author caps and cap
 ordering. `scripts/gen_claude_fixtures.py` now feeds canned responses to earlier Claude
-calls so a multi-call flow's later prompt can be captured. Wave 3c-2
-(`/books/{id}/similar`, which must also reproduce Python's 15/minute rate limit) and 3c-3
-(`/discover`) are next, then wave 4 (jobs + imports) and wave 5 (admin + cutover).
+calls so a multi-call flow's later prompt can be captured.
+
+Wave 3c-1's retrieval core is signed off. `recommend-http.json` was re-recorded with a
+real `GOOGLE_BOOKS_API_KEY` (16/16 googleapis + 8/8 openlibrary returned data), closing
+the earlier keyless recording in which every Google Books URL 429'd off the shared
+anonymous quota and the fixture proved only the Open Library half. The re-record
+exercises the three Google Books fetchers' response parsing, the `seedPool` path, and
+the `claude_seed` retrieval-pool value; the pool reaching `capPool` is 138 against a cap
+of 60, so the seed-reserve trim really runs instead of hitting the `len <= cap` early
+return. The `both` retrieval-pool value and `assemble`'s second-sighting backfill are
+still not fixture-driven (no dedup key landed in both pools) — they are covered by
+hand-written unit tests in `rec-assemble.test.ts`.
+
+Re-record with `python scripts/gen_claude_fixtures.py`; offline mode makes no real
+Claude calls, so it costs nothing in Anthropic spend. The generator strips the key from
+every recorded URL rather than disabling it, and refuses to write a fixture in which any
+host had zero successful responses. Expect small churn on each re-record — the fixture
+snapshots live catalog data, and Google Books re-ranking moves roughly one candidate in
+sixty. That is fine: the parity test proves Node reproduces whatever was recorded, not
+one specific candidate list.
+
+Wave 3c-2 (`/books/{id}/similar`, which must also reproduce Python's 15/minute rate
+limit) and 3c-3 (`/discover`) are next — both consume 3c-1's retrieval core unchanged.
+Then wave 4 (jobs + imports) and wave 5 (admin + cutover).
 Because Claude output is nondeterministic, "parity" for these flows means the _request_ is
 byte-identical: `scripts/gen_claude_fixtures.py` monkeypatches `tracked_create` to record
 real Python `create()` kwargs into `fixtures/claude/prompts.json`, and
@@ -56,6 +77,11 @@ real Python `create()` kwargs into `fixtures/claude/prompts.json`, and
 exactly. That makes Python-vs-JS serialization differences load-bearing — see
 `lib/server/serialize.ts` for the `pyRepr`/`pyFloatStr`/`pyJsonDumps` primitives and why
 ordered mappings bound for a prompt must be a `Map` (V8 reorders integer-like object keys).
+Rounding lives there too: Python's `round(x, d)` is banker's rounding on the exact binary
+value, so `round2`/`round4` both route through one `pyRound` helper. Never reimplement
+either as `Math.round(x * 10 ** d) / 10 ** d` — that disagrees with CPython on every exact
+tie (an odd 8th at d=2, an odd 32nd at d=4), which reaches real API responses via
+`/stats`, `/settings/usage` and `/profile/highlights`.
 
 ## Sub-documents (load when relevant)
 

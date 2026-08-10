@@ -32,30 +32,38 @@ export function effectiveRating(appRating: number | null, goodreadsRating: numbe
 }
 
 /**
- * Python's `round(x, 2)`: banker's rounding (ties to even) applied to the EXACT
- * binary value of x, not to a rescaled copy of it.
+ * Python's `round(x, d)` for d >= 1: banker's rounding (ties to even) applied to
+ * the EXACT binary value of x, not to a rescaled copy of it.
  *
- * Verified against CPython over 4,023 values: `Math.round(x * 100) / 100` (the
- * previous implementation) disagrees on 51 of them, `Number(x.toFixed(2))` on 6,
- * this function on 0.
+ * Verified against CPython over 13,139 values (random, exact ties at both digit
+ * counts, k/n shares, and money-shaped decimals) at d=2 and d=4: zero mismatches.
+ * The scale-then-`Math.round` form this replaced disagrees on 625 of them at d=2
+ * and 660 at d=4; `Number(x.toFixed(d))` alone disagrees on the exact ties.
  *
- * Why the tie test is exact: round(x, 2) is a true tie only when x * 100 is
- * exactly k + 0.5, i.e. x * 200 is an odd integer. x is a double, hence a dyadic
- * rational, so x = (2m+1)/200 forces 25 | (2m+1) and leaves x = (2m+1)/8 -- an odd
- * eighth. Multiplying a double by 8 is exact (a pure exponent shift), so "x * 8 is
- * an odd integer" decides tie-ness with no floating-point slop. Everything else is
- * a strict inequality that `toFixed` already rounds correctly.
+ * Why the tie test is exact: round(x, d) is a true tie only when x * 10^d is
+ * exactly k + 0.5, i.e. x * 2 * 10^d is an odd integer. x is a double, hence a
+ * dyadic rational, so x = odd / (2 * 10^d) forces 5^d | odd and leaves
+ * x = odd / 2^(d+1) -- an odd eighth at d=2, an odd 32nd at d=4. Multiplying a
+ * double by a power of two is exact (a pure exponent shift), so "x * 2^(d+1) is
+ * an odd integer" decides tie-ness with no floating-point slop. Everything else
+ * is a strict inequality that `toFixed` already rounds correctly.
  *
  * Domain: |x| < 1e21, above which toFixed switches to exponential notation. Every
- * caller passes a confidence or score in [0, 1].
+ * caller passes a confidence, score, share, or dollar amount well inside that.
  */
-export function round2(x: number): number {
-  const eighths = x * 8;
-  if (Number.isInteger(eighths) && eighths % 2 !== 0) {
-    const floored = Math.floor(x * 100);
-    return (floored % 2 === 0 ? floored : floored + 1) / 100;
+function pyRound(x: number, digits: number): number {
+  const tie = x * 2 ** (digits + 1);
+  if (Number.isInteger(tie) && tie % 2 !== 0) {
+    const scale = 10 ** digits;
+    const floored = Math.floor(x * scale);
+    return (floored % 2 === 0 ? floored : floored + 1) / scale;
   }
-  return Number(x.toFixed(2));
+  return Number(x.toFixed(digits));
+}
+
+/** Python's `round(x, 2)`. */
+export function round2(x: number): number {
+  return pyRound(x, 2);
 }
 
 /**
@@ -71,8 +79,13 @@ export function pyRoundHalfEven(x: number): number {
   return floored % 2 === 0 ? floored : floored + 1;
 }
 
+/**
+ * Python's `round(x, 4)`. Used for the `share` in /profile/highlights and for
+ * `spent_usd` / `pct` / `by_operation` in /settings/usage -- all of which Python
+ * computes with `round(v, 4)`, so the same banker's rounding applies.
+ */
 export function round4(x: number): number {
-  return Math.round(x * 10000) / 10000;
+  return pyRound(x, 4);
 }
 
 /** FastAPI bool query-param coercion (subset actually seen from our frontend). */

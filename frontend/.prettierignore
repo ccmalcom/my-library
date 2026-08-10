@@ -6,3 +6,9 @@ package-lock.json
 # between .next/types/ and .next/dev/types/ depending on whether `next build` or
 # `next dev` ran last, so formatting it just creates churn.
 next-env.d.ts
+
+# Recorded parity fixtures, written by scripts/gen_claude_fixtures.py with
+# json.dumps(indent=1). Prettier wants 2-space, so formatting them is undone by
+# the very next re-record -- and these files are only ever read via JSON.parse,
+# so their layout is never load-bearing. Ignore rather than fight the generator.
+lib/server/__tests__/fixtures/claude/

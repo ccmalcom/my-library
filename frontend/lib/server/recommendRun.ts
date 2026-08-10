@@ -253,6 +253,13 @@ async function claudeRerank(
   for (const r of rankedRaw) {
     const idx = r.candidate_index;
     // Drop hallucinated / duplicate indices.
+    //
+    // Not byte-faithful to Python's `isinstance(idx, int)`, and cannot be: JSON.parse
+    // erases the int/float distinction, so a wire value of `3.0` -- which Python
+    // rejects as a float -- is indistinguishable from `3` here. Python also ACCEPTS
+    // `true` as index 1, since bool subclasses int. Both need a tool response that
+    // violates the schema's `"type": "integer"`, and in each case this is the safer
+    // reading, so the divergence is left alone rather than emulated.
     if (
       typeof idx !== 'number' ||
       !Number.isInteger(idx) ||

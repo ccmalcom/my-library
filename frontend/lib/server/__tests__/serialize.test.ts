@@ -81,9 +81,24 @@ describe('rounding', () => {
     expect(pyRoundHalfEven(17.9)).toBe(18);
   });
 
-  test('round4', () => {
+  test('round4 matches Python round(x, 4), including banker-rounded ties', () => {
     expect(round4(0.123456)).toBe(0.1235);
     expect(round4(0)).toBe(0);
+    expect(round4(1)).toBe(1);
+    // Exact binary ties at the 4th decimal are the odd 32nds (x * 32 an odd
+    // integer), the only place Math.round(x*10000)/10000 can be wrong.
+    // Ties round to EVEN: 312.5 -> 312, 937.5 -> 938, 1562.5 -> 1562.
+    expect(round4(0.03125)).toBe(0.0312);
+    expect(round4(0.09375)).toBe(0.0938);
+    expect(round4(0.15625)).toBe(0.1562);
+    expect(round4(0.21875)).toBe(0.2188);
+    expect(round4(-0.03125)).toBe(-0.0312);
+    // NOT ties: these decimals have no exact binary form, so the exact value
+    // sits just off the midpoint and the strict inequality decides.
+    expect(round4(0.00005)).toBe(0.0001);
+    expect(round4(0.00015)).toBe(0.0001);
+    // A real /profile/highlights share: 1 genre book out of 32 enriched rated.
+    expect(round4(1 / 32)).toBe(0.0312);
   });
 });
 

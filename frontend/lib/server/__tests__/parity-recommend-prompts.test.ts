@@ -71,7 +71,7 @@ describe('prompt parity: recommend stage 2 (rerank)', () => {
       const signal = await buildSignal(db, 'local');
       const coldStart = isColdStart(signal);
       // The seeded library is deliberately NOT cold-start (10 loved, 12 rated), so
-      // author expansion runs -- which is what the recorded inauthor: URLs cover.
+      // author expansion runs and its inauthor: URLs are requested.
       expect(coldStart).toBe(false);
 
       const meta = await metadataPool(db, signal, PER_QUERY, coldStart);
@@ -81,9 +81,28 @@ describe('prompt parity: recommend stage 2 (rerank)', () => {
       await fillOlDescriptions(db, candidates);
       expect(candidates.length).toBeGreaterThan(0);
 
-      // This single assertion covers the whole deterministic retrieval core: pool
-      // order, dedup, every filter, author caps and cap ordering all feed the
-      // CANDIDATES JSON inside this prompt.
+      // This single assertion covers the deterministic retrieval core: pool order,
+      // dedup, every filter and author caps all feed the CANDIDATES JSON inside
+      // this prompt.
+      //
+      // COVERAGE -- recommend-http.json was re-recorded with a real
+      // GOOGLE_BOOKS_API_KEY (16/16 googleapis + 8/8 openlibrary returned data), so
+      // the candidate list below exercises googleBooksQuery/Subject/Author response
+      // parsing, the seedPool path, and the 'claude_seed' retrieval_pool value.
+      // The pool reaching capPool is 138 against a cap of 60, so the seed-reserve
+      // trim genuinely runs (all 16 claude_seed kept, metadata cut 122 -> 44)
+      // rather than short-circuiting on the `length <= cap` early return.
+      //
+      // Still NOT fixture-proven: the 'both' retrieval_pool value and assemble()'s
+      // second-sighting backfill, because no dedup key showed up in both pools in
+      // this recording. Those two are covered by hand-written unit tests instead --
+      // see rec-assemble.test.ts 'tags provenance and merges a candidate seen in
+      // both pools' and 'keeps every "both" candidate first'.
+      //
+      // The fixture is a snapshot of live catalog data: re-recording churns roughly
+      // one candidate in sixty as Google Books re-ranks. That is expected, and the
+      // assertion below still holds because it proves Node reproduces whatever was
+      // recorded, not one specific candidate list.
       expect(buildRerankPrompt(candidates, signal, 10)).toEqual(py.messages[0].content);
       expect(RANK_SYSTEM).toBe(py.system);
       expect(RANK_TOOL).toEqual(py.tools[0]);

@@ -9,7 +9,12 @@ Isolation identical to gen_parity_fixtures.py: empty-string env overrides set
 BEFORE importing mylibrary, throwaway SQLite, fixed ENCRYPTION_KEY.
 """
 from __future__ import annotations
-import json, os, sys, tempfile
+
+import json
+import os
+import re
+import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -22,12 +27,14 @@ os.environ["SUPABASE_JWKS_URL"] = ""
 os.environ["SUPABASE_JWT_SECRET"] = ""
 os.environ["REDIS_URL"] = ""
 os.environ["ENCRYPTION_KEY"] = FIXED_TEST_KEY
-# A live GOOGLE_BOOKS_API_KEY is appended to every Google Books URL by
-# catalog._google_books_query, which would bake a real credential into the
-# committed recommend-http.json. Force it empty. Empty string, not `del`:
-# config.py calls load_dotenv(override=False), which silently refills an UNSET
-# var from .env but leaves an explicitly-empty one alone.
-os.environ["GOOGLE_BOOKS_API_KEY"] = ""
+# NOTE: GOOGLE_BOOKS_API_KEY is deliberately NOT forced empty here. An earlier
+# revision did that to keep a real credential out of the committed
+# recommend-http.json, but catalog._google_books_query simply omits the `key` param
+# when it is empty, and Google Books answers KEYLESS requests with 429 "Quota
+# exceeded" off a shared anonymous pool. The result was a fixture in which all 16
+# Google Books URLs recorded as failures, so the parity test silently proved only
+# the Open Library half of retrieval. The key is needed for a real recording and is
+# stripped from each URL by _scrub_url below instead.
 os.environ["MYLIBRARY_DATA_DIR"] = tempfile.mkdtemp(prefix="claude-fixtures-")
 # Pin to config.DEFAULT_MODEL regardless of a developer's local .env override (e.g. a
 # temporary cost/availability substitution). Without this, profile_full/profile_update's
@@ -41,15 +48,20 @@ if not LIVE:
     os.environ["ANTHROPIC_API_KEY"] = "sk-ant-fixture-not-used"
 
 from mylibrary import config as _config  # noqa: E402
+
 settings = _config.get_settings()
 assert settings.db_url.startswith("sqlite"), f"NOT ISOLATED: {settings.db_url}"
 
-from mylibrary import usage as usage_mod, directive as directive_mod  # noqa: E402
-from mylibrary import archetype as archetype_mod, reveal as reveal_mod  # noqa: E402
+from gen_parity_fixtures import load_seed  # noqa: E402
+
+from mylibrary import archetype as archetype_mod  # noqa: E402
+from mylibrary import catalog as catalog_mod  # noqa: E402
+from mylibrary import directive as directive_mod  # noqa: E402
 from mylibrary import profile as profile_mod  # noqa: E402
-from mylibrary import recommend as recommend_mod, catalog as catalog_mod  # noqa: E402
+from mylibrary import recommend as recommend_mod  # noqa: E402
+from mylibrary import reveal as reveal_mod  # noqa: E402
+from mylibrary import usage as usage_mod  # noqa: E402
 from mylibrary.db import init_db  # noqa: E402
-from gen_parity_fixtures import SEED, load_seed  # noqa: E402
 
 # gen_parity_fixtures has its own import-time isolation preamble: it sets a
 # placeholder ANTHROPIC_API_KEY then pops it (so ITS "empty stage" fixture records
@@ -71,15 +83,67 @@ _real_get_json = catalog_mod._get_json
 catalog_http: dict[str, dict] = {}
 
 
+def _scrub_url(url: str) -> str:
+    """Strip the Google Books API key from a URL before it is recorded.
+
+    Two reasons this must happen. It keeps a live credential out of the committed
+    fixture, and it makes the recorded key match what NODE requests: the Vitest
+    env sets no GOOGLE_BOOKS_API_KEY, so catalog.ts builds the keyless URL. The
+    `key` param is always appended last (QueryParams.set), so removing it leaves
+    the exact keyless form byte-for-byte.
+    """
+    return re.sub(r"&key=[^&]*", "", url)
+
+
 def _recording_get_json(url, *, use_cache=True):
     data = _real_get_json(url, use_cache=use_cache)
     # _get_json collapses 404, network failure and non-JSON all to None. Replaying
     # any of them as a 404 reproduces the same None on the Node side.
-    catalog_http[url] = {"status": 200, "body": data} if data is not None else {"status": 404}
+    catalog_http[_scrub_url(url)] = (
+        {"status": 200, "body": data} if data is not None else {"status": 404}
+    )
     return data
 
 
 catalog_mod._get_json = _recording_get_json
+
+
+def _assert_catalog_recording_is_usable() -> None:
+    """Abort rather than commit a fixture whose retrieval half silently failed.
+
+    `_get_json` swallows every failure into None, so a rate-limited or offline run
+    still produces a complete-looking recommend-http.json -- one where a whole
+    catalog source contributed zero candidates and the parity test proves much less
+    than it appears to. Requiring at least one success per host makes that loud.
+    """
+    from urllib.parse import urlparse
+
+    by_host: dict[str, list[int]] = {}
+    for url, entry in catalog_http.items():
+        by_host.setdefault(urlparse(url).netloc, []).append(entry["status"])
+    if not by_host:
+        raise SystemExit("no catalog traffic recorded -- did the recommend scenarios run?")
+
+    for host, statuses in sorted(by_host.items()):
+        ok = statuses.count(200)
+        print(f"  {host}: {ok}/{len(statuses)} returned data")
+        if ok == 0:
+            raise SystemExit(
+                f"\nEVERY request to {host} came back empty, so the recorded fixture\n"
+                "would contain none of its candidates and the Node parity test would\n"
+                "silently cover only the other source.\n"
+                "  - googleapis.com: set a real GOOGLE_BOOKS_API_KEY in .env. Keyless\n"
+                "    requests get 429 off a shared anonymous quota. The key is stripped\n"
+                "    from every recorded URL, so it never reaches the fixture.\n"
+                "  - openlibrary.org: likely offline or rate limited; retry later.\n"
+                "Nothing was written."
+            )
+
+
+def _assert_no_credentials(text: str) -> None:
+    """Belt-and-braces: never write a fixture that carries an API key."""
+    if "key=" in text or "AIza" in text:
+        raise SystemExit("refusing to write: recorded URLs still carry an API key")
 
 OUT = Path("frontend/lib/server/__tests__/fixtures/claude")
 
@@ -215,11 +279,14 @@ def main() -> None:
         out_prompts[name] = captured[take]
         if LIVE:
             out_responses[name] = captured[take].pop("response")
+    print("catalog traffic recorded:")
+    _assert_catalog_recording_is_usable()
+    catalog_json = json.dumps(catalog_http, indent=1, ensure_ascii=False)
+    _assert_no_credentials(catalog_json)
+
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "prompts.json").write_text(json.dumps(out_prompts, indent=1, ensure_ascii=False))
-    (OUT / "recommend-http.json").write_text(
-        json.dumps(catalog_http, indent=1, ensure_ascii=False)
-    )
+    (OUT / "recommend-http.json").write_text(catalog_json)
     if LIVE:
         (OUT / "responses.json").write_text(json.dumps(out_responses, indent=1, ensure_ascii=False))
     print("wrote", OUT / "prompts.json", "scenarios:", list(out_prompts))
