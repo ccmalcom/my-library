@@ -67,9 +67,19 @@ snapshots live catalog data, and Google Books re-ranking moves roughly one candi
 sixty. That is fine: the parity test proves Node reproduces whatever was recorded, not
 one specific candidate list.
 
-Wave 3c-2 (`/books/{id}/similar`, which must also reproduce Python's 15/minute rate
-limit) and 3c-3 (`/discover`) are next — both consume 3c-1's retrieval core unchanged.
-Then wave 4 (jobs + imports) and wave 5 (admin + cutover).
+Wave 3c-2 shipped `POST /books/{id}/similar`: a book-anchored signal
+(`recSignal.buildBookSignal`), two new prompts (`recSimilarPrompts.ts`), the
+`recommend_similar` orchestrator (`recSimilarRun.ts`) and the route, with Python's
+15/minute SlowAPI limit reproduced via `RATE_LIMITS.booksSimilar`. Its parity test
+replays the same `recommend-http.json`, which the generator now also records along
+the similar path — that recording is where `fillOlDescriptions` and `capPool`'s
+`length <= cap` early return are finally fixture-proven, since `/recommend`'s
+138-candidate pool trims description-less Open Library candidates before they get
+there. Three Python quirks are reproduced deliberately on this path: the series and
+fuzzy-duplicate filters are inert (`_build_book_signal` returns no `library_series`
+or `library_titles`), rejected recommendations are not excluded, and custom
+instructions do not steer it. Wave 3c-3 (`/discover`) is next, then wave 4
+(jobs + imports) and wave 5 (admin + cutover).
 Because Claude output is nondeterministic, "parity" for these flows means the _request_ is
 byte-identical: `scripts/gen_claude_fixtures.py` monkeypatches `tracked_create` to record
 real Python `create()` kwargs into `fixtures/claude/prompts.json`, and

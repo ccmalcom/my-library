@@ -44,6 +44,7 @@ describe('checkRateLimit', () => {
   it('exposes the Python parity limits', () => {
     expect(RATE_LIMITS.catalogSearch).toEqual({ limit: 30, windowSeconds: 60 });
     expect(RATE_LIMITS.enrichStart).toEqual({ limit: 5, windowSeconds: 60 });
+    expect(RATE_LIMITS.booksSimilar).toEqual({ limit: 15, windowSeconds: 60 });
   });
 });
 

@@ -22,14 +22,20 @@ export interface BackendRule {
  * Wave 1: every read is Node; writes on the same prefixes stay Python until wave 2/3.
  * Wave 2: the write routes ported in tasks 1-12 flip too. `/books` and `/directive`
  * need `exact` on their write rules because wave-3 Python routes share the same
- * prefix (`POST /books/{id}/similar`, `POST /directive/draft`).
+ * prefix (`POST /directive/draft`).
+ * Wave 3c-2: `POST /books/{id}/similar` (ephemeral "more like this") flips to Node.
  * Wave 3b: `POST /profile` and `POST /profile/update` (full and incremental re-profile) flip to Node.
  * Wave 3c-1: `POST /recommend` (the two-stage recommender) flips to Node.
  */
 export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/stats' },
   { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
-  { prefix: '/books', methods: ['POST'], exact: true }, // Load-bearing: without exact, POST /books/{id}/similar (wave-3 Claude flow) would incorrectly match this rule via prefix+method and flip to Node
+  // Wave 3c-2: `exact` dropped so POST /books/{id}/similar follows POST /books to
+  // Node. Safe because those are the ONLY two POST routes Python serves under
+  // /books (verified against mylibrary/api.py). A future Python POST /books/*
+  // route would be captured by this rule -- re-add `exact` and give it its own
+  // entry if that ever happens.
+  { prefix: '/books', methods: ['POST'] },
   { prefix: '/catalog/search' },
   { prefix: '/profile/archetype', methods: ['POST'], exact: true },
   { prefix: '/profile/reveal-lines', methods: ['POST'], exact: true },

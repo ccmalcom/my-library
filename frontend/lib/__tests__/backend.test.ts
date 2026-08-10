@@ -44,7 +44,7 @@ describe('backend switcher (method-aware)', () => {
   });
 
   test('auto: wave-3/wave-4 paths (and books/directive siblings) stay on Python', () => {
-    expect(baseFor('/books/12/similar', 'POST')).toBe(PY); // wave-3 Claude flow (wave-3c)
+    expect(baseFor('/books/12/similar', 'POST')).toBe('/api'); // wave 3c-2
     expect(baseFor('/library', 'DELETE')).toBe(PY); // wave-4 purge
     expect(baseFor('/account', 'DELETE')).toBe(PY);
   });
@@ -103,8 +103,12 @@ describe('backend switcher (method-aware)', () => {
     // Guard the exact-match rule: the recommendations group must NOT follow it to Node.
     expect(baseFor('/recommendations', 'POST')).toBe(PY);
     expect(baseFor('/recommendations/12/feedback', 'POST')).toBe(PY);
-    // still Python — 3c-2/3c-3/4/5
-    expect(baseFor('/books/12/similar', 'POST')).toBe(PY); // 3c-2
+    expect(baseFor('/books/12/similar', 'POST')).toBe('/api'); // wave 3c-2
+    // The POST /books rule is no longer `exact`; both it and its /similar child
+    // are Node, and GET/PATCH/DELETE children are unaffected.
+    expect(baseFor('/books', 'POST')).toBe('/api');
+    expect(baseFor('/books/12', 'DELETE')).toBe('/api');
+    // still Python — 3c-3/4/5
     expect(baseFor('/discover', 'POST')).toBe(PY); // 3c
     expect(baseFor('/enrich/start', 'POST')).toBe(PY); // wave 4
     expect(baseFor('/admin/users', 'GET')).toBe(PY); // wave 5

@@ -5,6 +5,7 @@ import { _setDbForTests } from '../db';
 import { RATE_LIMITS } from '../ratelimit';
 import { GET as catalogSearch } from '../../../app/api/catalog/search/route';
 import { POST as directiveDraft } from '../../../app/api/directive/draft/route';
+import { POST as booksSimilar } from '../../../app/api/books/[id]/similar/route';
 
 // Cross-cutting: finding 2 of the wave-3a final review. Both routes hand-build the
 // same corrected 429 shape by calling the shared rateLimitExceededResponse helper
@@ -74,6 +75,37 @@ describe('429 rate-limit response shape, driven through the real routes', () => 
         );
       }
       await assertCorrected429(last!);
+    } finally {
+      _setDbForTests(null);
+      await close();
+    }
+  });
+
+  it('POST /api/books/[id]/similar returns the corrected body once the 15/minute limit is exceeded', async () => {
+    silenceLogs();
+    const { db, close } = await makeTestDb();
+    try {
+      expect(RATE_LIMITS.booksSimilar).toEqual({ limit: 15, windowSeconds: 60 });
+      _setDbForTests(db);
+      let last: Response | undefined;
+      for (let i = 0; i < RATE_LIMITS.booksSimilar.limit + 1; i++) {
+        // A book id that does not exist, against an unseeded database: the rate
+        // limit is checked BEFORE the ownership 404 (FastAPI validates the body,
+        // then slowapi's decorator runs, then the handler body), so each of these
+        // consumes a slot and none of them reaches the catalog or Claude.
+        last = await booksSimilar(
+          new Request('http://test/api/books/999/similar', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ n: 8 }),
+          }),
+          { params: Promise.resolve({ id: '999' }) }
+        );
+      }
+      expect(last!.status).toBe(429);
+      expect(await last!.json()).toEqual({ error: 'Rate limit exceeded: 15 per 1 minute' });
+      expect(last!.headers.get('content-type')).toBe('application/json');
+      expect(last!.headers.get('retry-after')).toBeNull();
     } finally {
       _setDbForTests(null);
       await close();
