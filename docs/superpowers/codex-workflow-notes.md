@@ -5,8 +5,8 @@ token spend onto the ChatGPT subscription, keep Claude on judgement, and get two
 on the output. Refine this as we go; graduate settled lessons into the global CLAUDE.md and the
 repo's `Claude / Codex split` section.
 
-**Status:** one full cycle complete — wave 4a inventory → plan → execution, 2026-08-10. 17 Codex
-jobs in this repo.
+**Status:** two full cycles complete — wave 4a (2026-08-10) and wave 4b (2026-08-11). 4b is the
+first wave to end **live-verified** rather than "implementation-complete, LIVE-UNVERIFIED".
 
 **This file is the narrative log.** The operational distillation lives in
 `codex-prompt-templates.md` — tested prompts for the three Codex roles, a standing-rules block,
@@ -433,20 +433,29 @@ Goodreads and `5` everywhere else.
   convention of existing tests. All 13 referenced schema columns verified to exist; zero defects
   this pass. **So test code is a second-prompt problem, not a Codex capability limit.** Ask for it
   explicitly; don't assume the template implies it.
-- **Does the two-model split catch things a single model wouldn't?** So far the errors Claude
-  caught were verifiable-against-repo facts, not judgement calls — which suggests the value is
-  *verification against ground truth*, not model diversity per se. Worth watching whether that
-  holds.
-- **Verification honesty held up — keep watching it.** The execution session recorded
-  "implementation-complete but LIVE-UNVERIFIED" and enumerated what remained unproven instead of
-  reporting done. That is the behavior this workflow most needs and most easily loses. Wave 4a's
-  live purge checks are still outstanding (deferred to Chase post-merge), so the plan's "Done when"
-  criteria are formally unmet.
-- **Review-gate value — still unanswered after a full wave.** The plan's header instructed enabling
-  it, but `setup --json` now reports `reviewGateEnabled: false` and the execution session logged no
-  gate findings, so it was either never switched on or switched off without being exercised. Not
-  guessing which. **Next wave: turn it on, and log whether it fires, what it says, and whether it
-  overlaps `on_stop.py`.** Until then treat "the gate helps" as untested.
+- **Does the two-model split catch things a single model wouldn't?** **Wave 4b is the first real
+  evidence, and it points at genuine two-way catching rather than one-way review.** Codex caught
+  *Claude's* wrong expected-red count and *Claude's* arithmetic, and reported three unprompted plan
+  deviations; Claude caught Codex's three confident-but-wrong attributions. Neither direction was
+  redundant. **But the underlying mechanism still looks like verification, not model diversity** —
+  in nearly every case the catch came from one side actually running something the other had only
+  reasoned about. Provisional read: the value is *two independent parties who each run things*, and
+  the model difference is incidental. Still worth watching.
+- **Verification honesty — held two waves running, and 4b raised the bar.** Both sessions refused
+  to over-claim on a fully green suite and enumerated what remained unproven. 4b then went further
+  and actually ran the live pass, which found evidence no fixture could produce (byte-identical
+  export against a shared live DB with non-ASCII rows). It still declined to claim the one thing it
+  could not observe — that a human clicking Download gets a usable file — because a programmatic
+  blob download doesn't persist under automation. **That is the exact behavior to protect.** Keep
+  watching it: a green suite is the moment over-claiming is easiest, and 4a's live purge checks
+  remain outstanding.
+- **Review-gate value — half answered.** It is now confirmed *switchable on*
+  (`reviewGateEnabled: true` during 4b), which settles last wave's question. But **no gate firing
+  was ever logged** across thirteen dispatches, so whether it blocks anything real, and whether it
+  duplicates `on_stop.py`, is still unknown. Note the contrast: `on_stop.py` demonstrably earned
+  its place this wave — it, not the gate and not Codex's self-report, caught the broken `tsc`.
+  **Next wave: log every gate invocation and its verdict, or conclude it isn't firing and turn it
+  off.**
 - **`/codex:transfer`** — untested. Intended as the `/compact` replacement when remaining work is
   mechanical.
 - **Quota ceiling.** No visibility yet into how fast the $20 ChatGPT tier burns down under this

@@ -22,7 +22,21 @@ does not exist.
 
 Do not run git commit, cherry-pick, merge, push, or deploy. Chase does all of those by hand.
 Run `npx prettier --write` only on files you touched. Never format the repo.
+
+Always use `git --no-pager` or prefix with `GIT_PAGER=cat`. A paged git command hangs your shell.
+
+You cannot run these — do not try, and report the blocker instead of inventing a result:
+  - `npm install` (no network in your sandbox)
+  - anything importing FastAPI's `TestClient` — which `tests/conftest.py` does, so the ENTIRE
+    pytest suite is off-limits to you, not just the API tests
+  - `scripts/gen_parity_fixtures.py` and any other fixture recorder
+Claude runs those. If a step needs one, say so and stop; never fabricate a golden value.
 ```
+
+**Budget your task to ~10 minutes of wall clock, including Codex's own exploration.** `--background`
+is a Claude-side flag that never reaches `task` (`commands/rescue.md:19`) — the underlying job runs
+foreground with a hard cap. Prefer several narrow dispatches over one broad one. After any killed
+run, check `git status`: **applied file changes are not rolled back.**
 
 The "unverified sketch" paragraph earned its place — Codex reported unprompted, correct deviations
 on all three execution tasks. **But note the asymmetry it creates:** it primes Codex to expect plan
@@ -127,6 +141,17 @@ Execute Task [N] of [PLAN PATH] exactly as written. Read the plan's Global Const
 
 [standing rules block]
 
+VERIFICATION — run ALL of these, regardless of what the task step lists:
+  npx vitest run [relevant files]
+  npm run type-check
+  npx eslint [files you touched]
+  npx prettier --write [files you touched]
+
+Expected to be RED before your fix, by test name: [name them individually].
+
+If the task tells you to edit something you cannot find, do NOT invent the edit and do NOT silently
+skip it. Locate it, and if it genuinely is not there, say so plainly and stop.
+
 When done, report: files touched, commands run with their actual output, and any place the plan
 disagreed with the real repo.
 ```
@@ -134,6 +159,49 @@ disagreed with the real repo.
 Do **not** explore the repo before delegating. Hand it the task text as written — Codex does its
 own exploration, and Claude reading files first is exactly the token spend this workflow exists to
 avoid.
+
+Three rules in that block were paid for in wave 4b:
+
+- **Codex runs the commands you list and no others.** An unlisted gate is out of scope, not
+  forgotten. `type-check` and `lint` appeared only in the plan's final task, so Task 1 shipped green
+  tests and a broken `tsc` **twice** — caught by `on_stop.py`, not by the task or Codex's report.
+  Deferring type-check to the last task means errors pile up silently and land on the task least
+  able to attribute them.
+- **State expected-red by test NAME, never by count.** "Expect exactly 2 failures" was wrong (the
+  real number was 4, because `/export` is three cases). Codex caught it. A count drifts with test
+  topology, and a wrong one teaches the executor to ignore the gate.
+- **Allow for the thing not being there.** Told to fix `/ingest` wording in a doc where a grep found
+  nothing, asking Codex to *locate it and report plainly if absent* surfaced the real wording that
+  the grep pattern had missed — instead of an invented edit or a silent skip.
+
+---
+
+## 3b. Techniques that actually find defects
+
+Wave 4b turned up **six plan defects and four helper-level divergences. Every one was found by
+running something; not one by reading code.** Ranked by yield:
+
+1. **Differential-test the port against the original.** Run the ported helper and its Python
+   counterpart over a shared input matrix and diff the outputs. This found four `import-csv.ts`
+   divergences (unpadded dates, mixed date separators, hex/octal/binary literals, underscore
+   separators) that **11 passing hand-written tests had missed**, and separately proved a JSON
+   escaper byte-identical to `json.dumps` across 22 cases. Mechanical, cheap, and it doesn't
+   depend on guessing which cases matter — which is exactly what hand-written tests get wrong.
+2. **Probe the live app for every error body the task must reproduce, before dispatching.** This
+   caught an invented 422 and an unstated error precedence. A plan's error *strings* are
+   transcriptions; its error *ordering* is usually never written down at all.
+3. **Run the actual library when the plan asserts its byte-level output.** A CPython check found a
+   wrong golden in two places before any code existed.
+4. **When a port has a live original, diff both against one shared database.** In 4b's live pass,
+   Python's `export_csv` and `json.dumps(export_json(...), indent=2)` were run against the same
+   container the Node route had just served and came out **byte-identical in both formats** — with
+   real non-ASCII rows that the ASCII-only `seed.json` fixtures could never have exercised. This
+   beats any fixture: no recording step, no masking.
+
+**The corollary is the actual rule: a green suite proves the specified cases work, not that the
+port is faithful.** Every 4b defect lived in an input shape the test file could not express — a
+zero-data-row CSV, an unpadded date, a hex-looking cell, a non-ASCII title. When reviewing a port,
+ask what the tests *cannot* say, then go measure that.
 
 ---
 
@@ -152,7 +220,16 @@ Run this on every returned task. This is where the workflow's errors actually ge
 - [ ] **Never propagate an unverified review finding into later prompts.** That false FK finding
       got fed into two subsequent task prompts as established fact. Propagation is efficient when
       right and contaminating when wrong.
+- [ ] **Codex's observations are reliable; its attributions need checking.** Three separate wave-4b
+      incidents followed this exact shape — a real observation, a confident and plausible *wrong*
+      conclusion. A job reported `gen_parity_fixtures.py` "did not complete after roughly ten
+      minutes"; the generator runs in **1.8 seconds** — a paged `git diff` had hung the shell and
+      eaten the budget. Treat this as the default expectation: **when a run reports "X is broken/too
+      slow", verify X directly before believing it.**
 - [ ] **Re-run verification independently.** Don't accept the job's own report that tests passed.
+      Green tests are not proof of a correct primitive: a `context.columns` property that does not
+      exist on csv-parse's `InfoRecord` was `undefined` at runtime, silently took a fallback path,
+      and shipped a passing suite with a wrong helper.
 - [ ] **Re-review anything Codex added beyond what you asked for.** The additions are usually good,
       but they're the parts nobody specified and therefore nobody checked. Wave 4a's unrequested
       header block introduced a naming inconsistency.

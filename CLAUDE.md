@@ -180,6 +180,27 @@ Rules:
   returned 0, while this schema declares its only foreign key via Drizzle's table-level
   `foreignKey({...})` form at `schema.ts:146-151`. And never propagate an unverified review finding
   into later task prompts — propagation is efficient when right and contaminating when wrong.
+- **Budget every Codex task to ~10 minutes**, including its own exploration. `--background` is a
+  Claude-side flag that never reaches `task`, so the job runs foreground under a hard cap. Prefer
+  several narrow dispatches to one broad one, and run `git status` after any killed run — applied
+  file changes are **not** rolled back.
+- **Codex cannot run the pytest suite at all.** `tests/conftest.py` imports FastAPI's `TestClient`,
+  which hangs its sandbox, so the whole suite is off-limits — not just the API tests. It also cannot
+  `npm install` (no network) or run the fixture recorders. Claude does those. Say so in the prompt:
+  an unrunnable command silently eats minutes of the budget. Always pass `GIT_PAGER=cat` or
+  `git --no-pager`; a paged git command hangs the shell.
+- **Name every gate in every task prompt.** Codex runs the commands you list and no others — an
+  unlisted gate is out of scope, not forgotten. Add `npm run type-check` and `npx eslint <touched>`
+  to each dispatch regardless of what the plan's step says; wave 4b's Task 1 shipped green tests and
+  a broken `tsc` twice because they only appeared in the final task. State expected-red by test
+  **name**, never by count.
+- **Codex's observations are reliable; its attributions need checking.** When a run reports "X is
+  broken / too slow", verify X directly before believing it. A job blamed a fixture generator for a
+  ten-minute timeout; the generator runs in 1.8 seconds and a paged `git diff` had hung the shell.
+- **A green suite proves the specified cases work, not that a port is faithful.** Prefer
+  differential testing — run the port and the Python original over a shared input matrix and diff.
+  That found four `import-csv.ts` divergences 11 passing hand-written tests had missed. When a live
+  original exists, diff both against one shared database; it beats any fixture.
 - **Ask for test bodies explicitly** when commissioning a plan. Codex reliably writes complete
   implementation code and reduces test code to prose-in-comments. It is a second-prompt problem,
   not a capability limit — asking directly fixes it entirely.
