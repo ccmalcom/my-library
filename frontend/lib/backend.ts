@@ -67,6 +67,8 @@ export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/import/preview', methods: ['POST'], exact: true },
   { prefix: '/import', methods: ['POST'], exact: true },
   { prefix: '/export', methods: ['GET'], exact: true },
+  // Wave 4c-1: synchronous compatibility enrichment only. Background job routes stay Python.
+  { prefix: '/enrich', methods: ['POST'], exact: true },
 ];
 
 /** Routes that only exist on the Node backend. */

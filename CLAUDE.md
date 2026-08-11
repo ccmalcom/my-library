@@ -105,10 +105,39 @@ finish before the request's single transaction; `importRows` opens none, and upd
 `app_rating`, `app_review`, or `feedback_updated_at`. JSON backup bytes use `pyJsonDumpsIndented`
 to reproduce Python `json.dumps(..., indent=2, ensure_ascii=True)`: lowercase escapes for every
 code unit from U+007F upward, UTF-16 surrogate pairs, and no trailing newline; the existing compact,
-Unicode-preserving `pyJsonDumps` is not interchangeable. Wave 4c enrichment jobs remain
-**blocked on an architecture decision**: Python gets detached work two ways (in-process
-FastAPI `BackgroundTasks` and Redis/arq), and Vercel has neither. `/discover` is not a precedent —
-it completes inside one HTTP request. The options are `waitUntil`, a cron-driven poller, Redis
+Unicode-preserving `pyJsonDumps` is not interchangeable. Wave 4c was split to unblock it. Wave 4c-1
+shipped the **synchronous enrichment core only**: `enrichment.ts` (selection, `resolveOne`,
+`scoreCandidates`, `persistResolution`, `enrichLibrary`), enrichment wrappers plus per-run HTTP
+statistics in `catalog.ts`, `serializeResolutionConfidence` in `serialize.ts`, and authenticated
+blocking `POST /enrich`, flipped to Node with `{ prefix: '/enrich', methods: ['POST'], exact: true }`.
+The `exact` flag is load-bearing: it keeps `/enrich/start`, `/enrich/status/{job_id}`, and every
+other job path on Python, where they have no Node handler. Enrichment reuses `similarity.ts`'s
+`titleSim`/`STRONG_SIM` and `dedup.ts`'s `normalizeTitle`/`surname` rather than re-porting them,
+and `effectiveRating` comes from `serialize.ts`; only `searchTitle` (`_search_title`) was new.
+Four Python quirks are reproduced deliberately: any nonempty ISBN result is HIGH with no title,
+author, or ISBN verification; the `0.60` weak threshold is inert (both its branch and the
+fallthrough return LOW); an Open Library LOW beats a numerically better Google LOW because scores
+are never compared across catalogs; and a resolved upsert is replacement, not fill-blanks — no
+candidate carries `series`/`series_position`, so both are always overwritten with NULL. Internal
+`NONE` is never stored: unresolved persists `LOW`/`0.0`/`unresolved` and touches only those fields
+plus the timestamp, leaving stale resolved metadata in place. Per-book `db.transaction` is
+required (Python commits per book so an interrupted run keeps its work); progress fires only after
+that commit. One URL is NOT `URLSearchParams`-encodable: Python builds the Open Library ISBN
+lookup with an f-string, so the colon stays raw (`bibkeys=ISBN:978…`) while the other three
+enrichment URLs go through `httpx.QueryParams` and do percent-encode. Two accepted divergences:
+Zod rejects Pydantic's lax coercions (`limit: "3"`, `force: "yes"` are 422 on Node, coerced on
+Python), and unknown body keys are ignored on both because `EnrichRequest.model_config` is empty.
+`gen_catalog_fixtures.py` now records a real seven-book `enrich_library()` run covering all five
+match methods plus a skip; its seeds were chosen by probing live catalogs, because popular titles
+resolve on Open Library first (never reaching `isbn:googlebooks`) and Google's near-duplicate
+editions trip the ambiguity rule (never reaching `search:googlebooks`). The parity test compares
+recorded URLs as sorted multisets, not sequences — neither runtime specifies book order, since
+there is no `ORDER BY`.
+**Wave 4c-2 is still blocked on the same architecture decision** and owns every background/job
+item: `POST /enrich/start`, `GET /enrich/status/{job_id}`, `enrich_jobs`, leases, tick endpoints,
+and job rate limits. Python gets detached work two ways (in-process FastAPI `BackgroundTasks` and
+Redis/arq), and Vercel has neither. `/discover` is not a precedent — it completes inside one HTTP
+request. The options are `waitUntil`, a cron-driven poller, Redis
 plus an external worker, or leaving enrichment on Python through cutover; do not add queue
 architecture in wave 4c. Note that the earlier
 plans assigned purge to wave 4 while `wave-3-verification.md:172` recommended deferring it to

@@ -19,3 +19,9 @@ lib/server/__tests__/fixtures/claude/
 # write-scenarios.json have never been Prettier-clean on any commit, so the
 # stop-time `prettier --check` fired the moment a re-record touched them.
 lib/server/__tests__/fixtures/parity/
+
+# And the catalog fixtures, written by scripts/gen_catalog_fixtures.py with the
+# same json.dumps(indent=1). Missed for the same reason as parity/ above:
+# expected.json and http.json have never been Prettier-clean on any commit, so
+# nothing complained until wave 4c-1's re-record made them dirty.
+lib/server/__tests__/fixtures/catalog/

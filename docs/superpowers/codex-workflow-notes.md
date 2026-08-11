@@ -417,6 +417,101 @@ correct: `formats.py:86` uses `parse_int(...) or 0` for Goodreads (truncating vi
 while the other three parsers use half-up `parse_rating`, so `4.9` really does become `4` in
 Goodreads and `5` everywhere else.
 
+## Wave 4c planning session (2026-08-11)
+
+### The review gate fires — first direct observation
+
+`status` now shows short gate jobs interleaved with real ones, each 4–7 seconds, with verdicts like
+`ALLOW: The previous Claude turn was only a status check` and `ALLOW: Previous turn only edited a
+design specification`. So after two waves of "was it ever actually on?", the answer is **yes, it
+runs, it is fast, and it correctly no-ops on non-code turns.**
+
+What is still unanswered is the part that matters: **it has not yet been observed BLOCKing anything,
+or saying something `on_stop.py` would not have caught.** Every verdict so far is an ALLOW on a
+turn that edited documentation. Judge it during a 4c *execution* session, where turns actually
+produce code. Two practical notes: the gate jobs pollute `status` output (filter out summaries
+starting `ALLOW:`/`BLOCK:` when hunting for a real job), and they consume quota on every
+edit-producing turn, which is the cost side of the ledger.
+
+### An inventory that found dead code — and why that mattered more than the summary
+
+The 4c-1 inventory (1,028 lines) was asked for "the COMPLETE HIGH/MEDIUM/LOW rule set as an
+exhaustive condition list rather than a summary." Asking for exhaustiveness instead of a description
+is what surfaced this, in `mylibrary/enrich.py`:
+
+```python
+if best_sim >= _WEAK_SIM:
+    return best, "LOW"
+return best, "LOW"
+```
+
+**Both branches return LOW**, so the 0.60 weak threshold has no effect on output. Verified against
+source before believing it. A second finding from the same deliverable: `_resolve_one` returns HIGH
+the instant an ISBN lookup returns anything — no title-similarity, author, or ISBN-confirmation
+check. HIGH is pure ISBN trust.
+
+Neither is a bug to fix; both are behavior to reproduce. But both are exactly what a competent
+engineer "cleans up" during a port — the dead branch reads as an obvious simplification, and the
+unverified HIGH reads as a missing guard. Either edit would silently change the foundation that
+locked decision #5 rests on. **Both went into the drafting prompt as named quirks with instructions
+to keep the behavior and annotate rather than collapse.**
+
+Generalizable: **ask an inventory for exhaustive conditions, not descriptions, wherever a port must
+be behavior-identical.** A summary of scoring rules would have said "LOW when similarity is below
+the strong threshold" and the dead branch would have survived into the port as a real threshold.
+
+### The 4c-1 draft's one real defect: it planned to re-port code the repo already had
+
+931 lines, 11 tasks, zero test stubs, expected-RED stated by name with "No failure count is
+prescribed" — both wave-4b prompt lessons landed verbatim on the first try. Every constant I checked
+was right, including the two `difflib` ratios (`0.85` and `0.8`, verified against real CPython),
+`_CONF = {HIGH: 0.95, MEDIUM: 0.70, LOW: 0.30, NONE: 0.0}`, and all four normalization expectations
+traced by hand. It also volunteered five quirks I had not named — the best being that a LOW Open
+Library candidate beats a LOW Google one regardless of score, because scores are never compared
+across catalogs.
+
+**But Task 3 instructed the executor to "implement the Ratcliff/Obershelp matching-block algorithm
+used by Python `difflib.SequenceMatcher`" — which wave 3c-1 already shipped.**
+`frontend/lib/server/similarity.ts` exports `ratio()`, `STRONG_SIM`, and a `titleSim()` whose
+docstring reads *"enrich.\_title\_sim: ratio over the SUBTITLE-STRIPPED normalized titles"* — the
+exact function `_score_candidates` needs. The same task invented `normalizeEnrichmentTitle`,
+`enrichmentSurname`, and `normalizeEnrichmentFullTitle`, all three of which already exist in
+`dedup.ts` under a header saying *"Ports of mylibrary/enrich.py dedup helpers."* The plan never
+referenced either module.
+
+Unfixed, that lands a second SequenceMatcher and three duplicate normalizers in a codebase whose
+entire discipline is byte-parity — two ports of one Python function, free to drift. Fixed in place
+with a review banner on Task 3, corrected imports, repaired proof-of-fix greps (they grepped for a
+`STRONG_SIM` redeclaration that must not exist), and a new Global Constraint 23: **`rg` under
+`frontend/lib/server/` before implementing any helper.**
+
+**This is a new failure mode, and the most useful thing in this session.** Wave 4a's `DbTx` defect
+was a claim about the repo that was false. This is the opposite: everything the draft said about
+*Python* was true, and it simply did not know what the *Node* side already contained. An inventory
+scoped to "port X" naturally asks what X does, not what has already been ported of it — and I
+reinforced that by scoping deliverable 7 to `catalog.ts`/`catalogCache.ts` specifically, which
+is exactly where I told it to look and therefore the only place it looked.
+
+**Prompt fix for the next inventory:** add a standing deliverable — *"list every Python function in
+scope that ALREADY has a Node port, with its module and exported name."* Phrased as a search across
+`frontend/lib/server/`, not as a question about the named modules. Cheap to ask, and it converts the
+most expensive class of port defect into a table.
+
+### Design work is Claude's, and it changed the wave
+
+The 4c architecture was a genuine design decision, not a port, so it ran through brainstorming
+rather than delegation: Railway is being fully decommissioned (which eliminated "leave it on
+Python"), Vercel is on Hobby (which eliminated cron-driven chunking), and enrichment's existing
+idempotency made chunk-and-resume nearly free. The result — self-chaining with poll-repair and a
+daily janitor — is written up in `docs/superpowers/specs/2026-08-11-wave-4c-enrichment-design.md`.
+
+Two things worth carrying forward from it. First, **the spec records a deliberate divergence from
+Python** (Python has no guard against enrichment spam at all; chaining would make that strictly
+worse, so Node gets a DB-enforced single-active-job index). Divergences need writing down at design
+time or they read as port bugs later. Second, **wave 4c split into 4c-1 (domain risk: the resolver
+and confidence scoring) and 4c-2 (platform risk: the job mechanism)** on the same seam that worked
+for 3c — so a resolver bug and a chaining bug cannot arrive in the same diff.
+
 ## Open questions
 
 - ~~Does a Codex-drafted plan hold up to Claude-drafted quality?~~ **Answered** — yes for
@@ -449,21 +544,27 @@ Goodreads and `5` everywhere else.
   blob download doesn't persist under automation. **That is the exact behavior to protect.** Keep
   watching it: a green suite is the moment over-claiming is easiest, and 4a's live purge checks
   remain outstanding.
-- **Review-gate value — half answered.** It is now confirmed *switchable on*
-  (`reviewGateEnabled: true` during 4b), which settles last wave's question. But **no gate firing
-  was ever logged** across thirteen dispatches, so whether it blocks anything real, and whether it
-  duplicates `on_stop.py`, is still unknown. Note the contrast: `on_stop.py` demonstrably earned
-  its place this wave — it, not the gate and not Codex's self-report, caught the broken `tsc`.
-  **Next wave: log every gate invocation and its verdict, or conclude it isn't firing and turn it
-  off.**
+- **Review-gate value — firing confirmed, worth still unproven.** Two of the three sub-questions are
+  now settled: it is switchable on (`reviewGateEnabled: true` during 4b), and as of 2026-08-11 it
+  **demonstrably fires** — short 4–7s jobs interleaved in `status`, with verdicts like
+  `ALLOW: Previous turn only edited a design specification`. So it runs and it no-ops correctly on
+  non-code turns. What remains unknown is the only part that justifies the cost: **it has never been
+  observed BLOCKing, or saying anything `on_stop.py` would not have caught.** Every logged verdict
+  is an ALLOW on a documentation turn. Contrast with `on_stop.py`, which demonstrably earned its
+  place in 4b by catching the broken `tsc` that neither the gate nor Codex's self-report did.
+  **Judge it during 4c execution, where turns produce real code — if it still only ALLOWs, turn it
+  off.** Operational note: filter summaries beginning `ALLOW:`/`BLOCK:` out of `status` when hunting
+  for a real job.
 - **`/codex:transfer`** — untested. Intended as the `/compact` replacement when remaining work is
   mechanical.
 - **Quota ceiling.** No visibility yet into how fast the $20 ChatGPT tier burns down under this
   usage pattern, or what happens at the limit mid-wave.
-- **Wave 4c architecture (project-specific, but blocks the workflow test):** Vercel has no
-  equivalent of FastAPI `BackgroundTasks` or a persistent arq worker. Options are `waitUntil`, a
-  cron-driven poller, Redis + external worker, or leaving enrichment on Python through cutover.
-  Needs a decision from Chase.
+- ~~**Wave 4c architecture**~~ **Decided 2026-08-11** — see
+  `docs/superpowers/specs/2026-08-11-wave-4c-enrichment-design.md`. Chunked, resumable jobs driven
+  by self-chaining invocations, with client-poll repair and a daily janitor. Railway is fully
+  decommissioned at cutover (killing the "leave it on Python" option) and Vercel is on Hobby
+  (killing cron-driven chunking). Wave 4c splits into 4c-1 (resolver + confidence scoring) and 4c-2
+  (the job mechanism).
 
 ---
 

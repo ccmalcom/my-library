@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { makeTestDb } from './helpers/pglite';
 import { installHttpReplay } from './helpers/httpReplay';
-import { getJson, normLang, yearFromGoogle, isbn13FromGoogleItem } from '../catalog';
+import {
+  getCatalogStats,
+  getJson,
+  isbn13FromGoogleItem,
+  normLang,
+  resetCatalogStats,
+  setRate,
+  yearFromGoogle,
+} from '../catalog';
 
 let uninstall: (() => void) | undefined;
 afterEach(() => {
@@ -60,6 +68,79 @@ describe('catalog normalizers', () => {
 });
 
 describe('getJson', () => {
+  it('resetCatalogStats returns the empty Python-shaped snapshot', () => {
+    resetCatalogStats();
+    expect(getCatalogStats()).toEqual({
+      requests: 0,
+      rate_limited: 0,
+      server_errors: 0,
+      network_errors: 0,
+      retries: 0,
+      by_host: {},
+    });
+  });
+
+  it('counts attempts, retry classes, and hosts but not cache hits', async () => {
+    const { db, close } = await makeTestDb();
+    setRate(1_000_000);
+    resetCatalogStats();
+    let googleCalls = 0;
+    const oldFetch = globalThis.fetch;
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      if (url.includes('google.test')) {
+        googleCalls += 1;
+        return googleCalls === 1
+          ? new Response('{}', { status: 429, headers: { 'Retry-After': '0' } })
+          : Response.json({ ok: 'google' });
+      }
+      return new Response('{}', { status: 503 });
+    };
+    try {
+      expect(await getJson(db, 'https://google.test/a', 'googlebooks')).toEqual({ ok: 'google' });
+      expect(await getJson(db, 'https://google.test/a', 'googlebooks')).toEqual({ ok: 'google' });
+      expect(await getJson(db, 'https://openlibrary.test/b', 'openlibrary')).toBeNull();
+      expect(getCatalogStats()).toEqual({
+        requests: 4,
+        rate_limited: 1,
+        server_errors: 2,
+        network_errors: 0,
+        retries: 2,
+        by_host: {
+          'google.test': { requests: 2, rate_limited: 1 },
+          'openlibrary.test': { requests: 2, rate_limited: 0 },
+        },
+      });
+    } finally {
+      globalThis.fetch = oldFetch;
+      await close();
+    }
+  });
+
+  it('counts each caught network failure and its retry', async () => {
+    const { db, close } = await makeTestDb();
+    setRate(1_000_000);
+    resetCatalogStats();
+    const oldFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new TypeError('offline');
+    };
+    try {
+      expect(await getJson(db, 'https://network.test/a', 'test')).toBeNull();
+      expect(getCatalogStats()).toEqual({
+        requests: 2,
+        rate_limited: 0,
+        server_errors: 0,
+        network_errors: 2,
+        retries: 1,
+        by_host: { 'network.test': { requests: 2, rate_limited: 0 } },
+      });
+    } finally {
+      globalThis.fetch = oldFetch;
+      await close();
+    }
+  });
+
   it('caches a success and serves the second call from cache', async () => {
     const { db, close } = await makeTestDb();
     let calls = 0;

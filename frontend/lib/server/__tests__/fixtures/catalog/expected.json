@@ -1,6 +1,95 @@
 {
  "dune": [
   {
+   "source": "googlebooks",
+   "resolved_id": "B1hSG45JCX4C",
+   "title": "Dune",
+   "author": "Frank Herbert",
+   "subjects": [
+    "Fiction"
+   ],
+   "description": "Frank Herbert\u2019s classic masterpiece\u2014a triumph of the imagination and one of the bestselling science fiction novels of all time. Set on the desert planet Arrakis, Dune is the story of Paul Atreides\u2014who would become known as Muad'Dib\u2014and of a great family's ambition to bring to fruition humankind's most ancient and unattainable dream. A stunning blend of adventure and mysticism, environmentalism and politics, Dune won the first Nebula Award, shared the Hugo Award, and formed the basis of what is undoubtedly the grandest epic in science fiction.",
+   "cover_url": "http://books.google.com/books/content?id=B1hSG45JCX4C&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "year": 2005,
+   "language": "en",
+   "raw": {
+    "kind": "books#volume",
+    "id": "B1hSG45JCX4C",
+    "etag": "1ARaIae5mHA",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/B1hSG45JCX4C",
+    "volumeInfo": {
+     "title": "Dune",
+     "authors": [
+      "Frank Herbert"
+     ],
+     "publisher": "Penguin",
+     "publishedDate": "2005-08-02",
+     "description": "Frank Herbert\u2019s classic masterpiece\u2014a triumph of the imagination and one of the bestselling science fiction novels of all time. Set on the desert planet Arrakis, Dune is the story of Paul Atreides\u2014who would become known as Muad'Dib\u2014and of a great family's ambition to bring to fruition humankind's most ancient and unattainable dream. A stunning blend of adventure and mysticism, environmentalism and politics, Dune won the first Nebula Award, shared the Hugo Award, and formed the basis of what is undoubtedly the grandest epic in science fiction.",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_10",
+       "identifier": "0441013597"
+      },
+      {
+       "type": "ISBN_13",
+       "identifier": "9780441013593"
+      }
+     ],
+     "readingModes": {
+      "text": false,
+      "image": false
+     },
+     "pageCount": 548,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "averageRating": 4.5,
+     "ratingsCount": 25,
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "3.8.10.0.preview.0",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=B1hSG45JCX4C&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=B1hSG45JCX4C&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=B1hSG45JCX4C&printsec=frontcover&dq=dune&hl=&cd=2&source=gbs_api",
+     "infoLink": "http://books.google.com/books?id=B1hSG45JCX4C&dq=dune&hl=&source=gbs_api",
+     "canonicalVolumeLink": "https://books.google.com/books/about/Dune.html?hl=&id=B1hSG45JCX4C"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "NOT_FOR_SALE",
+     "isEbook": false
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "PARTIAL",
+     "embeddable": true,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": false
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=B1hSG45JCX4C&hl=&source=gbs_api",
+     "accessViewStatus": "SAMPLE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "Set on the desert planet Arrakis, Dune is the story of Paul Atreides\u2014who would become known as Muad&#39;Dib\u2014and of a great family&#39;s ambition to bring to fruition humankind&#39;s most ancient and unattainable dream."
+    }
+   },
+   "isbn13": "9780441013593"
+  },
+  {
    "source": "openlibrary",
    "resolved_id": "/works/OL20832265W",
    "title": "Dune",
@@ -75,91 +164,6 @@
   },
   {
    "source": "googlebooks",
-   "resolved_id": "tJzgQQAACAAJ",
-   "title": "Dune",
-   "author": "Frank Herbert",
-   "subjects": [
-    "Fiction"
-   ],
-   "description": "Frank Herbert\u2019s classic masterpiece\u2014a triumph of the imagination and one of the bestselling science fiction novels of all time. Set on the desert planet Arrakis, Dune is the story of Paul Atreides\u2014who would become known as Muad'Dib\u2014and of a great family's ambition to bring to fruition humankind's most ancient and unattainable dream. A stunning blend of adventure and mysticism, environmentalism and politics, Dune won the first Nebula Award, shared the Hugo Award, and formed the basis of what is undoubtedly the grandest epic in science fiction.",
-   "cover_url": "http://books.google.com/books/content?id=tJzgQQAACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api",
-   "year": 2003,
-   "language": "es",
-   "raw": {
-    "kind": "books#volume",
-    "id": "tJzgQQAACAAJ",
-    "etag": "5ouuLbxx+Eg",
-    "selfLink": "https://www.googleapis.com/books/v1/volumes/tJzgQQAACAAJ",
-    "volumeInfo": {
-     "title": "Dune",
-     "authors": [
-      "Frank Herbert",
-      "Domingo Santos"
-     ],
-     "publisher": "DEBOLSILLO",
-     "publishedDate": "2003-04-04",
-     "industryIdentifiers": [
-      {
-       "type": "ISBN_10",
-       "identifier": "849759682X"
-      },
-      {
-       "type": "ISBN_13",
-       "identifier": "9788497596824"
-      }
-     ],
-     "readingModes": {
-      "text": false,
-      "image": false
-     },
-     "pageCount": 704,
-     "printType": "BOOK",
-     "categories": [
-      "Fiction"
-     ],
-     "averageRating": 4,
-     "ratingsCount": 3,
-     "maturityRating": "NOT_MATURE",
-     "allowAnonLogging": false,
-     "contentVersion": "preview-1.0.0",
-     "imageLinks": {
-      "smallThumbnail": "http://books.google.com/books/content?id=tJzgQQAACAAJ&printsec=frontcover&img=1&zoom=5&source=gbs_api",
-      "thumbnail": "http://books.google.com/books/content?id=tJzgQQAACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api"
-     },
-     "language": "es",
-     "previewLink": "http://books.google.com/books?id=tJzgQQAACAAJ&dq=dune&hl=&cd=4&source=gbs_api",
-     "infoLink": "http://books.google.com/books?id=tJzgQQAACAAJ&dq=dune&hl=&source=gbs_api",
-     "canonicalVolumeLink": "https://books.google.com/books/about/Dune.html?hl=&id=tJzgQQAACAAJ"
-    },
-    "saleInfo": {
-     "country": "US",
-     "saleability": "NOT_FOR_SALE",
-     "isEbook": false
-    },
-    "accessInfo": {
-     "country": "US",
-     "viewability": "NO_PAGES",
-     "embeddable": false,
-     "publicDomain": false,
-     "textToSpeechPermission": "ALLOWED",
-     "epub": {
-      "isAvailable": false
-     },
-     "pdf": {
-      "isAvailable": false
-     },
-     "webReaderLink": "http://play.google.com/books/reader?id=tJzgQQAACAAJ&hl=&source=gbs_api",
-     "accessViewStatus": "NONE",
-     "quoteSharingAllowed": false
-    },
-    "searchInfo": {
-     "textSnippet": "Dune es una novela de ciencia ficci\u00f3n escrita por Frank Herbert en 1965. Su \u00e9xito fue rotundo; en 1966 gan\u00f3 el Premio Hugo y en 1965 la primera edici\u00f3n del Premio N\u00e9bula a la mejor novela de ciencia ficci\u00f3n."
-    }
-   },
-   "isbn13": "9788497596824"
-  },
-  {
-   "source": "googlebooks",
    "resolved_id": "0cY9AAAAIAAJ",
    "title": "Dune and Desert Folk",
    "author": "Bruce William McDaniel",
@@ -173,7 +177,7 @@
    "raw": {
     "kind": "books#volume",
     "id": "0cY9AAAAIAAJ",
-    "etag": "+542ZOgSj/I",
+    "etag": "/SDJVWTYrxQ",
     "selfLink": "https://www.googleapis.com/books/v1/volumes/0cY9AAAAIAAJ",
     "volumeInfo": {
      "title": "Dune and Desert Folk",
@@ -208,7 +212,7 @@
       "thumbnail": "http://books.google.com/books/content?id=0cY9AAAAIAAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
      },
      "language": "en",
-     "previewLink": "http://books.google.com/books?id=0cY9AAAAIAAJ&pg=PA23&dq=dune&hl=&cd=13&source=gbs_api",
+     "previewLink": "http://books.google.com/books?id=0cY9AAAAIAAJ&pg=PA23&dq=dune&hl=&cd=16&source=gbs_api",
      "infoLink": "https://play.google.com/store/books/details?id=0cY9AAAAIAAJ&source=gbs_api",
      "canonicalVolumeLink": "https://play.google.com/store/books/details?id=0cY9AAAAIAAJ"
     },
@@ -298,118 +302,6 @@
   },
   {
    "source": "googlebooks",
-   "resolved_id": "77nxEAAAQBAJ",
-   "title": "Dune: Exposures",
-   "author": "Josh Brolin",
-   "subjects": [
-    "Art"
-   ],
-   "description": "Explore the creation of Denis Villeneuve\u2019s film adaptations of Dune through this evocative fusion of actor Josh Brolin\u2019s sublime writing and cinematographer Greig Fraser\u2019s intimate set photography. During the shooting of Dune: Part One and Dune: Part Two, Greig Fraser went beyond standard unit photography and documented the filming process using still photography on a variety of cameras. This led the cinematographer on an unexpected creative journey that yielded an electrifying gallery of photographs. Meanwhile, Brolin, who plays Warmaster Gurney Halleck in the two films, shares his on-set experience through his vivid, poignant writing. Brolin and Fraser developed a unique bond during production, solidifying a connection that led to this remarkable collaboration that seamlessly juxtaposes the actor\u2019s enthralling writing with the cinematographer\u2019s striking images. An exceptional new way to experience life on the set of the Dune film adaptations, this thrilling ode to the art of filmmaking from two of the most revered artists in the industry is an unmissable publishing event. STUNNING IMAGES: Curated from photos shot throughout the filming of Dune and Dune: Part Two by cinematographer Greig Fraser, this remarkable volume features his intimate images coupled with Josh Brolin\u2019s poignant writing. EXCLUSIVE CONTENT: Witness candid moments between director Denis Villeneuve and key cast members, including Timoth\u00e9e Chalamet, Rebecca Ferguson, Oscar Isaac, Josh Brolin, Zendaya, and Javier Bardem. UNPARALLELED COLLECTOR\u2019S ITEM: Singular and unprecedented, Dune: Exposures is a powerful tribute to the films that offers fans a rare and unique look into the experience of creating the movies. COMPLETE YOUR DUNE FILM COLLECTION: Dune: Exposures is the perfect companion volume to the acclaimed Insight Editions book The Art and Soul of Dune and its sequel The Art and Soul of Dune: Part Two",
-   "cover_url": "http://books.google.com/books/content?id=77nxEAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
-   "year": 2024,
-   "language": "en",
-   "raw": {
-    "kind": "books#volume",
-    "id": "77nxEAAAQBAJ",
-    "etag": "sbw4ifRNU+4",
-    "selfLink": "https://www.googleapis.com/books/v1/volumes/77nxEAAAQBAJ",
-    "volumeInfo": {
-     "title": "Dune: Exposures",
-     "authors": [
-      "Josh Brolin"
-     ],
-     "publisher": "Simon and Schuster",
-     "publishedDate": "2024-02-13",
-     "description": "Explore the creation of Denis Villeneuve\u2019s film adaptations of Dune through this evocative fusion of actor Josh Brolin\u2019s sublime writing and cinematographer Greig Fraser\u2019s intimate set photography. During the shooting of Dune: Part One and Dune: Part Two, Greig Fraser went beyond standard unit photography and documented the filming process using still photography on a variety of cameras. This led the cinematographer on an unexpected creative journey that yielded an electrifying gallery of photographs. Meanwhile, Brolin, who plays Warmaster Gurney Halleck in the two films, shares his on-set experience through his vivid, poignant writing. Brolin and Fraser developed a unique bond during production, solidifying a connection that led to this remarkable collaboration that seamlessly juxtaposes the actor\u2019s enthralling writing with the cinematographer\u2019s striking images. An exceptional new way to experience life on the set of the Dune film adaptations, this thrilling ode to the art of filmmaking from two of the most revered artists in the industry is an unmissable publishing event. STUNNING IMAGES: Curated from photos shot throughout the filming of Dune and Dune: Part Two by cinematographer Greig Fraser, this remarkable volume features his intimate images coupled with Josh Brolin\u2019s poignant writing. EXCLUSIVE CONTENT: Witness candid moments between director Denis Villeneuve and key cast members, including Timoth\u00e9e Chalamet, Rebecca Ferguson, Oscar Isaac, Josh Brolin, Zendaya, and Javier Bardem. UNPARALLELED COLLECTOR\u2019S ITEM: Singular and unprecedented, Dune: Exposures is a powerful tribute to the films that offers fans a rare and unique look into the experience of creating the movies. COMPLETE YOUR DUNE FILM COLLECTION: Dune: Exposures is the perfect companion volume to the acclaimed Insight Editions book The Art and Soul of Dune and its sequel The Art and Soul of Dune: Part Two",
-     "industryIdentifiers": [
-      {
-       "type": "ISBN_13",
-       "identifier": "9781647229276"
-      },
-      {
-       "type": "ISBN_10",
-       "identifier": "1647229278"
-      }
-     ],
-     "readingModes": {
-      "text": true,
-      "image": true
-     },
-     "pageCount": 208,
-     "printType": "BOOK",
-     "categories": [
-      "Art"
-     ],
-     "maturityRating": "NOT_MATURE",
-     "allowAnonLogging": true,
-     "contentVersion": "1.2.1.0.preview.3",
-     "panelizationSummary": {
-      "containsEpubBubbles": false,
-      "containsImageBubbles": false
-     },
-     "imageLinks": {
-      "smallThumbnail": "http://books.google.com/books/content?id=77nxEAAAQBAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
-      "thumbnail": "http://books.google.com/books/content?id=77nxEAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
-     },
-     "language": "en",
-     "previewLink": "http://books.google.com/books?id=77nxEAAAQBAJ&printsec=frontcover&dq=dune&hl=&cd=17&source=gbs_api",
-     "infoLink": "https://play.google.com/store/books/details?id=77nxEAAAQBAJ&source=gbs_api",
-     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=77nxEAAAQBAJ"
-    },
-    "saleInfo": {
-     "country": "US",
-     "saleability": "FOR_SALE",
-     "isEbook": true,
-     "listPrice": {
-      "amount": 18.99,
-      "currencyCode": "USD"
-     },
-     "retailPrice": {
-      "amount": 18.99,
-      "currencyCode": "USD"
-     },
-     "buyLink": "https://play.google.com/store/books/details?id=77nxEAAAQBAJ&rdid=book-77nxEAAAQBAJ&rdot=1&source=gbs_api",
-     "offers": [
-      {
-       "finskyOfferType": 1,
-       "listPrice": {
-        "amountInMicros": 18990000,
-        "currencyCode": "USD"
-       },
-       "retailPrice": {
-        "amountInMicros": 18990000,
-        "currencyCode": "USD"
-       },
-       "giftable": true
-      }
-     ]
-    },
-    "accessInfo": {
-     "country": "US",
-     "viewability": "PARTIAL",
-     "embeddable": true,
-     "publicDomain": false,
-     "textToSpeechPermission": "ALLOWED_FOR_ACCESSIBILITY",
-     "epub": {
-      "isAvailable": true,
-      "acsTokenLink": "http://books.google.com/books/download/Dune_Exposures-sample-epub.acsm?id=77nxEAAAQBAJ&format=epub&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
-     },
-     "pdf": {
-      "isAvailable": true,
-      "acsTokenLink": "http://books.google.com/books/download/Dune_Exposures-sample-pdf.acsm?id=77nxEAAAQBAJ&format=pdf&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
-     },
-     "webReaderLink": "http://play.google.com/books/reader?id=77nxEAAAQBAJ&hl=&source=gbs_api",
-     "accessViewStatus": "SAMPLE",
-     "quoteSharingAllowed": false
-    },
-    "searchInfo": {
-     "textSnippet": "STUNNING IMAGES: Curated from photos shot throughout the filming of Dune and Dune: Part Two by cinematographer Greig Fraser, this remarkable volume features his intimate images coupled with Josh Brolin\u2019s poignant writing."
-    }
-   },
-   "isbn13": "9781647229276"
-  },
-  {
-   "source": "googlebooks",
    "resolved_id": "nriEi9MPlswC",
    "title": "Dune: House Atreides",
    "author": "Brian Herbert",
@@ -423,7 +315,7 @@
    "raw": {
     "kind": "books#volume",
     "id": "nriEi9MPlswC",
-    "etag": "qGDsBKm/vNQ",
+    "etag": "EhMnFWEBB08",
     "selfLink": "https://www.googleapis.com/books/v1/volumes/nriEi9MPlswC",
     "volumeInfo": {
      "title": "Dune: House Atreides",
@@ -474,11 +366,11 @@
      "saleability": "FOR_SALE",
      "isEbook": true,
      "listPrice": {
-      "amount": 8.99,
+      "amount": 1.99,
       "currencyCode": "USD"
      },
      "retailPrice": {
-      "amount": 8.99,
+      "amount": 1.99,
       "currencyCode": "USD"
      },
      "buyLink": "https://play.google.com/store/books/details?id=nriEi9MPlswC&rdid=book-nriEi9MPlswC&rdot=1&source=gbs_api",
@@ -486,11 +378,11 @@
       {
        "finskyOfferType": 1,
        "listPrice": {
-        "amountInMicros": 8990000,
+        "amountInMicros": 1990000,
         "currencyCode": "USD"
        },
        "retailPrice": {
-        "amountInMicros": 8990000,
+        "amountInMicros": 1990000,
         "currencyCode": "USD"
        },
        "giftable": true
@@ -523,66 +415,66 @@
   },
   {
    "source": "googlebooks",
-   "resolved_id": "--8cBYaNlA4C",
-   "title": "Dune: House Corrino",
+   "resolved_id": "1N1rTDJP55UC",
+   "title": "Dune: House Harkonnen",
    "author": "Brian Herbert",
    "subjects": [
     "Fiction"
    ],
-   "description": "Book Three of the Epic Prequel to the Classic Novel Dune\u2014Soon to Be a Major Motion Picture The grand finale of the complex epic trilogy of the generation before Frank Herbert\u2019s masterwork Dune. Shaddam Corrino IV, Emperor of the Known Universe, has risked everything to create a substitute for the spice melange . . . The substance that makes space travel possible . . . That prolongs life . . . That allows prescience . . . A substance that is found only on the desert planet Arrakis, a harsh world of storms and monstrous sandworms. Shaddam has used the noble houses as chess pieces for his scheme, causing the overthrow of powerful families, raising other houses to power. The Bene Gesserit Sisterhood works their own plans, manipulating bloodlines, trying to create their long-awaited messiah, the Kwisatz Haderach. Duke Leto Atreides battles his mortal enemy, Baron Vladimir Harkonnen, while his love for the beautiful and wise Jessica grows even in the face of bloodshed and betrayal. But are they all just pawns of an inevitable future centered around the planet Dune? Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO",
-   "cover_url": "http://books.google.com/books/content?id=--8cBYaNlA4C&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
-   "year": 2002,
+   "description": "Book Two of the Epic Prequel to the Classic Novel Dune\u2014A Major Motion Picture Sequel to the international bestseller Dune: House Atreides Before Dune . . . The epic tale of Duke Leto Atreides and his rise to power . . . The fierce ambitions of his mortal enemy, Baron Vladimir Harkonnen . . . The struggles of the young girl Jessica, the Baron\u2019s secret daughter, under the harsh training of the Sisterhood school . . . The schemes of Shaddam Corrino to create a synthetic spice that may bring unlimited wealth, or cause the collapse of the Spacing Guild . . . And the implausible dream of Planetologist Kynes to turn the desert planet Dune into a paradise, uniting the desperate Fremen into a force unlike anything the Imperium has ever seen . . . Dune: House Harkonnen continues the epic story that lays the foundation for Frank Herbert\u2019s masterpiece Dune, a complex tale of politics, religion, and the rise and fall of dynasties on a galaxy-spanning canvas. Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO",
+   "cover_url": "http://books.google.com/books/content?id=1N1rTDJP55UC&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "year": 2003,
    "language": "en",
    "raw": {
     "kind": "books#volume",
-    "id": "--8cBYaNlA4C",
-    "etag": "ffEyYg63XpE",
-    "selfLink": "https://www.googleapis.com/books/v1/volumes/--8cBYaNlA4C",
+    "id": "1N1rTDJP55UC",
+    "etag": "Pf3cHazssTg",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/1N1rTDJP55UC",
     "volumeInfo": {
-     "title": "Dune: House Corrino",
+     "title": "Dune: House Harkonnen",
      "authors": [
       "Brian Herbert",
       "Kevin J. Anderson"
      ],
      "publisher": "Spectra",
-     "publishedDate": "2002-08-27",
-     "description": "Book Three of the Epic Prequel to the Classic Novel Dune\u2014Soon to Be a Major Motion Picture The grand finale of the complex epic trilogy of the generation before Frank Herbert\u2019s masterwork Dune. Shaddam Corrino IV, Emperor of the Known Universe, has risked everything to create a substitute for the spice melange . . . The substance that makes space travel possible . . . That prolongs life . . . That allows prescience . . . A substance that is found only on the desert planet Arrakis, a harsh world of storms and monstrous sandworms. Shaddam has used the noble houses as chess pieces for his scheme, causing the overthrow of powerful families, raising other houses to power. The Bene Gesserit Sisterhood works their own plans, manipulating bloodlines, trying to create their long-awaited messiah, the Kwisatz Haderach. Duke Leto Atreides battles his mortal enemy, Baron Vladimir Harkonnen, while his love for the beautiful and wise Jessica grows even in the face of bloodshed and betrayal. But are they all just pawns of an inevitable future centered around the planet Dune? Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO",
+     "publishedDate": "2003-03-18",
+     "description": "Book Two of the Epic Prequel to the Classic Novel Dune\u2014A Major Motion Picture Sequel to the international bestseller Dune: House Atreides Before Dune . . . The epic tale of Duke Leto Atreides and his rise to power . . . The fierce ambitions of his mortal enemy, Baron Vladimir Harkonnen . . . The struggles of the young girl Jessica, the Baron\u2019s secret daughter, under the harsh training of the Sisterhood school . . . The schemes of Shaddam Corrino to create a synthetic spice that may bring unlimited wealth, or cause the collapse of the Spacing Guild . . . And the implausible dream of Planetologist Kynes to turn the desert planet Dune into a paradise, uniting the desperate Fremen into a force unlike anything the Imperium has ever seen . . . Dune: House Harkonnen continues the epic story that lays the foundation for Frank Herbert\u2019s masterpiece Dune, a complex tale of politics, religion, and the rise and fall of dynasties on a galaxy-spanning canvas. Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO",
      "industryIdentifiers": [
       {
        "type": "ISBN_13",
-       "identifier": "9780553896954"
+       "identifier": "9780553897838"
       },
       {
        "type": "ISBN_10",
-       "identifier": "0553896954"
+       "identifier": "0553897837"
       }
      ],
      "readingModes": {
       "text": true,
-      "image": false
+      "image": true
      },
-     "pageCount": 685,
+     "pageCount": 754,
      "printType": "BOOK",
      "categories": [
       "Fiction"
      ],
-     "averageRating": 3,
-     "ratingsCount": 1,
+     "averageRating": 4,
+     "ratingsCount": 5,
      "maturityRating": "NOT_MATURE",
      "allowAnonLogging": true,
-     "contentVersion": "0.8.7.0.preview.2",
+     "contentVersion": "0.11.9.0.preview.3",
      "panelizationSummary": {
       "containsEpubBubbles": false,
       "containsImageBubbles": false
      },
      "imageLinks": {
-      "smallThumbnail": "http://books.google.com/books/content?id=--8cBYaNlA4C&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
-      "thumbnail": "http://books.google.com/books/content?id=--8cBYaNlA4C&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+      "smallThumbnail": "http://books.google.com/books/content?id=1N1rTDJP55UC&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=1N1rTDJP55UC&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
      },
      "language": "en",
-     "previewLink": "http://books.google.com/books?id=--8cBYaNlA4C&printsec=frontcover&dq=dune&hl=&cd=19&source=gbs_api",
-     "infoLink": "https://play.google.com/store/books/details?id=--8cBYaNlA4C&source=gbs_api",
-     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=--8cBYaNlA4C"
+     "previewLink": "http://books.google.com/books?id=1N1rTDJP55UC&printsec=frontcover&dq=dune&hl=&cd=8&source=gbs_api",
+     "infoLink": "https://play.google.com/store/books/details?id=1N1rTDJP55UC&source=gbs_api",
+     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=1N1rTDJP55UC"
     },
     "saleInfo": {
      "country": "US",
@@ -596,7 +488,7 @@
       "amount": 7.99,
       "currencyCode": "USD"
      },
-     "buyLink": "https://play.google.com/store/books/details?id=--8cBYaNlA4C&rdid=book---8cBYaNlA4C&rdot=1&source=gbs_api",
+     "buyLink": "https://play.google.com/store/books/details?id=1N1rTDJP55UC&rdid=book-1N1rTDJP55UC&rdot=1&source=gbs_api",
      "offers": [
       {
        "finskyOfferType": 1,
@@ -620,65 +512,81 @@
      "textToSpeechPermission": "ALLOWED",
      "epub": {
       "isAvailable": true,
-      "acsTokenLink": "http://books.google.com/books/download/Dune_House_Corrino-sample-epub.acsm?id=--8cBYaNlA4C&format=epub&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+      "acsTokenLink": "http://books.google.com/books/download/Dune_House_Harkonnen-sample-epub.acsm?id=1N1rTDJP55UC&format=epub&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
      },
      "pdf": {
-      "isAvailable": false
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/Dune_House_Harkonnen-sample-pdf.acsm?id=1N1rTDJP55UC&format=pdf&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
      },
-     "webReaderLink": "http://play.google.com/books/reader?id=--8cBYaNlA4C&hl=&source=gbs_api",
+     "webReaderLink": "http://play.google.com/books/reader?id=1N1rTDJP55UC&hl=&source=gbs_api",
      "accessViewStatus": "SAMPLE",
      "quoteSharingAllowed": false
     },
     "searchInfo": {
-     "textSnippet": "But are they all just pawns of an inevitable future centered around the planet Dune? Look for the entire prequel series DUNE: HOUSE ATREIDES \u2022 DUNE: HOUSE HARKONNEN \u2022 DUNE: HOUSE CORRINO"
+     "textSnippet": "Book Two of the Epic Prequel to the Classic Novel Dune\u2014A Major Motion Picture Sequel to the international bestseller Dune: House Atreides Before Dune . . . The epic tale of Duke Leto Atreides and his rise to power . . ."
     }
    },
-   "isbn13": "9780553896954"
+   "isbn13": "9780553897838"
   },
   {
    "source": "googlebooks",
-   "resolved_id": "45c1sYGmXcMC",
-   "title": "DUNE MESSIAH",
-   "author": "FRANK HERBERT",
+   "resolved_id": "bEgre7CUEggC",
+   "title": "Dune Messiah",
+   "author": "Frank Herbert",
    "subjects": [
     "Fiction"
    ],
-   "description": "The sisterhood of the Bene Gesserit plots to seize control of the galaxy-wide empire of their supernatural leader, while on Arrakis, the Maud'dib, the heir to an unimaginable power, confronts new challenges.",
-   "cover_url": "http://books.google.com/books/content?id=45c1sYGmXcMC&printsec=frontcover&img=1&zoom=1&source=gbs_api",
-   "year": 1969,
+   "description": "Paul Atreides, genetically bred and trained to become the leader of his planet, is still subject to human frailties. The second book of the series. Copyright \u00a9 Libri GmbH. All rights reserved.",
+   "cover_url": "http://books.google.com/books/content?id=bEgre7CUEggC&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+   "year": 1979,
    "language": "en",
    "raw": {
     "kind": "books#volume",
-    "id": "45c1sYGmXcMC",
-    "etag": "zoTIgMj/ptk",
-    "selfLink": "https://www.googleapis.com/books/v1/volumes/45c1sYGmXcMC",
+    "id": "bEgre7CUEggC",
+    "etag": "bx7stcj0HAE",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/bEgre7CUEggC",
     "volumeInfo": {
-     "title": "DUNE MESSIAH",
+     "title": "Dune Messiah",
      "authors": [
-      "FRANK HERBERT"
+      "Frank Herbert"
      ],
-     "publishedDate": "1969",
+     "publisher": "Berkley Books",
+     "publishedDate": "1979-06-15",
+     "description": "Paul Atreides, genetically bred and trained to become the leader of his planet, is still subject to human frailties. The second book of the series. Copyright \u00a9 Libri GmbH. All rights reserved.",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_10",
+       "identifier": "0425043460"
+      },
+      {
+       "type": "ISBN_13",
+       "identifier": "9780425043462"
+      }
+     ],
      "readingModes": {
       "text": false,
       "image": false
      },
      "pageCount": 260,
      "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
      "maturityRating": "NOT_MATURE",
      "allowAnonLogging": false,
-     "contentVersion": "0.5.1.0.preview.0",
+     "contentVersion": "0.4.2.0.preview.0",
      "panelizationSummary": {
       "containsEpubBubbles": false,
       "containsImageBubbles": false
      },
      "imageLinks": {
-      "smallThumbnail": "http://books.google.com/books/content?id=45c1sYGmXcMC&printsec=frontcover&img=1&zoom=5&source=gbs_api",
-      "thumbnail": "http://books.google.com/books/content?id=45c1sYGmXcMC&printsec=frontcover&img=1&zoom=1&source=gbs_api"
+      "smallThumbnail": "http://books.google.com/books/content?id=bEgre7CUEggC&printsec=frontcover&img=1&zoom=5&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=bEgre7CUEggC&printsec=frontcover&img=1&zoom=1&source=gbs_api"
      },
      "language": "en",
-     "previewLink": "http://books.google.com/books?id=45c1sYGmXcMC&dq=intitle:%22dune%22&hl=&cd=12&source=gbs_api",
-     "infoLink": "http://books.google.com/books?id=45c1sYGmXcMC&dq=intitle:%22dune%22&hl=&source=gbs_api",
-     "canonicalVolumeLink": "https://books.google.com/books/about/DUNE_MESSIAH.html?hl=&id=45c1sYGmXcMC"
+     "previewLink": "http://books.google.com/books?id=bEgre7CUEggC&dq=intitle:%22dune%22&hl=&cd=15&source=gbs_api",
+     "infoLink": "http://books.google.com/books?id=bEgre7CUEggC&dq=intitle:%22dune%22&hl=&source=gbs_api",
+     "canonicalVolumeLink": "https://books.google.com/books/about/Dune_Messiah.html?hl=&id=bEgre7CUEggC"
     },
     "saleInfo": {
      "country": "US",
@@ -697,12 +605,55 @@
      "pdf": {
       "isAvailable": false
      },
-     "webReaderLink": "http://play.google.com/books/reader?id=45c1sYGmXcMC&hl=&source=gbs_api",
+     "webReaderLink": "http://play.google.com/books/reader?id=bEgre7CUEggC&hl=&source=gbs_api",
      "accessViewStatus": "NONE",
      "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "For use in schools and libraries only. The sisterhood of the Bene Gesserit plots to seize control of the galaxy-wide empire of their supernatural leader."
     }
    },
-   "isbn13": "9780441015610"
+   "isbn13": "9780425043462"
+  },
+  {
+   "source": "openlibrary",
+   "resolved_id": "/works/OL893425W",
+   "title": "Dune messiah & Children of Dune",
+   "author": "Frank Herbert",
+   "subjects": [
+    "Dune (Imaginary place)",
+    "Fiction",
+    "Dune (Lieu imaginaire)",
+    "Romans, nouvelles"
+   ],
+   "cover_url": "https://covers.openlibrary.org/b/id/12771200-M.jpg",
+   "year": 2002,
+   "isbn13": "9780739423998",
+   "language": "en",
+   "raw": {
+    "author_name": [
+     "Frank Herbert"
+    ],
+    "cover_i": 12771200,
+    "first_publish_year": 2002,
+    "isbn": [
+     "0739423991",
+     "1399611186",
+     "9780739423998",
+     "9781399611183"
+    ],
+    "key": "/works/OL893425W",
+    "language": [
+     "eng"
+    ],
+    "title": "Dune messiah & Children of Dune",
+    "subject": [
+     "Dune (Imaginary place)",
+     "Fiction",
+     "Dune (Lieu imaginaire)",
+     "Romans, nouvelles"
+    ]
+   }
   }
  ],
  "ancillary justice": [
@@ -721,7 +672,7 @@
    "raw": {
     "kind": "books#volume",
     "id": "obAHf43THvQC",
-    "etag": "XZOxYqEDDKY",
+    "etag": "QHF7MkGqzEU",
     "selfLink": "https://www.googleapis.com/books/v1/volumes/obAHf43THvQC",
     "volumeInfo": {
      "title": "Ancillary Justice",
@@ -834,7 +785,7 @@
    "raw": {
     "kind": "books#volume",
     "id": "pk_poAEACAAJ",
-    "etag": "TlubFxkEz3E",
+    "etag": "c/CqEPQKack",
     "selfLink": "https://www.googleapis.com/books/v1/volumes/pk_poAEACAAJ",
     "volumeInfo": {
      "title": "Ancillary Justice. La vendetta di Breq",
@@ -912,7 +863,7 @@
    "raw": {
     "kind": "books#volume",
     "id": "KFbXygEACAAJ",
-    "etag": "1nCwdHCKgTQ",
+    "etag": "ZtdYTWxFbdw",
     "selfLink": "https://www.googleapis.com/books/v1/volumes/KFbXygEACAAJ",
     "volumeInfo": {
      "title": "Ancillary. Justice-Sword-Mercy. Trilogia Imperial Radch. Titan edition",
@@ -951,7 +902,7 @@
       "thumbnail": "http://books.google.com/books/content?id=KFbXygEACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api"
      },
      "language": "it",
-     "previewLink": "http://books.google.com/books?id=KFbXygEACAAJ&dq=intitle:%22ancillary+justice%22&hl=&cd=6&source=gbs_api",
+     "previewLink": "http://books.google.com/books?id=KFbXygEACAAJ&dq=intitle:%22ancillary+justice%22&hl=&cd=7&source=gbs_api",
      "infoLink": "http://books.google.com/books?id=KFbXygEACAAJ&dq=intitle:%22ancillary+justice%22&hl=&source=gbs_api",
      "canonicalVolumeLink": "https://books.google.com/books/about/Ancillary_Justice_Sword_Mercy_Trilogia_I.html?hl=&id=KFbXygEACAAJ"
     },
@@ -994,7 +945,7 @@
    "raw": {
     "kind": "books#volume",
     "id": "YmPTDwAAQBAJ",
-    "etag": "C237JucStm4",
+    "etag": "8bV0fWOy9Q0",
     "selfLink": "https://www.googleapis.com/books/v1/volumes/YmPTDwAAQBAJ",
     "volumeInfo": {
      "title": "Ancillary Justice (Urania Jumbo)",
@@ -1067,34 +1018,132 @@
    "isbn13": "9788835700562"
   },
   {
-   "source": "openlibrary",
-   "resolved_id": "/works/OL28807563W",
-   "title": "Ann Leckie's Ancillary Justice",
+   "source": "googlebooks",
+   "resolved_id": "yHaeEAAAQBAJ",
+   "title": "Ann Leckie\u2019s \"Ancillary Justice\"",
    "author": "David M. Higgins",
    "subjects": [
     "Fiction"
    ],
-   "cover_url": "https://covers.openlibrary.org/b/id/13179605-M.jpg",
+   "description": "This book argues that Ann Leckie\u2019s novel Ancillary Justice offers a devastating rebuke to the political, social, cultural, and economic injustices of American imperialism in the post 9/11 era. Following an introductory overview, the study offers four chapters that examine key themes central to the novel: gender, imperial economics, race, and revolutionary agency. Ancillary Justice\u2019s exploration of these four themes, and the way it reveals how these issues are all fundamentally entangled with the problem of contemporary imperial power, warrants its status as a canonical work of science fiction for the twenty-first century. The book concludes with a brief interview with Leckie herself touching on each of the topics examined during the preceding chapters.",
+   "cover_url": "http://books.google.com/books/content?id=yHaeEAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
    "year": 2022,
-   "isbn13": "9783031182600",
    "language": "en",
    "raw": {
-    "author_name": [
-     "David M. Higgins"
-    ],
-    "cover_i": 13179605,
-    "first_publish_year": 2022,
-    "isbn": [
-     "9783031182600",
-     "303118260X"
-    ],
-    "key": "/works/OL28807563W",
-    "language": [
-     "eng"
-    ],
-    "title": "Ann Leckie's Ancillary Justice"
+    "kind": "books#volume",
+    "id": "yHaeEAAAQBAJ",
+    "etag": "dEIRiZLx4Bo",
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/yHaeEAAAQBAJ",
+    "volumeInfo": {
+     "title": "Ann Leckie\u2019s \"Ancillary Justice\"",
+     "subtitle": "A Critical Companion",
+     "authors": [
+      "David M. Higgins"
+     ],
+     "publisher": "Springer Nature",
+     "publishedDate": "2022-11-28",
+     "description": "This book argues that Ann Leckie\u2019s novel Ancillary Justice offers a devastating rebuke to the political, social, cultural, and economic injustices of American imperialism in the post 9/11 era. Following an introductory overview, the study offers four chapters that examine key themes central to the novel: gender, imperial economics, race, and revolutionary agency. Ancillary Justice\u2019s exploration of these four themes, and the way it reveals how these issues are all fundamentally entangled with the problem of contemporary imperial power, warrants its status as a canonical work of science fiction for the twenty-first century. The book concludes with a brief interview with Leckie herself touching on each of the topics examined during the preceding chapters.",
+     "industryIdentifiers": [
+      {
+       "type": "ISBN_13",
+       "identifier": "9783031182617"
+      },
+      {
+       "type": "ISBN_10",
+       "identifier": "3031182618"
+      }
+     ],
+     "readingModes": {
+      "text": true,
+      "image": true
+     },
+     "pageCount": 100,
+     "printType": "BOOK",
+     "categories": [
+      "Fiction"
+     ],
+     "maturityRating": "NOT_MATURE",
+     "allowAnonLogging": false,
+     "contentVersion": "0.3.4.0.preview.3",
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=yHaeEAAAQBAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=yHaeEAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "language": "en",
+     "previewLink": "http://books.google.com/books?id=yHaeEAAAQBAJ&printsec=frontcover&dq=ancillary+justice&hl=&cd=5&source=gbs_api",
+     "infoLink": "https://play.google.com/store/books/details?id=yHaeEAAAQBAJ&source=gbs_api",
+     "canonicalVolumeLink": "https://play.google.com/store/books/details?id=yHaeEAAAQBAJ"
+    },
+    "saleInfo": {
+     "country": "US",
+     "saleability": "FOR_SALE_AND_RENTAL",
+     "isEbook": true,
+     "listPrice": {
+      "amount": 54.99,
+      "currencyCode": "USD"
+     },
+     "retailPrice": {
+      "amount": 43.44,
+      "currencyCode": "USD"
+     },
+     "buyLink": "https://play.google.com/store/books/details?id=yHaeEAAAQBAJ&rdid=book-yHaeEAAAQBAJ&rdot=1&source=gbs_api",
+     "offers": [
+      {
+       "finskyOfferType": 1,
+       "listPrice": {
+        "amountInMicros": 54990000,
+        "currencyCode": "USD"
+       },
+       "retailPrice": {
+        "amountInMicros": 43440000,
+        "currencyCode": "USD"
+       },
+       "giftable": true
+      },
+      {
+       "finskyOfferType": 3,
+       "listPrice": {
+        "amountInMicros": 19250000,
+        "currencyCode": "USD"
+       },
+       "retailPrice": {
+        "amountInMicros": 16750000,
+        "currencyCode": "USD"
+       },
+       "rentalDuration": {
+        "unit": "DAY",
+        "count": 90
+       }
+      }
+     ]
+    },
+    "accessInfo": {
+     "country": "US",
+     "viewability": "PARTIAL",
+     "embeddable": true,
+     "publicDomain": false,
+     "textToSpeechPermission": "ALLOWED",
+     "epub": {
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/Ann_Leckie_s_Ancillary_Justice-sample-epub.acsm?id=yHaeEAAAQBAJ&format=epub&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+     },
+     "pdf": {
+      "isAvailable": true,
+      "acsTokenLink": "http://books.google.com/books/download/Ann_Leckie_s_Ancillary_Justice-sample-pdf.acsm?id=yHaeEAAAQBAJ&format=pdf&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api"
+     },
+     "webReaderLink": "http://play.google.com/books/reader?id=yHaeEAAAQBAJ&hl=&source=gbs_api",
+     "accessViewStatus": "SAMPLE",
+     "quoteSharingAllowed": false
+    },
+    "searchInfo": {
+     "textSnippet": "This book argues that Ann Leckie\u2019s novel Ancillary Justice offers a devastating rebuke to the political, social, cultural, and economic injustices of American imperialism in the post 9/11 era."
+    }
    },
-   "description": "This book argues that Ann Leckie\u2019s novel Ancillary Justice offers a devastating rebuke to the political, social, cultural, and economic injustices of American imperialism in the post 9/11 era. Following an introductory overview, the study offers four chapters that examine key themes central to the novel: gender, imperial economics, race, and revolutionary agency. Ancillary Justice\u2019s exploration of these four themes, and the way it reveals how these issues are all fundamentally entangled with the problem of contemporary imperial power, warrants its status as a canonical work of science fiction for the twenty-first century. The book concludes with a brief interview with Leckie herself touching on each of the topics examined during the preceding chapters."
+   "isbn13": "9783031182617"
   },
   {
    "source": "googlebooks",
@@ -1111,7 +1160,7 @@
    "raw": {
     "kind": "books#volume",
     "id": "5m-REAAAQBAJ",
-    "etag": "jvB6qWGEChs",
+    "etag": "BiGeoo4mWrA",
     "selfLink": "https://www.googleapis.com/books/v1/volumes/5m-REAAAQBAJ",
     "volumeInfo": {
      "title": "Justicia auxiliar / Ancillary Justice",
@@ -1152,7 +1201,7 @@
       "thumbnail": "http://books.google.com/books/content?id=5m-REAAAQBAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api"
      },
      "language": "es",
-     "previewLink": "http://books.google.com/books?id=5m-REAAAQBAJ&dq=intitle:%22ancillary+justice%22&hl=&cd=5&source=gbs_api",
+     "previewLink": "http://books.google.com/books?id=5m-REAAAQBAJ&dq=intitle:%22ancillary+justice%22&hl=&cd=6&source=gbs_api",
      "infoLink": "http://books.google.com/books?id=5m-REAAAQBAJ&dq=intitle:%22ancillary+justice%22&hl=&source=gbs_api",
      "canonicalVolumeLink": "https://books.google.com/books/about/Justicia_auxiliar_Ancillary_Justice.html?hl=&id=5m-REAAAQBAJ"
     },
@@ -1229,7 +1278,7 @@
    "raw": {
     "kind": "books#volume",
     "id": "gbmVEQAAQBAJ",
-    "etag": "QhynIZLOGww",
+    "etag": "TDz4s7hQ6LE",
     "selfLink": "https://www.googleapis.com/books/v1/volumes/gbmVEQAAQBAJ",
     "volumeInfo": {
      "title": "Wars We Never Fought",
@@ -1268,7 +1317,7 @@
       "thumbnail": "http://books.google.com/books/content?id=gbmVEQAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
      },
      "language": "en",
-     "previewLink": "http://books.google.com/books?id=gbmVEQAAQBAJ&pg=RA1-PT85&dq=ancillary+justice&hl=&cd=4&source=gbs_api",
+     "previewLink": "http://books.google.com/books?id=gbmVEQAAQBAJ&pg=RA1-PT85&dq=ancillary+justice&hl=&cd=7&source=gbs_api",
      "infoLink": "https://play.google.com/store/books/details?id=gbmVEQAAQBAJ&source=gbs_api",
      "canonicalVolumeLink": "https://play.google.com/store/books/details?id=gbmVEQAAQBAJ"
     },
@@ -1446,7 +1495,7 @@
    "raw": {
     "kind": "books#volume",
     "id": "Ww3CEQAAQBAJ",
-    "etag": "cNxgWVBcfHM",
+    "etag": "7q/UpCODyUc",
     "selfLink": "https://www.googleapis.com/books/v1/volumes/Ww3CEQAAQBAJ",
     "volumeInfo": {
      "title": "SciBle",

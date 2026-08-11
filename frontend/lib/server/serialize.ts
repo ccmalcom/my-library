@@ -61,6 +61,12 @@ function pyRound(x: number, digits: number): number {
   return Number(x.toFixed(digits));
 }
 
+/** Python enrich._CONF, serialized through Python-compatible rounding. */
+export function serializeResolutionConfidence(label: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE'): number {
+  const confidence = { HIGH: 0.95, MEDIUM: 0.7, LOW: 0.3, NONE: 0.0 }[label];
+  return pyRound(confidence, 2);
+}
+
 /** Import-star normalization: Python's nonnegative int(value + 0.5), capped at five. */
 export function roundRatingHalfUp(value: number): number | null {
   if (!Number.isFinite(value)) return null;

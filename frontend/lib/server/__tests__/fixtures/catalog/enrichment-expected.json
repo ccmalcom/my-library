@@ -1,0 +1,695 @@
+{
+ "rows": [
+  {
+   "book_id": 1,
+   "confidence_label": "HIGH",
+   "cover_url": "https://covers.openlibrary.org/b/id/15110282-M.jpg",
+   "description": "Set on the desert planet Arrakis, Dune is the story of the boy Paul Atreides, heir to a noble family tasked with ruling an inhospitable world where the only thing of value is the \"spice\" melange, a drug capable of extending life and enhancing consciousness. Coveted across the known universe, melange is a prize worth killing for...\r\n\r\nWhen House Atreides is betrayed, the destruction of Paul's family will set the boy on a journey toward a destiny greater than he could ever have imagined. And as he evolves into the mysterious man known as Muad'Dib, he will bring to fruition humankind's most ancient and unattainable dream.\r\n\r\nA stunning blend of adventure and mysticism, environmentalism and politics, Dune won the first Nebula Award, shared the Hugo Award, and formed the basis of what is undoubtedly the grandest epic in science fiction.",
+   "language": null,
+   "match_method": "isbn:openlibrary",
+   "raw_response": {
+    "isbn": "9780441172719",
+    "record": {
+     "authors": [
+      {
+       "name": "Frank Herbert",
+       "url": "http://openlibrary.org/authors/OL79034A/Frank_Herbert"
+      },
+      {
+       "name": "\u0424\u0440\u0435\u043d\u043a \u0413\u0435\u0440\u0431\u0435\u0440\u0442",
+       "url": "http://openlibrary.org/authors/OL7388009A/\u0424\u0440\u0435\u043d\u043a_\u0413\u0435\u0440\u0431\u0435\u0440\u0442"
+      }
+     ],
+     "cover": {
+      "large": "https://covers.openlibrary.org/b/id/15110282-L.jpg",
+      "medium": "https://covers.openlibrary.org/b/id/15110282-M.jpg",
+      "small": "https://covers.openlibrary.org/b/id/15110282-S.jpg"
+     },
+     "excerpts": [
+      {
+       "comment": "",
+       "first_sentence": true,
+       "text": "In the week before their departure to Arrakis, when all the final scurrying about had reached a nearly unbearable frenzy, an old crone came to visit the mother of the boy, Paul."
+      }
+     ],
+     "identifiers": {
+      "isbn_13": [
+       "9780441172719"
+      ],
+      "openlibrary": [
+       "OL59726263M"
+      ]
+     },
+     "key": "/books/OL59726263M",
+     "links": [
+      {
+       "title": "New York Times review",
+       "url": "http://www.nytimes.com/1999/11/28/books/science-fiction.html"
+      },
+      {
+       "title": "New York Times review",
+       "url": "https://www.nytimes.com/1985/01/06/books/paperback-best-sellers-jan-6-1985fiction-1.html"
+      },
+      {
+       "title": "Official page on brazilian publisher's website",
+       "url": "https://aleph.com.br/collections/ficcao/products/duna-1"
+      },
+      {
+       "title": "\u041a\u043d\u0438\u0433\u0430 \u043d\u0430 \u0441\u0430\u0439\u0442\u0456 \u0432\u0438\u0434\u0430\u0432\u043d\u0438\u0446\u0442\u0432\u0430",
+       "url": "https://bookclub.ua/catalog/books/fantastic_books/dyuna"
+      },
+      {
+       "title": "Official page on brazilian publisher's website",
+       "url": "https://aleph.com.br/collections/ficcao/products/duna"
+      },
+      {
+       "title": "Official page on brazilian publisher's website",
+       "url": "https://aleph.com.br/collections/ficcao/products/duna-com-sobrecapa-edicao-limitada"
+      }
+     ],
+     "number_of_pages": 896,
+     "pagination": "884p.",
+     "publish_date": "2020",
+     "publish_places": [
+      {
+       "name": "New York, USA"
+      }
+     ],
+     "publishers": [
+      {
+       "name": "Ace"
+      }
+     ],
+     "subjects": [
+      {
+       "name": "Dune (Imaginary place)",
+       "url": "https://openlibrary.org/subjects/dune_(imaginary_place)"
+      },
+      {
+       "name": "Fiction",
+       "url": "https://openlibrary.org/subjects/fiction"
+      },
+      {
+       "name": "Fiction, science fiction, general",
+       "url": "https://openlibrary.org/subjects/fiction,_science_fiction,_general"
+      },
+      {
+       "name": "Dune (imaginary place), fiction",
+       "url": "https://openlibrary.org/subjects/dune_(imaginary_place),_fiction"
+      },
+      {
+       "name": "New York Times reviewed",
+       "url": "https://openlibrary.org/subjects/new_york_times_reviewed"
+      },
+      {
+       "name": "Science fiction",
+       "url": "https://openlibrary.org/subjects/science_fiction"
+      },
+      {
+       "name": "Science-fiction",
+       "url": "https://openlibrary.org/subjects/science-fiction"
+      },
+      {
+       "name": "American literature",
+       "url": "https://openlibrary.org/subjects/american_literature"
+      },
+      {
+       "name": "nyt:mass-market-monthly=2021-11-07",
+       "url": "https://openlibrary.org/subjects/nyt:mass-market-monthly=2021-11-07"
+      },
+      {
+       "name": "New York Times bestseller",
+       "url": "https://openlibrary.org/subjects/new_york_times_bestseller"
+      },
+      {
+       "name": "award:nebula_award=novel",
+       "url": "https://openlibrary.org/subjects/award:nebula_award=novel"
+      },
+      {
+       "name": "nyt:trade-fiction-paperback=2021-11-07",
+       "url": "https://openlibrary.org/subjects/nyt:trade-fiction-paperback=2021-11-07"
+      },
+      {
+       "name": "Hugo Award Winner",
+       "url": "https://openlibrary.org/subjects/hugo_award_winner"
+      },
+      {
+       "name": "award:hugo_award=1966",
+       "url": "https://openlibrary.org/subjects/award:hugo_award=1966"
+      },
+      {
+       "name": "award:hugo_award=novel",
+       "url": "https://openlibrary.org/subjects/award:hugo_award=novel"
+      },
+      {
+       "name": "American Science fiction",
+       "url": "https://openlibrary.org/subjects/american_science_fiction"
+      },
+      {
+       "name": "Long Now Manual for Civilization",
+       "url": "https://openlibrary.org/subjects/long_now_manual_for_civilization"
+      },
+      {
+       "name": "Ecology",
+       "url": "https://openlibrary.org/subjects/ecology"
+      },
+      {
+       "name": "Fantasy fiction",
+       "url": "https://openlibrary.org/subjects/fantasy_fiction"
+      },
+      {
+       "name": "Large type books",
+       "url": "https://openlibrary.org/subjects/large_type_books"
+      }
+     ],
+     "table_of_contents": [
+      {
+       "label": "BOOK I Dune",
+       "level": 0,
+       "pagenum": "",
+       "title": "1"
+      },
+      {
+       "label": "BOOK II MUAD'DIB",
+       "level": 0,
+       "pagenum": "",
+       "title": "325"
+      },
+      {
+       "label": "BOOK III THE PROPHET",
+       "level": 0,
+       "pagenum": "",
+       "title": "589"
+      },
+      {
+       "label": "APPENDIX I: The Ecology of Dune",
+       "level": 0,
+       "pagenum": "",
+       "title": "797"
+      },
+      {
+       "label": "APPENDIX II: The Religion of Dune",
+       "level": 0,
+       "pagenum": "",
+       "title": "811"
+      },
+      {
+       "label": "APPENDIX III: Report on Bene Gesserit Motives and Purposes",
+       "level": 0,
+       "pagenum": "",
+       "title": "825"
+      },
+      {
+       "label": "APPENDIX IV: The Almanak en-Ashraf (Selected Excerpts of the Noble Houses)",
+       "level": 0,
+       "pagenum": "",
+       "title": "829"
+      },
+      {
+       "label": "Terminology of the Imperium",
+       "level": 0,
+       "pagenum": "",
+       "title": "833"
+      },
+      {
+       "label": "Cartographic Notes",
+       "level": 0,
+       "pagenum": "",
+       "title": "865"
+      },
+      {
+       "label": "Map",
+       "level": 0,
+       "pagenum": "",
+       "title": "866"
+      },
+      {
+       "label": "Afterword by Brian Herbert",
+       "level": 0,
+       "pagenum": "",
+       "title": "868"
+      }
+     ],
+     "title": "Dune",
+     "url": "http://openlibrary.org/books/OL59726263M/Dune",
+     "weight": "479 grams"
+    }
+   },
+   "resolution_confidence": 0.95,
+   "resolved_at": "<TIMESTAMP>",
+   "resolved_id": "/books/OL59726263M",
+   "resolved_source": "openlibrary",
+   "series": null,
+   "series_position": null,
+   "subjects": [
+    "Dune (Imaginary place)",
+    "Fiction",
+    "Fiction, science fiction, general",
+    "Dune (imaginary place), fiction",
+    "New York Times reviewed",
+    "Science fiction",
+    "Science-fiction",
+    "American literature",
+    "nyt:mass-market-monthly=2021-11-07",
+    "New York Times bestseller",
+    "award:nebula_award=novel",
+    "nyt:trade-fiction-paperback=2021-11-07",
+    "Hugo Award Winner",
+    "award:hugo_award=1966",
+    "award:hugo_award=novel",
+    "American Science fiction",
+    "Long Now Manual for Civilization",
+    "Ecology",
+    "Fantasy fiction",
+    "Large type books"
+   ]
+  },
+  {
+   "book_id": 2,
+   "confidence_label": "HIGH",
+   "cover_url": "http://books.google.com/books/content?id=n9fDEAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "description": "THE INSTANT #1 NEW YORK TIMES BESTSELLER \u2022 A Wall Street Journal Top 10 Book of 2024 \u2022 A New York Times and Washington Post Notable Book \u2022 One of Barack Obama's Favorite Books of 2024 \u2022 A TIME 100 Must-Read Book of 2024 \u2022 Named a Best Book of 2024 by the Economist, the New York Post, and Town & Country \u2022 The Goodreads Choice Award Nonfiction Book of the Year A must-read for all parents: the generation-defining investigation into the collapse of youth mental health in the era of smartphones, social media, and big tech\u2014and a plan for a healthier, freer childhood. \u201cWith tenacity and candor, Haidt lays out the consequences that have come with allowing kids to drift further into the virtual world . . . While also offering suggestions and solutions that could help protect a new generation of kids.\u201d \u2014Shannon Carlin, TIME, 100 Must-Read Books of 2024 After more than a decade of stability or improvement, the mental health of adolescents plunged in the early 2010s. Rates of depression, anxiety, self-harm, and suicide rose sharply, more than doubling on many measures. Why? In The Anxious Generation, social psychologist Jonathan Haidt lays out the facts about the epidemic of teen mental illness that hit many countries at the same time. He then investigates the nature of childhood, including why children need play and independent exploration to mature into competent, thriving adults. Haidt shows how the \u201cplay-based childhood\u201d began to decline in the 1980s, and how it was finally wiped out by the arrival of the \u201cphone-based childhood\u201d in the early 2010s. He presents more than a dozen mechanisms by which this \u201cgreat rewiring of childhood\u201d has interfered with children\u2019s social and neurological development, covering everything from sleep deprivation to attention fragmentation, addiction, loneliness, social contagion, social comparison, and perfectionism. He explains why social media damages girls more than boys and why boys have been withdrawing from the real world into the virtual world, with disastrous consequences for themselves, their families, and their societies. Most important, Haidt issues a clear call to action. He diagnoses the \u201ccollective action problems\u201d that trap us, and then proposes four simple rules that might set us free. He describes steps that parents, teachers, schools, tech companies, and governments can take to end the epidemic of mental illness and restore a more humane childhood. Haidt has spent his career speaking truth backed by data in the most difficult landscapes\u2014communities polarized by politics and religion, campuses battling culture wars, and now the public health emergency faced by Gen Z. We cannot afford to ignore his findings about protecting our children\u2014and ourselves\u2014from the psychological damage of a phone-based life.",
+   "language": "en",
+   "match_method": "isbn:googlebooks",
+   "raw_response": {
+    "accessInfo": {
+     "accessViewStatus": "SAMPLE",
+     "country": "US",
+     "embeddable": true,
+     "epub": {
+      "isAvailable": false
+     },
+     "pdf": {
+      "isAvailable": false
+     },
+     "publicDomain": false,
+     "quoteSharingAllowed": false,
+     "textToSpeechPermission": "ALLOWED",
+     "viewability": "PARTIAL",
+     "webReaderLink": "http://play.google.com/books/reader?id=n9fDEAAAQBAJ&hl=&source=gbs_api"
+    },
+    "etag": "INPHIJEwizw",
+    "id": "n9fDEAAAQBAJ",
+    "kind": "books#volume",
+    "saleInfo": {
+     "country": "US",
+     "isEbook": false,
+     "saleability": "NOT_FOR_SALE"
+    },
+    "searchInfo": {
+     "textSnippet": "Named one of the best books of the year by The Wall Street Journal, The New York Times Book Review, The Washington Post, Time, The Economist, New York Post, and Town &amp; Country \u2022 One of Barack Obama\u2019s Favorite Books of the Year \u2022 Named ..."
+    },
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/n9fDEAAAQBAJ",
+    "volumeInfo": {
+     "allowAnonLogging": false,
+     "authors": [
+      "Jonathan Haidt"
+     ],
+     "canonicalVolumeLink": "https://books.google.com/books/about/The_Anxious_Generation.html?hl=&id=n9fDEAAAQBAJ",
+     "categories": [
+      "Psychology"
+     ],
+     "contentVersion": "1.4.3.0.preview.0",
+     "description": "THE INSTANT #1 NEW YORK TIMES BESTSELLER \u2022 A Wall Street Journal Top 10 Book of 2024 \u2022 A New York Times and Washington Post Notable Book \u2022 One of Barack Obama's Favorite Books of 2024 \u2022 A TIME 100 Must-Read Book of 2024 \u2022 Named a Best Book of 2024 by the Economist, the New York Post, and Town & Country \u2022 The Goodreads Choice Award Nonfiction Book of the Year A must-read for all parents: the generation-defining investigation into the collapse of youth mental health in the era of smartphones, social media, and big tech\u2014and a plan for a healthier, freer childhood. \u201cWith tenacity and candor, Haidt lays out the consequences that have come with allowing kids to drift further into the virtual world . . . While also offering suggestions and solutions that could help protect a new generation of kids.\u201d \u2014Shannon Carlin, TIME, 100 Must-Read Books of 2024 After more than a decade of stability or improvement, the mental health of adolescents plunged in the early 2010s. Rates of depression, anxiety, self-harm, and suicide rose sharply, more than doubling on many measures. Why? In The Anxious Generation, social psychologist Jonathan Haidt lays out the facts about the epidemic of teen mental illness that hit many countries at the same time. He then investigates the nature of childhood, including why children need play and independent exploration to mature into competent, thriving adults. Haidt shows how the \u201cplay-based childhood\u201d began to decline in the 1980s, and how it was finally wiped out by the arrival of the \u201cphone-based childhood\u201d in the early 2010s. He presents more than a dozen mechanisms by which this \u201cgreat rewiring of childhood\u201d has interfered with children\u2019s social and neurological development, covering everything from sleep deprivation to attention fragmentation, addiction, loneliness, social contagion, social comparison, and perfectionism. He explains why social media damages girls more than boys and why boys have been withdrawing from the real world into the virtual world, with disastrous consequences for themselves, their families, and their societies. Most important, Haidt issues a clear call to action. He diagnoses the \u201ccollective action problems\u201d that trap us, and then proposes four simple rules that might set us free. He describes steps that parents, teachers, schools, tech companies, and governments can take to end the epidemic of mental illness and restore a more humane childhood. Haidt has spent his career speaking truth backed by data in the most difficult landscapes\u2014communities polarized by politics and religion, campuses battling culture wars, and now the public health emergency faced by Gen Z. We cannot afford to ignore his findings about protecting our children\u2014and ourselves\u2014from the psychological damage of a phone-based life.",
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=n9fDEAAAQBAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=n9fDEAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "industryIdentifiers": [
+      {
+       "identifier": "9780593655030",
+       "type": "ISBN_13"
+      },
+      {
+       "identifier": "0593655036",
+       "type": "ISBN_10"
+      }
+     ],
+     "infoLink": "http://books.google.com/books?id=n9fDEAAAQBAJ&dq=isbn:9780593655036&hl=&source=gbs_api",
+     "language": "en",
+     "maturityRating": "NOT_MATURE",
+     "pageCount": 401,
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "previewLink": "http://books.google.com/books?id=n9fDEAAAQBAJ&printsec=frontcover&dq=isbn:9780593655036&hl=&cd=1&source=gbs_api",
+     "printType": "BOOK",
+     "publishedDate": "2024-03-26",
+     "publisher": "Penguin",
+     "readingModes": {
+      "image": false,
+      "text": false
+     },
+     "subtitle": "How the Great Rewiring of Childhood Is Causing an Epidemic of Mental Illness",
+     "title": "The Anxious Generation"
+    }
+   },
+   "resolution_confidence": 0.95,
+   "resolved_at": "<TIMESTAMP>",
+   "resolved_id": "n9fDEAAAQBAJ",
+   "resolved_source": "googlebooks",
+   "series": null,
+   "series_position": null,
+   "subjects": [
+    "Psychology"
+   ]
+  },
+  {
+   "book_id": 3,
+   "confidence_label": "MEDIUM",
+   "cover_url": "https://covers.openlibrary.org/b/id/7355949-M.jpg",
+   "description": "On a remote, icy planet, the soldier known as Breq is drawing closer to completing her quest.\r\n\r\nOnce, she was the *Justice of Toren*--a colossal starship with an artificial intelligence linking thousands of soldiers in the service of the Radch, the empire that conquered the galaxy.\r\n\r\nNow, an act of treachery has ripped it all away, leaving her with one fragile human body, unanswered questions, and a burning desire for vengeance.\r\n\r\n\r\nSequels: Ancillary Sword; Ancillary Mercy.",
+   "language": "en",
+   "match_method": "search:openlibrary",
+   "raw_response": {
+    "author_key": [
+     "OL3399168A"
+    ],
+    "author_name": [
+     "Ann Leckie"
+    ],
+    "cover_edition_key": "OL25726365M",
+    "cover_i": 7355949,
+    "ebook_access": "printdisabled",
+    "edition_count": 17,
+    "first_publish_year": 2013,
+    "has_fulltext": true,
+    "ia": [
+     "lajusticedelanci0000annl",
+     "ancillaryjustice00leck"
+    ],
+    "ia_collection": [
+     "americana",
+     "internetarchivebooks",
+     "printdisabled"
+    ],
+    "key": "/works/OL17062644W",
+    "language": [
+     "eng",
+     "fre"
+    ],
+    "public_scan_b": false,
+    "title": "Ancillary Justice"
+   },
+   "resolution_confidence": 0.7,
+   "resolved_at": "<TIMESTAMP>",
+   "resolved_id": "/works/OL17062644W",
+   "resolved_source": "openlibrary",
+   "series": null,
+   "series_position": null,
+   "subjects": []
+  },
+  {
+   "book_id": 4,
+   "confidence_label": "LOW",
+   "cover_url": "https://covers.openlibrary.org/b/id/276518-M.jpg",
+   "description": null,
+   "language": "en",
+   "match_method": "search:openlibrary",
+   "raw_response": {
+    "author_key": [
+     "OL23919A"
+    ],
+    "author_name": [
+     "J. K. Rowling"
+    ],
+    "cover_edition_key": "OL7510988M",
+    "cover_i": 276518,
+    "ebook_access": "no_ebook",
+    "edition_count": 1,
+    "first_publish_year": 2000,
+    "has_fulltext": false,
+    "key": "/works/OL31306243W",
+    "language": [
+     "eng"
+    ],
+    "public_scan_b": false,
+    "title": "Harry Potter and the Sorcerer's Stone"
+   },
+   "resolution_confidence": 0.3,
+   "resolved_at": "<TIMESTAMP>",
+   "resolved_id": "/works/OL31306243W",
+   "resolved_source": "openlibrary",
+   "series": null,
+   "series_position": null,
+   "subjects": []
+  },
+  {
+   "book_id": 5,
+   "confidence_label": "LOW",
+   "cover_url": null,
+   "description": null,
+   "language": null,
+   "match_method": "unresolved",
+   "raw_response": null,
+   "resolution_confidence": 0.0,
+   "resolved_at": "<TIMESTAMP>",
+   "resolved_id": null,
+   "resolved_source": null,
+   "series": null,
+   "series_position": null,
+   "subjects": null
+  },
+  {
+   "book_id": 6,
+   "confidence_label": "HIGH",
+   "cover_url": null,
+   "description": "Pre-enriched skip sentinel",
+   "language": "en",
+   "match_method": "isbn:openlibrary",
+   "raw_response": {
+    "fixture": "pre-enriched"
+   },
+   "resolution_confidence": 0.95,
+   "resolved_at": "<TIMESTAMP>",
+   "resolved_id": "/works/OL66554W",
+   "resolved_source": "openlibrary",
+   "series": null,
+   "series_position": null,
+   "subjects": [
+    "Fiction"
+   ]
+  },
+  {
+   "book_id": 7,
+   "confidence_label": "MEDIUM",
+   "cover_url": "http://books.google.com/books/content?id=Zn41EQAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api",
+   "description": "A \u201cTOUR DE FORCE OF NARRATIVE NONFICTION\u201d (WSJ) WITH OVER ONE YEAR ON THE NYT BEST SELLER LIST From the author of Killers of the Flower Moon, a page-turning story of shipwreck, survival, and savagery, culminating in a court martial that reveals a shocking truth. The powerful narrative reveals the deeper meaning of the events on The Wager, showing that it was not only the captain and crew who ended up on trial, but the very idea of empire. A Best Book of the Year: The New York Times, The Wall Street Journal, The New Yorker, TIME, Smithsonian, NPR, Vulture \u201cRiveting...Reads like a thriller, tackling a multilayered history\u2014and imperialism\u2014with gusto.\u201d \u2014Time On January 28, 1742, a ramshackle vessel of patched-together wood and cloth washed up on the coast of Brazil. Inside were thirty emaciated men, barely alive, and they had an extraordinary tale to tell. They were survivors of His Majesty\u2019s Ship the Wager, a British vessel that had left England in 1740 on a secret mission during an imperial war with Spain. While the Wager had been chasing a Spanish treasure-filled galleon known as \u201cthe prize of all the oceans,\u201d it had wrecked on a desolate island off the coast of Patagonia. The men, after being marooned for months and facing starvation, built the flimsy craft and sailed for more than a hundred days, traversing nearly 3,000 miles of storm-wracked seas. They were greeted as heroes. But then ... six months later, another, even more decrepit craft landed on the coast of Chile. This boat contained just three castaways, and they told a very different story. The thirty sailors who landed in Brazil were not heroes \u2013 they were mutineers. The first group responded with countercharges of their own, of a tyrannical and murderous senior officer and his henchmen. It became clear that while stranded on the island the crew had fallen into anarchy, with warring factions fighting for dominion over the barren wilderness. As accusations of treachery and murder flew, the Admiralty convened a court martial to determine who was telling the truth. The stakes were life-and-death\u2014for whomever the court found guilty could hang. The Wager is a grand tale of human behavior at the extremes told by one of our greatest nonfiction writers. Grann\u2019s recreation of the hidden world on a British warship rivals the work of Patrick O\u2019Brian, his portrayal of the castaways\u2019 desperate straits stands up to the classics of survival writing such as The Endurance, and his account of the court martial has the savvy of a Scott Turow thriller. As always with Grann\u2019s work, the incredible twists of the narrative hold the reader spellbound.",
+   "language": "en",
+   "match_method": "search:googlebooks",
+   "raw_response": {
+    "accessInfo": {
+     "accessViewStatus": "SAMPLE",
+     "country": "US",
+     "embeddable": true,
+     "epub": {
+      "isAvailable": false
+     },
+     "pdf": {
+      "acsTokenLink": "http://books.google.com/books/download/The_Wager-sample-pdf.acsm?id=Zn41EQAAQBAJ&format=pdf&output=acs4_fulfillment_token&dl_type=sample&source=gbs_api",
+      "isAvailable": true
+     },
+     "publicDomain": false,
+     "quoteSharingAllowed": false,
+     "textToSpeechPermission": "ALLOWED",
+     "viewability": "PARTIAL",
+     "webReaderLink": "http://play.google.com/books/reader?id=Zn41EQAAQBAJ&hl=&source=gbs_api"
+    },
+    "etag": "8kOQFQ0UC74",
+    "id": "Zn41EQAAQBAJ",
+    "kind": "books#volume",
+    "saleInfo": {
+     "country": "US",
+     "isEbook": false,
+     "saleability": "NOT_FOR_SALE"
+    },
+    "searchInfo": {
+     "textSnippet": "Grann\u2019s recreation of the hidden world on a British warship rivals the work of Patrick O\u2019Brian, his portrayal of the castaways\u2019 desperate straits stands up to the classics of survival writing such as The Endurance, and his account of ..."
+    },
+    "selfLink": "https://www.googleapis.com/books/v1/volumes/Zn41EQAAQBAJ",
+    "volumeInfo": {
+     "allowAnonLogging": false,
+     "authors": [
+      "David Grann"
+     ],
+     "canonicalVolumeLink": "https://books.google.com/books/about/The_Wager.html?hl=&id=Zn41EQAAQBAJ",
+     "categories": [
+      "True Crime"
+     ],
+     "contentVersion": "1.3.1.0.preview.1",
+     "description": "A \u201cTOUR DE FORCE OF NARRATIVE NONFICTION\u201d (WSJ) WITH OVER ONE YEAR ON THE NYT BEST SELLER LIST From the author of Killers of the Flower Moon, a page-turning story of shipwreck, survival, and savagery, culminating in a court martial that reveals a shocking truth. The powerful narrative reveals the deeper meaning of the events on The Wager, showing that it was not only the captain and crew who ended up on trial, but the very idea of empire. A Best Book of the Year: The New York Times, The Wall Street Journal, The New Yorker, TIME, Smithsonian, NPR, Vulture \u201cRiveting...Reads like a thriller, tackling a multilayered history\u2014and imperialism\u2014with gusto.\u201d \u2014Time On January 28, 1742, a ramshackle vessel of patched-together wood and cloth washed up on the coast of Brazil. Inside were thirty emaciated men, barely alive, and they had an extraordinary tale to tell. They were survivors of His Majesty\u2019s Ship the Wager, a British vessel that had left England in 1740 on a secret mission during an imperial war with Spain. While the Wager had been chasing a Spanish treasure-filled galleon known as \u201cthe prize of all the oceans,\u201d it had wrecked on a desolate island off the coast of Patagonia. The men, after being marooned for months and facing starvation, built the flimsy craft and sailed for more than a hundred days, traversing nearly 3,000 miles of storm-wracked seas. They were greeted as heroes. But then ... six months later, another, even more decrepit craft landed on the coast of Chile. This boat contained just three castaways, and they told a very different story. The thirty sailors who landed in Brazil were not heroes \u2013 they were mutineers. The first group responded with countercharges of their own, of a tyrannical and murderous senior officer and his henchmen. It became clear that while stranded on the island the crew had fallen into anarchy, with warring factions fighting for dominion over the barren wilderness. As accusations of treachery and murder flew, the Admiralty convened a court martial to determine who was telling the truth. The stakes were life-and-death\u2014for whomever the court found guilty could hang. The Wager is a grand tale of human behavior at the extremes told by one of our greatest nonfiction writers. Grann\u2019s recreation of the hidden world on a British warship rivals the work of Patrick O\u2019Brian, his portrayal of the castaways\u2019 desperate straits stands up to the classics of survival writing such as The Endurance, and his account of the court martial has the savvy of a Scott Turow thriller. As always with Grann\u2019s work, the incredible twists of the narrative hold the reader spellbound.",
+     "imageLinks": {
+      "smallThumbnail": "http://books.google.com/books/content?id=Zn41EQAAQBAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+      "thumbnail": "http://books.google.com/books/content?id=Zn41EQAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+     },
+     "industryIdentifiers": [
+      {
+       "identifier": "9780307742490",
+       "type": "ISBN_13"
+      },
+      {
+       "identifier": "0307742490",
+       "type": "ISBN_10"
+      }
+     ],
+     "infoLink": "http://books.google.com/books?id=Zn41EQAAQBAJ&dq=intitle:%22The+Wager%22+inauthor:%22David+Grann%22&hl=&source=gbs_api",
+     "language": "en",
+     "maturityRating": "NOT_MATURE",
+     "pageCount": 449,
+     "panelizationSummary": {
+      "containsEpubBubbles": false,
+      "containsImageBubbles": false
+     },
+     "previewLink": "http://books.google.com/books?id=Zn41EQAAQBAJ&printsec=frontcover&dq=intitle:%22The+Wager%22+inauthor:%22David+Grann%22&hl=&cd=1&source=gbs_api",
+     "printType": "BOOK",
+     "publishedDate": "2025-02-25",
+     "publisher": "Random House",
+     "readingModes": {
+      "image": true,
+      "text": false
+     },
+     "subtitle": "A Tale of Shipwreck, Mutiny and Murder",
+     "title": "The Wager"
+    }
+   },
+   "resolution_confidence": 0.7,
+   "resolved_at": "<TIMESTAMP>",
+   "resolved_id": "Zn41EQAAQBAJ",
+   "resolved_source": "googlebooks",
+   "series": null,
+   "series_position": null,
+   "subjects": [
+    "True Crime"
+   ]
+  }
+ ],
+ "seed": [
+  {
+   "author": "Frank Herbert",
+   "goodreads_book_id": "fixture-ol-isbn",
+   "goodreads_rating": 5,
+   "id": 1,
+   "isbn13": "9780441172719",
+   "title": "Dune",
+   "user_id": "fixture-user"
+  },
+  {
+   "author": "Jonathan Haidt",
+   "goodreads_book_id": "fixture-google-isbn",
+   "goodreads_rating": 4,
+   "id": 2,
+   "isbn13": "9780593655036",
+   "title": "The Anxious Generation",
+   "user_id": "fixture-user"
+  },
+  {
+   "author": "Ann Leckie",
+   "goodreads_book_id": "fixture-ol-search",
+   "goodreads_rating": 5,
+   "id": 3,
+   "isbn13": null,
+   "title": "Ancillary Justice",
+   "user_id": "fixture-user"
+  },
+  {
+   "author": "J. K. Rowling",
+   "goodreads_book_id": "fixture-ol-search-low",
+   "goodreads_rating": 4,
+   "id": 4,
+   "isbn13": null,
+   "title": "Harry Potter and the Sorcerer's Stone",
+   "user_id": "fixture-user"
+  },
+  {
+   "author": "Q. X. Fixture",
+   "goodreads_book_id": "fixture-unresolved",
+   "goodreads_rating": 3,
+   "id": 5,
+   "isbn13": null,
+   "title": "Zqxjv Nonexistent Catalog Fixture Book 847291",
+   "user_id": "fixture-user"
+  },
+  {
+   "author": "David Grann",
+   "goodreads_book_id": "fixture-google-search",
+   "goodreads_rating": 5,
+   "id": 7,
+   "isbn13": null,
+   "title": "The Wager",
+   "user_id": "fixture-user"
+  },
+  {
+   "author": "Jane Austen",
+   "goodreads_book_id": "fixture-pre-enriched",
+   "goodreads_rating": 5,
+   "id": 6,
+   "isbn13": "9780141439518",
+   "title": "Pride and Prejudice",
+   "user_id": "fixture-user"
+  }
+ ],
+ "seed_enrichment": [
+  {
+   "book_id": 6,
+   "confidence_label": "HIGH",
+   "cover_url": null,
+   "description": "Pre-enriched skip sentinel",
+   "language": "en",
+   "match_method": "isbn:openlibrary",
+   "raw_response": {
+    "fixture": "pre-enriched"
+   },
+   "resolution_confidence": 0.95,
+   "resolved_id": "/works/OL66554W",
+   "resolved_source": "openlibrary",
+   "series": null,
+   "series_position": null,
+   "subjects": [
+    "Fiction"
+   ]
+  }
+ ],
+ "summary": {
+  "HIGH": 2,
+  "LOW": 1,
+  "MEDIUM": 2,
+  "http": {
+   "by_host": {
+    "openlibrary.org": {
+     "rate_limited": 0,
+     "requests": 10
+    },
+    "www.googleapis.com": {
+     "rate_limited": 0,
+     "requests": 4
+    }
+   },
+   "network_errors": 0,
+   "rate_limited": 0,
+   "requests": 14,
+   "retries": 0,
+   "server_errors": 0
+  },
+  "processed": 6,
+  "skipped_existing": 1,
+  "total": 7,
+  "unresolved": 1
+ },
+ "urls": [
+  "https://openlibrary.org/api/books?bibkeys=ISBN:9780441172719&jscmd=data&format=json",
+  "https://openlibrary.org/books/OL59726263M.json",
+  "https://openlibrary.org/works/OL893414W.json",
+  "https://openlibrary.org/api/books?bibkeys=ISBN:9780593655036&jscmd=data&format=json",
+  "https://www.googleapis.com/books/v1/volumes?q=isbn%3A9780593655036&maxResults=5",
+  "https://openlibrary.org/search.json?title=Ancillary+Justice&limit=5&author=Ann+Leckie",
+  "https://openlibrary.org/works/OL17062644W.json",
+  "https://openlibrary.org/search.json?title=Harry+Potter+and+the+Sorcerer%27s+Stone&limit=5&author=J.+K.+Rowling",
+  "https://www.googleapis.com/books/v1/volumes?q=intitle%3A%22Harry+Potter+and+the+Sorcerer%27s+Stone%22+inauthor%3A%22J.+K.+Rowling%22&maxResults=5",
+  "https://openlibrary.org/works/OL31306243W.json",
+  "https://openlibrary.org/search.json?title=Zqxjv+Nonexistent+Catalog+Fixture+Book+847291&limit=5&author=Q.+X.+Fixture",
+  "https://www.googleapis.com/books/v1/volumes?q=intitle%3A%22Zqxjv+Nonexistent+Catalog+Fixture+Book+847291%22+inauthor%3A%22Q.+X.+Fixture%22&maxResults=5",
+  "https://openlibrary.org/search.json?title=The+Wager&limit=5&author=David+Grann",
+  "https://www.googleapis.com/books/v1/volumes?q=intitle%3A%22The+Wager%22+inauthor%3A%22David+Grann%22&maxResults=5"
+ ]
+}

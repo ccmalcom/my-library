@@ -63,6 +63,14 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/export/history', 'GET')).toBe(PY);
   });
 
+  test('auto: wave-4c-1 synchronous enrich goes to Node; background enrichment stays Python', () => {
+    expect(baseFor('/enrich', 'POST')).toBe('/api');
+    expect(baseFor('/enrich', 'GET')).toBe(PY);
+    expect(baseFor('/enrich/child', 'POST')).toBe(PY);
+    expect(baseFor('/enrich/start', 'POST')).toBe(PY);
+    expect(baseFor('/enrich/status/job-1', 'GET')).toBe(PY);
+  });
+
   test('node-only prefixes always hit Node', () => {
     expect(baseFor('/admin/config', 'GET')).toBe('/api');
     setBackendChoice('python');
@@ -82,7 +90,7 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/stats')).toBe('/api');
   });
 
-  test('wave-2/3a/3b/3c/4a/4b flip list is exactly as designed', () => {
+  test('wave-2/3a/3b/3c/4a/4b/4c-1 flip list is exactly as designed', () => {
     expect(NODE_DEFAULT_ROUTES).toEqual([
       { prefix: '/stats' },
       { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
@@ -109,6 +117,7 @@ describe('backend switcher (method-aware)', () => {
       { prefix: '/import/preview', methods: ['POST'], exact: true },
       { prefix: '/import', methods: ['POST'], exact: true },
       { prefix: '/export', methods: ['GET'], exact: true },
+      { prefix: '/enrich', methods: ['POST'], exact: true },
     ]);
   });
 

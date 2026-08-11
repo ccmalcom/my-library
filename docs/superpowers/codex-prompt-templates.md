@@ -63,6 +63,9 @@ N. How an already-ported/already-working example is structured end to end: pick 
    EXAMPLE] and list every file involved, the layering convention, where the transaction wrapper
    goes, and how its tests are wired.
 N+1. Anything in scope with NO equivalent yet that would need new infrastructure.
+N+2. Search ALL of [PORT TARGET DIR, e.g. frontend/lib/server/] and list every Python function in
+   scope that ALREADY has a port there, with its module path and exported name. Do not restrict the
+   search to the modules I named elsewhere in this prompt.
 
 Output as a structured markdown report with file:line citations throughout. Be exhaustive on
 specifics, do not summarize away detail. Do not propose a design or write code.
@@ -78,6 +81,13 @@ Why each line matters:
   the single highest-value item in the wave 4 inventory.
 - **The infrastructure-gap item** is what catches "this isn't a port, it's a design problem" before
   you plan it as a port.
+- **The already-ported item (N+2)** catches the inverse, and it is worth more than it looks. Wave
+  4c-1's draft told the executor to implement `difflib.SequenceMatcher` from scratch — a hard
+  algorithm that wave 3c-1 had already shipped in `similarity.ts`, alongside three normalizers
+  already in `dedup.ts`. Everything the draft said about *Python* was true; it just did not know
+  what the *Node* side already held. **Phrase it as a search across the whole target directory, not
+  a question about the modules you named** — naming modules elsewhere in the prompt is precisely
+  what confines the search to them.
 
 Persist the result into the repo immediately — `result <job-id> > docs/.../inventory.md`. The
 execution session has no memory of the conversation that produced it.

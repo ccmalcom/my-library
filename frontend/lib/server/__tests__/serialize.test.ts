@@ -11,8 +11,10 @@ import {
   todayIsoDate,
   pyList,
   parseIdParam,
+  serializeResolutionConfidence,
 } from '../serialize';
 import { ApiError } from '../errors';
+import type { ConfidenceLabel } from '../enrichment';
 
 describe('tsToIso', () => {
   test('converts postgres timestamp string to ISO T form', () => {
@@ -52,6 +54,20 @@ describe('effectiveRating', () => {
 });
 
 describe('rounding', () => {
+  test('serializes the complete enrichment confidence table', () => {
+    expect(
+      ['HIGH', 'MEDIUM', 'LOW', 'NONE'].map((label) => [
+        label,
+        serializeResolutionConfidence(label as ConfidenceLabel),
+      ])
+    ).toEqual([
+      ['HIGH', 0.95],
+      ['MEDIUM', 0.7],
+      ['LOW', 0.3],
+      ['NONE', 0.0],
+    ]);
+  });
+
   test('round2 matches Python round(x, 2), including banker-rounded ties', () => {
     expect(round2(4.333333)).toBe(4.33);
     // Exact binary ties -- the only place Math.round(x*100)/100 can be wrong.

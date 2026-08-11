@@ -18,6 +18,48 @@ const DEFAULT_REQ_PER_SEC = 8.0;
 let lastCallAt = 0;
 let throttleOverride: number | null = null;
 
+interface HostCatalogStats {
+  requests: number;
+  rate_limited: number;
+}
+
+interface CatalogStats {
+  requests: number;
+  rate_limited: number;
+  server_errors: number;
+  network_errors: number;
+  retries: number;
+  by_host: Record<string, HostCatalogStats>;
+}
+
+let catalogStats: CatalogStats;
+
+export function resetCatalogStats(): void {
+  catalogStats = {
+    requests: 0,
+    rate_limited: 0,
+    server_errors: 0,
+    network_errors: 0,
+    retries: 0,
+    by_host: {},
+  };
+}
+
+export function getCatalogStats(): CatalogStats {
+  return {
+    requests: catalogStats.requests,
+    rate_limited: catalogStats.rate_limited,
+    server_errors: catalogStats.server_errors,
+    network_errors: catalogStats.network_errors,
+    retries: catalogStats.retries,
+    by_host: Object.fromEntries(
+      Object.entries(catalogStats.by_host).map(([host, stats]) => [host, { ...stats }])
+    ),
+  };
+}
+
+resetCatalogStats();
+
 /** Twin of catalog.set_rate — recommend() calls this in wave 3c. */
 export function setRate(requestsPerSecond: number): void {
   throttleOverride = requestsPerSecond > 0 ? 1 / requestsPerSecond : 0;
@@ -43,9 +85,14 @@ export async function getJson(db: Db, url: string, source: string): Promise<unkn
   const cached = await cacheGet(db, url);
   if (cached.hit) return cached.payload;
 
+  const host = new URL(url).host;
+  const hostStats = (catalogStats.by_host[host] ??= { requests: 0, rate_limited: 0 });
   let backoff = 1000;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     await throttle();
+    catalogStats.requests += 1;
+    hostStats.requests += 1;
+    if (attempt > 1) catalogStats.retries += 1;
     let resp: Response;
     try {
       resp = await fetch(url, {
@@ -59,6 +106,7 @@ export async function getJson(db: Db, url: string, source: string): Promise<unkn
       // the harness's "any unfixtured URL fails loudly" guarantee. Duck-typed on
       // `.name` (not imported) so this file never depends on a test helper.
       if (err instanceof Error && err.name === 'HttpReplayMissError') throw err;
+      catalogStats.network_errors += 1;
       if (attempt === MAX_RETRIES) return null;
       await sleep(backoff);
       backoff *= 2;
@@ -69,6 +117,12 @@ export async function getJson(db: Db, url: string, source: string): Promise<unkn
       return null;
     }
     if (RETRYABLE.has(resp.status)) {
+      if (resp.status === 429) {
+        catalogStats.rate_limited += 1;
+        hostStats.rate_limited += 1;
+      } else {
+        catalogStats.server_errors += 1;
+      }
       if (attempt === MAX_RETRIES) return null;
       const ra = resp.headers.get('Retry-After');
       const wait = ra && /^\d+$/.test(ra) ? Number(ra) * 1000 : backoff;
@@ -146,6 +200,47 @@ export interface Candidate {
   isbn13?: string | null;
   language: string | null;
   raw: unknown;
+}
+
+export interface OpenLibraryIsbnCandidate {
+  source: 'openlibrary';
+  resolved_id: string | null;
+  title: string | null;
+  subjects: string[];
+  cover_url: string | null;
+  description: string | null;
+  raw: { isbn: string; record: OpenLibraryBookRecord };
+}
+
+interface OpenLibraryBookRecord {
+  key?: string;
+  title?: string;
+  subjects?: Array<{ name?: string }>;
+  cover?: { medium?: string };
+  description?: string | { value?: string };
+  notes?: string | { value?: string };
+}
+
+interface OpenLibraryBooksResponse {
+  [bibkey: string]: OpenLibraryBookRecord | undefined;
+}
+
+interface OpenLibraryEditionResponse {
+  works?: Array<{ key?: string } | null>;
+}
+
+interface OpenLibrarySearchResponse {
+  docs?: OpenLibraryDoc[];
+}
+
+interface OpenLibraryDoc {
+  key?: string;
+  title?: string;
+  author_name?: string[];
+  subject?: string[];
+  cover_i?: number;
+  first_publish_year?: number;
+  language?: string[];
 }
 
 const SEARCH_FETCH = 25;
@@ -226,6 +321,91 @@ export async function openlibraryTitle(
   )) as any;
   if (!data) return [];
   return (data.docs ?? []).slice(0, maxResults).map(olDocToCandidate);
+}
+
+export async function openlibraryByIsbn(
+  db: Db,
+  isbn: string
+): Promise<OpenLibraryIsbnCandidate | null> {
+  // Python builds this URL with an f-string, not httpx.QueryParams, so the colon
+  // stays RAW: `bibkeys=ISBN:123`. URLSearchParams would emit `ISBN%3A123`, which
+  // misses the recorded-HTTP fixture and splits the catalog_cache key. Keep it literal.
+  const data = (await getJson(
+    db,
+    `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&jscmd=data&format=json`,
+    'openlibrary'
+  )) as OpenLibraryBooksResponse | null;
+  const record = data?.[`ISBN:${isbn}`];
+  if (!record) return null;
+  const editionKey = record.key ?? null;
+  let description = olDescription(record);
+  if (!description && editionKey) {
+    const workKey = await openlibraryEditionWorkKey(db, editionKey);
+    if (workKey) description = await openlibraryWorkDescription(db, workKey);
+  }
+  return {
+    source: 'openlibrary',
+    resolved_id: editionKey,
+    title: record.title ?? null,
+    subjects: (record.subjects ?? []).flatMap((subject) => (subject.name ? [subject.name] : [])),
+    cover_url: record.cover?.medium ?? null,
+    description,
+    raw: { isbn, record },
+  };
+}
+
+async function openlibraryEditionWorkKey(db: Db, editionKey: string): Promise<string | null> {
+  if (!editionKey) return null;
+  const key = editionKey.replace(/^\/+/, '');
+  const data = (await getJson(
+    db,
+    `https://openlibrary.org/${key}.json`,
+    'openlibrary'
+  )) as OpenLibraryEditionResponse | null;
+  return data?.works?.[0]?.key ?? null;
+}
+
+export async function openlibraryEnrichmentSearch(
+  db: Db,
+  title: string,
+  author: string | null
+): Promise<Candidate[]> {
+  const params = new URLSearchParams({ title, limit: '5' });
+  if (author) params.set('author', author);
+  const data = (await getJson(
+    db,
+    `https://openlibrary.org/search.json?${params}`,
+    'openlibrary'
+  )) as OpenLibrarySearchResponse | null;
+  if (!data) return [];
+  return (data.docs ?? []).slice(0, 5).map((doc) => {
+    const coverId = doc.cover_i;
+    return {
+      source: 'openlibrary',
+      resolved_id: doc.key ?? null,
+      title: doc.title ?? null,
+      author: (doc.author_name ?? [null])[0] ?? null,
+      subjects: (doc.subject ?? []).slice(0, 25),
+      cover_url: coverId ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg` : null,
+      year: doc.first_publish_year ?? null,
+      language: normLang(doc.language),
+      raw: doc,
+    };
+  });
+}
+
+export async function googleBooksByIsbn(db: Db, isbn: string): Promise<Candidate | null> {
+  return (await googleBooksQuery(db, `isbn:${isbn}`))[0] ?? null;
+}
+
+export async function googleBooksEnrichmentSearch(
+  db: Db,
+  title: string,
+  author: string | null
+): Promise<Candidate[]> {
+  let query = `intitle:"${title}"`;
+  if (author) query += ` inauthor:"${author}"`;
+  return googleBooksQuery(db, query);
 }
 
 function normFull(s: string | null | undefined): string {
