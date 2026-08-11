@@ -38,3 +38,6 @@ export const NO_PROFILE_MESSAGE =
 /** recommend_similar's metadata gate, surfaced by api.py as a 400. */
 export const SIMILAR_NOT_ENOUGH_METADATA_MESSAGE =
   'Not enough metadata on this book to find similar reads. Enrich it first.';
+
+/** discover()'s empty-query guard, surfaced by api.py as a 400. */
+export const DISCOVER_EMPTY_QUERY_MESSAGE = 'Enter something to search for.';
