@@ -61,6 +61,13 @@ function pyRound(x: number, digits: number): number {
   return Number(x.toFixed(digits));
 }
 
+/** Import-star normalization: Python's nonnegative int(value + 0.5), capped at five. */
+export function roundRatingHalfUp(value: number): number | null {
+  if (!Number.isFinite(value)) return null;
+  const rounded = Math.trunc(value + 0.5);
+  return rounded <= 0 ? null : Math.min(rounded, 5);
+}
+
 /** Python's `round(x, 2)`. */
 export function round2(x: number): number {
   return pyRound(x, 2);
@@ -207,6 +214,25 @@ export function pyJsonDumps(v: unknown): string {
     return '{' + entries.join(', ') + '}';
   }
   return 'null';
+}
+
+/**
+ * Python `json.dumps(v, indent=2)` uses `ensure_ascii=True` by default. This is
+ * deliberately separate from compact, Unicode-preserving `pyJsonDumps` above:
+ * the export endpoint requires pretty output and ASCII escapes byte-for-byte.
+ */
+export function pyJsonDumpsIndented(v: unknown): string {
+  const json = JSON.stringify(v, null, 2);
+  if (json === undefined) return 'null';
+  let out = '';
+  // Index UTF-16 code units, not code points: Python emits supplementary
+  // characters as two lowercase \uXXXX surrogate escapes.
+  for (let i = 0; i < json.length; i += 1) {
+    const code = json.charCodeAt(i);
+    out +=
+      code === 0x7f || code >= 0x80 ? `\\u${code.toString(16).padStart(4, '0')}` : json.charAt(i);
+  }
+  return out;
 }
 
 /**

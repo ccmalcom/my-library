@@ -167,13 +167,26 @@ describe("Python csv compatibility", () => {
       ]),
     ).toBe(
       "title,author,additional_authors,isbn13,shelf,rating,review,date_read,date_added,page_count,year_published\r\n" +
-        '"x,y","say ""hi""","line1\nline2",lone\rreturn,,,,,,,\r\n',
+        '"x,y","say ""hi""","line1\nline2","lone\rreturn",,,,,,,\r\n',
     );
   });
 });
 ```
 
 This single fixture covers every required differentiator. Its expected parse comes from `csv.DictReader` behavior at `mylibrary/importers/formats.py:46-48`; its expected write bytes come from `csv.DictWriter` at `mylibrary/exporters.py:24-49`.
+
+**Corrected 2026-08-11 against real CPython output — two byte-significant fixes:**
+
+1. **`lone\rreturn` is quoted, not bare.** CPython's `excel` dialect is `QUOTE_MINIMAL`, and minimal quoting triggers on the delimiter, the quotechar, **or any character in `lineterminator`** — which for `excel` is `\r\n`. A lone `\r` is therefore a quote-forcing character. Verified:
+
+   ```
+   >>> csv.DictWriter(buf, CANONICAL).writerow({..., 'isbn13': 'lone\rreturn', ...})
+   '...,"line1\nline2","lone\rreturn",,,,,,,\r\n'
+   ```
+
+   This matters beyond the test: `csv-stringify`'s minimal quoting may only consider the full `record_delimiter` string and miss a bare `\r`. If `quoted: false` alone does not reproduce the quoted form, make the wrapper force it (e.g. `quoted_match: /[\r\n]/`) — **CPython is the specification; never relax the expectation to match `csv-stringify`'s default.** The same fix applies to Task 6's `A\rB` column.
+
+2. **The BOM expectation is correct as written, at this layer.** `csv.DictReader(io.StringIO(text))` in isolation does **not** strip a BOM — it yields `fieldnames == ['﻿a', 'b', 'c']`. That is not the pipeline's behavior: `mylibrary/api.py:486` decodes `raw.decode("utf-8-sig")` in `_decode_upload` **before** the text ever reaches `formats.py:48`, so end-to-end Python yields `['a', 'b', 'c']`. Verified both ways. `bom: true` in `PY_DICT_READER_OPTIONS` reproduces the composed pipeline in one step, and it is harmlessly redundant with the upload helper's BOM strip (Global Constraint 10) because there is only ever one leading BOM. Keep `headers: ["a", "b", "c"]`; do not "fix" it to `﻿a`. Add a comment in the test recording that the BOM strip is `utf-8-sig`'s job in Python and the reader's job here.
 
 - [ ] **Step 3: Implement one pinned parse option object**
 
@@ -224,9 +237,11 @@ test("star rounding is half-up, not Python banker rounding", () => {
   expect(roundRatingHalfUp(4.4)).toBe(4);
   expect(roundRatingHalfUp(0.4)).toBeNull();
   expect(roundRatingHalfUp(9)).toBe(5);
-  expect(pyRound(4.5, 0)).toBe(4);
+  expect(pyRoundHalfEven(4.5)).toBe(4);
 });
 ```
+
+**Corrected 2026-08-11:** the contrast assertion was originally written as `pyRound(4.5, 0)`, but `pyRound` is module-private — `frontend/lib/server/serialize.ts:54` declares it as a bare `function pyRound(...)`, and only the `round2`/`round4`/`pyRoundHalfEven` wrappers are exported. Use the already-exported `pyRoundHalfEven`, which **is** Python's one-argument `round(x) -> int` (half-to-even) and is exactly the contrast this assertion wants. Do **not** widen `serialize.ts`'s public surface by exporting `pyRound` just to satisfy a test.
 
 - [ ] **Step 6: Run, prove symbols landed, and format**
 
@@ -347,12 +362,31 @@ test("date parsing is timezone-free and cannot shift to the prior day", () => {
   expect(parseDateOnly("2026-01-03")).toBe("2026-01-03");
   expect(parseDateOnly("2026-13-01")).toBeNull();
   expect(
-    new Date("2026-01-01").toLocaleDateString("en-CA", {
+    new Date("2026-01-01").toLocaleDateString("en-US", {
       timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     }),
   ).toBe("12/31/2025");
 });
 ```
+
+**Corrected 2026-08-11:** this control assertion originally passed locale `en-CA` while expecting the
+`en-US` format string `12/31/2025`. Modern ICU renders `en-CA` as ISO-like, so on Node v22.22.2 it
+returns `2025-12-31` and the assertion fails. Verified:
+
+```
+en-CA default opts     : 2025-12-31
+en-US default opts     : 12/31/2025
+en-US explicit 2-digit : 12/31/2025
+```
+
+The assertion's *intent* was always sound — naive UTC parsing really does display `2026-01-01` as
+December 31, 2025 in `America/Los_Angeles`, which is exactly the trap `parseDateOnly` must avoid. Only
+the locale/expectation pairing was wrong. Use `en-US` **with explicit `year`/`month`/`day` numeric
+options** rather than relying on the locale's default pattern, so the assertion does not depend on the
+ICU version bundled with whatever Node runs the suite.
 
 - [ ] **Step 3: Implement transaction-only dedup/upsert**
 
@@ -612,7 +646,11 @@ test("POST preview rejects missing file, bad suffix, bad UTF-8, and oversize bod
   );
   expect({ status: missing.status, body: await missing.json() }).toEqual({
     status: 422,
-    body: { detail: "Field required: file" },
+    body: {
+      detail: [
+        { type: "missing", loc: ["body", "file"], msg: "Field required", input: null },
+      ],
+    },
   });
   const badName = new FormData();
   badName.set("file", new File(["x"], "books.txt"));
@@ -655,6 +693,29 @@ test("POST preview rejects missing file, bad suffix, bad UTF-8, and oversize bod
   });
 });
 ```
+
+**Corrected 2026-08-11 against a real FastAPI `TestClient` call.** The missing-file expectation was
+originally `{ detail: "Field required: file" }`, which no code path produces. A missing `file` is not an
+explicit `HTTPException` — it is FastAPI's own request-validation error, so the real body is a list:
+
+```
+no file at all   status=422 body={"detail":[{"type":"missing","loc":["body","file"],"msg":"Field required","input":null}]}
+bad suffix       status=422 body={"detail":"Uploaded file must be a .csv"}
+bad utf-8        status=422 body={"detail":"File must be UTF-8 encoded CSV."}
+```
+
+The other two strings were confirmed correct, as was the case-insensitive suffix check (`BOOKS.CSV`
+returns 200). Note this is the **first** place in the migration where FastAPI's auto-validation shape
+matters: every 422 recorded in `write-scenarios.json` so far is a `{"detail": "<string>"}` from an
+explicit raise, so there is no existing Node helper for the list form. Record this case as a parity
+scenario rather than hand-asserting it.
+
+**The 413 is a deliberate Node-only addition, not parity.** Verified that Python enforces **no** upload
+size limit anywhere (`grep` for `MAX_*BYTES`, `content_length`, `max_size`, `10485760` across
+`mylibrary/` finds nothing). `MAX_IMPORT_BYTES` and `Uploaded CSV exceeds the 10 MiB limit.` are new
+behavior introduced by Global Constraint 10 because Vercel needs a bound on an in-memory upload. Do not
+try to record a parity fixture for it and do not conclude the Python side is missing something — it is
+an intentional divergence, and it must be commented as such in `import-upload.ts`.
 
 - [ ] **Step 2: Implement the shared upload helper**
 
@@ -832,8 +893,12 @@ test("CSV export is byte-exact and round-trips through the canonical parser", as
     /^attachment; filename="mylibrary-backup-\d{8}\.csv"$/,
   );
   const bytes = await res.text();
+  // NOTE (corrected 2026-08-11 against real CPython): `A\rB` is QUOTED. Minimal
+  // quoting triggers on any character in the `excel` dialect's `\r\n`
+  // lineterminator, so a lone CR forces quotes. Verified DictWriter output:
+  //   '..."Comma, ""Quote""\nLine",,"A\rB",,read,4,"Review, yes",2026-01-01,,0,2020\r\n'
   expect(bytes).toBe(
-    'title,author,additional_authors,isbn13,shelf,rating,review,date_read,date_added,page_count,year_published\r\n"Comma, ""Quote""\nLine",,A\rB,,read,4,"Review, yes",2026-01-01,,0,2020\r\n',
+    'title,author,additional_authors,isbn13,shelf,rating,review,date_read,date_added,page_count,year_published\r\n"Comma, ""Quote""\nLine",,"A\rB",,read,4,"Review, yes",2026-01-01,,0,2020\r\n',
   );
   const parsed = parseCanonical(bytes);
   expect(parsed).toEqual({
@@ -1117,4 +1182,176 @@ Report the exact diff, golden-fixture regeneration, five command results, and an
 
 ---
 
-## Verification record — to be filled in at execution time
+## Verification record — filled in 2026-08-11
+
+**Status: implementation-complete, test-verified, AND live-verified in a browser** (2026-08-11, Claude
+in Chrome, against an isolated throwaway Postgres container — never dev Supabase). See "Live browser
+verification" below for what was exercised and the one item that could not be confirmed.
+
+### The five commands, each run separately by Claude (not from an agent's self-report)
+
+| Command | Result |
+| --- | --- |
+| `npm test -- --runInBand` (Jest) | 5 suites, **38/38 passed** |
+| `npm run test:server` (Vitest) | **62 files, 408/408 passed** |
+| `npm run type-check` | `tsc --noEmit`, **0 errors** |
+| `npm run lint` | `eslint .`, **clean** |
+| `.venv/bin/pytest` | **360 passed** |
+
+`npx prettier --check` on all 18 touched frontend source files: clean. `fixtures/parity/` is
+Prettier-ignored (see below).
+
+### Proof searches (Step 4)
+
+All as expected. `UPDATE_ELIGIBLE_FIELDS` at `import-books.ts:6`; `roundRatingHalfUp` at
+`serialize.ts:65`; `record_delimiter` CRLF at `import-csv.ts:43,69`; `Content-Disposition` at
+`export/route.ts:18`; `runtime = 'nodejs'` on all three routes. The `app*` grep hits
+`import-books.ts:122-124` **only inside the insert path** — the update path never writes them, so
+locked decision #2 holds. The ingest search prints **nothing**.
+
+### Boundary (Step 5)
+
+No schema, migration, `.sql`, enrichment, admin, worker, queue, or Redis change. `mylibrary/api.py` is
+**0 added / 49 deleted** — pure deletion. `backend.ts` gained exactly three rules. Live routing verified
+by executing `baseFor`: the three wave-4b routes and `/export?format=json` resolve to `/api`; `/enrich`,
+`/enrich/start`, `/enrich/status/1`, `GET /import`, `POST /export`, `/import/child`, and
+`/export/history` all still resolve to Python.
+
+### Plan defects found and corrected during execution
+
+Each was measured against the running interpreter or the live FastAPI app, not argued from source:
+
+1. **CSV `\r` quoting was wrong in two places** (Task 1 fixture and Task 6's export golden). CPython's
+   `excel` dialect is `QUOTE_MINIMAL`, which quotes on any character in `lineterminator` (`\r\n`), so a
+   lone CR forces quotes. `csv-stringify` does not do this by default; `quoted_match: /[\r\n]/` was
+   required. Fixing only the reported instance would have shipped the same defect in Task 6.
+2. **`pyRound` is module-private**, so Task 1's contrast assertion could not import it. Switched to the
+   already-exported `pyRoundHalfEven`, which *is* Python's one-arg `round()`.
+3. **Task 3's timezone control paired `en-CA` with the `en-US` string `12/31/2025`.** Modern ICU renders
+   `en-CA` as ISO-like. Now uses `en-US` with explicit numeric options so it does not depend on the
+   bundled ICU version.
+4. **Task 4's missing-file 422 was invented.** A missing form field is FastAPI request validation, so the
+   real body is a list: `{"detail":[{"type":"missing","loc":["body","file"],"msg":"Field required","input":null}]}`.
+   Recorded as a parity scenario rather than hand-asserted.
+5. **Task 5's error *ordering* was unstated.** Measured: bad-suffix beats bad-mapping, because
+   `_decode_upload` runs before mapping parsing.
+6. **Four helper-level Python divergences** found by differential-testing every normalization helper
+   against its Python original over a shared input matrix: unpadded dates (`2026/1/2`), mixed separators
+   (`2026/01-02`, which Node wrongly accepted), hex/binary/octal literals (`0x10` → 16 in JS, `None` in
+   Python), and underscore separators (`1_000` → 1000 in Python, `null` in JS). All closed; the matrix
+   now agrees except the documented item below.
+
+### Deliberate, documented divergences from Python
+
+- **10 MiB / 413 upload bound.** Python enforces no size limit anywhere (verified by grep for every
+  spelling). This is new behavior required by Constraint 10 for serverless. It cannot be parity-tested
+  and must not be deleted to "restore parity".
+- **`parse_int` overflow.** Python's `parse_int` catches only `ValueError`, so `int(float("inf"))` raises
+  `OverflowError` and propagates as an unhandled 500 on a malformed cell. Node returns `null`. Reproducing
+  a crash is not what Constraint 2 means; commented in place so it is not "fixed" back.
+- **`taste_signal.created_at` generator.** Python uses `server_default=func.now()` (database-generated);
+  Node's wave-2 `/taste-signal` route supplies `utcnowTs()` (millisecond precision). Both produce a valid
+  timestamp. Left alone — wave-2 code, out of scope here — but recorded for Chase.
+
+### Harness changes worth knowing
+
+- **`fixtures/parity/` added to `.prettierignore`.** The file already carried this exact rule and its
+  rationale for `fixtures/claude/` (the generator writes `json.dumps(indent=1)`, so formatting is undone
+  by the next re-record); the parity directory was simply missed. Verified all three parity fixtures were
+  already non-Prettier-clean at HEAD. **This deviates from Task 2 Step 6, which instructed
+  `prettier --write write-scenarios.json`** — following that literally would have produced thousands of
+  churn lines reverted by the next re-record.
+- **Clock-derived values in text-mode bodies are now masked.** `exported_at` masking stays strict (six
+  fractional digits and `+00:00` required) because Python application code produces it. `created_at`
+  masking accepts 0-6 fractional digits because the recorded value comes from SQLite's
+  `CURRENT_TIMESTAMP` while the replay DB and production are Postgres. Both reject a `Z` suffix or an
+  offset so a genuine format break still fails. Proven by tests crossing a UTC date boundary.
+- **`export-json-with-signals` scenario added.** `seed.json` has no taste-signal table, so the original
+  `export-json` golden had `"taste_signals": []` and proved nothing about signal keys, ordering, or
+  `created_at`. The new multi-step scenario creates signals through the real API before exporting.
+
+### Live browser verification (2026-08-11, Claude in Chrome)
+
+Target was the **isolated `mylib-w3b-verify` container** (`127.0.0.1:55432/mylibrary_verify`), never dev
+Supabase. Safety was confirmed before any write by checking the Node API served the container's 4 seeded
+books, and the dev-server log showed `userId: "local"` on every request.
+
+**Environment gotcha worth recording:** browsing `http://127.0.0.1:3100` silently breaks the app. Next 16
+blocks cross-origin dev resources, logging `Blocked cross-origin request to Next.js dev resource
+/_next/webpack-hmr from "127.0.0.1"`, which kills hydration — the page renders server-side but no click
+handler fires and no client fetch happens. It looks exactly like a broken app. Use
+`http://localhost:3100`. Nothing to do with wave 4b.
+
+What was exercised end to end through the real UI, with `read_network_requests` confirming every call
+went to same-origin `/api` (i.e. Node, not Python):
+
+| Flow | Result |
+| --- | --- |
+| `POST /api/import/preview` | 200 — modal showed "Detected: **The StoryGraph**, 9 columns" |
+| `POST /api/import` | 200 — 4 rows: 2 inserted, 1 updated, 1 skipped |
+| `GET /api/export?format=csv` | 200, `text/csv; charset=utf-8`, `attachment; filename="mylibrary-backup-20260811.csv"` |
+| `GET /api/export?format=json` | 200, `application/json`, matching `.json` filename |
+| Round-trip re-import | 200 — canonical detected as "**MyLibrary backup**, 11 columns", 6 books in / 6 matched / **0 duplicates** |
+
+Verified in the database afterward, not from the UI's own summary:
+
+- **Half-up rounding is live.** `Star Rating` `4.5` → stored `goodreads_rating = 5`.
+- **Insert-only review seeding is live.** The new rated row got `app_review` set and
+  `feedback_updated_at` stamped, with `app_rating` left `null`. The new *unrated-review-free* row got
+  neither.
+- **Locked decision #2 holds against a real database.** `Dune` matched by normalized title + surname and
+  its `goodreads_rating` moved 5 → 4, while `app_rating`, `app_review`, `feedback_updated_at` **and**
+  `source` were untouched. A blank incoming `date_read` preserved the stored value.
+- **The blank-title row was skipped** — book count went 4 → 6, with no `Nobody At All` row.
+- **The effective-rating re-import quirk is live.** On round-trip, `Project Hail Mary` kept
+  `app_rating = 3` and its review, while `goodreads_rating` moved 4 → 3 — i.e. the exported effective
+  rating landed in `goodreads_rating`, exactly as documented.
+- **Non-ASCII survives the whole loop.** `Café Extraordinaire` and `日本語の本` imported, exported, and
+  re-imported without duplicating, so the UTF-8 decode and the dedup normalization both handle them.
+
+**Gap #4 from the previous list is now closed, and closed the strongest way available.** With real
+non-ASCII data in the library, Python's own `export_csv` / `json.dumps(export_json(...), indent=2)` was
+run against the **same** container database and diffed against the bytes the Node route had just served:
+
+```
+===== CSV: Python vs Node  =====  BYTE-IDENTICAL
+===== JSON: Python vs Node =====  BYTE-IDENTICAL   (exported_at masked — it is a clock read)
+```
+
+The live JSON contains `"Café Extraordinaire"`, `"Loved it — déjà vu"` and
+`"日本語の本"`, so `ensure_ascii` escaping is now proven against Python on real
+data rather than only against a hand-written expectation.
+
+**The one thing that could not be confirmed:** no file landed on disk. Both export requests returned 200
+with correct bytes and headers, and the page's `downloadBlob` path ran, but no `mylibrary-backup-*` file
+appeared anywhere under `$HOME` and no `.crdownload` either. Chrome appears not to persist a
+programmatic blob download triggered by automation. This is a browser-automation limitation, not
+evidence of an app defect — but **"the browser saves a usable file when a human clicks Download" is still
+formally unverified**, and it is the last thing worth a manual click. Note also that the saved filename
+comes from the *client* (`settings/page.tsx` computes its own stamp), not from the server's
+`Content-Disposition`, so the header is only what an API client would see.
+
+Cleanup: dev server stopped, container stopped (`docker start mylib-w3b-verify` to reuse),
+`frontend/next-env.d.ts` reverted after `next dev` rewrote it, and `tsc --noEmit` re-confirmed clean
+afterward.
+
+### What remains unproven — do not read the green suite as "done"
+
+Items 1, 3 and 4 from the original list are now **closed** by the live browser pass above. What is still
+outstanding:
+
+1. **The browser actually writing a file to disk.** Exports return 200 with correct bytes and headers and
+   the client download path runs, but Chrome did not persist the blob under automation. Needs one manual
+   click to confirm.
+2. **The 10 MiB rejection has never been exercised over a real HTTP request** — only via a constructed
+   `Request` in tests. The pre-`formData()` `Content-Length` branch in particular depends on the real
+   runtime setting that header, and a >10 MiB upload was not attempted in the browser.
+3. **Nothing was verified against Supabase/Vercel.** All live checks ran on a local throwaway Postgres
+   container under `next dev`. Serverless specifics — the `nodejs` runtime declaration mattering, request
+   body size limits at the platform edge, cold-start behavior — are unexercised.
+4. **A real Goodreads export was not used.** The live import used a hand-built StoryGraph CSV and the
+   app's own canonical backup. The Goodreads parser (with its distinct `int(float(s))` rating rule and
+   ignored `My Review`) is covered only by unit tests and fixtures, not by a real Goodreads file.
+5. **Repo-wide `ruff check mylibrary/` is red** with four import-order findings in `archetype.py`,
+   `db.py`, `library.py`. Confirmed pre-existing by running ruff against a `git archive` of HEAD:
+   identical four findings. Not caused by this wave, and not fixed here.

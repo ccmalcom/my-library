@@ -28,6 +28,7 @@ export interface BackendRule {
  * Wave 3c-1: `POST /recommend` (the two-stage recommender) flips to Node.
  * Wave 3c-3: `POST /discover` (natural-language discovery) flips to Node, completing wave 3c.
  * Wave 4a: destructive library, profile, and account purges flip to Node.
+ * Wave 4b: multipart import preview/import and attachment export flip to Node.
  */
 export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/stats' },
@@ -61,6 +62,11 @@ export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/library', methods: ['DELETE'], exact: true },
   { prefix: '/profile', methods: ['DELETE'], exact: true },
   { prefix: '/account', methods: ['DELETE'], exact: true },
+  // Wave 4b: multipart import and attachment export. Exact + method-specific;
+  // /import is a prefix of /import/preview, so each route is independently locked.
+  { prefix: '/import/preview', methods: ['POST'], exact: true },
+  { prefix: '/import', methods: ['POST'], exact: true },
+  { prefix: '/export', methods: ['GET'], exact: true },
 ];
 
 /** Routes that only exist on the Node backend. */

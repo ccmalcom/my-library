@@ -264,12 +264,13 @@ wasted job instead of letting it run to completion on quota.
 
 ### Scoping greps are Claude's job — "don't explore before delegating" is about execution
 
-Two greps before any delegation changed what wave 4b *is*: `POST /ingest` takes a server-side
-`csv_path` and `ingestUpload` still exists at `frontend/lib/api.ts:505`, but **nothing in `app/`,
+Two greps before any delegation changed what wave 4b *is*: `POST /ingest` took a server-side
+`csv_path` and `ingestUpload` existed at `frontend/lib/api.ts:505`, but **nothing in `app/`,
 `components/`, or `lib/` calls it** — `SetupWizard.tsx:322` and `ImportModal.tsx:91` both went to
 `api.importLibrary` at some earlier point. Both ingest routes are also filesystem-bound, which
 Vercel's read-only serverless FS cannot host. So they are dead code, and wave 4b deletes them
-rather than porting them. A third grep confirmed `withApi` already returns a raw `Response`
+rather than porting them. Wave 4b subsequently removed both routes and the orphaned client method.
+A third grep confirmed `withApi` already returns a raw `Response`
 (`lib/server/http.ts:37`), which decides how `GET /export` is built.
 
 That is three greps to remove two routes from a wave and settle an architecture question. **The
@@ -454,3 +455,320 @@ Goodreads and `5` everywhere else.
   equivalent of FastAPI `BackgroundTasks` or a persistent arq worker. Options are `waitUntil`, a
   cron-driven poller, Redis + external worker, or leaving enrichment on Python through cutover.
   Needs a decision from Chase.
+
+---
+
+## Wave 4b execution findings
+
+### The "verify the plan against the running interpreter" instruction paid off immediately
+
+Task 1's prompt added one instruction beyond the verbatim task text: *run the fixture through
+`.venv/bin/python` and report any disagreement rather than adapting either side.* Codex came back
+having implemented **nothing** and reporting two byte-significant CPython disagreements plus one
+unexported symbol. All three verified true. The plan's golden CSV fixture — the contract the rest
+of the wave is built on — was wrong before a single line of code existed.
+
+This is the `migration-plan-prose-vs-source` failure mode caught at the cheapest possible moment.
+**Generalize it: when a plan asserts the byte-level output of a library, make Task 1 run the library
+rather than trusting the plan's transcription of it.** Plan authors read source and transcribe;
+transcription of escape-heavy string literals is exactly where it breaks down.
+
+### The three findings
+
+1. **`\r` forces CSV quotes** (plan was wrong). CPython `excel` is `QUOTE_MINIMAL`, and minimal
+   quoting triggers on delimiter, quotechar, *or any character in `lineterminator`* — `\r\n`. So a
+   lone `\r` in a field is quoted: `"lone\rreturn"`, not `lone\rreturn`. The plan had it bare in
+   **two** places (Task 1's writer fixture and Task 6's export golden). Fixing only the reported one
+   would have shipped the same defect three tasks later.
+2. **BOM: plan right, Codex wrong — layer mismatch.** Codex correctly showed
+   `csv.DictReader(io.StringIO(text))` yields `['﻿a', 'b', 'c']`, then concluded the plan's
+   `["a","b","c"]` was wrong. But `api.py:486` decodes `utf-8-sig` in `_decode_upload` *before* the
+   text reaches `formats.py:48`, so the pipeline yields `['a','b','c']`. The plan described
+   end-to-end behavior; Codex tested one layer in isolation. Both outputs were real; only the
+   framing differed.
+3. **`pyRound` is module-private** (`serialize.ts:54`, bare `function`). The plan's contrast
+   assertion imported it. Resolved by using the already-exported `pyRoundHalfEven`, which *is*
+   Python's one-arg `round()`, rather than widening the module surface for a test.
+
+### Lesson: a correct observation can still be a wrong conclusion
+
+Finding 2 is the mirror image of wave 4a's false-FK finding, and more dangerous. Wave 4a's was a
+grep that found nothing. This one was a **real, correctly-executed experiment** whose output
+genuinely contradicted the plan — it just measured the wrong layer. The standing rules' "treat
+citations as unverified sketches" paragraph primes Codex to hunt plan errors, and a primed hunter
+reports a layer mismatch as a plan defect.
+
+So the review checklist item "before contradicting a citation, open the cited range" needs a
+companion: **before accepting a contradiction, check that the experiment measured the layer the
+claim was about.** Ask *where in the pipeline does this transformation happen?* For finding 2 the
+answer — decode-time, not parse-time — resolves it in one grep. Had it been accepted at face value,
+Node would have preserved a BOM in the first header of every imported CSV.
+
+Practical consequence: **a refusal-with-findings is a good outcome, not a failed task.** It cost one
+cheap job and saved a wrong contract propagating through six. But each finding still needs
+independent adjudication; two of three were plan bugs, one was a Codex bug, and the wrong call
+either way is expensive.
+
+### Review gate — now actually on
+
+`setup --enable-review-gate` reported `reviewGateEnabled: true` for this repo, resolving the
+previous wave's open question about whether it was ever switched on. Whether it *fires* and what it
+says is still unlogged. Continue tracking.
+
+### The plan's per-task verification steps omit `type-check` and `lint` — add them to every dispatch
+
+Task 1's Step 6 verification is `npx vitest run ... ; grep ... ; npx prettier --write ...`. Every
+other task in the wave follows the same shape. `npm run type-check` and `npm run lint` appear only in
+Task 9. The consequence showed up immediately: Task 1 shipped **green tests and a broken
+`tsc --noEmit`** twice in a row, because nothing in the task's own verification would ever have
+caught it. It was `.claude/hooks/on_stop.py` — not the task, not Codex's self-report — that surfaced
+it.
+
+Deferring type-check to Task 9 means type errors accumulate silently across eight tasks and then
+land as one undifferentiated pile on the task least able to attribute them. **Add
+`npm run type-check` (and `npx eslint <touched files>`) to the verification block of every task
+prompt in this wave, regardless of what the plan's step says.** Cheap per task; brutal if batched.
+
+Corollary for prompt-writing: **Codex runs the commands you list and no others.** It is not
+"forgetting" to type-check — an unlisted command is out of scope. If a gate matters, name it in the
+prompt; do not assume the plan's Global Constraints imply it.
+
+### The `on_record` typing trap, and what green tests did not prove
+
+The first fix used `context.columns`, which **does not exist** on csv-parse's `InfoRecord` (only
+`error`, `header`, `index`, `raw` + `InfoDataSet`). At runtime it was `undefined`, so the
+`?? Object.keys(record)` fallback silently supplied headers from the *record keys* — which is exactly
+why header-only input produced no headers. One non-existent property produced a passing test suite
+and a wrong primitive.
+
+Useful facts for anyone touching this file (read from `node_modules`, csv-parse 7.0.2):
+
+- `parse<T = unknown, U = T>(input, options: OptionsWithColumns<T, U>): T[]` — output and input record
+  types are both controllable via explicit generics. The mismatch that broke tsc was `on_record`
+  taking `Record<string, string>` while returning `CsvRecord` (whose index signature admits `null`
+  and `string[]`) with no generics supplied.
+- `CsvError` declares `[key: string]: unknown`, so `context.error?.record` needs **no** cast; the
+  `as unknown as { record?: unknown }` double cast in the delivered code was unnecessary.
+- `Options<T = string[], U = T>` at `index.d.ts:276`.
+
+Wider lesson, and the second time this wave: **a passing test suite proves the specified case works,
+not that the primitive is correct.** Task 1's edge-matrix fixture is one rich input *with* data rows,
+so it structurally could not exercise the zero-data-row path. When reviewing, ask what input shape
+the test file cannot express — that is where to probe. Both real Task 1 defects lived there.
+
+### `--background` is a Claude-side flag and never reaches `task` — every Codex job has a ~10 min cap
+
+`commands/rescue.md:19` is explicit: "`--background` and `--wait` are execution flags for Claude Code.
+Do not forward them to `task`." So `/codex:rescue --background` backgrounds the *subagent*, while the
+companion's `task` call still runs foreground with a ~10-minute limit. Wave 4a and this wave's Task 1
+never noticed because every job finished in 1-4 minutes. Task 2 hit the wall and was killed
+mid-flight, leaving 3 applied file changes and no fixtures.
+
+**Consequence to design around: a Codex task must fit in ~10 minutes of wall clock, including its own
+exploration.** Prefer several narrow tasks over one broad one. Check for partial application after any
+killed run — `git status` — because file changes already applied are NOT rolled back.
+
+### git's pager hangs the Codex shell, and the hang gets misattributed
+
+The Task 2 run died because it invoked `git diff -- <paths>`, which hung and exited 130. It then
+reported that `scripts/gen_parity_fixtures.py` "did not complete after roughly ten minutes and
+produced no fixture output." That generator runs in **1.8 seconds**. The wrong component was blamed
+for the entire lost budget.
+
+Two rules from this:
+
+- **Always pass `GIT_PAGER=cat` or use `git --no-pager`** in Codex prompts that inspect diffs.
+- **When a run reports "X is too slow", verify X directly before believing it.** This is the third
+  instance this wave of a confidently-reported, plausible, *wrong* conclusion drawn from a real
+  observation (after the BOM layer mismatch and the `context.columns` phantom). The pattern is
+  consistent enough to treat as the default expectation: Codex's *observations* are reliable, its
+  *attributions* need checking.
+
+### Generated fixtures must be Prettier-ignored, and the plan said the opposite
+
+`.prettierignore` already carried the rule and the reasoning for `fixtures/claude/`: the generator
+writes `json.dumps(indent=1)`, Prettier wants 2-space, so "formatting them is undone by the very next
+re-record." `fixtures/parity/` — written by the sibling generator, same `indent=1` — was never added.
+Nothing surfaced it until a re-record touched those files and the stop-time `prettier --check` fired.
+
+Note the plan's Task 2 Step 6 explicitly instructs `npx prettier --write ... write-scenarios.json`,
+which **contradicts the repo's own documented convention** and would have produced thousands of lines
+of churn reverted by the next re-record. Verified that all three parity fixtures were already
+non-Prettier-clean at HEAD before concluding this. Fix was to extend the existing rule to the missed
+directory, not to format generated output.
+
+Generalizable: when a gate fires on a generated file, check whether the repo already has a policy for
+its sibling. The convention usually exists and was just applied incompletely.
+
+### Recorded fixtures that embed a clock reading expire silently
+
+Task 2's recording captured two values derived from "now": `content-disposition:
+attachment; filename="mylibrary-backup-20260811.csv"` (compared with an exact `toEqual`, not routed
+through `maskVolatile`) and `exported_at`, whose first mask normalized the time but *captured and
+preserved* the date. Both would have gone red on the first replay after a UTC date rollover — during
+Task 6 or later, with no code change, looking exactly like a real parity break.
+
+The fix worth reusing: **mask the value, assert the format.** Replace the whole timestamp with a fixed
+literal only when it matches `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}\+00:00` exactly, so a
+3-fractional-digit or `Z`-suffixed value is left unmasked and still fails — which is the entire point,
+since that is precisely the Python-vs-JS difference Constraint 7 exists to catch. Normalize only the
+8 digits of the filename stamp, symmetrically on both sides, keeping the rest of the header exact.
+And **prove date-independence with a test that crosses the boundary** (23:59:59 vs 00:00:01 the next
+day) rather than asserting the regex handles it.
+
+**Ask of any new fixture: does this value come from a clock?** If yes it needs masking, and the mask
+needs its own test.
+
+### Codex's sandbox cannot run FastAPI `TestClient` — fixture recording is Claude's job
+
+Task 4 needed one new recorded fixture. Codex ran `.venv/bin/python scripts/gen_parity_fixtures.py`,
+which hung; it then reduced to a minimal in-process `TestClient` request, which also hung (exit 130
+both times). It correctly refused to hand-write the fixture and reported the blocker instead of
+faking it. I ran the same generator from Claude's shell: **1.68 seconds, exit 0.**
+
+So this is a sandbox restriction on whatever `TestClient` does (socket/thread setup), not a slow
+generator. Combined with the earlier `npm install` failure, the rule is:
+
+**Codex writes the recorder scenario; Claude runs the recorder.** Put the scenario addition in the
+Codex task, and explicitly tell it NOT to run `gen_parity_fixtures.py` — otherwise it burns minutes
+of its ~10-minute budget hanging on a command that cannot succeed. Claude regenerates afterward and
+verifies the recorded body.
+
+Second-order benefit: this keeps the "never fabricate a golden" rule structurally enforceable. The
+agent that cannot record is also told not to invent — and it has now twice reported a blocker rather
+than inventing, which is the behavior to protect.
+
+### Codex corrected *my* arithmetic, and it was right
+
+I told Task 4 to expect "exactly 2 remaining failures" after it landed. Codex pushed back: `/export`
+is three separate Vitest cases (`export-csv`, `export-json`, `export-invalid-format`), so Tasks 5-6
+account for four failing *tests*, not two. Verified — the real count is 4. I had conflated route
+groups with test cases.
+
+Worth recording because the asymmetry runs both ways: the standing rules prime Codex to treat my
+instructions as unverified sketches, and here that produced a correct challenge to a number I had
+stated confidently. Expected-red counts are exactly the kind of thing to state as "these test names"
+rather than "this many failures" — a count is a claim that can silently drift as test topology
+changes, and a wrong one trains the executor to ignore the gate.
+
+### Probing the real app before dispatching keeps finding plan bugs
+
+Before Tasks 4 and 5 I ran the actual FastAPI app and measured every error body the task would have
+to reproduce. Both times this found something the plan got wrong or omitted:
+
+- **Task 4:** the plan asserted `{detail: "Field required: file"}` for a missing upload. Nothing
+  produces that — a missing form field is FastAPI's own request-validation error, so the body is a
+  *list*: `{"detail":[{"type":"missing","loc":["body","file"],"msg":"Field required","input":null}]}`.
+  This is the first place in the migration where that shape matters; every other recorded 422 is a
+  `{"detail": "<string>"}` from an explicit raise.
+- **Task 4:** the 10 MiB / 413 limit has **no** Python counterpart (`grep` for `MAX_*BYTES`,
+  `content_length`, `max_size`, `10485760` across `mylibrary/` finds nothing). It is new behavior
+  Constraint 10 introduces for serverless. That needs stating in both directions: no parity fixture
+  can exist for it, *and* nobody should later "restore parity" by deleting it.
+- **Task 5:** the plan cites line ranges for the mapping/format errors but not their **precedence**.
+  Measured: a request with both a bad suffix and bad mapping returns `Uploaded file must be a .csv`,
+  because `_decode_upload` runs before mapping parsing. Ordering is observable behavior and a plan
+  that only lists the strings does not pin it.
+
+Generalizing: **a plan's cited error strings are transcriptions; its error *ordering* is usually
+unstated.** When several validations can fail on one request, measure which one wins before handing
+the task off, because an executor will pick an order that looks reasonable and be wrong ~half the time.
+
+### Wave 4b outcome, and the one technique that carried it
+
+Nine plan tasks became **thirteen Codex dispatches** (Tasks 1 and 3 split; Tasks 1, 2 and 6 needed
+follow-up fixes). Final state: Jest 38/38, Vitest 62 files / 408 tests, `tsc` clean, `eslint .` clean,
+pytest 360 passed, all three routes flipped, dead ingest gone.
+
+**Six plan defects and four helper-level divergences were found before or during execution. Every single
+one was found by running something, and not one by reading code.** The pattern, in order of value:
+
+1. **Differential-test the port against the original.** Run every ported helper against its Python
+   counterpart over a shared input matrix and diff the output. This found four divergences in
+   `import-csv.ts` (unpadded dates, mixed date separators, hex/octal/binary literals, underscore
+   separators) that 11 passing hand-written tests had missed, and later proved the JSON escaper
+   byte-identical to `json.dumps` across 22 cases. Cheap, mechanical, and it does not depend on guessing
+   which cases matter — which is exactly the thing hand-written tests get wrong.
+2. **Probe the live app for every error body the task must reproduce, before dispatching.** This found
+   the invented missing-file 422 and the unstated error precedence. A plan's error *strings* are
+   transcriptions; its error *ordering* is usually never stated at all.
+3. **Run the actual library when the plan asserts its byte-level output.** Task 1's CPython check found
+   a wrong golden before any code existed, in two places.
+
+**The corollary is the real lesson: a green suite proves the specified cases work, not that the port is
+faithful.** Every defect this wave lived in an input shape the test file could not express — a
+zero-data-row CSV, an unpadded date, a hex-looking cell, a non-ASCII title, a taste signal (the seed has
+none). When reviewing a port, ask what the tests *cannot* say, then go measure that.
+
+### Verification honesty held again — and the green suite is the moment it's most at risk
+
+The wave ends with every gate green, which is precisely when "done" is easiest to over-claim. It is not
+done: nothing was exercised in a browser, the 10 MiB rejection never saw a real HTTP request, and
+export→re-import was proven only at the parser level, never by downloading a file from the app and
+feeding it back. The plan's own "Done when" list is therefore **not** fully met, and the verification
+record says so explicitly rather than implying the suite settles it.
+
+Same shape as wave 4a's outstanding live purge checks. Two waves running, the pattern is consistent
+enough to state as a rule: **for this project a wave ends "implementation-complete, LIVE-UNVERIFIED",
+and the live pass is Chase's** — because the write paths hit real dev Postgres and an agent must not
+run destructive writes there unattended.
+
+### Division of labour, now settled
+
+Codex cannot: `npm install` (no network), `gen_parity_fixtures.py` / any FastAPI `TestClient` (sandbox
+hang — and `tests/conftest.py` imports it, so **the whole pytest suite is off-limits**, not just the API
+tests). Claude does those. Say so in the prompt: an unrunnable command silently eats minutes of a
+~10-minute budget, and Task 2 lost an entire run that way.
+
+The split turns out to be load-bearing rather than annoying: the agent that cannot record a golden is
+also the one told never to invent one, and across three opportunities it reported the blocker instead of
+fabricating. Keep it that way.
+
+### Prompt-writing rules earned this wave
+
+- **State expected-red by test NAME, never by count.** I said "expect exactly 2 failures"; the real
+  number was 4 because `/export` is three separate cases. Codex caught it. A count is a claim that
+  drifts with test topology, and a wrong one teaches the executor to ignore the gate.
+- **List every gate you want run.** Codex runs the commands you name and no others. `type-check` and
+  `lint` appear only in the plan's Task 9, so Task 1 shipped a broken `tsc` twice. Add them to every task.
+- **When the plan says to edit something, allow for it not being there.** Task 7 told me to fix `/ingest`
+  wording in `wave-3-verification.md`; my grep found nothing. Instead of dropping it or letting Codex
+  invent an edit, I asked it to locate the wording and report plainly if absent. It found the real thing
+  at lines 82-83 that my pattern had missed — both halves of that instruction mattered.
+- **Pre-empt the "unused import" trap when the executor cannot run the suite.** Task 7 deleted two
+  handlers and their now-orphaned imports. `get_settings` looked orphaned but was still used by surviving
+  handlers, and with pytest unavailable to Codex nothing mechanical would have caught a wrong deletion.
+
+### Wave 4b WAS live-verified — and the live pass found things the suite could not
+
+Unlike waves 2, 3 and 4a, Chase asked for a full browser verification, so wave 4b ends
+**live-verified** rather than "LIVE-UNVERIFIED". Run against the isolated `mylib-w3b-verify`
+container, never dev Supabase; safety was confirmed before any write by checking the Node API served
+the container's 4 seeded books.
+
+Everything the parity suite already asserted held up in the real UI. The genuinely *new* evidence:
+
+- **The strongest parity proof available is running Python against the same live database and diffing
+  bytes.** With real non-ASCII rows in the library (`Café Extraordinaire`, `日本語の本`), Python's
+  `export_csv` and `json.dumps(export_json(...), indent=2)` were run against the same container and
+  diffed against what the Node route had just served: **byte-identical, both formats.** That closes a
+  gap no fixture could — `seed.json` is pure ASCII, so the recorded goldens never exercised
+  `ensure_ascii` escaping at all. **Generalize: when a port has a live original, diff the two against
+  one shared database. It beats any fixture, because it needs no recording step and no masking.**
+- **Locked decision #2 verified against a real database**, not PGlite: an existing book's
+  `goodreads_rating` moved 5 → 4 on re-import while `app_rating`, `app_review`,
+  `feedback_updated_at` *and* `source` stayed untouched.
+- **Round-trip re-importability confirmed for real** — exporting and re-importing the app's own CSV
+  matched all 6 books with **zero duplicates**, including the non-ASCII titles, which proves the
+  decode and the dedup normalization both handle them.
+
+**The environment gotcha that cost the most time, and the lesson in it:** browsing `127.0.0.1` instead
+of `localhost` silently breaks the app. Next 16 blocks cross-origin dev resources, so hydration never
+completes — the page renders, but no click fires and no client fetch happens. I spent several round
+trips treating a dead modal as an app bug, checking console (empty) and network (static only), before
+the dev-server log gave it away. **The lesson: when the UI is inert but the API is healthy, suspect the
+harness before the code — and read the dev server's own log early.** It had said so all along.
+
+Also worth knowing: a programmatic blob download does not persist to disk under automation, so
+"a human clicking Download gets a usable file" stayed explicitly unverified rather than being claimed.
+Both facts are now in the [[node-route-live-verification]] memory.

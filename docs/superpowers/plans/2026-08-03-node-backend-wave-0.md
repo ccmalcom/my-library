@@ -2073,7 +2073,7 @@ Expected: PASS.
 
 1. Delete the line `const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';` (line 9) and add `import { baseFor } from '@/lib/backend';`.
 2. Replace every `` `${BASE}${path}` `` in the five helpers (`get`, `post`, `patch`, `put`, `del`, around lines 365–423) with `` `${baseFor(path)}${path}` ``.
-3. The four direct `fetch(`${BASE}/...`)` call sites (`/ingest/upload`, `/import/preview`, `/import`, `/feedback/dismiss`, around lines 509–617) become `` fetch(`${baseFor('/ingest/upload')}/ingest/upload`, ...) `` etc. — pass the same literal path to `baseFor` that the URL uses.
+3. The four direct `fetch(`${BASE}/...`)` call sites (`/ingest/upload`, `/import/preview`, `/import`, `/feedback/dismiss`, around lines 509–617) become `` fetch(`${baseFor('/ingest/upload')}/ingest/upload`, ...) `` etc. — pass the same literal path to `baseFor` that the URL uses. Historical note: the `/ingest/upload` client and HTTP route were removed in wave 4b.
 4. Append the new API functions at the end of the file:
 
 ```ts

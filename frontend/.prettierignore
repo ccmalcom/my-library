@@ -12,3 +12,10 @@ next-env.d.ts
 # the very next re-record -- and these files are only ever read via JSON.parse,
 # so their layout is never load-bearing. Ignore rather than fight the generator.
 lib/server/__tests__/fixtures/claude/
+
+# Same deal for the FastAPI parity fixtures, written by
+# scripts/gen_parity_fixtures.py with json.dumps(indent=1). This directory was
+# missed when the rule above was added: seed.json, python-responses.json and
+# write-scenarios.json have never been Prettier-clean on any commit, so the
+# stop-time `prettier --check` fired the moment a re-record touched them.
+lib/server/__tests__/fixtures/parity/

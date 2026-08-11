@@ -636,19 +636,19 @@ Vitest includes `lib/server/**/*.test.ts` and `app/api/**/*.test.ts`; Jest expli
 
 ## 11. Dead-ingest removal surface
 
-Complete literal `/ingest` and `/ingest/upload` reference inventory, excluding generated dependency/build metadata:
+Historical literal `/ingest` and `/ingest/upload` reference inventory, captured before both HTTP routes and the orphaned client were deleted in wave 4b:
 
 ### Executable Python
 
-- `POST /ingest` handler: [mylibrary/api.py:435](/home/chase/Documents/Code/my-library/mylibrary/api.py:435).
-- `POST /ingest/upload` handler: [mylibrary/api.py:444](/home/chase/Documents/Code/my-library/mylibrary/api.py:444).
-- Compatibility-module docstring naming `POST /ingest[/upload]`: [mylibrary/ingest.py:3](/home/chase/Documents/Code/my-library/mylibrary/ingest.py:3).
+- Deleted in wave 4b: former `POST /ingest` handler at [mylibrary/api.py:435](/home/chase/Documents/Code/my-library/mylibrary/api.py:435).
+- Deleted in wave 4b: former `POST /ingest/upload` handler at [mylibrary/api.py:444](/home/chase/Documents/Code/my-library/mylibrary/api.py:444).
+- Removed in wave 4b: compatibility-module docstring wording that named `POST /ingest[/upload]`, formerly at [mylibrary/ingest.py:3](/home/chase/Documents/Code/my-library/mylibrary/ingest.py:3).
 
 The CLI’s `ingest` command uses `mylibrary.ingest.ingest_csv`, but it is not an HTTP-route reference and remains independently defined at [mylibrary/cli.py:44](/home/chase/Documents/Code/my-library/mylibrary/cli.py:44).
 
 ### Frontend
 
-- `api.ingestUpload` method and both occurrences of `/ingest/upload`: [frontend/lib/api.ts:504](/home/chase/Documents/Code/my-library/frontend/lib/api.ts:504). Repository search finds no caller of `ingestUpload` outside this method, so removing it does not leave a current UI call site.
+- Deleted in wave 4b: former `api.ingestUpload` method and both occurrences of `/ingest/upload`, previously at [frontend/lib/api.ts:504](/home/chase/Documents/Code/my-library/frontend/lib/api.ts:504). The inventory found no caller outside this method, so removal left no UI orphan.
 
 There is no ingest-specific row in `NODE_DEFAULT_ROUTES`: unmatched paths default to Python by the switcher’s algorithm ([frontend/lib/backend.ts:85](/home/chase/Documents/Code/my-library/frontend/lib/backend.ts:85)).
 

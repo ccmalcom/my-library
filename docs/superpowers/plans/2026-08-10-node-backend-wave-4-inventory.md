@@ -3,7 +3,7 @@
 Scope interpreted from the migration markers as:
 
 - Enrichment: `POST /enrich/start`, `GET /enrich/status/{job_id}`, and the synchronous compatibility endpoint `POST /enrich`.
-- Ingest/import/export: `POST /ingest`, `POST /ingest/upload`, `POST /import/preview`, `POST /import`, and `GET /export`.
+- Ingest/import/export at inventory time: `POST /ingest` and `POST /ingest/upload` (both deleted in wave 4b), plus `POST /import/preview`, `POST /import`, and `GET /export`.
 - Purges: `DELETE /library`, `DELETE /profile`, and `DELETE /account`.
 
 All eleven routes require the shared `UserId` dependency. That dependency resolves the bearer token through `resolve_user_id`, returns `401` on failure, and stores the resolved user ID on `request.state` for per-user rate limiting ([mylibrary/api.py:223](/home/chase/Documents/Code/my-library/mylibrary/api.py:223), [mylibrary/api.py:242](/home/chase/Documents/Code/my-library/mylibrary/api.py:242)). None is anonymous.
@@ -12,8 +12,8 @@ All eleven routes require the shared `UserId` dependency. That dependency resolv
 
 | Method and path | Handler | Request model/input | Response contract | Auth / rate limit | Python calls |
 |---|---|---|---|---|---|
-| `POST /ingest` | [mylibrary/api.py:435](/home/chase/Documents/Code/my-library/mylibrary/api.py:435) | JSON `IngestRequest`: optional `csv_path`; defaults to configured CSV path ([mylibrary/schemas.py:15](/home/chase/Documents/Code/my-library/mylibrary/schemas.py:15)) | Unmodeled `dict`: `total_rows`, `inserted`, `updated`, `rated`, `skipped` ([mylibrary/ingest.py:19](/home/chase/Documents/Code/my-library/mylibrary/ingest.py:19)) | `UserId`; no limiter decorator | `get_settings()` and `ingest.ingest_csv()` ([mylibrary/api.py:436](/home/chase/Documents/Code/my-library/mylibrary/api.py:436)); then `importers.formats.parse_goodreads()` and `importers.core.import_rows()` ([mylibrary/ingest.py:31](/home/chase/Documents/Code/my-library/mylibrary/ingest.py:31)) |
-| `POST /ingest/upload` | [mylibrary/api.py:444](/home/chase/Documents/Code/my-library/mylibrary/api.py:444) | Multipart `file: UploadFile`; filename must end in `.csv` ([mylibrary/api.py:451](/home/chase/Documents/Code/my-library/mylibrary/api.py:451)) | Same unmodeled ingest summary | `UserId`; no limiter | `get_settings()`, filesystem temp-file/atomic replacement, then `ingest_csv()` ([mylibrary/api.py:454](/home/chase/Documents/Code/my-library/mylibrary/api.py:454), [mylibrary/api.py:458](/home/chase/Documents/Code/my-library/mylibrary/api.py:458), [mylibrary/api.py:469](/home/chase/Documents/Code/my-library/mylibrary/api.py:469)) |
+| `POST /ingest` (deleted in wave 4b) | [mylibrary/api.py:435](/home/chase/Documents/Code/my-library/mylibrary/api.py:435) | JSON `IngestRequest`: optional `csv_path`; defaults to configured CSV path ([mylibrary/schemas.py:15](/home/chase/Documents/Code/my-library/mylibrary/schemas.py:15)) | Unmodeled `dict`: `total_rows`, `inserted`, `updated`, `rated`, `skipped` ([mylibrary/ingest.py:19](/home/chase/Documents/Code/my-library/mylibrary/ingest.py:19)) | `UserId`; no limiter decorator | `get_settings()` and `ingest.ingest_csv()` ([mylibrary/api.py:436](/home/chase/Documents/Code/my-library/mylibrary/api.py:436)); then `importers.formats.parse_goodreads()` and `importers.core.import_rows()` ([mylibrary/ingest.py:31](/home/chase/Documents/Code/my-library/mylibrary/ingest.py:31)) |
+| `POST /ingest/upload` (deleted in wave 4b) | [mylibrary/api.py:444](/home/chase/Documents/Code/my-library/mylibrary/api.py:444) | Multipart `file: UploadFile`; filename must end in `.csv` ([mylibrary/api.py:451](/home/chase/Documents/Code/my-library/mylibrary/api.py:451)) | Same unmodeled ingest summary | `UserId`; no limiter | `get_settings()`, filesystem temp-file/atomic replacement, then `ingest_csv()` ([mylibrary/api.py:454](/home/chase/Documents/Code/my-library/mylibrary/api.py:454), [mylibrary/api.py:458](/home/chase/Documents/Code/my-library/mylibrary/api.py:458), [mylibrary/api.py:469](/home/chase/Documents/Code/my-library/mylibrary/api.py:469)) |
 | `POST /import/preview` | [mylibrary/api.py:491](/home/chase/Documents/Code/my-library/mylibrary/api.py:491) | Multipart `file: UploadFile`; `.csv`, UTF-8/UTF-8-BOM ([mylibrary/api.py:480](/home/chase/Documents/Code/my-library/mylibrary/api.py:480)) | `ImportPreviewOut`: `format`, `headers`, `sample_rows`, `suggested_mapping` ([mylibrary/schemas.py:480](/home/chase/Documents/Code/my-library/mylibrary/schemas.py:480)) | `UserId`; no limiter | `_decode_upload()`, `csv_headers()`, `detect_format()`, `sample_rows()`, `suggest_mapping()` ([mylibrary/api.py:497](/home/chase/Documents/Code/my-library/mylibrary/api.py:497)) |
 | `POST /import` | [mylibrary/api.py:507](/home/chase/Documents/Code/my-library/mylibrary/api.py:507) | Multipart `file`; form `format="auto"`; optional JSON-string `mapping` ([mylibrary/api.py:508](/home/chase/Documents/Code/my-library/mylibrary/api.py:508)) | `ImportSummaryOut`: `format`, `total_rows`, `skipped`, `inserted`, `updated`, `rated` ([mylibrary/schemas.py:489](/home/chase/Documents/Code/my-library/mylibrary/schemas.py:489)) | `UserId`; no limiter | `_decode_upload()`, `json.loads()`, `importers.import_text()` ([mylibrary/api.py:519](/home/chase/Documents/Code/my-library/mylibrary/api.py:519), [mylibrary/api.py:535](/home/chase/Documents/Code/my-library/mylibrary/api.py:535)) |
 | `GET /export` | [mylibrary/api.py:541](/home/chase/Documents/Code/my-library/mylibrary/api.py:541) | Query `format`, default `csv`; accepted values `csv` and `json` ([mylibrary/api.py:542](/home/chase/Documents/Code/my-library/mylibrary/api.py:542), [mylibrary/api.py:561](/home/chase/Documents/Code/my-library/mylibrary/api.py:561)) | Raw `Response`: CSV or formatted JSON with attachment `Content-Disposition` ([mylibrary/api.py:544](/home/chase/Documents/Code/my-library/mylibrary/api.py:544)) | `UserId`; no limiter | `exporters.export_csv()` or `exporters.export_json()` ([mylibrary/api.py:545](/home/chase/Documents/Code/my-library/mylibrary/api.py:545), [mylibrary/api.py:553](/home/chase/Documents/Code/my-library/mylibrary/api.py:553)) |
@@ -103,7 +103,7 @@ Enrichment work reads `books` and creates/updates `enrichment`:
 
 ### Upload and decoding
 
-Legacy `/ingest/upload` is Goodreads-specific and persists the uploaded file at the configured CSV path. It streams to a temporary file in the destination directory and uses `os.replace()` for an atomic rename, avoiding a half-written canonical file ([mylibrary/api.py:444](/home/chase/Documents/Code/my-library/mylibrary/api.py:444), [mylibrary/api.py:458](/home/chase/Documents/Code/my-library/mylibrary/api.py:458)).
+The legacy `/ingest/upload` route, deleted in wave 4b, was Goodreads-specific and persisted the uploaded file at the configured CSV path. It streamed to a temporary file in the destination directory and used `os.replace()` for an atomic rename, avoiding a half-written canonical file ([mylibrary/api.py:444](/home/chase/Documents/Code/my-library/mylibrary/api.py:444), [mylibrary/api.py:458](/home/chase/Documents/Code/my-library/mylibrary/api.py:458)).
 
 The general importer does not persist the upload. `_decode_upload()` reads it directly, rejects non-`.csv` names, and decodes `utf-8-sig`, which accepts ordinary UTF-8 and strips a BOM ([mylibrary/api.py:480](/home/chase/Documents/Code/my-library/mylibrary/api.py:480)).
 
@@ -388,10 +388,10 @@ The `/profile` Wave 4 delete requires a method-specific rule: existing POST and 
 
 ## 7. Wave 4 gaps with no Node equivalent
 
-There are currently no `frontend/app/api` route handlers for any of these paths:
+At inventory time there were no `frontend/app/api` route handlers for any of these paths; the first two were subsequently deleted in wave 4b rather than ported:
 
-- `/ingest`
-- `/ingest/upload`
+- `/ingest` (deleted in wave 4b)
+- `/ingest/upload` (deleted in wave 4b)
 - `/import/preview`
 - `/import`
 - `/export`

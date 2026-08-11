@@ -92,11 +92,25 @@ custom-instructions directive does not steer it at all. Its two prompts share
 substring — an asserted parity detail, not a typo.
 Wave 4a shipped the three purge routes (`DELETE /library`, `/profile`, `/account`), using one
 transaction per request while preserving enrichment-before-books FK ordering and Python's
-survivor quirks. Wave 4b ingest/import/export and wave 4c enrichment jobs remain next. Wave 4c
-is **blocked on an architecture decision**: Python gets detached work two ways (in-process
+survivor quirks. Wave 4b shipped exactly `POST /import/preview`, `POST /import`, and `GET /export`
+on Node; the dead `POST /ingest` and `POST /ingest/upload` HTTP routes were deleted rather than
+ported, while the `ingest_csv` CLI remains. Uploads stay in memory with a new serverless-specific
+10 MiB/413 bound (`MAX_IMPORT_BYTES`), case-insensitive `.csv` validation, BOM stripping, and fatal
+UTF-8 decoding; the size limit has no Python counterpart and must not be removed for parity.
+`import-csv.ts` pins Python's `excel` dialect with `csv-parse`/`csv-stringify`, including
+`quoted_match: /[\r\n]/` because either newline character forces `QUOTE_MINIMAL` quoting. Import
+stars use half-up `roundRatingHalfUp`, not `pyRound` banker's rounding; Goodreads alone tolerantly
+parses `int(float(s))`, so `4.9` becomes 4 there and 5 in other formats. Decode, parse, and validation
+finish before the request's single transaction; `importRows` opens none, and updates never write
+`app_rating`, `app_review`, or `feedback_updated_at`. JSON backup bytes use `pyJsonDumpsIndented`
+to reproduce Python `json.dumps(..., indent=2, ensure_ascii=True)`: lowercase escapes for every
+code unit from U+007F upward, UTF-16 surrogate pairs, and no trailing newline; the existing compact,
+Unicode-preserving `pyJsonDumps` is not interchangeable. Wave 4c enrichment jobs remain
+**blocked on an architecture decision**: Python gets detached work two ways (in-process
 FastAPI `BackgroundTasks` and Redis/arq), and Vercel has neither. `/discover` is not a precedent —
 it completes inside one HTTP request. The options are `waitUntil`, a cron-driven poller, Redis
-plus an external worker, or leaving enrichment on Python through cutover. Note that the earlier
+plus an external worker, or leaving enrichment on Python through cutover; do not add queue
+architecture in wave 4c. Note that the earlier
 plans assigned purge to wave 4 while `wave-3-verification.md:172` recommended deferring it to
 wave 5 as the risky piece; the inventory showed the opposite — purge is the easiest part and
 enrichment jobs are the hard one. Wave 5 remains admin + cutover.

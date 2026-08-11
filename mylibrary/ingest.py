@@ -1,9 +1,8 @@
 """Phase 1 — Ingest. Goodreads CSV -> books table, idempotent.
 
 Thin Goodreads-specific wrapper over the format-agnostic importer (mylibrary.importers).
-Kept as the stable entry point for the CLI `ingest` command, POST /ingest[/upload], and the
-existing test-suite. clean_isbn is re-exported so `from mylibrary.ingest import clean_isbn`
-keeps working.
+Kept as the stable compatibility entry point for the CLI `ingest` command and the existing
+test-suite. clean_isbn is re-exported so `from mylibrary.ingest import clean_isbn` keeps working.
 """
 from __future__ import annotations
 

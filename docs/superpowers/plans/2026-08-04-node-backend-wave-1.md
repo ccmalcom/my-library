@@ -2077,7 +2077,7 @@ Delete `NODE_DEFAULT_PREFIXES`. Then `grep -rn NODE_DEFAULT_PREFIXES frontend/` 
 
 - [ ] **Step 4: Update every `baseFor` call site in `frontend/lib/api.ts`:**
   - In helpers: `get` → `baseFor(path, 'GET')`, `post` → `baseFor(path, 'POST')`, `patch` → `'PATCH'`, `put` → `'PUT'`, `del` → `'DELETE'`.
-  - Direct fetch sites: `baseFor('/ingest/upload', 'POST')`, `baseFor('/import/preview', 'POST')`, `baseFor('/import', 'POST')`, `baseFor('/feedback/dismiss', 'POST')`, `baseFor('/admin/me', 'GET')`, `baseFor('/export', 'GET')`.
+  - Direct fetch sites: `baseFor('/ingest/upload', 'POST')`, `baseFor('/import/preview', 'POST')`, `baseFor('/import', 'POST')`, `baseFor('/feedback/dismiss', 'POST')`, `baseFor('/admin/me', 'GET')`, `baseFor('/export', 'GET')`. Historical note: the `/ingest/upload` client and HTTP route were removed in wave 4b.
   - `grep -n "baseFor(" frontend/lib/*.ts frontend/components -r` afterward: every call must pass an explicit method except ones whose request method is GET.
 
 - [ ] **Step 5: Run both suites**

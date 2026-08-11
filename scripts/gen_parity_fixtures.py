@@ -11,6 +11,7 @@ import so the empty stage reports configured=false.
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import sys
@@ -337,6 +338,98 @@ WRITE_SCENARIOS: dict[str, list[dict]] = {
         {"req": "POST /taste-signal", "json": {"direction": "more", "target_kind": "book", "target_book_id": 101}},
         {"req": "POST /taste-signal", "json": {"direction": "more", "target_kind": "rec"}},
     ],
+    "import-preview-storygraph": [
+        {
+            "req": "POST /import/preview",
+            "multipart": {
+                "file": {
+                    "filename": "storygraph.csv",
+                    "content": (
+                        "Title,Authors,Contributors,ISBN/UID,Read Status,Star Rating,"
+                        "Review,Last Date Read,Date Added\r\n"
+                        "The Spear Cuts Through Water,Simon Jimenez,,9780593156599,"
+                        "Read,4.5,Mythic and moving.,2026/08/01,2026/07/01\r\n"
+                    ),
+                    "content_type": "text/csv",
+                },
+                "fields": {},
+            },
+        },
+    ],
+    "import-preview-missing-file": [
+        {
+            "req": "POST /import/preview",
+            "multipart": {"fields": {}},
+        },
+    ],
+    "import-generic-mapped": [
+        {
+            "req": "POST /import",
+            "multipart": {
+                "file": {
+                    "filename": "mapped.csv",
+                    "content": (
+                        "Book Name,Writer,Stars,Notes,Status,Finished\r\n"
+                        "A Memory Called Empire,Arkady Martine,4.5,Sharp political SF,"
+                        "finished,08/02/2026\r\n"
+                    ),
+                    "content_type": "text/csv",
+                },
+                "fields": {
+                    "format": "generic",
+                    "mapping": (
+                        '{"title":"Book Name","author":"Writer","rating":"Stars",'
+                        '"review":"Notes","shelf":"Status","date_read":"Finished"}'
+                    ),
+                },
+            },
+        },
+    ],
+    "import-auto-detection-failure": [
+        {
+            "req": "POST /import",
+            "multipart": {
+                "file": {"filename": "unknown.csv", "content": "Name,Writer\r\nDune,Frank Herbert\r\n", "content_type": "text/csv"},
+                "fields": {},
+            },
+        },
+    ],
+    "import-invalid-mapping-failure": [
+        {
+            "req": "POST /import",
+            "multipart": {
+                "file": {"filename": "generic.csv", "content": "Title\r\nDune\r\n", "content_type": "text/csv"},
+                "fields": {"format": "generic", "mapping": "{"},
+            },
+        },
+    ],
+    "export-csv": [
+        {
+            "req": "GET /export?format=csv",
+            "response_mode": "base64",
+            "response_headers": ["content-type", "content-disposition"],
+        },
+    ],
+    "export-json": [
+        {
+            "req": "GET /export?format=json",
+            "response_mode": "text",
+            "response_headers": ["content-type", "content-disposition"],
+        },
+    ],
+    "export-json-with-signals": [
+        {"req": "POST /taste-signal", "json": {"direction": "more", "target_kind": "book", "target_book_id": 1}},
+        {"req": "POST /taste-signal", "json": {"direction": "less", "target_kind": "rec",
+            "snapshot": {"title": "Blindsight", "author": "Peter Watts", "subjects": ["science fiction"]}}},
+        {
+            "req": "GET /export?format=json",
+            "response_mode": "text",
+            "response_headers": ["content-type", "content-disposition"],
+        },
+    ],
+    "export-invalid-format": [
+        {"req": "GET /export?format=xml"},
+    ],
 }
 
 _TS_FIELDS = {
@@ -403,13 +496,45 @@ def run_scenarios(client: TestClient) -> dict:
         recorded = []
         for step in steps:
             method, path = step["req"].split(" ", 1)
-            r = client.request(method, path, json=step.get("json"))
-            body = r.json() if r.status_code != 204 and r.content else None
+            multipart = step.get("multipart")
+            files = None
+            data = None
+            if multipart:
+                f = multipart.get("file")
+                if f:
+                    files = {
+                        "file": (
+                            f["filename"],
+                            f["content"].encode("utf-8"),
+                            f.get("content_type", "text/csv"),
+                        )
+                    }
+                data = multipart.get("fields", {})
+            r = client.request(
+                method, path, json=step.get("json"), files=files, data=data
+            )
+            mode = step.get("response_mode", "json")
+            body = (
+                None
+                if r.status_code == 204 or not r.content
+                else base64.b64encode(r.content).decode("ascii")
+                if mode == "base64"
+                else r.text
+                if mode == "text"
+                else r.json()
+            )
+            headers = {
+                name: r.headers.get(name)
+                for name in step.get("response_headers", [])
+            }
             recorded.append({
                 "req": step["req"],
                 "json": step.get("json"),
+                "multipart": multipart,
+                "response_mode": mode,
                 "status": r.status_code,
                 "body": body,
+                "headers": headers,
                 "maskDetail": step.get("maskDetail", False),
             })
         out[name] = recorded

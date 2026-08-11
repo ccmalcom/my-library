@@ -80,7 +80,7 @@ Wave 3's completion claim rests on this. Python has exactly 11 `tracked_create(`
 | `recommend.py:1514` | `discover_rerank`    | `POST /discover` (3c-3)           |
 
 Verified by grep at closeout, not inherited from a plan. Every remaining Python route
-(`/enrich*`, `/ingest*`, `/import*`, `/admin/*`, the deletes, `/export`, `/health`) reaches no
+(`/enrich*`, `/import*`, `/admin/*`, the deletes, `/export`, `/health`) reaches no
 Claude call.
 
 `NODE_DEFAULT_ROUTES` carries all seven wave-3 flips, ending with

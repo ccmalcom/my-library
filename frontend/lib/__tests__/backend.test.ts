@@ -43,13 +43,24 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/taste-signal', 'POST')).toBe('/api');
   });
 
-  test('auto: wave-4a purge routes go to Node; wave 4b/4c stay on Python', () => {
+  test('auto: wave-4b import/export routes go to Node; wave 4c stays on Python', () => {
     expect(baseFor('/library', 'DELETE')).toBe('/api');
     expect(baseFor('/profile', 'DELETE')).toBe('/api');
     expect(baseFor('/account', 'DELETE')).toBe('/api');
-    expect(baseFor('/export', 'GET')).toBe(PY); // wave 4b
-    expect(baseFor('/import', 'POST')).toBe(PY); // wave 4b
-    expect(baseFor('/enrich/start', 'POST')).toBe(PY); // wave 4c
+    expect(baseFor('/import/preview', 'POST')).toBe('/api');
+    expect(baseFor('/import', 'POST')).toBe('/api');
+    expect(baseFor('/export', 'GET')).toBe('/api');
+    expect(baseFor('/enrich/start', 'POST')).toBe(PY);
+  });
+
+  test('wave-4b rules are exact and method-specific', () => {
+    expect(baseFor('/import/preview', 'GET')).toBe(PY);
+    expect(baseFor('/import/preview/child', 'POST')).toBe(PY);
+    expect(baseFor('/import', 'GET')).toBe(PY);
+    expect(baseFor('/import/child', 'POST')).toBe(PY);
+    expect(baseFor('/export?format=json', 'GET')).toBe('/api');
+    expect(baseFor('/export', 'POST')).toBe(PY);
+    expect(baseFor('/export/history', 'GET')).toBe(PY);
   });
 
   test('node-only prefixes always hit Node', () => {
@@ -71,7 +82,7 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/stats')).toBe('/api');
   });
 
-  test('wave-2/3a/3b/3c/4a flip list is exactly as designed', () => {
+  test('wave-2/3a/3b/3c/4a/4b flip list is exactly as designed', () => {
     expect(NODE_DEFAULT_ROUTES).toEqual([
       { prefix: '/stats' },
       { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
@@ -95,6 +106,9 @@ describe('backend switcher (method-aware)', () => {
       { prefix: '/library', methods: ['DELETE'], exact: true },
       { prefix: '/profile', methods: ['DELETE'], exact: true },
       { prefix: '/account', methods: ['DELETE'], exact: true },
+      { prefix: '/import/preview', methods: ['POST'], exact: true },
+      { prefix: '/import', methods: ['POST'], exact: true },
+      { prefix: '/export', methods: ['GET'], exact: true },
     ]);
   });
 

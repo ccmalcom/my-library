@@ -16,6 +16,8 @@
     "catalog_source": "openlibrary",
     "catalog_id": "/works/OL16813953W"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 201,
    "body": {
     "id": 103,
@@ -30,7 +32,7 @@
     "year_published": 2013,
     "page_count": null,
     "date_read": null,
-    "date_added": "2026-08-04",
+    "date_added": "2026-08-11",
     "cover_url": "https://covers.example/aj.jpg",
     "description": null,
     "confidence_label": "MANUAL",
@@ -38,11 +40,14 @@
     "exclude_from_profile": false,
     "is_favorite": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /books?shelf=to-read",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": [
     {
@@ -79,7 +84,7 @@
      "year_published": 2013,
      "page_count": null,
      "date_read": null,
-     "date_added": "2026-08-04",
+     "date_added": "2026-08-11",
      "cover_url": "https://covers.example/aj.jpg",
      "description": null,
      "confidence_label": "MANUAL",
@@ -88,6 +93,7 @@
      "is_favorite": false
     }
    ],
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -101,6 +107,8 @@
     "rating": 5,
     "review": "The Culture at its best."
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 201,
    "body": {
     "id": 103,
@@ -115,7 +123,7 @@
     "year_published": null,
     "page_count": null,
     "date_read": null,
-    "date_added": "2026-08-04",
+    "date_added": "2026-08-11",
     "cover_url": null,
     "description": null,
     "confidence_label": null,
@@ -123,11 +131,14 @@
     "exclude_from_profile": false,
     "is_favorite": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /profile/status",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "dirty": true,
@@ -141,6 +152,7 @@
     "last_profiled_at": "2026-07-01T12:00:00",
     "last_profile_kind": "full"
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -151,10 +163,13 @@
     "title": "DUNE: Special Edition",
     "author": "Herbert"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 409,
    "body": {
     "detail": "\"DUNE: Special Edition\" is already in your library."
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -165,6 +180,8 @@
     "title": "Exodus: The Archimedes Engine",
     "author": "Peter F. Hamilton"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 201,
    "body": {
     "id": 103,
@@ -179,7 +196,7 @@
     "year_published": null,
     "page_count": null,
     "date_read": null,
-    "date_added": "2026-08-04",
+    "date_added": "2026-08-11",
     "cover_url": null,
     "description": null,
     "confidence_label": null,
@@ -187,6 +204,7 @@
     "exclude_from_profile": false,
     "is_favorite": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -195,6 +213,8 @@
     "title": "Exodus: The Helium Sea",
     "author": "Peter F. Hamilton"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 201,
    "body": {
     "id": 104,
@@ -209,7 +229,7 @@
     "year_published": null,
     "page_count": null,
     "date_read": null,
-    "date_added": "2026-08-04",
+    "date_added": "2026-08-11",
     "cover_url": null,
     "description": null,
     "confidence_label": null,
@@ -217,6 +237,7 @@
     "exclude_from_profile": false,
     "is_favorite": false
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -227,10 +248,13 @@
     "title": "X",
     "shelf": "nonsense"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "shelf must be one of ['currently-reading', 'did-not-finish', 'read', 'to-read']."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -239,10 +263,13 @@
     "title": "X",
     "rating": 9
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "rating must be between 1 and 5 (or omitted/0 for unrated)."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -251,10 +278,13 @@
     "title": "X",
     "review": "no rating"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "A review requires a rating (1-5). Rate the book, or omit the review."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -262,10 +292,13 @@
    "json": {
     "title": "   "
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "title is required."
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -276,6 +309,8 @@
     "rating": 4,
     "review": "Rereads well."
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 1,
@@ -287,9 +322,10 @@
     "effective_rating": 4,
     "app_review": "Rereads well.",
     "date_read": "2025-11-02",
-    "feedback_updated_at": "2026-08-04T22:38:53.957001",
+    "feedback_updated_at": "2026-08-11T05:47:01.718178",
     "exclude_from_profile": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -297,6 +333,8 @@
    "json": {
     "rating": 0
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 3,
@@ -308,9 +346,10 @@
     "effective_rating": 4,
     "app_review": "Loved the problem-solving.",
     "date_read": null,
-    "feedback_updated_at": "2026-08-04T22:38:53.963512",
+    "feedback_updated_at": "2026-08-11T05:47:01.723357",
     "exclude_from_profile": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -319,6 +358,8 @@
     "date_read": "2026-01-15",
     "is_favorite": true
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 1,
@@ -330,9 +371,10 @@
     "effective_rating": 4,
     "app_review": "Rereads well.",
     "date_read": "2026-01-15",
-    "feedback_updated_at": "2026-08-04T22:38:53.970924",
+    "feedback_updated_at": "2026-08-11T05:47:01.728079",
     "exclude_from_profile": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -340,6 +382,8 @@
    "json": {
     "exclude_from_profile": true
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 5,
@@ -351,14 +395,17 @@
     "effective_rating": 3,
     "app_review": null,
     "date_read": null,
-    "feedback_updated_at": "2026-08-04T22:38:53.976966",
+    "feedback_updated_at": "2026-08-11T05:47:01.732760",
     "exclude_from_profile": true
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /books?rated_only=true",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": [
     {
@@ -614,6 +661,7 @@
      "is_favorite": false
     }
    ],
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -623,10 +671,13 @@
    "json": {
     "review": "unrated review"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "A review requires a rating. Rate the book 1-5 (same update is fine) before saving a review."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -635,6 +686,8 @@
     "rating": 4,
     "review": "Actually loved the maze."
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 8,
@@ -646,18 +699,22 @@
     "effective_rating": 4,
     "app_review": "Actually loved the maze.",
     "date_read": null,
-    "feedback_updated_at": "2026-08-04T22:38:53.999822",
+    "feedback_updated_at": "2026-08-11T05:47:01.749907",
     "exclude_from_profile": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "PATCH /books/1/feedback",
    "json": {},
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "Nothing to update: pass a rating, review, date read, exclude flag, and/or favorite."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -665,10 +722,13 @@
    "json": {
     "rating": 7
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "rating must be between 1 and 5 (or 0 to clear)."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -676,10 +736,13 @@
    "json": {
     "rating": 3
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 404,
    "body": {
     "detail": "Book 101 not found."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -687,10 +750,13 @@
    "json": {
     "rating": 3
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 404,
    "body": {
     "detail": "Book 999 not found."
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -700,6 +766,8 @@
    "json": {
     "shelf": "currently-reading"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 8,
@@ -714,6 +782,7 @@
     "feedback_updated_at": null,
     "exclude_from_profile": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -721,10 +790,13 @@
    "json": {
     "shelf": "bogus"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "shelf must be one of ['currently-reading', 'did-not-finish', 'read', 'to-read']."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -732,10 +804,13 @@
    "json": {
     "shelf": "read"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 404,
    "body": {
     "detail": "Book 101 not found."
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -752,6 +827,8 @@
     ],
     "description": "The right Foundation."
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 5,
@@ -774,11 +851,14 @@
     "exclude_from_profile": false,
     "is_favorite": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /profile/status",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "dirty": true,
@@ -791,6 +871,7 @@
     "last_profiled_at": "2026-07-01T12:00:00",
     "last_profile_kind": "full"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -799,6 +880,8 @@
     "catalog_source": "googlebooks",
     "catalog_id": "gb-smallgods"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 14,
@@ -821,6 +904,7 @@
     "exclude_from_profile": false,
     "is_favorite": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -829,10 +913,13 @@
     "catalog_source": "",
     "catalog_id": ""
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "catalog_source and catalog_id are required."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -841,10 +928,13 @@
     "catalog_source": "x",
     "catalog_id": "y"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 404,
    "body": {
     "detail": "Book 101 not found."
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -852,37 +942,49 @@
   {
    "req": "DELETE /books/8",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 8,
     "title": "Piranesi",
     "removed": true
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /books?shelf=to-read",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": [],
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "DELETE /books/8",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 404,
    "body": {
     "detail": "Book 8 not found."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "DELETE /books/101",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 404,
    "body": {
     "detail": "Book 101 not found."
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -892,6 +994,8 @@
    "json": {
     "status": "accepted"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "status": "accepted",
@@ -918,6 +1022,7 @@
      "is_favorite": false
     }
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -925,6 +1030,8 @@
    "json": {
     "status": "accepted"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "status": "accepted",
@@ -951,11 +1058,14 @@
      "is_favorite": false
     }
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /books?shelf=to-read",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": [
     {
@@ -1001,6 +1111,7 @@
      "is_favorite": false
     }
    ],
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1010,6 +1121,8 @@
    "json": {
     "status": "already_read"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "status": "already_read",
@@ -1036,6 +1149,7 @@
      "is_favorite": false
     }
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1045,6 +1159,8 @@
    "json": {
     "user_note": "started it"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "status": "accepted",
@@ -1071,6 +1187,7 @@
      "is_favorite": false
     }
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1084,17 +1201,22 @@
      "not_now"
     ]
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "status": "rejected",
     "user_note": null,
     "book": null
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /recommendations/rejected",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": [
     {
@@ -1191,6 +1313,7 @@
      "created_at": "2026-07-05T12:00:00"
     }
    ],
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1198,10 +1321,13 @@
   {
    "req": "PATCH /recommendations/3/feedback",
    "json": {},
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "Provide status and/or user_note"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1209,10 +1335,13 @@
    "json": {
     "status": "meh"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
-    "detail": "status must be one of {'rejected', 'already_read', 'accepted'}"
+    "detail": "status must be one of {'already_read', 'rejected', 'accepted'}"
    },
+   "headers": {},
    "maskDetail": true
   },
   {
@@ -1223,10 +1352,13 @@
      "too_long"
     ]
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "reject_reasons may only be provided when status is 'rejected'"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1235,10 +1367,13 @@
     "status": "rejected",
     "reject_reasons": []
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "reject_reasons must be a non-empty list. Valid codes: ['wrong_genre', 'too_dark', 'tried_author', 'too_long', 'not_now', 'overhyped', 'wrong_vibe']"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1249,10 +1384,13 @@
      "bogus_reason"
     ]
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "Unknown reject_reasons: ['bogus_reason']. Valid codes: ['wrong_genre', 'too_dark', 'tried_author', 'too_long', 'not_now', 'overhyped', 'wrong_vibe']"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1260,10 +1398,13 @@
    "json": {
     "status": "accepted"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 404,
    "body": {
     "detail": "Recommendation 101 not found"
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1273,28 +1414,37 @@
    "json": {
     "api_key": "sk-ant-test-wave2-key"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "configured": true
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /settings/api-key/status",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "configured": true
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "DELETE /settings/api-key",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "configured": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1302,10 +1452,13 @@
    "json": {
     "api_key": "   "
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "API key must not be empty."
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1315,10 +1468,13 @@
    "json": {
     "display_name": "Wave Two"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "display_name": "Wave Two"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1326,10 +1482,13 @@
    "json": {
     "display_name": "  "
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "Display name must not be empty."
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1354,6 +1513,8 @@
      ]
     }
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "nl_text": "Standalone literary sci-fi.",
@@ -1371,13 +1532,16 @@
       "ringo"
      ]
     },
-    "updated_at": "2026-08-04T22:38:54.250218"
+    "updated_at": "2026-08-11T05:47:01.926037"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /directive",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "nl_text": "Standalone literary sci-fi.",
@@ -1395,8 +1559,9 @@
       "ringo"
      ]
     },
-    "updated_at": "2026-08-04T22:38:54.250218"
+    "updated_at": "2026-08-11T05:47:01.926037"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1405,32 +1570,41 @@
     "nl_text": "  ",
     "constraints": {}
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "Custom instructions must not be empty."
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "DELETE /directive",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "nl_text": null,
     "constraints": {},
     "updated_at": null
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /directive",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "nl_text": null,
     "constraints": {},
     "updated_at": null
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1440,6 +1614,8 @@
    "json": {
     "status": "confirmed"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 1,
@@ -1455,9 +1631,10 @@
     "status": "confirmed",
     "user_note": null,
     "user_weight": 1.0,
-    "verdict_updated_at": "2026-08-04T22:38:54.286420",
+    "verdict_updated_at": "2026-08-11T05:47:01.954326",
     "created_at": "2026-07-01T12:00:00"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1465,6 +1642,8 @@
    "json": {
     "claim": "  Edited claim.  "
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 1,
@@ -1480,9 +1659,10 @@
     "status": "edited",
     "user_note": null,
     "user_weight": 1.0,
-    "verdict_updated_at": "2026-08-04T22:38:54.286420",
+    "verdict_updated_at": "2026-08-11T05:47:01.954326",
     "created_at": "2026-07-01T12:00:00"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1491,6 +1671,8 @@
     "user_weight": 0.5,
     "user_note": "sort of"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "id": 3,
@@ -1508,14 +1690,17 @@
     "status": "proposed",
     "user_note": "sort of",
     "user_weight": 0.5,
-    "verdict_updated_at": "2026-08-04T22:38:54.294799",
+    "verdict_updated_at": "2026-08-11T05:47:01.958764",
     "created_at": "2026-07-01T12:00:00"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /profile/status",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "dirty": true,
@@ -1528,15 +1713,19 @@
     "last_profiled_at": "2026-07-01T12:00:00",
     "last_profile_kind": "full"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "PATCH /profile/traits/1",
    "json": {},
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "at least one field (claim, user_note, status, user_weight) must be provided"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1544,10 +1733,13 @@
    "json": {
     "status": "confirmed"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 404,
    "body": {
     "detail": "Trait 101 not found"
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1555,10 +1747,13 @@
   {
    "req": "GET /feedback/prompt?trigger=post-setup",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "show": true
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1569,17 +1764,23 @@
     "trigger": "post-setup",
     "page": "/setup"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 201,
    "body": {},
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /feedback/prompt?trigger=post-setup",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "show": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1588,17 +1789,23 @@
     "trigger": "post-first-profile",
     "mode": "dont_ask"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 204,
    "body": null,
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /feedback/prompt?trigger=post-first-profile",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "show": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1608,26 +1815,35 @@
     "run_id": "runB",
     "mode": "ask_later"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 204,
    "body": null,
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /feedback/prompt?trigger=post-recs&run_id=runB",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "show": false
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /feedback/prompt?trigger=post-recs&run_id=runC",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 200,
    "body": {
     "show": true
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1638,10 +1854,13 @@
     "category": "nonsense",
     "body": "x"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "category must be one of ['bug', 'confusing', 'idea', 'praise', 'targeted']"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1650,10 +1869,13 @@
     "category": "bug",
     "body": "   "
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "body must be a non-empty string"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1663,19 +1885,25 @@
     "body": "x",
     "trigger": "post-recs"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "run_id is required when trigger='post-recs'"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
    "req": "GET /feedback/prompt?trigger=post-recs",
    "json": null,
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "run_id is required when trigger='post-recs'"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1684,10 +1912,13 @@
     "trigger": "post-setup",
     "mode": "whenever"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "mode must be 'ask_later' or 'dont_ask'"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1696,10 +1927,13 @@
     "trigger": "post-recs",
     "mode": "ask_later"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "run_id is required when trigger='post-recs' and mode='ask_later'"
    },
+   "headers": {},
    "maskDetail": false
   }
  ],
@@ -1711,6 +1945,8 @@
     "target_kind": "book",
     "target_book_id": 1
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 201,
    "body": {
     "id": 1,
@@ -1718,8 +1954,9 @@
     "target_kind": "book",
     "target_book_id": 1,
     "snapshot": null,
-    "created_at": "2026-08-04T22:38:54"
+    "created_at": "2026-08-11T05:47:02"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1735,6 +1972,8 @@
      ]
     }
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 201,
    "body": {
     "id": 2,
@@ -1748,8 +1987,9 @@
       "science fiction"
      ]
     },
-    "created_at": "2026-08-04T22:38:54"
+    "created_at": "2026-08-11T05:47:02"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1758,10 +1998,13 @@
     "direction": "more",
     "target_kind": "book"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "target_book_id is required for book-kind signals"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1771,10 +2014,13 @@
     "target_kind": "book",
     "target_book_id": 101
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 404,
    "body": {
     "detail": "Book 101 not found"
    },
+   "headers": {},
    "maskDetail": false
   },
   {
@@ -1783,10 +2029,280 @@
     "direction": "more",
     "target_kind": "rec"
    },
+   "multipart": null,
+   "response_mode": "json",
    "status": 422,
    "body": {
     "detail": "snapshot is required for rec-kind signals"
    },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "import-preview-storygraph": [
+  {
+   "req": "POST /import/preview",
+   "json": null,
+   "multipart": {
+    "file": {
+     "filename": "storygraph.csv",
+     "content": "Title,Authors,Contributors,ISBN/UID,Read Status,Star Rating,Review,Last Date Read,Date Added\r\nThe Spear Cuts Through Water,Simon Jimenez,,9780593156599,Read,4.5,Mythic and moving.,2026/08/01,2026/07/01\r\n",
+     "content_type": "text/csv"
+    },
+    "fields": {}
+   },
+   "response_mode": "json",
+   "status": 200,
+   "body": {
+    "format": "storygraph",
+    "headers": [
+     "Title",
+     "Authors",
+     "Contributors",
+     "ISBN/UID",
+     "Read Status",
+     "Star Rating",
+     "Review",
+     "Last Date Read",
+     "Date Added"
+    ],
+    "sample_rows": [
+     {
+      "Title": "The Spear Cuts Through Water",
+      "Authors": "Simon Jimenez",
+      "Contributors": "",
+      "ISBN/UID": "9780593156599",
+      "Read Status": "Read",
+      "Star Rating": "4.5",
+      "Review": "Mythic and moving.",
+      "Last Date Read": "2026/08/01",
+      "Date Added": "2026/07/01"
+     }
+    ],
+    "suggested_mapping": {
+     "title": "Title",
+     "author": "Authors",
+     "isbn13": "ISBN/UID",
+     "rating": "Star Rating",
+     "review": "Review",
+     "shelf": "Read Status",
+     "date_read": "Last Date Read"
+    }
+   },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "import-preview-missing-file": [
+  {
+   "req": "POST /import/preview",
+   "json": null,
+   "multipart": {
+    "fields": {}
+   },
+   "response_mode": "json",
+   "status": 422,
+   "body": {
+    "detail": [
+     {
+      "type": "missing",
+      "loc": [
+       "body",
+       "file"
+      ],
+      "msg": "Field required",
+      "input": null
+     }
+    ]
+   },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "import-generic-mapped": [
+  {
+   "req": "POST /import",
+   "json": null,
+   "multipart": {
+    "file": {
+     "filename": "mapped.csv",
+     "content": "Book Name,Writer,Stars,Notes,Status,Finished\r\nA Memory Called Empire,Arkady Martine,4.5,Sharp political SF,finished,08/02/2026\r\n",
+     "content_type": "text/csv"
+    },
+    "fields": {
+     "format": "generic",
+     "mapping": "{\"title\":\"Book Name\",\"author\":\"Writer\",\"rating\":\"Stars\",\"review\":\"Notes\",\"shelf\":\"Status\",\"date_read\":\"Finished\"}"
+    }
+   },
+   "response_mode": "json",
+   "status": 200,
+   "body": {
+    "format": "generic",
+    "total_rows": 1,
+    "skipped": 0,
+    "inserted": 1,
+    "updated": 0,
+    "rated": 1
+   },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "import-auto-detection-failure": [
+  {
+   "req": "POST /import",
+   "json": null,
+   "multipart": {
+    "file": {
+     "filename": "unknown.csv",
+     "content": "Name,Writer\r\nDune,Frank Herbert\r\n",
+     "content_type": "text/csv"
+    },
+    "fields": {}
+   },
+   "response_mode": "json",
+   "status": 422,
+   "body": {
+    "detail": "Could not detect the file format. Provide a column mapping (generic import)."
+   },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "import-invalid-mapping-failure": [
+  {
+   "req": "POST /import",
+   "json": null,
+   "multipart": {
+    "file": {
+     "filename": "generic.csv",
+     "content": "Title\r\nDune\r\n",
+     "content_type": "text/csv"
+    },
+    "fields": {
+     "format": "generic",
+     "mapping": "{"
+    }
+   },
+   "response_mode": "json",
+   "status": 422,
+   "body": {
+    "detail": "mapping must be valid JSON."
+   },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "export-csv": [
+  {
+   "req": "GET /export?format=csv",
+   "json": null,
+   "multipart": null,
+   "response_mode": "base64",
+   "status": 200,
+   "body": "dGl0bGUsYXV0aG9yLGFkZGl0aW9uYWxfYXV0aG9ycyxpc2JuMTMsc2hlbGYscmF0aW5nLHJldmlldyxkYXRlX3JlYWQsZGF0ZV9hZGRlZCxwYWdlX2NvdW50LHllYXJfcHVibGlzaGVkDQpEdW5lLEZyYW5rIEhlcmJlcnQsLDk3ODA0NDEwMTM1OTMscmVhZCw1LCwyMDI1LTExLTAyLDIwMjUtMTAtMDEsNDEyLDE5NjUNClRoZSBEaXNwb3NzZXNzZWQsVXJzdWxhIEsuIExlIEd1aW4sLDk3ODAwNjEwNTQ4ODQscmVhZCw1LCwsLDM4NywxOTc0DQpQcm9qZWN0IEhhaWwgTWFyeSxBbmR5IFdlaXIsLDk3ODA1OTMxMzUyMDQscmVhZCw1LExvdmVkIHRoZSBwcm9ibGVtLXNvbHZpbmcuLCwsNDc2LDIwMjENClRoZSBMZWZ0IEhhbmQgb2YgRGFya25lc3MsVXJzdWxhIEsuIExlIEd1aW4sLCxyZWFkLDQsLCwsMzA0LDE5NjkNCkZvdW5kYXRpb24sSXNhYWMgQXNpbW92LCwscmVhZCwzLCwsLDI0NCwxOTUxDQpHaWRlb24gdGhlIE5pbnRoLFRhbXN5biBNdWlyLCwscmVhZCwyLCwsLDQ0OCwyMDE5DQpUaGUgSG9iYml0LEouUi5SLiBUb2xraWVuLCwscmVhZCw1LCwsLDMxMCwxOTM3DQpQaXJhbmVzaSxTdXNhbm5hIENsYXJrZSwsLHRvLXJlYWQsLCwsLDI3MiwyMDIwDQpUb28gTGlrZSB0aGUgTGlnaHRuaW5nLEFkYSBQYWxtZXIsLCxkaWQtbm90LWZpbmlzaCwsLCwsNDMyLDIwMTYNClRoZSBFbXBlcm9yJ3MgU291bCxCcmFuZG9uIFNhbmRlcnNvbiwsLHJlYWQsNCwsLCw5NiwyMDEyDQpFeGhhbGF0aW9uLFRlZCBDaGlhbmcsLCxyZWFkLDUsLCwsMzY4LDIwMTkNClRoZSBGaWZ0aCBTZWFzb24sTi5LLiBKZW1pc2luLCwscmVhZCw1LCwsLDQ2OCwyMDE1DQpLaW5kcmVkLE9jdGF2aWEgRS4gQnV0bGVyLCwscmVhZCw1LCwsLCwxOTc5DQpTbWFsbCBHb2RzLFRlcnJ5IFByYXRjaGV0dCwsLHJlYWQsNCwsLCwzODksMTk5Mg0K",
+   "headers": {
+    "content-type": "text/csv; charset=utf-8",
+    "content-disposition": "attachment; filename=\"mylibrary-backup-20260811.csv\""
+   },
+   "maskDetail": false
+  }
+ ],
+ "export-json": [
+  {
+   "req": "GET /export?format=json",
+   "json": null,
+   "multipart": null,
+   "response_mode": "text",
+   "status": 200,
+   "body": "{\n  \"version\": 1,\n  \"exported_at\": \"2026-08-11T05:47:02.081723+00:00\",\n  \"books\": [\n    {\n      \"title\": \"Dune\",\n      \"author\": \"Frank Herbert\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780441013593\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": \"2025-11-02\",\n      \"date_added\": \"2025-10-01\",\n      \"page_count\": 412,\n      \"year_published\": 1965,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Dispossessed\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780061054884\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": true,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 387,\n      \"year_published\": 1974,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Project Hail Mary\",\n      \"author\": \"Andy Weir\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780593135204\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": 5,\n      \"app_review\": \"Loved the problem-solving.\",\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 476,\n      \"year_published\": 2021,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Left Hand of Darkness\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 304,\n      \"year_published\": 1969,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Foundation\",\n      \"author\": \"Isaac Asimov\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 3,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 3,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 244,\n      \"year_published\": 1951,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Gideon the Ninth\",\n      \"author\": \"Tamsyn Muir\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 2,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 2,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 448,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Hobbit\",\n      \"author\": \"J.R.R. Tolkien\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": 5,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 310,\n      \"year_published\": 1937,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Piranesi\",\n      \"author\": \"Susanna Clarke\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"to-read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 272,\n      \"year_published\": 2020,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Too Like the Lightning\",\n      \"author\": \"Ada Palmer\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"did-not-finish\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 432,\n      \"year_published\": 2016,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Emperor's Soul\",\n      \"author\": \"Brandon Sanderson\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 96,\n      \"year_published\": 2012,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Exhalation\",\n      \"author\": \"Ted Chiang\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 368,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Fifth Season\",\n      \"author\": \"N.K. Jemisin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 468,\n      \"year_published\": 2015,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Kindred\",\n      \"author\": \"Octavia E. Butler\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": null,\n      \"year_published\": 1979,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Small Gods\",\n      \"author\": \"Terry Pratchett\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 389,\n      \"year_published\": 1992,\n      \"source\": \"goodreads\"\n    }\n  ],\n  \"taste_signals\": []\n}",
+   "headers": {
+    "content-type": "application/json",
+    "content-disposition": "attachment; filename=\"mylibrary-backup-20260811.json\""
+   },
+   "maskDetail": false
+  }
+ ],
+ "export-json-with-signals": [
+  {
+   "req": "POST /taste-signal",
+   "json": {
+    "direction": "more",
+    "target_kind": "book",
+    "target_book_id": 1
+   },
+   "multipart": null,
+   "response_mode": "json",
+   "status": 201,
+   "body": {
+    "id": 1,
+    "direction": "more",
+    "target_kind": "book",
+    "target_book_id": 1,
+    "snapshot": null,
+    "created_at": "2026-08-11T05:47:02"
+   },
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "POST /taste-signal",
+   "json": {
+    "direction": "less",
+    "target_kind": "rec",
+    "snapshot": {
+     "title": "Blindsight",
+     "author": "Peter Watts",
+     "subjects": [
+      "science fiction"
+     ]
+    }
+   },
+   "multipart": null,
+   "response_mode": "json",
+   "status": 201,
+   "body": {
+    "id": 2,
+    "direction": "less",
+    "target_kind": "rec",
+    "target_book_id": null,
+    "snapshot": {
+     "title": "Blindsight",
+     "author": "Peter Watts",
+     "subjects": [
+      "science fiction"
+     ]
+    },
+    "created_at": "2026-08-11T05:47:02"
+   },
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "GET /export?format=json",
+   "json": null,
+   "multipart": null,
+   "response_mode": "text",
+   "status": 200,
+   "body": "{\n  \"version\": 1,\n  \"exported_at\": \"2026-08-11T05:47:02.096464+00:00\",\n  \"books\": [\n    {\n      \"title\": \"Dune\",\n      \"author\": \"Frank Herbert\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780441013593\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": \"2025-11-02\",\n      \"date_added\": \"2025-10-01\",\n      \"page_count\": 412,\n      \"year_published\": 1965,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Dispossessed\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780061054884\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": true,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 387,\n      \"year_published\": 1974,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Project Hail Mary\",\n      \"author\": \"Andy Weir\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780593135204\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": 5,\n      \"app_review\": \"Loved the problem-solving.\",\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 476,\n      \"year_published\": 2021,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Left Hand of Darkness\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 304,\n      \"year_published\": 1969,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Foundation\",\n      \"author\": \"Isaac Asimov\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 3,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 3,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 244,\n      \"year_published\": 1951,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Gideon the Ninth\",\n      \"author\": \"Tamsyn Muir\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 2,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 2,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 448,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Hobbit\",\n      \"author\": \"J.R.R. Tolkien\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": 5,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 310,\n      \"year_published\": 1937,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Piranesi\",\n      \"author\": \"Susanna Clarke\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"to-read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 272,\n      \"year_published\": 2020,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Too Like the Lightning\",\n      \"author\": \"Ada Palmer\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"did-not-finish\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 432,\n      \"year_published\": 2016,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Emperor's Soul\",\n      \"author\": \"Brandon Sanderson\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 96,\n      \"year_published\": 2012,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Exhalation\",\n      \"author\": \"Ted Chiang\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 368,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Fifth Season\",\n      \"author\": \"N.K. Jemisin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 468,\n      \"year_published\": 2015,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Kindred\",\n      \"author\": \"Octavia E. Butler\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": null,\n      \"year_published\": 1979,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Small Gods\",\n      \"author\": \"Terry Pratchett\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 389,\n      \"year_published\": 1992,\n      \"source\": \"goodreads\"\n    }\n  ],\n  \"taste_signals\": [\n    {\n      \"direction\": \"more\",\n      \"target_kind\": \"book\",\n      \"target_book_id\": 1,\n      \"snapshot\": null,\n      \"created_at\": \"2026-08-11T05:47:02\"\n    },\n    {\n      \"direction\": \"less\",\n      \"target_kind\": \"rec\",\n      \"target_book_id\": null,\n      \"snapshot\": {\n        \"title\": \"Blindsight\",\n        \"author\": \"Peter Watts\",\n        \"subjects\": [\n          \"science fiction\"\n        ]\n      },\n      \"created_at\": \"2026-08-11T05:47:02\"\n    }\n  ]\n}",
+   "headers": {
+    "content-type": "application/json",
+    "content-disposition": "attachment; filename=\"mylibrary-backup-20260811.json\""
+   },
+   "maskDetail": false
+  }
+ ],
+ "export-invalid-format": [
+  {
+   "req": "GET /export?format=xml",
+   "json": null,
+   "multipart": null,
+   "response_mode": "json",
+   "status": 422,
+   "body": {
+    "detail": "format must be 'csv' or 'json'."
+   },
+   "headers": {},
    "maskDetail": false
   }
  ]

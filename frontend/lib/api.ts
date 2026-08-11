@@ -501,22 +501,6 @@ export const api = {
   /** All recommendations the user has rejected, newest first. */
   rejectedRecs: () => get<Recommendation[]>('/recommendations/rejected'),
 
-  /** Upload a Goodreads CSV and run ingest. Used by the setup wizard. */
-  ingestUpload: async (file: File): Promise<Record<string, unknown>> => {
-    const form = new FormData();
-    form.append('file', file);
-    const res = await fetch(`${baseFor('/ingest/upload', 'POST')}/ingest/upload`, {
-      method: 'POST',
-      body: form,
-      headers: { ...(await authHeaders()) }, // no Content-Type — the browser sets the multipart boundary
-    });
-    if (!res.ok) {
-      const detail = await res.text();
-      throw new Error(`Upload failed (${res.status}): ${detail}`);
-    }
-    return res.json() as Promise<Record<string, unknown>>;
-  },
-
   /** Sniff an uploaded CSV: detected format, headers, sample rows, guessed mapping. */
   importPreview: async (file: File): Promise<ImportPreview> => {
     const form = new FormData();
@@ -798,7 +782,9 @@ export interface AdminUser {
  * unconditionally (NavBar) to decide whether to show admin UI at all.
  */
 export async function adminMe(): Promise<{ is_admin: boolean }> {
-  const res = await fetch(`${baseFor('/admin/me', 'GET')}/admin/me`, { headers: { ...(await authHeaders()) } });
+  const res = await fetch(`${baseFor('/admin/me', 'GET')}/admin/me`, {
+    headers: { ...(await authHeaders()) },
+  });
   if (!res.ok) return { is_admin: false };
   return res.json() as Promise<{ is_admin: boolean }>;
 }
