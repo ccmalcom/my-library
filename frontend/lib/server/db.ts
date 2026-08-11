@@ -11,6 +11,7 @@ import * as schema from './schema';
 
 export { schema };
 export type Db = PostgresJsDatabase<typeof schema>;
+export type DbTx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 let db: Db | null = null;
 let testDb: Db | null = null;

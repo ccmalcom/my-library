@@ -43,14 +43,13 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/taste-signal', 'POST')).toBe('/api');
   });
 
-  test('auto: wave-3/wave-4 paths (and books/directive siblings) stay on Python', () => {
-    expect(baseFor('/books/12/similar', 'POST')).toBe('/api'); // wave 3c-2
-    expect(baseFor('/library', 'DELETE')).toBe(PY); // wave-4 purge
-    expect(baseFor('/account', 'DELETE')).toBe(PY);
-  });
-
-  test('auto: unflipped paths stay on Python', () => {
-    expect(baseFor('/export', 'GET')).toBe(PY);
+  test('auto: wave-4a purge routes go to Node; wave 4b/4c stay on Python', () => {
+    expect(baseFor('/library', 'DELETE')).toBe('/api');
+    expect(baseFor('/profile', 'DELETE')).toBe('/api');
+    expect(baseFor('/account', 'DELETE')).toBe('/api');
+    expect(baseFor('/export', 'GET')).toBe(PY); // wave 4b
+    expect(baseFor('/import', 'POST')).toBe(PY); // wave 4b
+    expect(baseFor('/enrich/start', 'POST')).toBe(PY); // wave 4c
   });
 
   test('node-only prefixes always hit Node', () => {
@@ -72,7 +71,7 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/stats')).toBe('/api');
   });
 
-  test('wave-2/3a/3b/3c flip list is exactly as designed', () => {
+  test('wave-2/3a/3b/3c/4a flip list is exactly as designed', () => {
     expect(NODE_DEFAULT_ROUTES).toEqual([
       { prefix: '/stats' },
       { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
@@ -93,6 +92,9 @@ describe('backend switcher (method-aware)', () => {
       { prefix: '/directive', methods: ['GET', 'PUT', 'DELETE'], exact: true },
       { prefix: '/feedback' },
       { prefix: '/taste-signal' },
+      { prefix: '/library', methods: ['DELETE'], exact: true },
+      { prefix: '/profile', methods: ['DELETE'], exact: true },
+      { prefix: '/account', methods: ['DELETE'], exact: true },
     ]);
   });
 
@@ -125,8 +127,10 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/profile/update', 'POST')).toBe('/api');
   });
 
-  it('leaves DELETE /profile on Python (not ported in wave 3b)', () => {
-    expect(baseFor('/profile', 'DELETE')).toBe(pythonBase());
+  it('uses an exact method-specific rule for DELETE /profile', () => {
+    expect(baseFor('/profile', 'DELETE')).toBe('/api');
+    expect(baseFor('/profile/status', 'DELETE')).toBe(PY);
+    expect(baseFor('/profile/subjects', 'DELETE')).toBe(PY);
   });
 
   it('does not let the exact POST /profile rule swallow sub-paths', () => {

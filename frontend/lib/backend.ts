@@ -27,6 +27,7 @@ export interface BackendRule {
  * Wave 3b: `POST /profile` and `POST /profile/update` (full and incremental re-profile) flip to Node.
  * Wave 3c-1: `POST /recommend` (the two-stage recommender) flips to Node.
  * Wave 3c-3: `POST /discover` (natural-language discovery) flips to Node, completing wave 3c.
+ * Wave 4a: destructive library, profile, and account purges flip to Node.
  */
 export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/stats' },
@@ -55,6 +56,11 @@ export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/directive', methods: ['GET', 'PUT', 'DELETE'], exact: true }, // exact ensures this rule doesn't match /directive/draft POST (which has its own rule)
   { prefix: '/feedback' },
   { prefix: '/taste-signal' },
+  // Wave 4a: destructive purges. Exact + method-specific so existing profile
+  // GET/PATCH/POST rules and any future sibling routes cannot broaden the flip.
+  { prefix: '/library', methods: ['DELETE'], exact: true },
+  { prefix: '/profile', methods: ['DELETE'], exact: true },
+  { prefix: '/account', methods: ['DELETE'], exact: true },
 ];
 
 /** Routes that only exist on the Node backend. */

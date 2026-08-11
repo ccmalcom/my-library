@@ -171,6 +171,18 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       snapshot json,
       created_at timestamp default current_timestamp
     );
+    create table enrich_jobs (
+      id serial primary key,
+      job_id text not null unique,
+      user_id text not null default 'local',
+      status text not null default 'pending',
+      progress integer not null default 0,
+      total integer not null default 0,
+      started_at timestamp,
+      finished_at timestamp,
+      error text,
+      created_at timestamp not null default current_timestamp
+    );
     create table feedback (
       id serial primary key,
       user_id text not null default 'local',
@@ -191,6 +203,16 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       snooze_until timestamp,
       updated_at timestamp not null default current_timestamp,
       constraint uq_feedback_prompt_state unique (user_id, trigger, run_id)
+    );
+    create table invites (
+      id serial primary key,
+      email text not null,
+      invited_by text not null,
+      supabase_user_id text,
+      status text not null default 'pending',
+      created_at timestamp default current_timestamp,
+      accepted_at timestamp,
+      revoked_at timestamp
     );
   `);
   const db = drizzle(pg, { schema }) as unknown as Db;
@@ -229,18 +251,42 @@ function resolveTs(v: SeedTimestamp): string | null {
  */
 export async function loadSeed(db: Db, seed: Seed): Promise<void> {
   const TS_COLS = new Set([
-    'feedback_updated_at', 'created_at', 'updated_at', 'verdict_updated_at',
-    'last_profiled_at', 'rec_feedback_updated_at', 'enrichment_corrected_at',
-    'derived_at', 'resolved_at', 'snooze_until',
+    'feedback_updated_at',
+    'created_at',
+    'updated_at',
+    'verdict_updated_at',
+    'last_profiled_at',
+    'rec_feedback_updated_at',
+    'enrichment_corrected_at',
+    'derived_at',
+    'resolved_at',
+    'snooze_until',
   ]);
   const JSON_COLS = new Set([
-    'subjects', 'exhibits', 'contrasts', 'grounded_trait_ids',
-    'grounded_book_ids', 'reject_reasons', 'raw_response', 'constraints', 'snapshot',
+    'subjects',
+    'exhibits',
+    'contrasts',
+    'grounded_trait_ids',
+    'grounded_book_ids',
+    'reject_reasons',
+    'raw_response',
+    'constraints',
+    'snapshot',
   ]);
   const order = [
-    'catalog_cache', 'books', 'enrichment', 'taste_traits', 'recommendations', 'profile_meta',
-    'user_settings', 'reader_archetypes', 'user_directive', 'usage_events',
-    'taste_signals', 'feedback', 'feedback_prompt_state',
+    'catalog_cache',
+    'books',
+    'enrichment',
+    'taste_traits',
+    'recommendations',
+    'profile_meta',
+    'user_settings',
+    'reader_archetypes',
+    'user_directive',
+    'usage_events',
+    'taste_signals',
+    'feedback',
+    'feedback_prompt_state',
   ] as const;
   const TABLE_FOR_KEY: Record<string, string> = { taste_signals: 'taste_signal' };
   for (const key of order) {
@@ -263,9 +309,18 @@ export async function loadSeed(db: Db, seed: Seed): Promise<void> {
     }
   }
   const SEQ_TABLES = [
-    'books', 'enrichment', 'taste_traits', 'recommendations', 'profile_meta',
-    'user_settings', 'reader_archetypes', 'user_directive', 'usage_events',
-    'taste_signal', 'feedback', 'feedback_prompt_state',
+    'books',
+    'enrichment',
+    'taste_traits',
+    'recommendations',
+    'profile_meta',
+    'user_settings',
+    'reader_archetypes',
+    'user_directive',
+    'usage_events',
+    'taste_signal',
+    'feedback',
+    'feedback_prompt_state',
   ];
   for (const t of SEQ_TABLES) {
     // is_called=false + (max+1) — NOT the two-arg setval(seq, greatest(max,1)) idiom,
