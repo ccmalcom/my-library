@@ -5,7 +5,13 @@ token spend onto the ChatGPT subscription, keep Claude on judgement, and get two
 on the output. Refine this as we go; graduate settled lessons into the global CLAUDE.md and the
 repo's `Claude / Codex split` section.
 
-**Status:** first real run — Node backend wave 4, started 2026-08-10.
+**Status:** one full cycle complete — wave 4a inventory → plan → execution, 2026-08-10. 17 Codex
+jobs in this repo.
+
+**This file is the narrative log.** The operational distillation lives in
+`codex-prompt-templates.md` — tested prompts for the three Codex roles, a standing-rules block,
+Claude's review checklist, and verified helper commands. When a lesson here stabilizes, graduate it
+into the templates and into CLAUDE.md's `Claude / Codex split` section, then leave the story here.
 
 ---
 
@@ -232,10 +238,192 @@ makes one status check dominate the context window. Pipe it through `python3 -c`
 
 ---
 
+## Wave 4b planning session (2026-08-10)
+
+### I repeated both documented gotchas inside ten minutes
+
+Gotcha 2 (`task --help` is not a help flag) and gotcha 1 (never pipe a running job through
+`tail`/`head`) are both written down in this file, and I hit both anyway — burning a real Codex
+turn on `--help`, then backgrounding the inventory through `2>&1 | tail -40`.
+
+That is worth more than an apology, because it says something about the artifact: **a gotcha
+written as a prohibition doesn't survive contact with momentum.** I read "don't pipe through tail"
+and then reached for the shape I always use for a noisy background command. The fix is not a
+sterner warning, it's removing the reconstruction step — the templates should carry a literal,
+copy-pasteable invocation line so there is nothing to improvise. Added below.
+
+```bash
+CX='node /home/chase/.claude/plugins/cache/openai-codex/codex/1.0.6/scripts/codex-companion.mjs'
+# Long prompt: write it to a file first, never inline it into the shell.
+$CX task "$(cat /path/to/prompt.txt)"          # background this via the harness, NOT via `| tail`
+$CX cancel <job-id>                            # verified working — this is the fix for a stray job
+```
+
+`cancel <job-id>` works and prints the cancelled job's summary. Use it the moment you notice a
+wasted job instead of letting it run to completion on quota.
+
+### Scoping greps are Claude's job — "don't explore before delegating" is about execution
+
+Two greps before any delegation changed what wave 4b *is*: `POST /ingest` takes a server-side
+`csv_path` and `ingestUpload` still exists at `frontend/lib/api.ts:505`, but **nothing in `app/`,
+`components/`, or `lib/` calls it** — `SetupWizard.tsx:322` and `ImportModal.tsx:91` both went to
+`api.importLibrary` at some earlier point. Both ingest routes are also filesystem-bound, which
+Vercel's read-only serverless FS cannot host. So they are dead code, and wave 4b deletes them
+rather than porting them. A third grep confirmed `withApi` already returns a raw `Response`
+(`lib/server/http.ts:37`), which decides how `GET /export` is built.
+
+That is three greps to remove two routes from a wave and settle an architecture question. **The
+`CLAUDE.md` rule "do not explore the repo before delegating" is about handing Codex a task it will
+explore for itself — it is not a ban on the cheap fact-finding that sets scope.** Scope is
+Claude's half of the split, and scope decided from stale docs is exactly what the wave-4 inventory
+already proved expensive. Worth stating the distinction in the split section so the rule isn't
+read as "never grep."
+
+### New inventory-prompt move: ask for the negative result explicitly
+
+The wave-4b inventory asks, as its own deliverable: *does ANY existing Next route handler accept
+multipart/form-data or return a non-JSON Response with attachment headers? If not, say so plainly —
+that is the answer I need.*
+
+Previous inventories asked the general "anything with no equivalent yet" question and got a good
+list. This is narrower: a yes/no about a specific capability, with explicit permission to answer
+"no." The reason it matters is that a plan built on an assumed precedent is worse than one that
+knows it is on new ground — the draft prompt can then demand a concretely stated approach instead
+of "follow the existing pattern."
+
+**It came back clean — and better than clean.** The answer was a flat "No existing Next route
+handler calls `request.formData()`, accepts `multipart/form-data`, or reads a `File`," plus the
+same for `Content-Disposition`, *plus* a citation to the nearest near-miss
+(`app/api/feedback/dismiss/route.ts:23`, an empty 204) with a note that it is not an attachment
+precedent. Naming the closest thing that *isn't* the answer is exactly what makes a negative
+trustworthy. **Keep this deliverable shape**: ask the specific yes/no, grant permission to answer
+no, and it will volunteer the near-miss unprompted.
+
+### `task` is read-only by default — `--write` lives in the forwarding layer you skipped
+
+The first draft dispatch burned a full exploration turn and produced nothing: *"I couldn't create
+the requested file because the workspace is mounted read-only and write approval is disabled."*
+
+`CLAUDE.md` says `codex:codex-rescue` **defaults to `--write`** — and that is true of the *subagent*,
+which adds the flag per `skills/codex-cli-runtime/SKILL.md:24`. It is not a property of the
+companion CLI. So the note in this file recommending you call `codex-companion.mjs` directly to
+skip the Sonnet forwarding layer has a hidden cost: **you skip the flag defaults too.** Calling
+`task` by hand is read-only unless you pass `--write` yourself.
+
+**A thread's sandbox is fixed at creation — `--write --resume-last` cannot upgrade it.** The
+obvious recovery was to resume the thread that had already done the exploration and just add
+`--write`. It failed identically: *"The workspace is still reported as read-only by the execution
+environment... the current profile still blocks all writes despite the message saying access was
+enabled."*
+
+This is not the companion silently dropping the flag. `codex-companion.mjs:491` really does send
+`sandbox: request.write ? "workspace-write" : "read-only"` on the resume path too — I checked the
+source before spending another run, and the flag is passed. The server-side thread simply keeps the
+policy it was born with. So the sandbox is a property of the **thread**, not of the turn, and
+`--resume-last` inherits it along with the conversation.
+
+Consequence: **a read-only thread is a dead end for any work that must write.** There is no
+recovery that preserves its exploration — you pay for exploration again on a fresh `--write`
+thread. Decide read-vs-write at dispatch time, because that is the only time you can decide it.
+
+Three corollaries for the templates:
+- Any direct-CLI plan-drafting or implementation invocation needs an explicit `--write` **on the
+  first call**. Only inventory/review runs want the default.
+- `--resume-last` is for continuing work of the *same kind*. It cannot change permissions.
+- "Skip the forwarding layer to save tokens" and "inherit the forwarding layer's defaults" are in
+  tension. Prefer the direct call, but write the flags down.
+
+Cost of learning this: one wasted exploration turn, then a second wasted turn on the resume that
+could not have worked. Checking the companion source (one grep) is what stopped it at two instead
+of three — worth doing the moment a flag appears not to take effect, rather than re-trying it.
+
+### The inventory overturned an assumption again — second wave running
+
+Wave 4's inventory reshaped the wave by proving purge was the easy part and enrichment the hard
+one. Wave 4b's did it again, and the assumption it broke was invisible from the plan docs:
+**every previous wave inherited a working parity harness, so nobody thought to check whether this
+one could.** It cannot. `scripts/gen_parity_fixtures.py:399` sends only `json=` and always calls
+`r.json()` on a nonempty response; `write-parity.ts:106` replays the same way. Neither can record
+a multipart request or preserve a non-JSON response body with its headers — and wave 4b is
+entirely multipart uploads and a CSV/JSON file download.
+
+That converts a footnote into a prerequisite task ordered before every route task. **The
+generalizable lesson: inventory the tooling a wave depends on, not just the code it ports.** The
+question "can the harness we always use actually record this wave's traffic?" had never needed
+asking before, which is precisely why it nearly went unasked.
+
+### A dependency does not discharge a parity burden
+
+Chase chose to add `csv-parse ^7.0.2` / `csv-stringify ^6.8.3` over my recommendation to hand-roll
+~100 lines against CPython's `excel` dialect. Fine either way — but the draft prompt now carries an
+explicit constraint that the library **does not** remove the obligation to prove CPython behavior,
+it only moves where the code comes from. These libraries' defaults are not Python's (the record
+delimiter alone: Python's excel dialect is `\r\n`, the library default is `\n`), so the plan must
+pin the exact option objects and still test the distinguishing edge cases — embedded comma, quote
+and newline, lone `\r`, ragged rows, BOM, trailing empty line.
+
+Worth generalizing: when a decision swaps custom code for a dependency, the *verification* scope
+is unchanged. The risk just moves from "did we implement it right" to "did we configure it right,"
+which is harder to see in a diff.
+
+### The drafted 4b plan — review verdict
+
+1,120 lines against 4a's 954, structure matching the template exactly, and `git status` clean apart
+from the one intended file. Task order encodes the real dependency chain (CSV layer → harness →
+shared core → routes → switcher) with a stated reason per edge.
+
+**"WRITE THE TEST BODIES" worked on the first pass.** This is the headline result. Wave 4a needed a
+second scoped prompt to close 11 prose-in-a-comment stubs; wave 4b asked up front and got **45
+assertions across 14 tests, with zero stub patterns** — `grep -nE "^\s*//\s*(\.\.\.|Also|etc|TODO)"`
+returns nothing, as does a TBD/placeholder scan. The open question "is test code a second-prompt
+problem or a capability limit?" is now fully answered: **it is a prompt problem, and asking in the
+first prompt costs one paragraph and saves a round trip.**
+
+Quality, not just quantity — the never-clobber test asserts
+`toEqual({...book, <only the changed fields>})`, so any unexpected mutation of `appRating` or
+`appReview` fails, and title-never-updates plus null-preserves-stored fall out of the same
+assertion for free.
+
+**The `grep -n` instruction also stuck:** 21 `grep -n` proof checks, zero `sed -n 'N,Mp'` ranges.
+Two waves running, an explicitly-reasoned prompt rule has changed the artifact.
+
+**What Claude review caught this time: one imprecise citation, and it is the inverse of 4a's
+defect.** Constraint 9 said the schema declares `date(..., { mode: 'string' })`; the schema actually
+declares bare `date("date_read")`. But the *conclusion* was right — drizzle's `date()` overload
+returns `PgDateStringBuilderInitial` unless mode is explicitly `'date'`, so bare already is string
+mode. Where 4a's `DbTx` was a claim that was wrong and would not compile, this was a claim that was
+right but described its evidence in a form the repo does not literally contain.
+
+That distinction matters because of the failure mode it invites: an executor greps
+`schema.ts` for `mode: 'string'`, finds it on the *timestamp* columns but not the date ones, and
+reports "the plan is wrong" — the exact grep-shape false finding this file already documents from
+4a. Fixed in place by citing `grep -n 'dateRead: date'`, stating that the bare form is correct, and
+adding an explicit "do not conclude the plan is wrong when grepping for one."
+
+**Generalizable:** a correct conclusion with a mis-shaped citation is more dangerous than an
+obviously wrong one, because it survives review and detonates during execution. When verifying a
+plan's facts, check the *evidence form* as well as the claim.
+
+**A two-model data point.** Codex independently re-verified the inventory against source rather
+than trusting it, and reported that `DbTx` now exists — the very type whose absence was 4a's main
+defect. The "treat citations as unverified sketches" paragraph keeps earning its place, and this is
+the first time it produced a *confirmation* rather than a correction.
+
+All other spot-checked facts held: V13/V14 (`DictWriter` + `CANONICAL_FIELDS`), V17
+(`json.dumps(..., indent=2)` at `api.py:554`), V18 (`strftime("%Y%m%d")`, 422 detail string), V20,
+V21, V22, V24, V25, and V3's mapping key order against `MAPPING_FIELDS`. The subtlest one is also
+correct: `formats.py:86` uses `parse_int(...) or 0` for Goodreads (truncating via `int(float(s))`)
+while the other three parsers use half-up `parse_rating`, so `4.9` really does become `4` in
+Goodreads and `5` everywhere else.
+
 ## Open questions
 
 - ~~Does a Codex-drafted plan hold up to Claude-drafted quality?~~ **Answered** — yes for
   structure and implementation code, no for test code. See the verdict section above.
+- ~~Is missing test code a Codex capability limit?~~ **Fully answered in wave 4b — it is a prompt
+  problem.** Asking for complete runnable test bodies in the *first* drafting prompt produced 45
+  assertions across 14 tests with zero stubs, no follow-up round needed. Always include the
+  paragraph.
 - ~~Does the gap-filling follow-up actually close it?~~ **Answered — yes, completely.** A scoped
   second pass naming the exact stub locations and the five requirements produced fully runnable
   test code: `countFor` implemented against real columns, enrichment counted via `innerJoin`
@@ -248,8 +436,16 @@ makes one status check dominate the context window. Pipe it through `python3 -c`
   caught were verifiable-against-repo facts, not judgement calls — which suggests the value is
   *verification against ground truth*, not model diversity per se. Worth watching whether that
   holds.
-- **Review-gate value.** Set to per-execution-session toggle, not yet exercised. Unknown whether
-  it duplicates `on_stop.py` in practice or genuinely catches design issues.
+- **Verification honesty held up — keep watching it.** The execution session recorded
+  "implementation-complete but LIVE-UNVERIFIED" and enumerated what remained unproven instead of
+  reporting done. That is the behavior this workflow most needs and most easily loses. Wave 4a's
+  live purge checks are still outstanding (deferred to Chase post-merge), so the plan's "Done when"
+  criteria are formally unmet.
+- **Review-gate value — still unanswered after a full wave.** The plan's header instructed enabling
+  it, but `setup --json` now reports `reviewGateEnabled: false` and the execution session logged no
+  gate findings, so it was either never switched on or switched off without being exercised. Not
+  guessing which. **Next wave: turn it on, and log whether it fires, what it says, and whether it
+  overlaps `on_stop.py`.** Until then treat "the gate helps" as untested.
 - **`/codex:transfer`** — untested. Intended as the `/compact` replacement when remaining work is
   mechanical.
 - **Quota ceiling.** No visibility yet into how fast the $20 ChatGPT tier burns down under this

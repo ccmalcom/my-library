@@ -125,6 +125,12 @@ tie (an odd 8th at d=2, an odd 32nd at d=4), which reaches real API responses vi
 This repo delegates implementation to Codex (OpenAI) via the `codex` plugin, keeping Claude
 on planning and judgement. Fresh execution sessions must follow this split.
 
+**Use the prompt templates.** `docs/superpowers/codex-prompt-templates.md` has tested prompts for
+the three Codex roles (inventory, plan-drafting, task execution), a standing-rules block to paste
+into every prompt, Claude's review checklist for returned work, and verified helper commands. Do
+not re-derive these per wave. Running findings live in `docs/superpowers/codex-workflow-notes.md`;
+append to it as you learn things.
+
 | Work | Runs on |
 | --- | --- |
 | Brainstorm, spec, wave plan docs | Claude (Opus) |
@@ -149,6 +155,20 @@ Rules:
   text names `.env` or asks it to inspect secrets; use `.env.example` for variable names.
 - `codex:codex-rescue` defaults to `--write`. Say "investigate, do not edit" for diagnosis-only
   runs. Chase still commits by hand — expect to review diffs you did not watch being made.
+- **Cite symbols, not line ranges, in any proof-of-fix check.** Use `grep -n '<exact code>'`, never
+  `sed -n 'N,Mp'`. Line numbers drift between plan-authoring and plan-execution — wave 4a's Task 0
+  gate printed a window ten lines short of the guard it was checking for, and a literal reading
+  would have failed a gate that had actually passed. Treat the line ranges in any plan's "Verified
+  Facts" table as hints to the right region, never as assertions to check literally.
+- **"My grep found nothing" ≠ "the fact is not there."** Before contradicting a plan's citation,
+  open the cited range. A single-form grep is not proof of absence for any API with more than one
+  spelling: wave 4a produced a false "the plan is wrong" finding because `grep -c 'references('`
+  returned 0, while this schema declares its only foreign key via Drizzle's table-level
+  `foreignKey({...})` form at `schema.ts:146-151`. And never propagate an unverified review finding
+  into later task prompts — propagation is efficient when right and contaminating when wrong.
+- **Ask for test bodies explicitly** when commissioning a plan. Codex reliably writes complete
+  implementation code and reduces test code to prose-in-comments. It is a second-prompt problem,
+  not a capability limit — asking directly fixes it entirely.
 - **Review gate is off by default.** At the start of a wave-execution session run
   `/codex:setup --enable-review-gate`, and `/codex:setup --disable-review-gate` when the wave is
   done. It adds a Codex design review (up to 900s, can BLOCK) on every edit-producing turn —
