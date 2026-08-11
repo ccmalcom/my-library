@@ -22,6 +22,10 @@ venv/
 # TypeScript build cache
 frontend/tsconfig.tsbuildinfo
 
+# Node deps / tool caches. frontend/.gitignore already covers frontend/node_modules;
+# this catches the repo-root node_modules/.vite cache vitest creates when run from here.
+node_modules/
+
 #UI Test
 
 frontend/app/ui-test/
