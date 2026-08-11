@@ -172,6 +172,66 @@ is part of why a research run takes minutes rather than seconds.
 
 ---
 
+## Wave 4a execution session (2026-08-10)
+
+### Plan line-number citations drift — verify the symbol, not the range
+
+Task 0's verification command was `git show origin/main:mylibrary/profile.py | sed -n '542,551p'`
+with the instruction "it must contain `if "id" in b`". The guard is real and deployed, but it
+lives at **line 552** — the window was ~10 lines short and printed only the comment above it. A
+literal reading of the check ("does this window contain the string?") would have failed a gate
+that had actually passed.
+
+**Prompt fix:** when a plan needs to prove a fix landed, have it cite a `grep -n '<exact code>'`
+rather than a `sed -n 'N,Mp'` range. Line numbers move with every commit between plan-authoring
+and plan-execution; the symbol does not. This applies to the plan's own "Verified Facts" table
+too, which is entirely line-range citations — treat those ranges as *hints to the right region*,
+never as assertions to check literally.
+
+### Task 1 — clean pass, but the plan's FK evidence was wrong
+
+Codex implemented Task 1 in 2m39s, touching exactly the four intended files and nothing else.
+7/7 focused tests pass; `type-check` and `prettier --check` clean, all re-run independently rather
+than taken from its report. Its three self-reported plan discrepancies all verified true.
+
+**A false "the plan is wrong" finding — grep shape, not plan quality.** Mid-review I claimed V5
+cited the wrong file for the enrichment FK, on the strength of `grep -c 'references(' schema.ts`
+returning **0**. That was my error, caught by Codex on the next task. Drizzle declares foreign keys
+two ways: column-level `.references()` *and* the table-level third-argument form
+`foreignKey({ columns, foreignColumns, name })`. This schema uses the latter, at
+`schema.ts:146-151` (`enrichment_book_id_fkey`) — squarely inside the `128-151` range V5 cited.
+**V5 was correct as written.**
+
+Worth knowing: that is the *only* foreign key in the entire Drizzle schema (one `foreignKey(`, zero
+`references(`), which is exactly why enrichment-before-books is the one ordering constraint in the
+purge path.
+
+**The real lesson is about verification method, not the plan.** A single-form grep is not proof of
+absence for any API with more than one spelling. Before contradicting a plan's citation, either
+open the cited range or grep for every form the API allows — "my grep found nothing" and "the fact
+is not there" are different claims, and I reported the second while having only established the
+first. Codex caught this because it read the range instead of grepping it.
+
+**What did hold up:** the `DbTx` correction was genuine (Task 1 had to add the type), and the
+"treat the code blocks as unverified sketches; check every name against the real repo and report
+deviations" paragraph earned its place — Codex reported unprompted deviations on all three tasks,
+including this correction to me. Keep that paragraph. But note the asymmetry it created: it
+primes Codex to *expect* plan errors, and I then fed my own false finding into the Task 2 and
+Task 3 prompts as established fact. Propagating a review finding into later prompts is efficient
+when right and contaminating when wrong — verify it against the source before it becomes prompt
+boilerplate.
+
+**Prettier churn.** `prettier --write` on a touched file reformats pre-existing code: `pglite.ts`
+showed 11 deletions that were entirely array reflow, zero semantic change (verified element by
+element). Harmless but it pads the diff Chase reviews. Worth knowing the file wasn't
+Prettier-clean before this wave.
+
+**`status --json` is unusable raw** — it echoes the entire prompt back, so a Task-1-sized prompt
+makes one status check dominate the context window. Pipe it through `python3 -c` and print only
+`status/phase/elapsed`; get the report from `result --json` at `.storedJob.result.rawOutput`.
+
+---
+
 ## Open questions
 
 - ~~Does a Codex-drafted plan hold up to Claude-drafted quality?~~ **Answered** — yes for
