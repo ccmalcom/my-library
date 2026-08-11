@@ -89,8 +89,19 @@ metadata pool (so every candidate is tagged `claude_seed`), a stated language
 constraint replaces the reader's library languages for the run, and the standing
 custom-instructions directive does not steer it at all. Its two prompts share
 `recPrompts.tasteAndLoved` but prefix it with two headers that differ by one
-substring — an asserted parity detail, not a typo. Wave 4 (jobs + imports) is
-next, then wave 5 (admin + cutover).
+substring — an asserted parity detail, not a typo.
+Wave 4 is next and is split in three, on evidence from
+`docs/superpowers/plans/2026-08-10-node-backend-wave-4-inventory.md`. Wave 4a is purge
+(`DELETE /library`, `/profile`, `/account`) — self-contained, DB-only, no new infrastructure;
+planned in `2026-08-10-node-backend-wave-4a-purge.md`. Wave 4b is ingest/import/export (five
+routes) — a parser/serializer port, also no new infrastructure. Wave 4c is enrichment jobs, and
+it is **blocked on an architecture decision**: Python gets detached work two ways (in-process
+FastAPI `BackgroundTasks` and Redis/arq), and Vercel has neither. `/discover` is not a precedent —
+it completes inside one HTTP request. The options are `waitUntil`, a cron-driven poller, Redis
+plus an external worker, or leaving enrichment on Python through cutover. Note that the earlier
+plans assigned purge to wave 4 while `wave-3-verification.md:172` recommended deferring it to
+wave 5 as the risky piece; the inventory showed the opposite — purge is the easiest part and
+enrichment jobs are the hard one. Wave 5 remains admin + cutover.
 Because Claude output is nondeterministic, "parity" for these flows means the _request_ is
 byte-identical: `scripts/gen_claude_fixtures.py` monkeypatches `tracked_create` to record
 real Python `create()` kwargs into `fixtures/claude/prompts.json`, and
@@ -110,6 +121,42 @@ tie (an odd 8th at d=2, an odd 32nd at d=4), which reaches real API responses vi
 - **`docs/hosting.md`** — Supabase auth, multi-tenancy, per-user API keys, background jobs, env vars, Alembic migrations, Railway/Vercel deploy
 - **`docs/frontend.md`** — Next.js routes, components, design system, auth boundaries, mobile/tablet, SWR patterns
 - **`docs/conventions.md`** — gotchas: TSX parser quirks, git rules, Python/CLI, data invariants, recommender, profile, SWR cache
+
+## Claude / Codex split
+
+This repo delegates implementation to Codex (OpenAI) via the `codex` plugin, keeping Claude
+on planning and judgement. Fresh execution sessions must follow this split.
+
+| Work | Runs on |
+| --- | --- |
+| Brainstorm, spec, wave plan docs | Claude (Opus) |
+| Implementing a plan task | `/codex:rescue --background <task text>` |
+| Pre-PR review of a wave | `/codex:review`, then `/codex:adversarial-review` |
+| Triaging review findings | Claude, via `superpowers:receiving-code-review` |
+| Confirming it actually runs | Chase or Claude driving the app — never a model's self-report |
+
+Rules:
+
+- **Do not explore the repo before delegating.** The `codex:codex-rescue` subagent is a thin
+  forwarder and is forbidden from reading files; Codex does its own exploration on OpenAI's
+  quota. Hand it the plan-task text verbatim. Claude reading files first defeats the purpose.
+- **Prefer `--background`.** Pull results later with `/codex:result <id>`; `/codex:status` lists
+  jobs. A foreground run parks the whole Codex transcript in Claude's context.
+- `/codex:transfer` converts this session into a resumable Codex thread — prefer it over
+  `/compact` when the remaining work is mechanical.
+- `--model spark` (`gpt-5.3-codex-spark`) and `--effort low` for mechanical ports; leave both
+  unset for anything requiring parity reasoning.
+- **Codex is not covered by `.claude/hooks/pre_bash.py`.** That hook only screens Claude's own
+  Bash calls, so the `.env` block does not apply to Codex's shell. Never hand Codex a task whose
+  text names `.env` or asks it to inspect secrets; use `.env.example` for variable names.
+- `codex:codex-rescue` defaults to `--write`. Say "investigate, do not edit" for diagnosis-only
+  runs. Chase still commits by hand — expect to review diffs you did not watch being made.
+- **Review gate is off by default.** At the start of a wave-execution session run
+  `/codex:setup --enable-review-gate`, and `/codex:setup --disable-review-gate` when the wave is
+  done. It adds a Codex design review (up to 900s, can BLOCK) on every edit-producing turn —
+  worth it for unattended runs, too slow for planning or Q&A sessions. It stacks on top of
+  `.claude/hooks/on_stop.py`, which is the mechanical gate (tsc, ruff, eslint, prettier, pytest);
+  the two are complementary, not redundant.
 
 ## Locked decisions (do not relitigate)
 
