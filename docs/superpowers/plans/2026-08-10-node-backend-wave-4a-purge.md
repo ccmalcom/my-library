@@ -917,38 +917,54 @@ The agent reports the exact diff, command results, and live-verification evidenc
 ### Task 0 production gate
 
 ```text
-local main proof:
-origin/main proof:
-deployment URL/status:
-POST /profile regression result:
+origin/main proof: PASS -- `if "id" in b` present in the valid_ids comprehension.
+  NOTE: the guard is at mylibrary/profile.py:552, NOT in the 542-551 window this
+  plan told the verifier to print. That window shows only the comment above it.
+  Verified with `git show origin/main:mylibrary/profile.py | grep -n 'if "id" in b'`.
+  Cite symbols, not line ranges, in proof-of-fix checks.
+local main proof / deployment / POST /profile regression: performed by Chase before this session.
 ```
 
-### Automated suite
+### Automated suite — all PASS, 2026-08-10
 
 ```text
-npm test -- --runInBand:
-npm run test:server:
-npm run type-check:
-npm run lint:
-.venv/bin/pytest:
-npx prettier --check ...:
+npm test -- --runInBand:  37 passed, 5 suites
+npm run test:server:      349 passed, 57 files
+npm run type-check:       clean
+npm run lint:             clean
+.venv/bin/pytest:         360 passed
+npx prettier --check ...: all 9 touched files clean
+boundary checks:          survivor-delete rg prints nothing; no Alembic migration;
+                          no ingest/import/export/enrichment file touched
 ```
 
-### Live purge verification
+### Live purge verification — DEFERRED BY CHASE, NOT PERFORMED
 
 ```text
-environment + disposable account identifier:
-DELETE /api/profile response + survivor/tenant evidence:
-DELETE /api/library response + survivor/tenant evidence:
-Chase confirmation before DELETE /api/account:
-DELETE /api/account response + survivor/tenant/auth evidence:
-auto-mode Network evidence (Node purge routes; Python wave 4b/4c):
+STATUS: skipped deliberately on 2026-08-10. Chase deferred all live purge checks to
+himself, post-merge to main. No disposable account was created, seeded, or deleted;
+no request was issued against any deployed environment or real database.
+
+Rationale: MyLibrary is effectively single-user (chasecmalcom@gmail.com, invite-only),
+so the blast radius of these routes reaching production is his own data.
+
+CONSEQUENCE: wave 4a is implementation-complete but LIVE-UNVERIFIED. The "Done when"
+criteria below are NOT fully met. Nothing here establishes that the purge routes work
+against real Postgres + Supabase auth -- only that they pass PGlite suites and that the
+Node request shape matches Python's contract. Specifically unproven in a live setting:
+  - the switcher actually routes these DELETEs to /api in a deployed browser session
+  - Supabase auth identity really survives DELETE /account (asserted only by absence
+    of any admin-API dependency, never observed)
+  - real Postgres FK behavior on enrichment-before-books under a real connection pool
+Re-open this section when the live checks are run.
 ```
 
 ### Shipped as
 
 ```text
-commits:
-merge:
-deployment:
+commits: c34ec76 feat(node): port the three purge routes to Node (wave 4a)
+         3fca84a docs(superpowers): log the wave 4a Codex execution findings
+branch:  feat/node-backend (not pushed at time of writing)
+merge:   pending
+deployment: pending
 ```
