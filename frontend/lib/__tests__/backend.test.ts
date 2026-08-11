@@ -72,11 +72,13 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/stats')).toBe('/api');
   });
 
-  test('wave-2/3a/3c-1 flip list is exactly as designed', () => {
+  test('wave-2/3a/3b/3c flip list is exactly as designed', () => {
     expect(NODE_DEFAULT_ROUTES).toEqual([
       { prefix: '/stats' },
       { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
-      { prefix: '/books', methods: ['POST'], exact: true },
+      // wave 3c-2 dropped `exact` here so POST /books/{id}/similar follows POST
+      // /books to Node; the behavior assertions below guard both halves.
+      { prefix: '/books', methods: ['POST'] },
       { prefix: '/catalog/search' },
       { prefix: '/profile/archetype', methods: ['POST'], exact: true },
       { prefix: '/profile/reveal-lines', methods: ['POST'], exact: true },
@@ -84,6 +86,7 @@ describe('backend switcher (method-aware)', () => {
       { prefix: '/profile', methods: ['POST'], exact: true },
       { prefix: '/profile/update', methods: ['POST'], exact: true },
       { prefix: '/recommend', methods: ['POST'], exact: true },
+      { prefix: '/discover', methods: ['POST'], exact: true }, // wave 3c-3
       { prefix: '/profile', methods: ['GET', 'PATCH'] },
       { prefix: '/recommendations', methods: ['GET', 'PATCH'] },
       { prefix: '/settings', methods: ['GET', 'PUT', 'DELETE'] },
