@@ -108,8 +108,8 @@ describe('backend switcher (method-aware)', () => {
     // are Node, and GET/PATCH/DELETE children are unaffected.
     expect(baseFor('/books', 'POST')).toBe('/api');
     expect(baseFor('/books/12', 'DELETE')).toBe('/api');
-    // still Python — 3c-3/4/5
-    expect(baseFor('/discover', 'POST')).toBe(PY); // 3c
+    expect(baseFor('/discover', 'POST')).toBe('/api'); // wave 3c-3
+    // still Python — waves 4/5
     expect(baseFor('/enrich/start', 'POST')).toBe(PY); // wave 4
     expect(baseFor('/admin/users', 'GET')).toBe(PY); // wave 5
     // unchanged from waves 1-2

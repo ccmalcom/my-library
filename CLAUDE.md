@@ -78,8 +78,19 @@ the similar path — that recording is where `fillOlDescriptions` and `capPool`'
 there. Three Python quirks are reproduced deliberately on this path: the series and
 fuzzy-duplicate filters are inert (`_build_book_signal` returns no `library_series`
 or `library_titles`), rejected recommendations are not excluded, and custom
-instructions do not steer it. Wave 3c-3 (`/discover`) is next, then wave 4
-(jobs + imports) and wave 5 (admin + cutover).
+instructions do not steer it. Wave 3c-3 shipped `POST /discover` and completes
+wave 3c: `cleanConstraints` + `applyDiscoveryConstraints` (a pool-level filter
+applied BEFORE assembly, with no `exclude_authors` branch — deliberately not
+`applyDirectiveConstraints`), `discoveryPool` (both catalog sources per query,
+Google then Open Library), `recDiscoverPrompts.ts` and `recDiscoverRun.ts`, with
+Python's 30/minute SlowAPI limit reproduced via `RATE_LIMITS.discover`. Discovery
+is the odd one out in the recommender family: it hands `assemble` an EMPTY
+metadata pool (so every candidate is tagged `claude_seed`), a stated language
+constraint replaces the reader's library languages for the run, and the standing
+custom-instructions directive does not steer it at all. Its two prompts share
+`recPrompts.tasteAndLoved` but prefix it with two headers that differ by one
+substring — an asserted parity detail, not a typo. Wave 4 (jobs + imports) is
+next, then wave 5 (admin + cutover).
 Because Claude output is nondeterministic, "parity" for these flows means the _request_ is
 byte-identical: `scripts/gen_claude_fixtures.py` monkeypatches `tracked_create` to record
 real Python `create()` kwargs into `fixtures/claude/prompts.json`, and

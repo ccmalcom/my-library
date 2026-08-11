@@ -8,13 +8,14 @@ import { sql } from 'drizzle-orm';
 import type { Db } from './db';
 
 /** Parity with mylibrary/api.py decorators: 30/minute catalog search, 5/minute enrich
- *  start, 30/minute directive draft, 15/minute similar books. Each route uses its own
- *  bucket key — these limits are independent, not shared. */
+ *  start, 30/minute directive draft, 15/minute similar books, 30/minute discover. Each
+ *  route uses its own bucket key — these limits are independent, not shared. */
 export const RATE_LIMITS = {
   catalogSearch: { limit: 30, windowSeconds: 60 },
   enrichStart: { limit: 5, windowSeconds: 60 },
   directiveDraft: { limit: 30, windowSeconds: 60 },
   booksSimilar: { limit: 15, windowSeconds: 60 },
+  discover: { limit: 30, windowSeconds: 60 },
 } as const;
 
 export interface RateLimitResult {

@@ -26,6 +26,7 @@ export interface BackendRule {
  * Wave 3c-2: `POST /books/{id}/similar` (ephemeral "more like this") flips to Node.
  * Wave 3b: `POST /profile` and `POST /profile/update` (full and incremental re-profile) flip to Node.
  * Wave 3c-1: `POST /recommend` (the two-stage recommender) flips to Node.
+ * Wave 3c-3: `POST /discover` (natural-language discovery) flips to Node, completing wave 3c.
  */
 export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/stats' },
@@ -45,6 +46,9 @@ export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   // Wave 3c-1: the two-stage recommender. `exact` is LOAD-BEARING -- '/recommendations'
   // starts with '/recommend', so a prefix rule here would capture that group too.
   { prefix: '/recommend', methods: ['POST'], exact: true },
+  // Wave 3c-3: natural-language discovery. `exact` because /discover has no
+  // sub-paths today and a future one should be an explicit decision.
+  { prefix: '/discover', methods: ['POST'], exact: true },
   { prefix: '/profile', methods: ['GET', 'PATCH'] },
   { prefix: '/recommendations', methods: ['GET', 'PATCH'] },
   { prefix: '/settings', methods: ['GET', 'PUT', 'DELETE'] },
