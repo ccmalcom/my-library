@@ -10,6 +10,7 @@ import {
   googleBooksAuthor,
   googleBooksQuery,
   googleBooksSubject,
+  openlibraryQuery,
   openlibrarySubject,
   openlibraryWorkDescription,
   type Candidate,
@@ -100,6 +101,26 @@ export async function seedPool(db: Db, queries: string[], perQuery: number): Pro
     for (const c of await googleBooksQuery(db, q, perQuery)) {
       pool.push([c, `query:${q}`]);
     }
+  }
+  return pool;
+}
+
+/**
+ * recommend._discovery_pool: run the interpreted NL-discovery queries against the
+ * live catalog. Unlike seedPool (Google-only), discovery has no library-metadata
+ * backstop -- recall rests entirely on these queries -- so each runs against BOTH
+ * sources. Google first, then Open Library: that order is what the recorded
+ * fixture replays.
+ */
+export async function discoveryPool(
+  db: Db,
+  queries: string[],
+  perQuery: number
+): Promise<PoolEntry[]> {
+  const pool: PoolEntry[] = [];
+  for (const q of queries) {
+    for (const c of await googleBooksQuery(db, q, perQuery)) pool.push([c, `query:${q}`]);
+    for (const c of await openlibraryQuery(db, q, perQuery)) pool.push([c, `query:${q}`]);
   }
   return pool;
 }

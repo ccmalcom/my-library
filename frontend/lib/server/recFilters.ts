@@ -211,3 +211,86 @@ export function applyDirectiveConstraints<T extends ConstrainableCandidate>(
     return true;
   });
 }
+
+/**
+ * recommend._clean_constraints: keep only the supported, catalog-filterable
+ * constraints and normalize their types.
+ *
+ * Supported: languages (2-letter lowercased), min_year/max_year (int),
+ * exclude_subjects (lowercased). Page-count and standalone/series constraints are
+ * intentionally unsupported -- catalog candidates don't reliably carry that data --
+ * so they are dropped even when the model emits them.
+ *
+ * DEVIATIONS, both narrower than Python and both safe:
+ *  - Python's `isinstance(val, int)` rejects a float, but JSON.parse erases the
+ *    int/float distinction, so a wire value of `1990.0` reaches us as the integer
+ *    1990 and is accepted here where Python would drop it. Same class of divergence
+ *    as recommendRun's candidate_index check.
+ *  - Python's `str.isdigit()` is Unicode-aware (it accepts superscripts and
+ *    non-Latin digits, some of which then make `int()` raise); `/^\d+$/` is
+ *    ASCII-only. The years Claude emits are ASCII.
+ */
+export function cleanConstraints(raw: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+
+  const langs = ((raw.languages as unknown[] | null) ?? [])
+    .filter((x) => String(x).trim() !== '')
+    // Truncate to 2 AFTER trim + lowercase, exactly like Python's `.strip().lower()[:2]`.
+    .map((x) => String(x).trim().toLowerCase().slice(0, 2));
+  if (langs.length) out.languages = langs;
+
+  for (const key of ['min_year', 'max_year'] as const) {
+    const val = raw[key];
+    // Python checks bool FIRST because bool subclasses int -- True would become 1.
+    if (typeof val === 'boolean') continue;
+    if (typeof val === 'number' && Number.isInteger(val)) out[key] = val;
+    else if (typeof val === 'string' && /^\d+$/.test(val.trim())) out[key] = Number(val.trim());
+  }
+
+  const excl = ((raw.exclude_subjects as unknown[] | null) ?? [])
+    .filter((x) => String(x).trim() !== '')
+    .map((x) => String(x).trim().toLowerCase());
+  if (excl.length) out.exclude_subjects = excl;
+
+  return out;
+}
+
+/**
+ * recommend._apply_discovery_constraints: filter the RAW candidate pool by the
+ * reader's stated era + exclude_subjects constraints, BEFORE assembly -- so the
+ * cap can never keep a constraint-violating book over a valid one.
+ *
+ * Deliberately NOT applyDirectiveConstraints: this one has no exclude_authors
+ * branch, and it operates on (candidate, reason) pool entries rather than
+ * assembled candidates. Language is handled separately, by overriding the signal's
+ * allowed-language set in runDiscover. Unknown/missing fields always PASS.
+ */
+export function applyDiscoveryConstraints<C extends ConstrainableCandidate>(
+  pool: Array<[C, string]>,
+  constraints: Record<string, unknown>
+): Array<[C, string]> {
+  // Python's `if not constraints` -- an EMPTY object is falsy there but truthy in JS.
+  if (!constraints || Object.keys(constraints).length === 0) return pool;
+
+  const minYear = constraints.min_year as number | null | undefined;
+  const maxYear = constraints.max_year as number | null | undefined;
+  const exclude = ((constraints.exclude_subjects as string[] | null) ?? []).map((s) =>
+    s.toLowerCase()
+  );
+
+  return pool.filter(([cand]) => {
+    const year = cand.year;
+    // Python's isinstance(year, int): a float year fails the check and passes the filter.
+    if (typeof year === 'number' && Number.isInteger(year)) {
+      if (minYear != null && year < minYear) return false;
+      if (maxYear != null && year > maxYear) return false;
+    }
+    if (exclude.length) {
+      const subjects = (cand.subjects ?? []).map((s) => String(s).toLowerCase());
+      for (const term of exclude) {
+        if (subjects.some((s) => subjectHits(term, s))) return false;
+      }
+    }
+    return true;
+  });
+}
