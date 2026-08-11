@@ -270,6 +270,44 @@ def _run_similar():
     return recommend_mod.recommend_similar(SIMILAR_BOOK_ID, n=8)  # n=8 is SimilarRequest's default
 
 
+# The reader's request and Claude's canned interpretation of it. These strings
+# determine which catalog URLs land in recommend-http.json, so changing them
+# requires a regeneration run AND the same edit in parity-discover-prompts.test.ts.
+#
+# The constraints block is deliberately messy: it exercises every branch of
+# _clean_constraints in one shot -- case/whitespace normalization, the 2-char
+# language truncation, an integer-as-string year, and two unsupported keys that
+# must be dropped -- and the surviving constraints then really filter the pool
+# before assembly.
+DISCOVER_QUERY = "something like The Fifth Season but gentler"
+
+_DISCOVER_INTERP_CANNED = _CannedMessage(
+    "interpret_request",
+    {
+        "interpretation": "Epic fantasy with a broken world, but warmer in tone.",
+        "queries": [
+            {"query": "literary fantasy found family", "rationale": "fixture"},
+            {"query": "gentle epic fantasy hopeful tone", "rationale": "fixture"},
+            {"query": "   ", "rationale": "blank -- must be dropped before retrieval"},
+        ],
+        "constraints": {
+            "languages": ["ENG", " fr ", ""],
+            "min_year": "1990",
+            "max_year": 2020,
+            "exclude_subjects": [" War ", "grief", ""],
+            "page_count_max": 400,
+            "standalone": True,
+        },
+    },
+)
+
+
+def _run_discover():
+    # No _prepare_recommend() call: discover() has no profile-missing or
+    # profile-stale gate and no cold-start gating (verified by probe).
+    return recommend_mod.discover(DISCOVER_QUERY, n=10)  # n=10 is DiscoverRequest's default
+
+
 # name -> (flow, canned responses fed to earlier Claude calls, index of the call to capture)
 SCENARIOS = {
     "directive_distill": (
@@ -289,6 +327,8 @@ SCENARIOS = {
     "recommend_rerank": (_run_recommend, [_SEED_QUERIES_CANNED], 1),
     "similar_seed": (_run_similar, [], 0),
     "similar_rerank": (_run_similar, [_SIMILAR_QUERIES_CANNED], 1),
+    "discover_interpret": (_run_discover, [], 0),
+    "discover_rerank": (_run_discover, [_DISCOVER_INTERP_CANNED], 1),
 }
 
 
