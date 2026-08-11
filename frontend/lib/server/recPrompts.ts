@@ -149,7 +149,12 @@ export const RANK_SYSTEM =
 
 // --- builders ---------------------------------------------------------------
 
-function tasteAndLoved(signal: RecSignal): string {
+/**
+ * The `TASTE TRAITS (JSON):` / `LOVED BOOKS (JSON):` pair shared by /recommend's two
+ * prompts and /discover's two prompts. Exported for recDiscoverPrompts.ts, which
+ * prefixes it with its own header line rather than duplicating the serialization.
+ */
+export function tasteAndLoved(signal: RecSignal): string {
   return (
     'TASTE TRAITS (JSON):\n' +
     pyJsonDumps(signal.traits) +
