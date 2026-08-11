@@ -29,7 +29,7 @@
 - No-Anthropic-key error UX — shows error + prompts for key on profile/recommend
 - Onboarding empty state — setup/onboarding wizard shows on home / swipe / my library
 
-## Wave 3 — Recommender depth
+## Wave 3 — Recommender depth - COMPLETE
 
 - "More books like this" from a selected library book (smallest, highest-visibility win, specific recommendations based only on selected book)
 - NL discovery — natural-language "find me a book like X" search (builds on the above)
