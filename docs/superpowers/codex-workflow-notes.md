@@ -920,3 +920,51 @@ Two process notes from the same session:
 - **A verification run that changes a constant must change it back and re-verify.** Proving the
   `after()` continuation needed `CHUNK_BUDGET_MS` at 1500 instead of 240000; the final run was
   repeated at the production value so the evidence matches what ships.
+
+## Wave 4d execution — the `tail` pipe trap, and gate-dominated budgets (2026-08-11)
+
+Two operational findings from dispatching wave 4d Task 1.
+
+**1. I hit the exact trap this file already documents, on the first call.** The canonical-commands
+section says *never pipe a running job through `tail`/`head`* — the pipe buffers, the output file
+stays empty, and it looks precisely like a hang. I dispatched with
+`... task --write "$(cat prompt.txt)" 2>&1 | tail -100` and my Bash call timed out at ten minutes
+with zero output. **The job was never stuck.** `status --json` showed it alive and in `verifying`
+at 10m12s, and `git status` showed both file edits already applied. Reading the warning is not the
+same as following it; the failure mode is that piping to `tail` is muscle memory when you expect a
+lot of output. Dispatch bare, then poll with `status`.
+
+The corollary worth internalizing: **a timed-out Bash call kills the client, not the Codex job.**
+Before concluding anything died, check `status --json` and `git status --short --untracked-files=all`.
+
+**2. A Codex run sat 22 minutes in `verifying` on a gate set that takes about four. I guessed why,
+and I guessed wrong — in this very file.** Task 1's code change was one line plus a 61-line test
+file, both applied within the first few minutes. It then spent **22 minutes in `verifying`** before
+I cancelled it.
+
+My first draft of this note asserted the cause confidently: "because the mandated gates are 71
+vitest files of PGlite." **I then ran the gates myself and that is false.** Measured on the same
+machine, immediately after:
+
+| Gate | Wall clock |
+| --- | --- |
+| `npm run test:server` (72 files, 499 tests) | **142s** |
+| `npm test -- --runInBand` (39 tests) | 1.0s |
+| `npm run type-check` | ~20s |
+| `eslint` + `prettier --check` on 2 files | seconds |
+
+The whole set is **under four minutes.** So the suite is not slow, and whatever consumed the other
+~18 minutes is still unexplained — a stuck subprocess, a retry loop, or a command Codex ran that
+nobody listed. **Do not budget around the invented explanation; the open question is the finding.**
+
+The irony is the point, and it is why this correction is left in rather than edited away: this file
+already warns *"Codex's observations are reliable; its attributions need checking."* The same rule
+applies to Claude's own attributions, and I broke it within one turn of writing it down. **An
+unverified causal claim is not made safe by being about tooling instead of code.** The observation
+(22 minutes in `verifying`) was solid; the *because* clause was invention, and it would have taught
+every future reader to over-budget every dispatch.
+
+What survives as guidance: budget Codex's **exploration**, not its verification; poll long runs in
+the background rather than blocking a Bash call on them; and when a run is slow, **measure the
+gates yourself before theorising** — it costs four minutes and it is the difference between a fact
+and a plausible story.

@@ -86,6 +86,11 @@ async function seedUser(db: Db, userId: string) {
     userId,
     model: 'claude-sonnet-5',
     operation: 'recommend_rerank',
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 0,
+    costUsd: 0,
   });
   await db.insert(schema.userDirective).values({
     userId,

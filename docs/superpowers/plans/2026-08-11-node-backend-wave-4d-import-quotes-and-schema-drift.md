@@ -43,7 +43,13 @@ $ curl -s -X POST http://127.0.0.1:3000/api/import/preview -F "file=@tests/sampl
 {"detail":"Internal Server Error"}                                                                 # HTTP 500
 ```
 
-while Python parses the same bytes into three clean rows with `isbn13=9780441478125`.
+while Python parses the same bytes into six clean rows with `rows[0].isbn13=9780441172719`.
+
+> Corrected 2026-08-11 during execution. An earlier draft of this paragraph said "three clean rows
+> with `isbn13=9780441478125`"; both numbers were wrong. Measured with
+> `.venv/bin/python -c "from mylibrary.importers import parse_goodreads; ..."` on the checked-in
+> fixture, `parse_goodreads` returns `len(rows) == 6`, `skipped == 0`, and the exact six-ISBN list
+> asserted in Task 1's test. The test body was right; only this prose was stale.
 
 ## Already landed (do not redo)
 
@@ -484,6 +490,110 @@ ones you fixed. That list is the actual finding of this task.
 
 ---
 
+## Task 2 findings (recorded 2026-08-12)
+
+Task 2's actual output is this list, per its Step 7. All six drifts are in one table, `usage_events`,
+and every one has the **same shape as the `enrich_jobs.progress` bug**: the hand-written PGlite
+mirror invented a default that the Alembic-owned table does not have.
+
+| Column | PGlite mirror had | Model (production) | Fixed |
+| --- | --- | --- | --- |
+| `usage_events.input_tokens` | nullable, `default 0` | `NOT NULL`, no server default | yes |
+| `usage_events.output_tokens` | nullable, `default 0` | `NOT NULL`, no server default | yes |
+| `usage_events.cache_creation_input_tokens` | nullable, `default 0` | `NOT NULL`, no server default | yes |
+| `usage_events.cache_read_input_tokens` | nullable, `default 0` | `NOT NULL`, no server default | yes |
+| `usage_events.cost_usd` | nullable, `default 0` | `NOT NULL`, no server default | yes |
+| `usage_events.created_at` | nullable | `NOT NULL`, server default `now()` | yes (default kept — it is real) |
+
+The root cause is visible in `mylibrary/db.py`: `input_tokens: Mapped[int] = mapped_column(Integer,
+default=0)`. That `default=0` is an **ORM-level** default applied by Python at insert time; it emits
+no `DEFAULT` clause into the DDL. `Mapped[int]` (not `Optional`) is what makes the column `NOT NULL`.
+Any non-Python client that omits the column therefore violates the constraint — exactly the
+`POST /enrich/start` failure, one table over.
+
+Fixed by dropping the invented defaults from `helpers/pglite.ts` and adding the missing `not null`.
+Step 5 anticipated only the first half; the real drift also required adding constraints. Tightening
+the mirror turned `purge-routes.test.ts`'s shared `seedUser` fixture red, which was corrected by
+supplying the five columns explicitly **in the test**, never by restoring a default to the mirror.
+
+### Two gaps found after Task 2, then closed (2026-08-12)
+
+Both were initially deferred as out of Task 2's scope. A Codex stop-time review pushed back that
+"the new schema guard is incomplete and leaves a confirmed schema drift", and on re-reading the
+constraint it was right: Step 4 forbids changing a production **insert path**, and `schema.ts` is a
+schema *declaration*, not an insert path. This wave's own "Already landed" table had already made
+exactly this edit for `enrichJobs`. Node also has no `usage_events` INSERT at all, so the change
+could not alter any live behavior. Both are now fixed.
+
+**1. `lib/server/schema.ts` carried the identical defect. FIXED.** The Drizzle table had
+phantom `.default()`s *and* missing `.notNull()`:
+
+```ts
+inputTokens: integer('input_tokens').default(0),          // production: NOT NULL, no default
+outputTokens: integer('output_tokens').default(0),
+cacheCreationInputTokens: integer('cache_creation_input_tokens').default(0),
+cacheReadInputTokens: integer('cache_read_input_tokens').default(0),
+costUsd: doublePrecision('cost_usd').default(sql`'0'`),
+createdAt: timestamp('created_at', { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),  // missing notNull
+```
+
+It was **latent, not live**: Node only SELECTs and DELETEs `usage_events`
+(`app/api/settings/usage/route.ts`, `lib/server/purge.ts`); the INSERT path is still Python's. It
+would have become a real 500 the moment Node owned usage tracking — precisely what wave 5's cutover
+does. `tsc` cannot catch it, because a `notNull()`-less column is optional in `$inferInsert`.
+
+Now corrected to `.notNull()` on all five token/cost columns, with `createdAt` keeping its genuine
+`CURRENT_TIMESTAMP` default and gaining `.notNull()`. A comment records why an ORM-level
+`default=0` must not become a drizzle `.default()`.
+
+**2. The delivered test asserted only the PGlite mirror, though the plan's Interfaces section says
+it covers the Drizzle schema too. FIXED.** That unimplemented half is exactly why gap 1 had to be
+found by hand. `schema-contract.test.ts` now has a second describe block that reads
+`getTableColumns()` for all five written tables and asserts, against the same generated contract,
+that no column declares a default the real table lacks and that nullability matches.
+
+**The new guard was verified to fail before it was trusted.** Re-introducing
+`inputTokens: integer('input_tokens').default(0)` turns it red with
+`usage_events.input_tokens nullability disagrees with the models`, naming the exact table and
+column; restoring `.notNull()` returns it to green. Suite went 504 → 509.
+
+**3. Both halves only iterated the columns they happened to declare. FIXED.** I first recorded this
+as a hole that "remains, deliberately" on the grounds that it could not hide an *invented* default.
+A second Codex review pushed back, and it was right: a column that is **missing, renamed, or extra**
+passed silently in both blocks, because each loop walked its own mirror's columns and skipped
+anything absent from the contract via `if (!spec) continue`. That is not a lesser bug — a migration
+adding a `NOT NULL` column that neither Node mirror declares keeps this gate green and 500s on the
+first real insert, which is precisely the failure this wave exists to prevent.
+
+Both blocks now compare the full column **sets** against the contract before any per-column check:
+
+```ts
+expect(
+  actual.map((row) => row.column_name).sort(),
+  `${table}: PGlite mirror column set differs from the models`
+).toEqual(Object.keys(expected).sort());
+```
+
+Measured outcome: all five written tables already match exactly on both sides, so the original
+`if (!spec) continue` comment about "mirror-only helper columns" was unfounded — there are none.
+
+Verified load-bearing the same way as the rest: deleting `cost_usd` from the PGlite mirror fails
+with `usage_events: PGlite mirror column set differs from the models` and prints `- "cost_usd"`,
+naming the missing column. Restoring it returns the suite to green.
+
+### Corrections made to Task 2's own deliverables
+
+- `scripts/dump_schema_contract.py` documented `Run: .venv/bin/python scripts/dump_schema_contract.py`,
+  which fails with `ModuleNotFoundError: No module named 'mylibrary'` — the venv has no editable
+  install. Fixed by inserting the repo root on `sys.path` so the documented command is true. Verified:
+  the command now runs and regenerates a byte-identical snapshot (md5 `a717b9c7…` before and after).
+- `enrich_jobs.user_id.serverDefault` generates as `"local"`, not `"'local'"` as Step 2 predicted.
+  The generated value comes straight from the model and the load-bearing assertion
+  (`progress.serverDefault === null`) is correct, so the plan's prose was simply over-quoted.
+- Step 6's expected count of "72 files / 499 tests" is now 73 / 504 with the five contract cases.
+
+---
+
 ## Task 3: Prove it against the real thing
 
 Tests are what let this wave's two defects ship. This task is the one that would have caught them.
@@ -521,6 +631,146 @@ select b.id, left(b.title,24), e.confidence_label, e.match_method
 - [ ] **Step 5: Record the result** in this file under a Verification Record heading, with the exact
   commands run and their output. If any step fails, that is the finding — report it rather than
   retrying until it passes.
+
+---
+
+## Verification Record — 2026-08-12 (Claude, partial)
+
+Run against the throwaway container `mylib-w3b-verify` (Alembic `0019_add_enrich_job_leases`,
+14 pre-existing books), with `next dev` on
+`DATABASE_URL=postgresql://supabase_admin:throwaway@127.0.0.1:55432/mylibrary_verify`, Supabase vars
+forced to `""` for local single-user auth, `CRON_SECRET=throwaway-cron-secret`.
+
+**This record is incomplete. The browser steps were NOT run — see "Not verified" below.**
+
+### Verified against a real Postgres database
+
+**1. Both previously-broken routes now accept the real Goodreads shape.** The exact reproduction
+from "Why this wave exists", re-run after the fix:
+
+```text
+$ curl -s -X POST http://localhost:3000/api/import/preview -F "file=@tests/sample_goodreads.csv"
+HTTP 200 — format=goodreads, ISBN cells returned verbatim as ="0441172717" / ="9780441172719"
+   (was: HTTP 500 {"detail":"Internal Server Error"})
+
+$ curl -s -X POST http://localhost:3000/api/import -F "file=@tests/sample_goodreads.csv"
+HTTP 200 {"format":"goodreads","total_rows":6,"skipped":0,"inserted":6,"updated":0,"rated":5}
+   (was: HTTP 422 {"detail":"Invalid Opening Quote: ... at line 2, value is \"=\""})
+```
+
+Books went 14 → 20. Rows landed with the `="…"` wrapper stripped by `cleanIsbn`, matching Python's
+`clean_isbn` and the six ISBNs asserted in `import-csv-quotes.test.ts`:
+
+```text
+Dune                   | isbn13=9780441172719 | gr_rating=5 | app_rating=NULL | src=goodreads_import
+The Three-Body Problem | isbn13=9780765382030 | gr_rating=4 | app_rating=NULL
+Recursion              | isbn13=9781524759780 | gr_rating=3 | app_rating=NULL
+A Little Life          | isbn13=9780385539258 | gr_rating=2 | app_rating=NULL
+Project Hail Mary      | isbn13=9780593135204 | gr_rating=0 | app_rating=NULL
+The Name of the Wind   | isbn13=9780756404741 | gr_rating=5 | app_rating=NULL
+```
+
+`app_rating` is NULL on every row — locked decision 2 (import must never clobber in-app ratings)
+holds on the live path, not just in tests.
+
+**2. Task 2's drift finding confirmed against production DDL, not just the models.** Real Postgres
+`information_schema` for `usage_events`:
+
+```text
+input_tokens                 NO   NULL
+output_tokens                NO   NULL
+cache_creation_input_tokens  NO   NULL
+cache_read_input_tokens      NO   NULL
+cost_usd                     NO   NULL
+created_at                   NO   now()
+```
+
+Exactly the model-derived contract, and exactly what the corrected PGlite mirror now declares. This
+independently validates the choice of the SQLAlchemy models as the oracle.
+
+**3. Export is byte-identical to Python against the same database** (Task 3 Step 4), including the
+six freshly-imported rows:
+
+- `GET /api/export?format=csv` vs `exporters.export_csv()` — **`diff` clean, byte-identical.**
+- `GET /api/export?format=json` vs `json.dumps(export_json(), indent=2, ensure_ascii=True)` —
+  identical apart from the inherently time-varying `exported_at` (the two runs were 23s apart).
+  Normalising that one field gives matching md5 `c9186ae3b03aa33a6160aa292da9eff0` on both.
+
+### Browser verification — completed 2026-08-12
+
+Run in Chrome against the same container and dev server.
+
+**Step 1 — import through the real UI.** `/settings` → "Import books" → "Import from a file" opens a
+modal with a dropzone backed by a hidden `input#import-file` (`.sr-only`, `accept=".csv"`). The file
+was attached with `file_upload` against that input's ref — never by clicking the input, which would
+open a native picker and freeze the session. Results:
+
+- On upload the dialog rendered **"Detected: Goodreads, 24 columns."** — `POST /api/import/preview`
+  returned 200 through the real UI, where it previously 500'd.
+- Clicking **Import** produced `{"route":"/api/import","method":"POST","status":200}` in the dev
+  server log, and the modal closed cleanly.
+
+**Step 3 — enrichment.** `POST /api/enrich/start` (the same call `SetupWizard` makes via
+`api.enrichStart()`) returned `status:"done", progress:19, total:19`. The six Excel-escaped
+Goodreads ISBNs all resolved against the **live** Open Library catalog at HIGH confidence:
+
+```text
+Dune                   | HIGH | isbn:openlibrary
+The Three-Body Problem | HIGH | isbn:openlibrary
+Recursion              | HIGH | isbn:openlibrary
+A Little Life          | HIGH | isbn:openlibrary
+The Name of the Wind   | HIGH | isbn:openlibrary
+```
+
+That is the end-to-end proof that stripping the `="…"` wrapper yields ISBNs a real catalog accepts —
+something no fixture can establish. `Project Hail Mary` is correctly left unenriched: it has
+`goodreads_rating=0`, and `enrich_library` enriches "rated books (or all, if `include_unrated`)".
+Node matches Python here; it is not a defect.
+
+**Locked decision 2 verified live.** With `app_rating=1` and
+`app_review='in-app review must survive'` set on Dune, re-importing the same CSV (which says
+Goodreads rating 5) returned `{"inserted":0,"updated":6,"rated":5}` and left **both** in-app fields
+untouched. Import updates Goodreads-owned columns only.
+
+**Export re-diffed with the richer data** — now containing real in-app review text rather than the
+ASCII-only seed: `GET /api/export` vs Python's `export_csv` / `export_json` against the same
+database came out **byte-identical in both formats** (JSON after normalizing `exported_at`).
+
+One process note worth keeping: the first Import click silently did nothing. `getBoundingClientRect`
+returns **CSS pixels** (viewport 1439 wide) while `computer` clicks are in **screenshot space**
+(1232 wide, a 0.856 scale), so the click landed on the backdrop and closed the modal. The dev log —
+showing `preview` but no `import` — is what exposed it. **Click by element `ref`, not by coordinates
+derived from `getBoundingClientRect`**, and confirm UI actions by their server-side effect rather
+than by the dialog closing.
+
+### Still not verified — outstanding for Chase
+
+- **A genuine large Goodreads export (Step 2).** Only the six-row checked-in fixture was used. The
+  real artifact — thousands of rows, empty ISBNs, unrated rows, review text with commas and quotes —
+  remains untested, and it is the only input that tests the actual claim at scale. Everything above
+  says the *shape* is handled; nothing says the volume is.
+- **The `/setup` wizard's own upload step.** Import was driven through the `/settings` modal, which
+  posts to the same two routes. The wizard path was not re-run because it only renders for an empty
+  library and the verification container is seeded; wave 4c-2 already live-verified the
+  onboarding→enrich wizard flow.
+- **`POST /enrich/start` under the wizard's polling UI.** The endpoint was called directly and
+  completed; the wizard's progress rendering and `after()` continuation were verified in wave 4c-2,
+  not re-run here.
+
+To pick these up, restart the container and the dev server:
+
+```bash
+docker start mylib-w3b-verify
+cd frontend && DATABASE_URL="postgresql://supabase_admin:throwaway@127.0.0.1:55432/mylibrary_verify" \
+  NEXT_PUBLIC_SUPABASE_URL="" SUPABASE_URL="" SUPABASE_JWKS_URL="" \
+  CRON_SECRET="throwaway-cron-secret" LOCAL_USER_ID="local" npm run dev
+# then browse http://localhost:3000 — never 127.0.0.1
+```
+
+Note that running `next dev` rewrites the generated `frontend/next-env.d.ts` from
+`./.next/types/routes.d.ts` to `./.next/dev/types/routes.d.ts`. That is incidental churn, not a
+wave-4d change; it was reverted with `git checkout -- frontend/next-env.d.ts` and should be reverted
+again after any future dev-server run so the wave's diff stays clean.
 
 ---
 

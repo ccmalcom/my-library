@@ -296,12 +296,19 @@ export const usageEvents = pgTable(
     userId: varchar('user_id').default('local').notNull(),
     model: varchar().notNull(),
     operation: varchar().notNull(),
-    inputTokens: integer('input_tokens').default(0),
-    outputTokens: integer('output_tokens').default(0),
-    cacheCreationInputTokens: integer('cache_creation_input_tokens').default(0),
-    cacheReadInputTokens: integer('cache_read_input_tokens').default(0),
-    costUsd: doublePrecision('cost_usd').default(sql`'0'`),
-    createdAt: timestamp('created_at', { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+    // NOT NULL with no server default in the Alembic-owned table: the models declare
+    // `mapped_column(Integer, default=0)`, which is an ORM-level default applied by
+    // Python at insert time and emits no DDL clause. A phantom `.default()` here would
+    // make drizzle emit SQL `default` for an omitted column and 500 against real
+    // Postgres — the POST /enrich/start bug, one table over.
+    inputTokens: integer('input_tokens').notNull(),
+    outputTokens: integer('output_tokens').notNull(),
+    cacheCreationInputTokens: integer('cache_creation_input_tokens').notNull(),
+    cacheReadInputTokens: integer('cache_read_input_tokens').notNull(),
+    costUsd: doublePrecision('cost_usd').notNull(),
+    createdAt: timestamp('created_at', { mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
   },
   (table) => [
     index('ix_usage_events_created_at').using(

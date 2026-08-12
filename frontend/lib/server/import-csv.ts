@@ -38,6 +38,12 @@ export const PY_DICT_READER_OPTIONS = {
   delimiter: ',',
   quote: '"',
   escape: '"',
+  // Python's csv module accepts a quote that is not at the start of a field and
+  // returns it literally; csv-parse throws Invalid Opening Quote without this.
+  // Goodreads exports ISBNs Excel-escaped as ="9780441172719", so every real
+  // export hits it. See import-csv-quotes.test.ts for the measured matrix and
+  // the two shapes where Node still diverges from Python.
+  relax_quotes: true,
   relax_column_count: true,
   skip_empty_lines: true,
   record_delimiter: ['\r\n', '\n', '\r'] satisfies string[],

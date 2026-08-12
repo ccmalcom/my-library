@@ -36,12 +36,12 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       user_id text not null default 'local',
       model text not null,
       operation text not null,
-      input_tokens integer default 0,
-      output_tokens integer default 0,
-      cache_creation_input_tokens integer default 0,
-      cache_read_input_tokens integer default 0,
-      cost_usd double precision default 0,
-      created_at timestamp default current_timestamp
+      input_tokens integer not null,
+      output_tokens integer not null,
+      cache_creation_input_tokens integer not null,
+      cache_read_input_tokens integer not null,
+      cost_usd double precision not null,
+      created_at timestamp not null default current_timestamp
     );
     create table books (
       id serial primary key,
