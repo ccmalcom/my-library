@@ -159,10 +159,13 @@ greater than 1,800 seconds, and `Enrichment was interrupted, please retry.` The 
 wave-4c-1 edit is additive optional `bookIds?: number[]` on `EnrichLibraryOptions`: chunked
 `force: true` otherwise recomputes `work`, repeatedly selects the same first book, and trips the
 no-progress guard on tick 2. Omitting it preserves prior behavior and the 4c-1 parity test.
-Still out of scope or unverified are Redis, arq, QStash, every queue port, global cross-user catalog
-rate coordination, and Python cutover/deletion (wave 5b; admin routes shipped in 5a). This wave is not claimed
-deployed: Chase must confirm Vercel Fluid compute and the assumed ~300s duration and Hobby
-daily-cron cadence, and must supply `CRON_SECRET`. The cron config lives at `frontend/vercel.json`,
+Still out of scope or unverified are Redis, arq, QStash, every queue port, and global cross-user
+catalog rate coordination. Python cutover/deletion is wave 5b (admin routes shipped in 5a).
+**Wave 5b confirmed the platform assumptions this wave was carrying: Fluid compute is ON and the
+project's max function duration is 300s** (up to 800s available if chunks ever need it — raising it
+means moving `FUNCTION_CEILING_SECONDS` and both `maxDuration` literals together). `CRON_SECRET`
+was still unset as of the 5b cutover; see below for why that is destructive rather than merely
+disabling. The cron config lives at `frontend/vercel.json`,
 **not** the repository root: the Vercel project's Root Directory is `frontend` (its build logs clone
 and then run `next build` directly, and there is no root `package.json`), so a repo-root
 `vercel.json` is silently ignored. Cron jobs also only run on **production** deployments, so the
@@ -245,6 +248,41 @@ value, so `round2`/`round4` both route through one `pyRound` helper. Never reimp
 either as `Math.round(x * 10 ** d) / 10 ** d` — that disagrees with CPython on every exact
 tie (an odd 8th at d=2, an odd 32nd at d=4), which reaches real API responses via
 `/stats`, `/settings/usage` and `/profile/highlights`.
+
+**Wave 5b (production cutover) — in progress; scope collapsed.** 5b-1 (deploy alongside Python and
+soak) and 5b-2 (delete Python) were merged into a single retirement after Chase's call on
+2026-08-12. Justified by measurement, not impatience: **every one of the 54 frontend-facing routes
+in `mylibrary/api.py` is already covered by `NODE_DEFAULT_ROUTES`** in `frontend/lib/backend.ts`,
+leaving only `/health` and `/healthz` (Railway's own probes), so the soak was protecting a fallback
+that nothing routes to. The arq worker is not load-bearing either — `worker.py`'s docstring states
+arq is opt-in behind `REDIS_URL` and the no-Redis BackgroundTask path is the supported production
+mode. The agreed order is: set `CRON_SECRET` → merge the branch to `main` → smoke production →
+delete Railway. **The ordering is forced, not ceremonial:** the Node code and the entire switcher
+route table live on `feat/node-backend`, while production Vercel deploys from `main`, so until that
+merge lands production serves 100% Python and deleting Railway is an outage. Merging also repairs
+Railway's healthcheck for free, so a real fallback exists during the smoke test.
+
+Four durable facts from 5b, all recorded in `docs/hosting.md` with full detail:
+
+- **`CRON_SECRET` unset is destructive, not merely disabling.** `rearmAfterResponse` throws rather
+  than returning falsy, and `deps.dispatch` is awaited un-guarded at `enrichmentJobs.ts:449` and
+  `:190`, after the lease has already been nulled. Any enrichment needing a second chunk 500s
+  `/enrich/start`, 500s `/enrich/status/{job_id}` via poll repair, cannot be janitored (401), and
+  leaves a `running` job that `uq_enrich_jobs_active_user` turns into a permanent block on that
+  user. Invisible to a small-library smoke test — **always test enrichment with a library big
+  enough to need a second chunk.**
+- **Never apply a migration to production from a branch the deployment does not track.** `start.sh`
+  runs `alembic upgrade head` before uvicorn under `set -euo pipefail`, so if the DB's
+  `alembic_version` names a revision absent from the deployed image, the container cannot boot and
+  the healthcheck can never pass. `0018` was applied by hand from the Node branch while Railway
+  deploys `main` (head `0017`); it stayed invisible until the next deploy, and **a restart alone
+  would have tripped it.**
+- **`enrich_jobs.progress`/`total` have two legitimate shapes** depending on database age —
+  `create_all` lineage (no server default) vs `0003` lineage (server default `0`). Node supplies
+  both values explicitly so either works. **The 5b-2 drizzle baseline must come from a `pg_dump` of
+  production, never a fresh `alembic upgrade head`.**
+- **`/healthz` is the unauthenticated probe; `/health` requires a token.** Already correct in
+  `docs/hosting.md`; the wave 5b-1 plan document got it wrong.
 
 ## Sub-documents (load when relevant)
 

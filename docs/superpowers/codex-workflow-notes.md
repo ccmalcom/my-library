@@ -1440,3 +1440,55 @@ Lessons:
   still observes `300` when the binding is reintroduced, so only a source-level assertion catches
   the shape that breaks the build. `app/api/enrich/enrich-max-duration.test.ts` does this, and was
   verified to go red when the bug is put back.
+
+## Wave 5b: a plan's "STOP" condition that was itself wrong
+
+Task 3 Step 5 told the executor to compare production's `enrich_jobs` columns against an expected
+shape and **stop** on mismatch. Production mismatched on two of six columns. Both mismatches were
+the plan being wrong, not the database.
+
+- `attempts` and `force` came back `NOT NULL` with server defaults, against an expectation that
+  "the four new columns" would all be nullable. `0019_add_enrich_job_leases.py:25,30` specify
+  exactly what production had. The plan had over-generalized from the two columns that *are*
+  nullable.
+- `progress` and `total` came back with `server_default "0"`, against an expectation of no default.
+  That expectation was a real observation — from wave 4c-2's throwaway Docker Postgres — but of a
+  **different database lineage**. A fresh DB gets the table from the `0001` baseline's
+  `create_all()` (ORM `default=0`, no `server_default`) and `0003` short-circuits; an older DB like
+  production got it from `0003`'s `op.create_table` (`server_default="0"`). Both are correct.
+
+Lessons:
+
+- **A plan's expected-output table is a hypothesis, not an oracle.** When reality disagrees, read
+  the source that produces reality — here, two migration files and a model — before honouring a
+  stop instruction. Same family as the existing rule about Verified Facts drift, but sharper: this
+  one had an explicit "if X, STOP" that would have halted a correct migration.
+- **"The schema" is not one thing.** Any repo whose baseline migration calls `create_all()` from
+  live models produces one shape on fresh databases and another on databases old enough to have run
+  the real `op.create_table`. Every schema assertion needs to name which lineage it describes.
+  Downstream consequence here: the drizzle baseline must be generated from a production `pg_dump`,
+  never a fresh `alembic upgrade head`.
+- **Note the direction of a divergence before calling it a defect.** Production was *more*
+  permissive than expected (a default where none was predicted), and the code writes both columns
+  explicitly, so nothing could fail. The stop-condition existed to catch the opposite direction.
+
+## Wave 5b: migrations couple the database to the deployed *branch*
+
+Railway's deploy failed its healthcheck. Cause was not the healthcheck: `start.sh` runs
+`alembic upgrade head` before uvicorn under `set -euo pipefail`, production's `alembic_version` named
+`0018_node_wave0_tables`, and `main` — the branch Railway deploys — stops at `0017`. Alembic cannot
+locate a revision that is not in its script directory, exits non-zero, and uvicorn never binds the
+port.
+
+- **Applying a migration to production from a feature branch arms a landmine with no immediate
+  symptom.** The running container had booted while the DB was still at `0017`, so everything looked
+  fine for days. A *restart* alone would have tripped it — the service was un-bootable, not merely
+  un-deployable.
+- **A boot-time migration makes every deploy a schema-compatibility check in both directions.** The
+  usual worry is "will the new code work with the old schema"; this is the reverse, and nothing
+  warns about it.
+- Cheap detection: `git ls-tree <deploy-branch> alembic/versions/` against `alembic current`. Worth
+  doing in the baseline task of any wave that touches migrations, next to the deploy-dashboard check
+  that wave 5b-1 already added.
+- Cheap repair: cherry-pick the revision files onto the deployed branch. Migration files are inert
+  to an app that reads none of the new tables.
