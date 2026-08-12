@@ -139,7 +139,13 @@ routes, never client-switcher routes. Jobs use atomic conditional leases, poll r
 janitor; continuation uses Next's `after()` to dispatch only a job ID to a separate tick, never
 `waitUntil`, and `after()` never contains chunk work. Chunks are bounded by time, not count:
 `CHUNK_BUDGET_MS = 240_000` reserves headroom under the assumed
-`FUNCTION_CEILING_SECONDS = 300`, with no chunk-size knob. Progress is derived by recounting
+`FUNCTION_CEILING_SECONDS = 300`, with no chunk-size knob. **The `maxDuration` segment export on
+`enrich/start` and `enrich/tick` must stay the literal `300` — never `= FUNCTION_CEILING_SECONDS`.**
+Next reads route segment config with a static analyzer, so an imported binding fails `next build`
+during "Collecting page data" with `Invalid segment configuration export detected`, naming no file.
+Shipping that binding kept every Vercel preview red from wave 4c-2 to wave 5b-1 while all five
+gates stayed green; `enrich-max-duration.test.ts` guards it by asserting on route source text
+(importing the route still observes `300`, so only a source check catches it). Progress is derived by recounting
 enrichment rows, never accumulated, and is relative to the run (`resolved_at >= started_at`),
 because counting books that merely hold enrichment rows would report 100% immediately under
 `force`. The four guards are `RATE_LIMITS.enrichStart` at 5/60s, the partial unique index
@@ -306,7 +312,11 @@ Rules:
   unlisted gate is out of scope, not forgotten. Add `npm run type-check` and `npx eslint <touched>`
   to each dispatch regardless of what the plan's step says; wave 4b's Task 1 shipped green tests and
   a broken `tsc` twice because they only appeared in the final task. State expected-red by test
-  **name**, never by count.
+  **name**, never by count. Add **`npm run build`** for any wave touching `frontend/`: tsc, eslint,
+  vitest and jest together do not prove the app deploys. Wave 5b-1 found eight consecutive red
+  Vercel previews, spanning four waves, sitting behind five green gates — the whole class of
+  Next build-time errors (segment config, font fetching, prerender) is invisible without it.
+  Check the deploy dashboard in a release wave's baseline task, too, not at its verification task.
 - **Codex's observations are reliable; its attributions need checking.** When a run reports "X is
   broken / too slow", verify X directly before believing it. A job blamed a fixture generator for a
   ten-minute timeout; the generator runs in 1.8 seconds and a paged `git diff` had hung the shell.
