@@ -48,6 +48,11 @@ import * as tasteSignalRoute from '../../../../app/api/taste-signal/route';
 import * as importPreviewRoute from '../../../../app/api/import/preview/route';
 import * as importRoute from '../../../../app/api/import/route';
 import * as exportRoute from '../../../../app/api/export/route';
+import * as adminBackfillRoute from '../../../../app/api/admin/backfill/route';
+import * as adminInviteRoute from '../../../../app/api/admin/invite/route';
+import * as adminRevokeRoute from '../../../../app/api/admin/revoke/route';
+import * as adminUsersRoute from '../../../../app/api/admin/users/route';
+import * as statsRoute from '../../../../app/api/stats/route';
 
 interface RegistryRow {
   method: string;
@@ -139,6 +144,27 @@ export const REGISTRY: RegistryRow[] = [
   },
   { method: 'POST', pattern: /^\/import$/, handler: () => importRoute.POST as Handler },
   { method: 'GET', pattern: /^\/export$/, handler: () => exportRoute.GET as Handler },
+  {
+    method: 'POST',
+    pattern: /^\/admin\/backfill$/,
+    handler: () => adminBackfillRoute.POST as Handler,
+  },
+  {
+    method: 'POST',
+    pattern: /^\/admin\/invite$/,
+    handler: () => adminInviteRoute.POST as Handler,
+  },
+  {
+    method: 'POST',
+    pattern: /^\/admin\/revoke$/,
+    handler: () => adminRevokeRoute.POST as Handler,
+  },
+  {
+    method: 'GET',
+    pattern: /^\/admin\/users$/,
+    handler: () => adminUsersRoute.GET as Handler,
+  },
+  { method: 'GET', pattern: /^\/stats$/, handler: () => statsRoute.GET as Handler },
 ];
 
 /** Mask volatile server-generated values; preserve the null/non-null distinction. */
@@ -151,6 +177,11 @@ const VOLATILE_KEYS = new Set([
   'snooze_until',
   'resolved_at',
   'derived_at',
+  // Set to now() by revoke_user, so admin_revoke records a live value. Masking keeps
+  // the load-bearing distinction (null = active, non-null = revoked) while dropping the
+  // clock. Read parity is unaffected: maskVolatile is used only by this harness, so the
+  // seeded roster's fixed revoked_at stays exactly compared.
+  'revoked_at',
 ]);
 export function maskVolatile(v: unknown): unknown {
   if (typeof v === 'string') {

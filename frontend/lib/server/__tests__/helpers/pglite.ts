@@ -169,7 +169,7 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       target_kind text not null,
       target_book_id integer,
       snapshot json,
-      created_at timestamp default current_timestamp
+      created_at timestamp not null default current_timestamp
     );
     create table enrich_jobs (
       id serial primary key,
@@ -219,8 +219,8 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       email text not null,
       invited_by text not null,
       supabase_user_id text,
-      status text not null default 'pending',
-      created_at timestamp default current_timestamp,
+      status text not null,
+      created_at timestamp not null default current_timestamp,
       accepted_at timestamp,
       revoked_at timestamp
     );
@@ -234,6 +234,7 @@ type SeedTimestamp = string | { $hoursAgo: number } | null;
 export interface Seed {
   catalog_cache?: Record<string, unknown>[];
   books?: Record<string, unknown>[];
+  invites?: Record<string, unknown>[];
   enrichment?: Record<string, unknown>[];
   taste_traits?: Record<string, unknown>[];
   recommendations?: Record<string, unknown>[];
@@ -271,6 +272,8 @@ export async function loadSeed(db: Db, seed: Seed): Promise<void> {
     'derived_at',
     'resolved_at',
     'snooze_until',
+    'revoked_at',
+    'accepted_at',
   ]);
   const JSON_COLS = new Set([
     'subjects',
@@ -286,6 +289,7 @@ export async function loadSeed(db: Db, seed: Seed): Promise<void> {
   const order = [
     'catalog_cache',
     'books',
+    'invites',
     'enrichment',
     'taste_traits',
     'recommendations',
@@ -320,6 +324,10 @@ export async function loadSeed(db: Db, seed: Seed): Promise<void> {
   }
   const SEQ_TABLES = [
     'books',
+    // Load-bearing: the seed inserts invites with explicit ids 1-3, which does not
+    // advance the serial. Without this setval, createInvite's first INSERT gets id=1
+    // and fails on the primary key.
+    'invites',
     'enrichment',
     'taste_traits',
     'recommendations',

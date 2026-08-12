@@ -121,6 +121,13 @@ describe('backend switcher (method-aware)', () => {
       { prefix: '/enrich', methods: ['POST'], exact: true },
       { prefix: '/enrich/start', methods: ['POST'], exact: true },
       { prefix: '/enrich/status/', methods: ['GET'] },
+      { prefix: '/admin/me', methods: ['GET'], exact: true },
+      { prefix: '/admin/users', methods: ['GET'], exact: true },
+      { prefix: '/admin/usage', methods: ['GET'], exact: true },
+      { prefix: '/admin/feedback', methods: ['GET'], exact: true },
+      { prefix: '/admin/invite', methods: ['POST'], exact: true },
+      { prefix: '/admin/revoke', methods: ['POST'], exact: true },
+      { prefix: '/admin/backfill', methods: ['POST'], exact: true },
     ]);
   });
 
@@ -140,8 +147,6 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/books', 'POST')).toBe('/api');
     expect(baseFor('/books/12', 'DELETE')).toBe('/api');
     expect(baseFor('/discover', 'POST')).toBe('/api'); // wave 3c-3
-    // still Python — wave 5
-    expect(baseFor('/admin/users', 'GET')).toBe(PY); // wave 5
     // unchanged from waves 1-2
     expect(baseFor('/directive', 'PUT')).toBe('/api');
     expect(baseFor('/profile/archetype', 'GET')).toBe('/api');
@@ -162,5 +167,19 @@ describe('backend switcher (method-aware)', () => {
     // /profile/subjects has no POST in Python; the point is that the exact rule
     // must not match sub-paths generically.
     expect(baseFor('/profile/subjects', 'POST')).toBe(pythonBase());
+  });
+
+  it('routes the admin surface to Node in auto mode', () => {
+    expect(baseFor('/admin/me', 'GET')).toBe('/api');
+    expect(baseFor('/admin/users', 'GET')).toBe('/api');
+    expect(baseFor('/admin/usage', 'GET')).toBe('/api');
+    expect(baseFor('/admin/feedback', 'GET')).toBe('/api');
+    expect(baseFor('/admin/invite', 'POST')).toBe('/api');
+    expect(baseFor('/admin/revoke', 'POST')).toBe('/api');
+    expect(baseFor('/admin/backfill', 'POST')).toBe('/api');
+  });
+
+  it('keeps /admin/config on the Node-only path', () => {
+    expect(baseFor('/admin/config', 'GET')).toBe('/api');
   });
 });

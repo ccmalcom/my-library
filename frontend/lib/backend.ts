@@ -29,6 +29,7 @@ export interface BackendRule {
  * Wave 3c-3: `POST /discover` (natural-language discovery) flips to Node, completing wave 3c.
  * Wave 4a: destructive library, profile, and account purges flip to Node.
  * Wave 4b: multipart import preview/import and attachment export flip to Node.
+ * Wave 5a: the admin surface flips to Node.
  */
 export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/stats' },
@@ -72,6 +73,16 @@ export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   // Wave 4c-2: public background-job API. Internal tick/janitor are same-origin /api only.
   { prefix: '/enrich/start', methods: ['POST'], exact: true },
   { prefix: '/enrich/status/', methods: ['GET'] },
+  // Wave 5a: the admin surface. Every route is `exact` because /admin is a
+  // prefix of /admin/config (Node-only, handled by NODE_ONLY_PREFIXES) and a
+  // future /admin/* route should be an explicit decision, not an inherited one.
+  { prefix: '/admin/me', methods: ['GET'], exact: true },
+  { prefix: '/admin/users', methods: ['GET'], exact: true },
+  { prefix: '/admin/usage', methods: ['GET'], exact: true },
+  { prefix: '/admin/feedback', methods: ['GET'], exact: true },
+  { prefix: '/admin/invite', methods: ['POST'], exact: true },
+  { prefix: '/admin/revoke', methods: ['POST'], exact: true },
+  { prefix: '/admin/backfill', methods: ['POST'], exact: true },
 ];
 
 /** Routes that only exist on the Node backend. */

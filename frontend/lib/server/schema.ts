@@ -174,7 +174,9 @@ export const tasteSignal = pgTable(
     targetKind: varchar('target_kind').notNull(),
     targetBookId: integer('target_book_id'),
     snapshot: json(),
-    createdAt: timestamp('created_at', { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp('created_at', { mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
   },
   (table) => [
     index('ix_taste_signal_user_id').using('btree', table.userId.asc().nullsLast().op('text_ops')),
@@ -275,8 +277,10 @@ export const invites = pgTable(
     email: varchar().notNull(),
     invitedBy: varchar('invited_by').notNull(),
     supabaseUserId: varchar('supabase_user_id'),
-    status: varchar().default('pending').notNull(),
-    createdAt: timestamp('created_at', { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+    status: varchar().notNull(),
+    createdAt: timestamp('created_at', { mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
     acceptedAt: timestamp('accepted_at', { mode: 'string' }),
     revokedAt: timestamp('revoked_at', { mode: 'string' }),
   },
@@ -358,7 +362,9 @@ export const userDirective = pgTable(
     userId: varchar('user_id').default('local').notNull(),
     nlText: text('nl_text'),
     constraints: json(),
-    createdAt: timestamp('created_at', { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp('created_at', { mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
     updatedAt: timestamp('updated_at', { mode: 'string' }),
   },
   (table) => [

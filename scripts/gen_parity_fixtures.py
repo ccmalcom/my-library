@@ -54,12 +54,18 @@ assert settings.db_url.startswith("sqlite"), f"expected sqlite, got {settings.db
 from fastapi.testclient import TestClient  # noqa: E402
 
 from mylibrary import crypto  # noqa: E402
+
+# invites.py did `from .supabase_admin import ...`, which binds those names into
+# mylibrary.invites at import time. The fake-GoTrue patch below MUST land on
+# mylibrary.invites -- patching mylibrary.supabase_admin would be a no-op.
+from mylibrary import invites as _invites  # noqa: E402
 from mylibrary.api import app  # noqa: E402
 from mylibrary.db import (  # noqa: E402
     Book,
     Enrichment,
     Feedback,
     FeedbackPromptState,
+    Invite,
     ProfileMeta,
     ReaderArchetype,
     Recommendation,
@@ -71,6 +77,32 @@ from mylibrary.db import (  # noqa: E402
     init_db,
     session_scope,
 )
+
+# --- fake GoTrue -------------------------------------------------------------- #
+# Patches land on mylibrary.invites, not mylibrary.supabase_admin -- see the
+# import comment above.
+_FAKE_SB_USERS = [
+    {"id": "local", "email": "reader1@example.com"},
+    {"id": "other", "email": "reader2@example.com"},
+    {"id": "sb-dashboard", "email": "dashboard.created@example.com"},
+]
+
+
+def _fake_invite_user(email, *, client=None):
+    return {"id": f"sb-{email.split('@')[0]}", "email": email}
+
+
+def _fake_delete_user(supabase_user_id, *, client=None):
+    return None
+
+
+def _fake_list_users(*, client=None):
+    return list(_FAKE_SB_USERS)
+
+
+_invites.invite_user = _fake_invite_user
+_invites.delete_user = _fake_delete_user
+_invites.list_users = _fake_list_users
 
 OUT_DIR = Path("frontend/lib/server/__tests__/fixtures/parity")
 
@@ -91,6 +123,13 @@ REQUESTS = [
     "GET /settings/profile",
     "GET /settings/usage",
     "GET /directive",
+    "GET /admin/me",
+    "GET /admin/users",
+    "GET /admin/usage",
+    "GET /admin/usage?limit=2&offset=1",
+    "GET /admin/feedback",
+    "GET /admin/feedback?category=bug",
+    "GET /admin/feedback?limit=2&offset=1",
 ]
 
 # --- the deterministic dataset -------------------------------------------------
@@ -180,6 +219,42 @@ SEED: dict = {
         # Deliberately large + this-month so a userId-scoping regression on /settings/usage
         # would be obvious (spent_usd/pct would blow way past local's expected values).
         {"id": 101, "user_id": "other", "model": "claude-sonnet-5", "operation": "profile", "input_tokens": 100, "output_tokens": 100, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0, "cost_usd": 5.55, "created_at": {"$hoursAgo": 0}},
+    ],
+    # Structured feedback (the in-app FeedbackModal table), seeded so /admin/feedback's
+    # invite-email join and ?category=bug filter are actually exercised rather than
+    # recording an empty list on both sides.
+    #
+    # LOAD-BEARING: no row may use trigger='post-recs'. feedback.py::_post_recs_eligible
+    # is the only reader of this table outside the admin route, and it filters on
+    # Feedback.trigger == REPEATABLE_TRIGGER ('post-recs'). Rows with trigger NULL or
+    # 'post-setup' cannot match it, so the already-recorded feedback-flow /
+    # feedback-invalid scenarios' GET /feedback/prompt responses are unaffected.
+    #
+    # Row 4's user_id 'ghost' has no invites row on purpose: it proves the email join
+    # emits null for an unknown user rather than omitting the key. Row 3 belongs to
+    # 'other' so the join resolves for both seeded tenants.
+    "feedback": [
+        {"id": 1, "user_id": "local", "category": "bug", "body": "Swipe card lags on mobile.", "trigger": None, "run_id": None, "page": "/swipe", "app_version": "v1.2.3", "created_at": "2026-07-20T09:00:00"},
+        {"id": 2, "user_id": "local", "category": "idea", "body": "Let me pin a shelf to the nav.", "trigger": "post-setup", "run_id": None, "page": "/profile", "app_version": "v1.2.3", "created_at": "2026-07-18T08:00:00"},
+        {"id": 3, "user_id": "other", "category": "bug", "body": "Export produced an empty file.", "trigger": None, "run_id": None, "page": "/settings", "app_version": "v1.2.4", "created_at": "2026-07-19T10:00:00"},
+        {"id": 4, "user_id": "ghost", "category": "praise", "body": "The archetype reveal is lovely.", "trigger": None, "run_id": None, "page": "/profile", "app_version": "v1.2.4", "created_at": "2026-07-21T11:00:00"},
+    ],
+    # Synthetic roster. supabase_user_id values are deliberately 'local' and 'other' —
+    # the same user ids the seeded books/usage/feedback rows use — so /admin/users'
+    # book_count aggregation and the email joins in /admin/usage and /admin/feedback
+    # resolve to something. Row 3 is revoked so the roster covers both statuses.
+    # THE REPO IS PUBLIC: every address here must be @example.com.
+    "invites": [
+        {"id": 1, "email": "reader1@example.com", "status": "active",
+         "supabase_user_id": "local", "invited_by": "admin@example.com",
+         "created_at": "2026-07-02T12:00:00", "revoked_at": None, "accepted_at": None},
+        {"id": 2, "email": "reader2@example.com", "status": "active",
+         "supabase_user_id": "other", "invited_by": "admin@example.com",
+         "created_at": "2026-07-01T12:00:00", "revoked_at": None, "accepted_at": None},
+        {"id": 3, "email": "former.reader@example.com", "status": "revoked",
+         "supabase_user_id": "sb-former", "invited_by": "admin@example.com",
+         "created_at": "2026-06-01T12:00:00", "revoked_at": "2026-06-15T12:00:00",
+         "accepted_at": None},
     ],
 }
 
@@ -430,12 +505,39 @@ WRITE_SCENARIOS: dict[str, list[dict]] = {
     "export-invalid-format": [
         {"req": "GET /export?format=xml"},
     ],
+    "admin_invite": [
+        # Mixed case + trailing space: create_invite lowercases and strips.
+        {"req": "POST /admin/invite", "json": {"email": "  New.Reader@Example.COM  "}},
+        {"req": "GET /admin/users"},
+        # Idempotent on email: same address again updates the existing row.
+        {"req": "POST /admin/invite", "json": {"email": "new.reader@example.com"}},
+        {"req": "GET /admin/users"},
+        {"req": "POST /admin/invite", "json": {"email": "   "}, "maskDetail": False},
+    ],
+    "admin_backfill": [
+        {"req": "POST /admin/backfill", "json": {}},
+        {"req": "GET /admin/users"},
+        # Second run is a no-op: every Supabase user now has a row.
+        {"req": "POST /admin/backfill", "json": {}},
+    ],
+    "admin_revoke": [
+        # 'other' owns seeded books, so the purge has something to destroy.
+        {"req": "POST /admin/revoke", "json": {"supabase_user_id": "other"}},
+        {"req": "GET /admin/users"},
+        # Idempotent: the row is already revoked, so delete_user is skipped.
+        {"req": "POST /admin/revoke", "json": {"supabase_user_id": "other"}},
+        # 'local' must be untouched by revoking 'other'.
+        {"req": "GET /stats"},
+    ],
+    "admin_revoke_unknown": [
+        {"req": "POST /admin/revoke", "json": {"supabase_user_id": "sb-nobody"}},
+    ],
 }
 
 _TS_FIELDS = {
     "feedback_updated_at", "created_at", "updated_at", "verdict_updated_at",
     "last_profiled_at", "rec_feedback_updated_at", "enrichment_corrected_at",
-    "derived_at", "resolved_at",
+    "derived_at", "resolved_at", "revoked_at", "accepted_at",
 }
 _DATE_FIELDS = {"date_read", "date_added"}
 
@@ -457,6 +559,7 @@ _MODELS = {
     "recommendations": Recommendation, "profile_meta": ProfileMeta,
     "user_settings": UserSettings, "reader_archetypes": ReaderArchetype,
     "user_directive": UserDirective, "usage_events": UsageEvent,
+    "invites": Invite, "feedback": Feedback,
 }
 
 
@@ -484,7 +587,7 @@ def reset_db() -> None:
     with session_scope() as session:
         for model in (Enrichment, TasteTrait, Recommendation, ProfileMeta,
                       UserSettings, ReaderArchetype, UserDirective, UsageEvent,
-                      TasteSignal, Feedback, FeedbackPromptState, Book):
+                      TasteSignal, Feedback, FeedbackPromptState, Invite, Book):
             session.query(model).delete()
     load_seed()
 

@@ -119,6 +119,63 @@
     "constraints": {},
     "updated_at": null
    }
+  },
+  "GET /admin/me": {
+   "status": 200,
+   "body": {
+    "is_admin": true
+   }
+  },
+  "GET /admin/users": {
+   "status": 200,
+   "body": []
+  },
+  "GET /admin/usage": {
+   "status": 200,
+   "body": {
+    "events": [],
+    "total": 0,
+    "total_cost_usd": 0.0,
+    "limit": 50,
+    "offset": 0
+   }
+  },
+  "GET /admin/usage?limit=2&offset=1": {
+   "status": 200,
+   "body": {
+    "events": [],
+    "total": 0,
+    "total_cost_usd": 0.0,
+    "limit": 2,
+    "offset": 1
+   }
+  },
+  "GET /admin/feedback": {
+   "status": 200,
+   "body": {
+    "items": [],
+    "total": 0,
+    "limit": 50,
+    "offset": 0
+   }
+  },
+  "GET /admin/feedback?category=bug": {
+   "status": 200,
+   "body": {
+    "items": [],
+    "total": 0,
+    "limit": 50,
+    "offset": 0
+   }
+  },
+  "GET /admin/feedback?limit=2&offset=1": {
+   "status": 200,
+   "body": {
+    "items": [],
+    "total": 0,
+    "limit": 2,
+    "offset": 1
+   }
   }
  },
  "seeded": {
@@ -1562,6 +1619,273 @@
      ]
     },
     "updated_at": "2026-07-12T12:00:00"
+   }
+  },
+  "GET /admin/me": {
+   "status": 200,
+   "body": {
+    "is_admin": true
+   }
+  },
+  "GET /admin/users": {
+   "status": 200,
+   "body": [
+    {
+     "id": 1,
+     "email": "reader1@example.com",
+     "status": "active",
+     "supabase_user_id": "local",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-02T12:00:00",
+     "revoked_at": null,
+     "book_count": 14
+    },
+    {
+     "id": 2,
+     "email": "reader2@example.com",
+     "status": "active",
+     "supabase_user_id": "other",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-01T12:00:00",
+     "revoked_at": null,
+     "book_count": 2
+    },
+    {
+     "id": 3,
+     "email": "former.reader@example.com",
+     "status": "revoked",
+     "supabase_user_id": "sb-former",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-06-01T12:00:00",
+     "revoked_at": "2026-06-15T12:00:00",
+     "book_count": 0
+    }
+   ]
+  },
+  "GET /admin/usage": {
+   "status": 200,
+   "body": {
+    "events": [
+     {
+      "id": 101,
+      "user_id": "other",
+      "email": "reader2@example.com",
+      "model": "claude-sonnet-5",
+      "operation": "profile",
+      "input_tokens": 100,
+      "output_tokens": 100,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cost_usd": 5.55,
+      "created_at": "2026-08-12T17:27:30.893371"
+     },
+     {
+      "id": 2,
+      "user_id": "local",
+      "email": "reader1@example.com",
+      "model": "claude-haiku-4-5-20251001",
+      "operation": "recommend",
+      "input_tokens": 500,
+      "output_tokens": 400,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cost_usd": 0.003,
+      "created_at": "2026-08-12T17:27:30.893319"
+     },
+     {
+      "id": 1,
+      "user_id": "local",
+      "email": "reader1@example.com",
+      "model": "claude-sonnet-5",
+      "operation": "profile",
+      "input_tokens": 1000,
+      "output_tokens": 2000,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cost_usd": 0.022,
+      "created_at": "2026-08-12T17:27:30.893262"
+     },
+     {
+      "id": 3,
+      "user_id": "local",
+      "email": "reader1@example.com",
+      "model": "claude-sonnet-5",
+      "operation": "profile",
+      "input_tokens": 9000,
+      "output_tokens": 9000,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cost_usd": 1.0,
+      "created_at": "2026-06-28T17:27:30.893348"
+     }
+    ],
+    "total": 4,
+    "total_cost_usd": 6.575,
+    "limit": 50,
+    "offset": 0
+   }
+  },
+  "GET /admin/usage?limit=2&offset=1": {
+   "status": 200,
+   "body": {
+    "events": [
+     {
+      "id": 2,
+      "user_id": "local",
+      "email": "reader1@example.com",
+      "model": "claude-haiku-4-5-20251001",
+      "operation": "recommend",
+      "input_tokens": 500,
+      "output_tokens": 400,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cost_usd": 0.003,
+      "created_at": "2026-08-12T17:27:30.893319"
+     },
+     {
+      "id": 1,
+      "user_id": "local",
+      "email": "reader1@example.com",
+      "model": "claude-sonnet-5",
+      "operation": "profile",
+      "input_tokens": 1000,
+      "output_tokens": 2000,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cost_usd": 0.022,
+      "created_at": "2026-08-12T17:27:30.893262"
+     }
+    ],
+    "total": 4,
+    "total_cost_usd": 6.575,
+    "limit": 2,
+    "offset": 1
+   }
+  },
+  "GET /admin/feedback": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "id": 4,
+      "user_id": "ghost",
+      "email": null,
+      "category": "praise",
+      "body": "The archetype reveal is lovely.",
+      "trigger": null,
+      "run_id": null,
+      "page": "/profile",
+      "app_version": "v1.2.4",
+      "created_at": "2026-07-21T11:00:00"
+     },
+     {
+      "id": 1,
+      "user_id": "local",
+      "email": "reader1@example.com",
+      "category": "bug",
+      "body": "Swipe card lags on mobile.",
+      "trigger": null,
+      "run_id": null,
+      "page": "/swipe",
+      "app_version": "v1.2.3",
+      "created_at": "2026-07-20T09:00:00"
+     },
+     {
+      "id": 3,
+      "user_id": "other",
+      "email": "reader2@example.com",
+      "category": "bug",
+      "body": "Export produced an empty file.",
+      "trigger": null,
+      "run_id": null,
+      "page": "/settings",
+      "app_version": "v1.2.4",
+      "created_at": "2026-07-19T10:00:00"
+     },
+     {
+      "id": 2,
+      "user_id": "local",
+      "email": "reader1@example.com",
+      "category": "idea",
+      "body": "Let me pin a shelf to the nav.",
+      "trigger": "post-setup",
+      "run_id": null,
+      "page": "/profile",
+      "app_version": "v1.2.3",
+      "created_at": "2026-07-18T08:00:00"
+     }
+    ],
+    "total": 4,
+    "limit": 50,
+    "offset": 0
+   }
+  },
+  "GET /admin/feedback?category=bug": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "id": 1,
+      "user_id": "local",
+      "email": "reader1@example.com",
+      "category": "bug",
+      "body": "Swipe card lags on mobile.",
+      "trigger": null,
+      "run_id": null,
+      "page": "/swipe",
+      "app_version": "v1.2.3",
+      "created_at": "2026-07-20T09:00:00"
+     },
+     {
+      "id": 3,
+      "user_id": "other",
+      "email": "reader2@example.com",
+      "category": "bug",
+      "body": "Export produced an empty file.",
+      "trigger": null,
+      "run_id": null,
+      "page": "/settings",
+      "app_version": "v1.2.4",
+      "created_at": "2026-07-19T10:00:00"
+     }
+    ],
+    "total": 2,
+    "limit": 50,
+    "offset": 0
+   }
+  },
+  "GET /admin/feedback?limit=2&offset=1": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "id": 1,
+      "user_id": "local",
+      "email": "reader1@example.com",
+      "category": "bug",
+      "body": "Swipe card lags on mobile.",
+      "trigger": null,
+      "run_id": null,
+      "page": "/swipe",
+      "app_version": "v1.2.3",
+      "created_at": "2026-07-20T09:00:00"
+     },
+     {
+      "id": 3,
+      "user_id": "other",
+      "email": "reader2@example.com",
+      "category": "bug",
+      "body": "Export produced an empty file.",
+      "trigger": null,
+      "run_id": null,
+      "page": "/settings",
+      "app_version": "v1.2.4",
+      "created_at": "2026-07-19T10:00:00"
+     }
+    ],
+    "total": 4,
+    "limit": 2,
+    "offset": 1
    }
   }
  }

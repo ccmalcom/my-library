@@ -32,7 +32,7 @@
     "year_published": 2013,
     "page_count": null,
     "date_read": null,
-    "date_added": "2026-08-11",
+    "date_added": "2026-08-12",
     "cover_url": "https://covers.example/aj.jpg",
     "description": null,
     "confidence_label": "MANUAL",
@@ -84,7 +84,7 @@
      "year_published": 2013,
      "page_count": null,
      "date_read": null,
-     "date_added": "2026-08-11",
+     "date_added": "2026-08-12",
      "cover_url": "https://covers.example/aj.jpg",
      "description": null,
      "confidence_label": "MANUAL",
@@ -123,7 +123,7 @@
     "year_published": null,
     "page_count": null,
     "date_read": null,
-    "date_added": "2026-08-11",
+    "date_added": "2026-08-12",
     "cover_url": null,
     "description": null,
     "confidence_label": null,
@@ -196,7 +196,7 @@
     "year_published": null,
     "page_count": null,
     "date_read": null,
-    "date_added": "2026-08-11",
+    "date_added": "2026-08-12",
     "cover_url": null,
     "description": null,
     "confidence_label": null,
@@ -229,7 +229,7 @@
     "year_published": null,
     "page_count": null,
     "date_read": null,
-    "date_added": "2026-08-11",
+    "date_added": "2026-08-12",
     "cover_url": null,
     "description": null,
     "confidence_label": null,
@@ -322,7 +322,7 @@
     "effective_rating": 4,
     "app_review": "Rereads well.",
     "date_read": "2025-11-02",
-    "feedback_updated_at": "2026-08-11T05:47:01.718178",
+    "feedback_updated_at": "2026-08-12T17:27:31.059540",
     "exclude_from_profile": false
    },
    "headers": {},
@@ -346,7 +346,7 @@
     "effective_rating": 4,
     "app_review": "Loved the problem-solving.",
     "date_read": null,
-    "feedback_updated_at": "2026-08-11T05:47:01.723357",
+    "feedback_updated_at": "2026-08-12T17:27:31.064865",
     "exclude_from_profile": false
    },
    "headers": {},
@@ -371,7 +371,7 @@
     "effective_rating": 4,
     "app_review": "Rereads well.",
     "date_read": "2026-01-15",
-    "feedback_updated_at": "2026-08-11T05:47:01.728079",
+    "feedback_updated_at": "2026-08-12T17:27:31.069827",
     "exclude_from_profile": false
    },
    "headers": {},
@@ -395,7 +395,7 @@
     "effective_rating": 3,
     "app_review": null,
     "date_read": null,
-    "feedback_updated_at": "2026-08-11T05:47:01.732760",
+    "feedback_updated_at": "2026-08-12T17:27:31.075735",
     "exclude_from_profile": true
    },
    "headers": {},
@@ -699,7 +699,7 @@
     "effective_rating": 4,
     "app_review": "Actually loved the maze.",
     "date_read": null,
-    "feedback_updated_at": "2026-08-11T05:47:01.749907",
+    "feedback_updated_at": "2026-08-12T17:27:31.094030",
     "exclude_from_profile": false
    },
    "headers": {},
@@ -1339,7 +1339,7 @@
    "response_mode": "json",
    "status": 422,
    "body": {
-    "detail": "status must be one of {'already_read', 'rejected', 'accepted'}"
+    "detail": "status must be one of {'accepted', 'already_read', 'rejected'}"
    },
    "headers": {},
    "maskDetail": true
@@ -1532,7 +1532,7 @@
       "ringo"
      ]
     },
-    "updated_at": "2026-08-11T05:47:01.926037"
+    "updated_at": "2026-08-12T17:27:31.284782"
    },
    "headers": {},
    "maskDetail": false
@@ -1559,7 +1559,7 @@
       "ringo"
      ]
     },
-    "updated_at": "2026-08-11T05:47:01.926037"
+    "updated_at": "2026-08-12T17:27:31.284782"
    },
    "headers": {},
    "maskDetail": false
@@ -1631,7 +1631,7 @@
     "status": "confirmed",
     "user_note": null,
     "user_weight": 1.0,
-    "verdict_updated_at": "2026-08-11T05:47:01.954326",
+    "verdict_updated_at": "2026-08-12T17:27:31.314628",
     "created_at": "2026-07-01T12:00:00"
    },
    "headers": {},
@@ -1659,7 +1659,7 @@
     "status": "edited",
     "user_note": null,
     "user_weight": 1.0,
-    "verdict_updated_at": "2026-08-11T05:47:01.954326",
+    "verdict_updated_at": "2026-08-12T17:27:31.314628",
     "created_at": "2026-07-01T12:00:00"
    },
    "headers": {},
@@ -1690,7 +1690,7 @@
     "status": "proposed",
     "user_note": "sort of",
     "user_weight": 0.5,
-    "verdict_updated_at": "2026-08-11T05:47:01.958764",
+    "verdict_updated_at": "2026-08-12T17:27:31.319409",
     "created_at": "2026-07-01T12:00:00"
    },
    "headers": {},
@@ -1954,7 +1954,7 @@
     "target_kind": "book",
     "target_book_id": 1,
     "snapshot": null,
-    "created_at": "2026-08-11T05:47:02"
+    "created_at": "2026-08-12T17:27:31"
    },
    "headers": {},
    "maskDetail": false
@@ -1987,7 +1987,7 @@
       "science fiction"
      ]
     },
-    "created_at": "2026-08-11T05:47:02"
+    "created_at": "2026-08-12T17:27:31"
    },
    "headers": {},
    "maskDetail": false
@@ -2203,7 +2203,7 @@
    "body": "dGl0bGUsYXV0aG9yLGFkZGl0aW9uYWxfYXV0aG9ycyxpc2JuMTMsc2hlbGYscmF0aW5nLHJldmlldyxkYXRlX3JlYWQsZGF0ZV9hZGRlZCxwYWdlX2NvdW50LHllYXJfcHVibGlzaGVkDQpEdW5lLEZyYW5rIEhlcmJlcnQsLDk3ODA0NDEwMTM1OTMscmVhZCw1LCwyMDI1LTExLTAyLDIwMjUtMTAtMDEsNDEyLDE5NjUNClRoZSBEaXNwb3NzZXNzZWQsVXJzdWxhIEsuIExlIEd1aW4sLDk3ODAwNjEwNTQ4ODQscmVhZCw1LCwsLDM4NywxOTc0DQpQcm9qZWN0IEhhaWwgTWFyeSxBbmR5IFdlaXIsLDk3ODA1OTMxMzUyMDQscmVhZCw1LExvdmVkIHRoZSBwcm9ibGVtLXNvbHZpbmcuLCwsNDc2LDIwMjENClRoZSBMZWZ0IEhhbmQgb2YgRGFya25lc3MsVXJzdWxhIEsuIExlIEd1aW4sLCxyZWFkLDQsLCwsMzA0LDE5NjkNCkZvdW5kYXRpb24sSXNhYWMgQXNpbW92LCwscmVhZCwzLCwsLDI0NCwxOTUxDQpHaWRlb24gdGhlIE5pbnRoLFRhbXN5biBNdWlyLCwscmVhZCwyLCwsLDQ0OCwyMDE5DQpUaGUgSG9iYml0LEouUi5SLiBUb2xraWVuLCwscmVhZCw1LCwsLDMxMCwxOTM3DQpQaXJhbmVzaSxTdXNhbm5hIENsYXJrZSwsLHRvLXJlYWQsLCwsLDI3MiwyMDIwDQpUb28gTGlrZSB0aGUgTGlnaHRuaW5nLEFkYSBQYWxtZXIsLCxkaWQtbm90LWZpbmlzaCwsLCwsNDMyLDIwMTYNClRoZSBFbXBlcm9yJ3MgU291bCxCcmFuZG9uIFNhbmRlcnNvbiwsLHJlYWQsNCwsLCw5NiwyMDEyDQpFeGhhbGF0aW9uLFRlZCBDaGlhbmcsLCxyZWFkLDUsLCwsMzY4LDIwMTkNClRoZSBGaWZ0aCBTZWFzb24sTi5LLiBKZW1pc2luLCwscmVhZCw1LCwsLDQ2OCwyMDE1DQpLaW5kcmVkLE9jdGF2aWEgRS4gQnV0bGVyLCwscmVhZCw1LCwsLCwxOTc5DQpTbWFsbCBHb2RzLFRlcnJ5IFByYXRjaGV0dCwsLHJlYWQsNCwsLCwzODksMTk5Mg0K",
    "headers": {
     "content-type": "text/csv; charset=utf-8",
-    "content-disposition": "attachment; filename=\"mylibrary-backup-20260811.csv\""
+    "content-disposition": "attachment; filename=\"mylibrary-backup-20260812.csv\""
    },
    "maskDetail": false
   }
@@ -2215,10 +2215,10 @@
    "multipart": null,
    "response_mode": "text",
    "status": 200,
-   "body": "{\n  \"version\": 1,\n  \"exported_at\": \"2026-08-11T05:47:02.081723+00:00\",\n  \"books\": [\n    {\n      \"title\": \"Dune\",\n      \"author\": \"Frank Herbert\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780441013593\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": \"2025-11-02\",\n      \"date_added\": \"2025-10-01\",\n      \"page_count\": 412,\n      \"year_published\": 1965,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Dispossessed\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780061054884\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": true,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 387,\n      \"year_published\": 1974,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Project Hail Mary\",\n      \"author\": \"Andy Weir\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780593135204\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": 5,\n      \"app_review\": \"Loved the problem-solving.\",\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 476,\n      \"year_published\": 2021,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Left Hand of Darkness\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 304,\n      \"year_published\": 1969,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Foundation\",\n      \"author\": \"Isaac Asimov\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 3,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 3,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 244,\n      \"year_published\": 1951,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Gideon the Ninth\",\n      \"author\": \"Tamsyn Muir\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 2,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 2,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 448,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Hobbit\",\n      \"author\": \"J.R.R. Tolkien\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": 5,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 310,\n      \"year_published\": 1937,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Piranesi\",\n      \"author\": \"Susanna Clarke\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"to-read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 272,\n      \"year_published\": 2020,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Too Like the Lightning\",\n      \"author\": \"Ada Palmer\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"did-not-finish\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 432,\n      \"year_published\": 2016,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Emperor's Soul\",\n      \"author\": \"Brandon Sanderson\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 96,\n      \"year_published\": 2012,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Exhalation\",\n      \"author\": \"Ted Chiang\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 368,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Fifth Season\",\n      \"author\": \"N.K. Jemisin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 468,\n      \"year_published\": 2015,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Kindred\",\n      \"author\": \"Octavia E. Butler\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": null,\n      \"year_published\": 1979,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Small Gods\",\n      \"author\": \"Terry Pratchett\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 389,\n      \"year_published\": 1992,\n      \"source\": \"goodreads\"\n    }\n  ],\n  \"taste_signals\": []\n}",
+   "body": "{\n  \"version\": 1,\n  \"exported_at\": \"2026-08-12T17:27:31.449500+00:00\",\n  \"books\": [\n    {\n      \"title\": \"Dune\",\n      \"author\": \"Frank Herbert\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780441013593\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": \"2025-11-02\",\n      \"date_added\": \"2025-10-01\",\n      \"page_count\": 412,\n      \"year_published\": 1965,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Dispossessed\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780061054884\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": true,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 387,\n      \"year_published\": 1974,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Project Hail Mary\",\n      \"author\": \"Andy Weir\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780593135204\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": 5,\n      \"app_review\": \"Loved the problem-solving.\",\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 476,\n      \"year_published\": 2021,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Left Hand of Darkness\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 304,\n      \"year_published\": 1969,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Foundation\",\n      \"author\": \"Isaac Asimov\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 3,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 3,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 244,\n      \"year_published\": 1951,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Gideon the Ninth\",\n      \"author\": \"Tamsyn Muir\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 2,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 2,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 448,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Hobbit\",\n      \"author\": \"J.R.R. Tolkien\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": 5,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 310,\n      \"year_published\": 1937,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Piranesi\",\n      \"author\": \"Susanna Clarke\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"to-read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 272,\n      \"year_published\": 2020,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Too Like the Lightning\",\n      \"author\": \"Ada Palmer\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"did-not-finish\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 432,\n      \"year_published\": 2016,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Emperor's Soul\",\n      \"author\": \"Brandon Sanderson\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 96,\n      \"year_published\": 2012,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Exhalation\",\n      \"author\": \"Ted Chiang\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 368,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Fifth Season\",\n      \"author\": \"N.K. Jemisin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 468,\n      \"year_published\": 2015,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Kindred\",\n      \"author\": \"Octavia E. Butler\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": null,\n      \"year_published\": 1979,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Small Gods\",\n      \"author\": \"Terry Pratchett\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 389,\n      \"year_published\": 1992,\n      \"source\": \"goodreads\"\n    }\n  ],\n  \"taste_signals\": []\n}",
    "headers": {
     "content-type": "application/json",
-    "content-disposition": "attachment; filename=\"mylibrary-backup-20260811.json\""
+    "content-disposition": "attachment; filename=\"mylibrary-backup-20260812.json\""
    },
    "maskDetail": false
   }
@@ -2240,7 +2240,7 @@
     "target_kind": "book",
     "target_book_id": 1,
     "snapshot": null,
-    "created_at": "2026-08-11T05:47:02"
+    "created_at": "2026-08-12T17:27:31"
    },
    "headers": {},
    "maskDetail": false
@@ -2273,7 +2273,7 @@
       "science fiction"
      ]
     },
-    "created_at": "2026-08-11T05:47:02"
+    "created_at": "2026-08-12T17:27:31"
    },
    "headers": {},
    "maskDetail": false
@@ -2284,10 +2284,10 @@
    "multipart": null,
    "response_mode": "text",
    "status": 200,
-   "body": "{\n  \"version\": 1,\n  \"exported_at\": \"2026-08-11T05:47:02.096464+00:00\",\n  \"books\": [\n    {\n      \"title\": \"Dune\",\n      \"author\": \"Frank Herbert\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780441013593\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": \"2025-11-02\",\n      \"date_added\": \"2025-10-01\",\n      \"page_count\": 412,\n      \"year_published\": 1965,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Dispossessed\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780061054884\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": true,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 387,\n      \"year_published\": 1974,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Project Hail Mary\",\n      \"author\": \"Andy Weir\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780593135204\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": 5,\n      \"app_review\": \"Loved the problem-solving.\",\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 476,\n      \"year_published\": 2021,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Left Hand of Darkness\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 304,\n      \"year_published\": 1969,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Foundation\",\n      \"author\": \"Isaac Asimov\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 3,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 3,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 244,\n      \"year_published\": 1951,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Gideon the Ninth\",\n      \"author\": \"Tamsyn Muir\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 2,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 2,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 448,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Hobbit\",\n      \"author\": \"J.R.R. Tolkien\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": 5,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 310,\n      \"year_published\": 1937,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Piranesi\",\n      \"author\": \"Susanna Clarke\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"to-read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 272,\n      \"year_published\": 2020,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Too Like the Lightning\",\n      \"author\": \"Ada Palmer\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"did-not-finish\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 432,\n      \"year_published\": 2016,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Emperor's Soul\",\n      \"author\": \"Brandon Sanderson\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 96,\n      \"year_published\": 2012,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Exhalation\",\n      \"author\": \"Ted Chiang\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 368,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Fifth Season\",\n      \"author\": \"N.K. Jemisin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 468,\n      \"year_published\": 2015,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Kindred\",\n      \"author\": \"Octavia E. Butler\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": null,\n      \"year_published\": 1979,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Small Gods\",\n      \"author\": \"Terry Pratchett\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 389,\n      \"year_published\": 1992,\n      \"source\": \"goodreads\"\n    }\n  ],\n  \"taste_signals\": [\n    {\n      \"direction\": \"more\",\n      \"target_kind\": \"book\",\n      \"target_book_id\": 1,\n      \"snapshot\": null,\n      \"created_at\": \"2026-08-11T05:47:02\"\n    },\n    {\n      \"direction\": \"less\",\n      \"target_kind\": \"rec\",\n      \"target_book_id\": null,\n      \"snapshot\": {\n        \"title\": \"Blindsight\",\n        \"author\": \"Peter Watts\",\n        \"subjects\": [\n          \"science fiction\"\n        ]\n      },\n      \"created_at\": \"2026-08-11T05:47:02\"\n    }\n  ]\n}",
+   "body": "{\n  \"version\": 1,\n  \"exported_at\": \"2026-08-12T17:27:31.465705+00:00\",\n  \"books\": [\n    {\n      \"title\": \"Dune\",\n      \"author\": \"Frank Herbert\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780441013593\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": \"2025-11-02\",\n      \"date_added\": \"2025-10-01\",\n      \"page_count\": 412,\n      \"year_published\": 1965,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Dispossessed\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780061054884\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": true,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 387,\n      \"year_published\": 1974,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Project Hail Mary\",\n      \"author\": \"Andy Weir\",\n      \"additional_authors\": null,\n      \"isbn13\": \"9780593135204\",\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": 5,\n      \"app_review\": \"Loved the problem-solving.\",\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 476,\n      \"year_published\": 2021,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Left Hand of Darkness\",\n      \"author\": \"Ursula K. Le Guin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 304,\n      \"year_published\": 1969,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Foundation\",\n      \"author\": \"Isaac Asimov\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 3,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 3,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 244,\n      \"year_published\": 1951,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Gideon the Ninth\",\n      \"author\": \"Tamsyn Muir\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 2,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 2,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 448,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Hobbit\",\n      \"author\": \"J.R.R. Tolkien\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": 5,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 310,\n      \"year_published\": 1937,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Piranesi\",\n      \"author\": \"Susanna Clarke\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"to-read\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 272,\n      \"year_published\": 2020,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Too Like the Lightning\",\n      \"author\": \"Ada Palmer\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"did-not-finish\",\n      \"goodreads_rating\": 0,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": null,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 432,\n      \"year_published\": 2016,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Emperor's Soul\",\n      \"author\": \"Brandon Sanderson\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 96,\n      \"year_published\": 2012,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Exhalation\",\n      \"author\": \"Ted Chiang\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 368,\n      \"year_published\": 2019,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"The Fifth Season\",\n      \"author\": \"N.K. Jemisin\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 468,\n      \"year_published\": 2015,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Kindred\",\n      \"author\": \"Octavia E. Butler\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 5,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 5,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": null,\n      \"year_published\": 1979,\n      \"source\": \"goodreads\"\n    },\n    {\n      \"title\": \"Small Gods\",\n      \"author\": \"Terry Pratchett\",\n      \"additional_authors\": null,\n      \"isbn13\": null,\n      \"shelf\": \"read\",\n      \"goodreads_rating\": 4,\n      \"app_rating\": null,\n      \"app_review\": null,\n      \"effective_rating\": 4,\n      \"is_favorite\": false,\n      \"exclude_from_profile\": false,\n      \"date_read\": null,\n      \"date_added\": null,\n      \"page_count\": 389,\n      \"year_published\": 1992,\n      \"source\": \"goodreads\"\n    }\n  ],\n  \"taste_signals\": [\n    {\n      \"direction\": \"more\",\n      \"target_kind\": \"book\",\n      \"target_book_id\": 1,\n      \"snapshot\": null,\n      \"created_at\": \"2026-08-12T17:27:31\"\n    },\n    {\n      \"direction\": \"less\",\n      \"target_kind\": \"rec\",\n      \"target_book_id\": null,\n      \"snapshot\": {\n        \"title\": \"Blindsight\",\n        \"author\": \"Peter Watts\",\n        \"subjects\": [\n          \"science fiction\"\n        ]\n      },\n      \"created_at\": \"2026-08-12T17:27:31\"\n    }\n  ]\n}",
    "headers": {
     "content-type": "application/json",
-    "content-disposition": "attachment; filename=\"mylibrary-backup-20260811.json\""
+    "content-disposition": "attachment; filename=\"mylibrary-backup-20260812.json\""
    },
    "maskDetail": false
   }
@@ -2301,6 +2301,377 @@
    "status": 422,
    "body": {
     "detail": "format must be 'csv' or 'json'."
+   },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "admin_invite": [
+  {
+   "req": "POST /admin/invite",
+   "json": {
+    "email": "  New.Reader@Example.COM  "
+   },
+   "multipart": null,
+   "response_mode": "json",
+   "status": 201,
+   "body": {
+    "id": 4,
+    "email": "new.reader@example.com",
+    "status": "active",
+    "supabase_user_id": "sb-new.reader",
+    "invited_by": "local",
+    "created_at": "2026-08-12T17:27:31",
+    "revoked_at": null,
+    "book_count": 0
+   },
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "GET /admin/users",
+   "json": null,
+   "multipart": null,
+   "response_mode": "json",
+   "status": 200,
+   "body": [
+    {
+     "id": 4,
+     "email": "new.reader@example.com",
+     "status": "active",
+     "supabase_user_id": "sb-new.reader",
+     "invited_by": "local",
+     "created_at": "2026-08-12T17:27:31",
+     "revoked_at": null,
+     "book_count": 0
+    },
+    {
+     "id": 1,
+     "email": "reader1@example.com",
+     "status": "active",
+     "supabase_user_id": "local",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-02T12:00:00",
+     "revoked_at": null,
+     "book_count": 14
+    },
+    {
+     "id": 2,
+     "email": "reader2@example.com",
+     "status": "active",
+     "supabase_user_id": "other",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-01T12:00:00",
+     "revoked_at": null,
+     "book_count": 2
+    },
+    {
+     "id": 3,
+     "email": "former.reader@example.com",
+     "status": "revoked",
+     "supabase_user_id": "sb-former",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-06-01T12:00:00",
+     "revoked_at": "2026-06-15T12:00:00",
+     "book_count": 0
+    }
+   ],
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "POST /admin/invite",
+   "json": {
+    "email": "new.reader@example.com"
+   },
+   "multipart": null,
+   "response_mode": "json",
+   "status": 201,
+   "body": {
+    "id": 4,
+    "email": "new.reader@example.com",
+    "status": "active",
+    "supabase_user_id": "sb-new.reader",
+    "invited_by": "local",
+    "created_at": "2026-08-12T17:27:31",
+    "revoked_at": null,
+    "book_count": 0
+   },
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "GET /admin/users",
+   "json": null,
+   "multipart": null,
+   "response_mode": "json",
+   "status": 200,
+   "body": [
+    {
+     "id": 4,
+     "email": "new.reader@example.com",
+     "status": "active",
+     "supabase_user_id": "sb-new.reader",
+     "invited_by": "local",
+     "created_at": "2026-08-12T17:27:31",
+     "revoked_at": null,
+     "book_count": 0
+    },
+    {
+     "id": 1,
+     "email": "reader1@example.com",
+     "status": "active",
+     "supabase_user_id": "local",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-02T12:00:00",
+     "revoked_at": null,
+     "book_count": 14
+    },
+    {
+     "id": 2,
+     "email": "reader2@example.com",
+     "status": "active",
+     "supabase_user_id": "other",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-01T12:00:00",
+     "revoked_at": null,
+     "book_count": 2
+    },
+    {
+     "id": 3,
+     "email": "former.reader@example.com",
+     "status": "revoked",
+     "supabase_user_id": "sb-former",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-06-01T12:00:00",
+     "revoked_at": "2026-06-15T12:00:00",
+     "book_count": 0
+    }
+   ],
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "POST /admin/invite",
+   "json": {
+    "email": "   "
+   },
+   "multipart": null,
+   "response_mode": "json",
+   "status": 422,
+   "body": {
+    "detail": "email must not be empty"
+   },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "admin_backfill": [
+  {
+   "req": "POST /admin/backfill",
+   "json": {},
+   "multipart": null,
+   "response_mode": "json",
+   "status": 200,
+   "body": {
+    "added": 1,
+    "total_supabase_users": 3
+   },
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "GET /admin/users",
+   "json": null,
+   "multipart": null,
+   "response_mode": "json",
+   "status": 200,
+   "body": [
+    {
+     "id": 4,
+     "email": "dashboard.created@example.com",
+     "status": "active",
+     "supabase_user_id": "sb-dashboard",
+     "invited_by": "local",
+     "created_at": "2026-08-12T17:27:31",
+     "revoked_at": null,
+     "book_count": 0
+    },
+    {
+     "id": 1,
+     "email": "reader1@example.com",
+     "status": "active",
+     "supabase_user_id": "local",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-02T12:00:00",
+     "revoked_at": null,
+     "book_count": 14
+    },
+    {
+     "id": 2,
+     "email": "reader2@example.com",
+     "status": "active",
+     "supabase_user_id": "other",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-01T12:00:00",
+     "revoked_at": null,
+     "book_count": 2
+    },
+    {
+     "id": 3,
+     "email": "former.reader@example.com",
+     "status": "revoked",
+     "supabase_user_id": "sb-former",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-06-01T12:00:00",
+     "revoked_at": "2026-06-15T12:00:00",
+     "book_count": 0
+    }
+   ],
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "POST /admin/backfill",
+   "json": {},
+   "multipart": null,
+   "response_mode": "json",
+   "status": 200,
+   "body": {
+    "added": 0,
+    "total_supabase_users": 3
+   },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "admin_revoke": [
+  {
+   "req": "POST /admin/revoke",
+   "json": {
+    "supabase_user_id": "other"
+   },
+   "multipart": null,
+   "response_mode": "json",
+   "status": 200,
+   "body": {
+    "supabase_user_id": "other",
+    "status": "revoked"
+   },
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "GET /admin/users",
+   "json": null,
+   "multipart": null,
+   "response_mode": "json",
+   "status": 200,
+   "body": [
+    {
+     "id": 1,
+     "email": "reader1@example.com",
+     "status": "active",
+     "supabase_user_id": "local",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-02T12:00:00",
+     "revoked_at": null,
+     "book_count": 14
+    },
+    {
+     "id": 2,
+     "email": "reader2@example.com",
+     "status": "revoked",
+     "supabase_user_id": "other",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-07-01T12:00:00",
+     "revoked_at": "2026-08-12T17:27:31.508446",
+     "book_count": 0
+    },
+    {
+     "id": 3,
+     "email": "former.reader@example.com",
+     "status": "revoked",
+     "supabase_user_id": "sb-former",
+     "invited_by": "admin@example.com",
+     "created_at": "2026-06-01T12:00:00",
+     "revoked_at": "2026-06-15T12:00:00",
+     "book_count": 0
+    }
+   ],
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "POST /admin/revoke",
+   "json": {
+    "supabase_user_id": "other"
+   },
+   "multipart": null,
+   "response_mode": "json",
+   "status": 200,
+   "body": {
+    "supabase_user_id": "other",
+    "status": "revoked"
+   },
+   "headers": {},
+   "maskDetail": false
+  },
+  {
+   "req": "GET /stats",
+   "json": null,
+   "multipart": null,
+   "response_mode": "json",
+   "status": 200,
+   "body": {
+    "total": 14,
+    "rated": 12,
+    "unrated": 2,
+    "mean_rating": 4.33,
+    "by_star": {
+     "5": 7,
+     "4": 3,
+     "3": 1,
+     "2": 1
+    },
+    "shelves": {
+     "read": 12,
+     "to-read": 1,
+     "did-not-finish": 1
+    },
+    "has_isbn13": 3,
+    "enrichment": {
+     "rows": 12,
+     "rated_books_enriched": 11,
+     "confidence": {
+      "HIGH": 7,
+      "MEDIUM": 4,
+      "LOW": 1
+     }
+    },
+    "taste_traits": {
+     "total": 4,
+     "by_polarity": {
+      "positive": 3,
+      "negative": 1
+     }
+    }
+   },
+   "headers": {},
+   "maskDetail": false
+  }
+ ],
+ "admin_revoke_unknown": [
+  {
+   "req": "POST /admin/revoke",
+   "json": {
+    "supabase_user_id": "sb-nobody"
+   },
+   "multipart": null,
+   "response_mode": "json",
+   "status": 404,
+   "body": {
+    "detail": "invite not found for supabase_user_id"
    },
    "headers": {},
    "maskDetail": false

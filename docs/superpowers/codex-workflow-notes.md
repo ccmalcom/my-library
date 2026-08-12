@@ -1131,3 +1131,233 @@ What causes the structural (<60s) cache-boundary moves — 4.71M units, 28% of t
 ToolSearch. The traced event followed a 12-call `TaskCreate` batch, but one instance is not
 evidence, and the mechanism (total context preserved, boundary moved) was not explained. Worth
 instrumenting before anyone writes a rule about it.
+
+## Wave 5a execution findings (2026-08-12)
+
+### "Can't fix it, it would perturb X" deserves the same verification as any other claim
+
+Task 2 left `/admin/feedback` parity-unproven and justified it: seeding `feedback` rows would
+change the already-recorded `feedback-flow` scenarios, and the plan says stop rather than absorb
+that. The *conclusion* was sound process; the *premise* was never checked.
+
+Checking it took two greps. `Feedback` has exactly one reader outside the admin route —
+`feedback.py::_post_recs_eligible` — and it filters `Feedback.trigger == 'post-recs'`. Seed rows
+with any other trigger cannot collide. The blocked gap was never actually blocked, and the
+scenarios re-recorded byte-identical, as predicted.
+
+The rule this earns: **a deferral's stated blocker is a factual claim about the code, and gets
+verified like one.** The existing note says Codex's attributions need checking; this extends it to
+our own prior-task attributions, which arrive with more authority and get less scrutiny. Cost of
+checking: two greps. Cost of not checking: a route ships with its join, filter and pagination
+untested, and the ledger records a reason that was never true.
+
+### Design fixture seed rows so each one proves a distinct thing
+
+The four seeded feedback rows were not filler. One carries a `user_id` with no matching invite,
+which is the only way the email join's null branch gets exercised; one belongs to the second
+tenant, so the join is proven for both rather than for `local` alone; the categories split 2/1/1
+so `?category=bug` is a real filter rather than a pass-through; four distinct timestamps prove the
+ordering. A fixture that merely has rows in it proves the query runs. A fixture whose rows were
+chosen against the branches proves the query is right.
+
+Same pass: adding one `?limit=2&offset=1` request line closed the third named gap. Re-recording is
+cheap and re-recording twice is nearly free — do the whole gap list in one sitting, before the
+task that replays the fixtures is dispatched, not after.
+
+### Briefs go stale when the driving session changes the fixtures underneath them
+
+Task 4's brief was written before this re-record and its test block had no pagination case, so the
+new fixture would have gone unreplayed and nobody would have seen a failure — an unreplayed
+fixture is silent, not red. When the driving session changes a fixture after a plan is written,
+**diff the plan's test list against the recorded request list** and state the delta in the dispatch
+as an explicit, justified deviation from the otherwise-verbatim brief. Codex follows a brief
+faithfully, which is exactly why a stale brief propagates cleanly into a stale test.
+
+### The gate that catches this class
+
+`checkParity` failing loudly requires the test to exist. Neither `tsc`, eslint, nor the suite's
+pass count can tell you a recorded fixture has no test replaying it. Worth a future guard: assert
+that every key in `python-responses.json` is named by some `checkParity` call.
+
+### Stop asking Codex to run `npm run test:server`
+
+It takes ~163s and is still growing (531 -> 546 tests across wave 5a alone). Against a ~10 minute
+budget that also has to cover Codex's own repo exploration, it is the single most likely gate to
+blow the cap — it hung and was killed on Task 5, and Codex correctly reported INCOMPLETE rather
+than claiming green, which is the right behavior but costs a whole round trip.
+
+Treat it like pytest: **driving-session-owned, never listed in a Codex prompt.** Give Codex the
+focused `npx vitest run <the one test file>` instead, which finishes in seconds and catches the
+same regressions in the code it just wrote. The driving session runs the full suite afterward,
+which it has to do anyway to trust the result.
+
+This generalizes: the gate list in a dispatch should contain only gates that are FAST and SCOPED
+to the touched files. A slow whole-repo gate in a Codex prompt buys nothing — the controller
+re-runs it regardless — and can eat the task.
+
+### `??` is not `or` — the ported-falsy-fallthrough bug
+
+Task 5 shipped `data.msg ?? data.message` against Python's `data.get("msg") or
+data.get("message")`. `or` falls through on ANY falsy value; `??` only on null/undefined. For
+`{'msg': '', 'message': 'real error'}` Python surfaces the real error and Node surfaces nothing.
+
+This is the same family as the `pyRound` / `pyRepr` rules already in CLAUDE.md, and it is easy to
+miss because `??` is usually the *more correct* modern idiom — which is exactly why a reviewer
+nods past it. When porting a Python `or`/`and` chain, the faithful translation is `||`/`&&`, and
+it deserves a comment saying so, or someone will "modernise" it back.
+
+Worth grepping for on any future port: `??` in a line that corresponds to a Python `or`.
+
+### Two of three "findings" can be "keep the code, write the comment"
+
+Global Constraint 3 says never silently improve on Python. The reflex is to read that as "Python
+always wins." It does not say that — it says the divergence must be RECORDED. On Task 5, one
+finding was a genuine slip to fix, and two were cases where the Node behavior was better (not
+propagating a null into a downstream caller; refusing to render a non-string body fragment in an
+error message from a module that exists to avoid echoing bodies). Both stayed, both got comments.
+
+Adjudicating a divergence as "keep it, document why" is a legitimate outcome and should be stated
+explicitly in the fix prompt — otherwise Codex will dutifully "fix" better code into worse code.
+
+### A resumed Codex thread can lose write access
+
+Wave 5a Task 7's fix round came back: "blocked by the workspace's read-only sandbox: the edit was
+rejected, and approval escalation is disabled." The same agent had written to that exact file
+minutes earlier in its first run. `codex:codex-rescue` defaults to `--write` on a fresh dispatch;
+that does not reliably survive a resume via SendMessage.
+
+Symptoms to recognise: a resumed run reports a permissions/read-only block rather than a code
+problem, and `git status` shows nothing changed. Check the tree before doing anything else —
+the run is honest about having applied nothing, but "no files changed" is worth confirming
+independently, since a killed Codex run does NOT roll back partial edits.
+
+Recovery: re-dispatch the fix as a FRESH `--fresh` run rather than resuming again. That costs
+context — the fresh agent has none of the prior thread's knowledge — so the dispatch has to be
+self-contained: paste the current body of the function being changed, state the problem, state
+the fix, and list the DO-NOTs explicitly (a fresh agent does not know that the neighbouring
+function is deliberately non-transactional and will happily "make them consistent").
+
+Practical consequence for the SDD fix loop: rounds 1-3 nominally "resume the implementer," but in
+this repo a resume is only reliable for question-answering and re-running gates. If the round
+requires an EDIT, prefer a fresh self-contained dispatch from the start.
+
+### Mutation-test the invariant the plan says is load-bearing
+
+Wave 5a's Global Constraint 4 says `revokeUser` must not be transactional, because the invite row
+has to stay marked revoked when the purge fails so a retry skips the un-rollback-able GoTrue
+delete. Codex implemented it correctly and claimed it had verified the boundary itself.
+
+Rather than trust that, the controller backed up the file, moved the revoked-mark to AFTER the
+purge (the exact bug the constraint prevents), re-ran, and restored with a `diff` to prove
+byte-identical restoration. Two findings, and the second is the valuable one:
+
+1. The hand-written purge-failure test failed with exactly the right assertion
+   (`expected 'active' to be 'revoked'`).
+2. **All four recorded-fixture replays still PASSED under the mutation.**
+
+So the entire parity apparatus — the thing this wave is built around — is blind to this class of
+bug, because Python's recorded run never has `delete_account` throw. A fixture can only prove the
+happy path someone thought to record. One hand-written test with an injected failure was the only
+thing standing between the repo and a silent retry-safety regression.
+
+Worth doing whenever a plan calls something load-bearing: mutate it and confirm something goes
+red. If nothing does, the constraint is documentation, not engineering. Cost here was about three
+minutes.
+
+### Check which runner owns a test file before naming a command
+
+Task 9's brief said `npx vitest run lib/__tests__/backend.test.ts`. That matches ZERO tests:
+`vitest.config.ts` includes only `lib/server/**` and `app/api/**`, and jest owns everything else
+via `testPathIgnorePatterns` on those same two directories. The command exits 0 and reads as a
+pass.
+
+This repo runs two test runners with complementary, non-overlapping scopes, so "the test command"
+is genuinely ambiguous and a plan written away from the code gets it wrong silently. Same failure
+shape as the unreplayed fixture in Task 4: **the dangerous gate failures are the ones that produce
+no output rather than a red X.** When a brief names a test command, verify the runner actually
+claims that path before handing it to an executor.
+
+### Earlier waves leave deliberate tripwires; a plan that flips them must say so
+
+`backend.test.ts` carried `expect(baseFor('/admin/users', 'GET')).toBe(PY); // wave 5` — an
+assertion a previous wave planted to fail loudly the moment wave 5a flipped the switcher. That is
+good practice. But Task 9's brief never mentioned removing it, so following the brief literally
+produced a red suite with no explanation.
+
+If a wave plans to flip a route, grep the switcher test for existing assertions pinning it to the
+old backend and state their removal as an explicit step. And when triaging that red, the fix is to
+DELETE the stale assertion, never to weaken it to accept either value — the tripwire did its job.
+
+### Fixture-design rationale for the admin surface (moved out of CLAUDE.md)
+
+The four seeded `feedback` rows were chosen against branches, not as filler. Row 4's `user_id` is
+`ghost` with no matching invite row on purpose: it is the only thing that proves the email join
+emits `null` for an unknown user instead of omitting the key. One row belongs to the second tenant,
+so the join is proven for both rather than for `local` alone; the categories split 2/1/1 so
+`?category=bug` is a real filter rather than a pass-through; four distinct timestamps prove the
+ordering. Adding one `?limit=2&offset=1` request line closed pagination in the same pass.
+
+Status narration that used to live in CLAUDE.md — "wave 5a is in progress", "wave 5a is
+code-complete (Tasks 0-9), only live verification remains", the inventory of which handlers landed
+under `app/api/admin/` — has been removed rather than moved. It goes stale in days, it is
+recoverable from `git log` and the ledger, and it was being paid for on every turn of every
+session in the repo. Two contradictory copies of it ("in progress" and "code-complete") were
+present in the same file at the same time, which is what append-without-pruning looks like.
+
+## Measuring the controller-cost rules against wave 5a (2026-08-12, after the fact)
+
+The rules written mid-wave-5a were graded against the wave that followed them. Wave 5a ran across
+three controllers, which made it an accidental A/B:
+
+| session  | tasks | turns | units | per-turn | floor start -> end | cache_write % |
+|----------|-------|-------|-------|----------|--------------------|---------------|
+| 80f66831 | 0-1   |  56   | 1.26M | 22,564   |  62.5k -> 189k     | 23.7          |
+| 3346e0c7 | 2     |  58   | 785k  | **13,532** | 42.0k -> 122k    | 17.5          |
+| 76d946e3 | 3-10  | 159   | 3.49M | 21,979   |  44.3k -> **263k** | 11.5          |
+
+Wave total 6.23M units: controllers 5.54M (89%), subagents 690k (11%, nine Codex dispatches).
+
+**"Restart between task groups" does not fire.** It is not mechanical enough. The third controller
+read eight tasks as one group and ran 159 turns straight through, landing back at the baseline
+per-turn cost. Restarts happened only where the human forced a boundary. The rule was rewritten as
+a threshold — floor > ~120k or ~40 turns — because a threshold can be checked and a "group" cannot.
+Session 3346e0c7 is the evidence the mechanism works when it does fire: 40% cheaper per turn, zero
+cache drops, never above a 122k floor.
+
+**The 1-hour cache TTL is not a constant, and a rule that assumed it was got the threshold wrong.**
+Measured `cache_creation` by TTL bucket: baseline 100% `ephemeral_1h`; second controller 84% 1h;
+third controller **66% `ephemeral_5m`**. The TTL degrades as session usage accumulates — and it
+degraded *within a single wave*. The consequence: a 1,994s (33 min) idle gap in the third
+controller cost 288,771 units re-entering context at 1.25x. Under the old "never idle over an
+hour" rule that gap was explicitly sanctioned. Any rule keyed to a cache TTL must assume the
+short one.
+
+**What held.** One-task-per-dispatch: 16 Reads across 159 turns, ~432 tokens of read arguments, no
+plan doc resident. Don't-optimize-the-dispatch: confirmed, 11% of the wave. Four of the nine Codex
+agents ran 4-5 turns instead of 2 because of fix rounds, which raises the per-dispatch median above
+the earlier 25.7k figure but changes nothing about the conclusion.
+
+**Where the floor actually comes from, and a caution about the accounting.** In the third
+controller, tool results were 79% of user-side content but only ~49.7k tokens over 152 calls —
+about 287 tokens per Bash call. That is already disciplined; there is little for a summarizer to
+eat. Assistant visible text was ~9.7k tokens and tool_use payloads ~35k. Summing every measurable
+content contribution accounts for roughly half of the 219k floor growth; the remainder is not
+explained by this instrumentation. Char-based token estimation undercounts code and JSON, which
+covers some of it, but not demonstrably all. **Recorded as unexplained rather than attributed** —
+the same discipline the cache-boundary open question above got, and for the same reason: two
+earlier hypotheses in this document were confidently wrong.
+
+### Local models (ollama) do not address this cost structure
+
+Available locally: `qwen3:14b`, `qwen3:8b`, `embeddinggemma`. The leverage is close to zero, and
+the reason is structural rather than a question of model quality. 63-72% of spend is the controller
+re-reading its own context; delegating a subtask to a local model does not shrink the controller's
+floor and adds a turn to it. The one shape that would pay — pre-filtering large outputs before they
+enter context — is already handled, per the ~287-tokens-per-Bash-call figure above.
+
+The two checks a local model might plausibly have caught in wave 5a are both deterministic and
+belong in code, not in a model: assert that every key in `python-responses.json` is named by some
+`checkParity` call (catches the unreplayed-fixture class, which fails silently), and grep for `??`
+on lines porting a Python `or`. Where ollama does fit is work that costs a whole session rather
+than a turn — commit-message drafting from a diff, triaging a long CI log down to the failing
+block. Real, but small. Keep it out of the SDD loop.

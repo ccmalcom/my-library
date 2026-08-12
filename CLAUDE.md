@@ -172,14 +172,54 @@ those defaults. Fixed by passing `progress: 0, total: 0` explicitly, dropping th
 `.default()`s from `schema.ts`, and tightening the mirror — which turned 24 fixtures red and is
 exactly the point. `tsc` cannot catch this class: drizzle's `$inferInsert` leaves a `notNull()`
 column without `.default()` optional.
-**Wave 4d is the next wave, and it is corrective, not additive** — see
-`docs/superpowers/plans/2026-08-11-node-backend-wave-4d-import-quotes-and-schema-drift.md`. Its
-blocker: `POST /import` and `/import/preview` **cannot parse a real Goodreads export** on Node.
-Goodreads Excel-escapes ISBNs as `="9780441172719"`; Python's `csv` accepts a quote that is not at
-field start, `csv-parse` throws `Invalid Opening Quote`. The repo's own `tests/sample_goodreads.csv`
-has this shape on every row. The measured fix is `relax_quotes: true` in `PY_DICT_READER_OPTIONS`,
-which matches Python on 6 of 8 quote shapes (up from 3); the two residual divergences are documented
-and accepted. Wave 5 (Python cutover) must not start while this is open.
+**Goodreads import quoting (fixed in wave 4d, keep it that way).** Goodreads Excel-escapes ISBNs
+as `="9780441172719"`. Python's `csv` accepts a quote that is not at field start; `csv-parse`
+throws `Invalid Opening Quote`, which meant `POST /import` and `/import/preview` could not parse a
+real export on Node. The repo's own `tests/sample_goodreads.csv` has this shape on every row. The
+fix is `relax_quotes: true` in `PY_DICT_READER_OPTIONS`, which matches Python on 6 of 8 quote
+shapes (up from 3); the two residual divergences are documented and accepted.
+
+**Wave 5a (admin surface port) invariants.** `invites.ts` holds `listRoster`, `createInvite`,
+`backfillFromSupabase`, `revokeUser`; `supabaseAdmin.ts` is the GoTrue client with an injectable
+`GoTrueFetch` so no test touches the network. What must not be "cleaned up":
+
+- **Transaction boundaries differ per function on purpose, and harmonising them is a bug.**
+  `backfillFromSupabase` IS transactional (its only remote call is a read that completes first).
+  `createInvite` is NOT (its GoTrue call cannot be rolled back). `revokeUser` is NOT — the one
+  sanctioned break from the house one-transaction-per-request rule: the invite row must stay
+  marked revoked when the purge fails, so a retry skips the already-done GoTrue delete. The
+  hand-written purge-failure case in `parity-writes-admin.test.ts` is the ONLY thing that catches
+  a regression here; **never convert it to a `runScenario` call.**
+- **`supabaseAdmin.ts` uses `||`, not `??`, where it ports a Python `or` chain.** `or` falls
+  through on ANY falsy value, `??` only on null/undefined — "modernising" it to `??` silently
+  swallows a GoTrue error message. Same family as `pyRound`/`pyRepr`.
+- Write parity goes through `write-parity.ts::runScenario` plus a `REGISTRY` row per route, never
+  a hand-rolled step loop — the helper is what applies `maskVolatile` and compares response
+  headers. Read parity masks volatile values via `checkParity`'s 4th `normalize` argument; any
+  route returning per-event usage rows needs it, because `usage_events.created_at` comes from the
+  `{"$hoursAgo": N}` sentinel and resolves against the run clock.
+- `admin_me` is ungated by design (`requireAuth: false`): the route IS the admin check, so it must
+  answer for non-admins too. Error mapping differs between siblings — invite `InviteError`→422,
+  revoke `InviteError`→**404**, both `SupabaseAdminError`→502.
+- Two divergences are adjudicated "keep the code, write the comment" (Global Constraint 3 requires
+  recording, not reverting): `inviteUser` returns the requested email where Python's
+  `.get("email", email)` returns `None` for a present-but-null key, and a non-string GoTrue `msg`
+  is dropped rather than rendered. One gap is deliberately deferred: `createInvite` does not wrap a
+  crypto `RuntimeError` into `InviteError`, so a missing encryption key gives 500 on Node, 422 on
+  Python.
+
+Fixture-layer rules for the admin surface: **every address in a fixture must be `@example.com`;
+the repo is public.** The recorder fakes GoTrue by patching
+`mylibrary.invites.{invite_user,delete_user,list_users}`, never `mylibrary.supabase_admin` —
+`invites.py` from-imports those names, so patching the source module is a no-op. `Invite` seeds
+carry `supabase_user_id` of `local`/`other` to match the seeded books/usage rows, so `book_count`
+and the `/admin/usage` email joins resolve instead of returning nulls. `invites` must stay in
+`pglite.ts`'s `SEQ_TABLES` (the seed inserts explicit ids without advancing the serial, so the
+first `createInvite` collides on id=1) and `revoked_at` in `write-parity.ts`'s `VOLATILE_KEYS`
+(revoke sets it to `now()`). No seeded `feedback` row may use `trigger='post-recs'` —
+`feedback.py::_post_recs_eligible` is the table's only reader outside the admin route and filters
+on exactly that value, so any other trigger keeps the recorded `feedback-flow` /
+`feedback-invalid` scenarios byte-identical.
 Because Claude output is nondeterministic, "parity" for these flows means the _request_ is
 byte-identical: `scripts/gen_claude_fixtures.py` monkeypatches `tracked_create` to record
 real Python `create()` kwargs into `fixtures/claude/prompts.json`, and
@@ -279,16 +319,23 @@ Rules:
 
 ### Controller cost rules (measured 2026-08-12)
 
-A controller turn costs about `context_size × 0.1`; 56% of a wave session's spend is just
-re-reading context, and only 14% is generating output. So the **context floor is the only cost
-number that matters** — a Codex dispatch is 25.7k units (a 2-message Sonnet forwarder that reads
-nothing), about 1.3 controller turns. Do not optimize the dispatch; optimize the floor.
+A controller turn costs about `context_size × 0.1`. Across wave 5a's three controllers, 63-72% of
+spend was re-reading context and 13-16% was generating output. So the **context floor is the only
+cost number that matters** — the nine Codex dispatches were 11% of the wave (690k of 6.23M units),
+and the controllers were the other 89%. Do not optimize the dispatch; optimize the floor.
 
-- **Restart the controller between task groups.** The `.superpowers/sdd/` ledger is the state of
-  record, so a restart is free. Resetting a 167k floor to 62k cuts per-turn cost ~60%.
-- **Never leave a large-context controller idle over an hour.** The cache expires and the whole
-  context re-enters at 1.25× instead of 0.1× — 12.5× the read price, ~192k units at a 167k floor.
-  Between tasks, finish the review or end the session. This is the single largest measured waste.
+- **Restart the controller when the context floor passes ~120k tokens, or every ~40 turns,
+  whichever comes first.** Not "between task groups" — that phrasing was measured and it does not
+  fire: wave 5a's third controller read eight tasks as one group, ran 159 turns, and climbed to a
+  263k floor, landing back at the pre-change per-turn cost. The one session that did restart cost
+  13.5k/turn against 22.6k for the two that didn't. The `.superpowers/sdd/` ledger is the state of
+  record, so a restart costs one re-establishment turn (~40k units) and buys back far more. Hand
+  the new session the kickoff prompt plus "resume from task N".
+- **Never park a loaded controller, full stop.** Do not assume the 1-hour cache TTL — it degrades
+  to 5 minutes as session usage accumulates, and it degraded *within* wave 5a (baseline 100% 1h →
+  third controller 66% 5m). A 33-minute gap that would have been safe under the 1h TTL cost
+  288,771 units when the cache re-entered at 1.25× instead of 0.1×. Between tasks, finish the
+  review or end the session.
 - **Read one task's text per dispatch, not the whole plan doc.** A 20.5k-token plan held resident
   costs ~2k units every turn; re-reading one task costs ~2.5k once.
 - Full measurements, plus two cost hypotheses that were confidently wrong, are in

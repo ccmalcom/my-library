@@ -5,13 +5,29 @@ import contract from './fixtures/schema-contract.json';
 import { makeTestDb } from './helpers/pglite';
 
 /**
- * The PGlite mirror is hand-written. When it grants a column a default the
- * Alembic-owned table does not have, an insert that omits that column passes
- * every test and fails against the real database — which is exactly how
- * POST /enrich/start shipped broken. This asserts the mirror against the
- * model-declared contract for the tables the Node backend writes to.
+ * Every table Node writes in production, plus `invites` (Task 6 adds the first
+ * Node write) and `usage_events` (wave 5b's cutover gives Node the INSERT).
+ * Derived from: grep -rnoE "\.(insert|update)\(([a-zA-Z]+\.)?[a-zA-Z]+\)" \
+ *   frontend/lib frontend/app --include=*.ts | grep -v "__tests__"
+ * Keep filenames in that grep -- `grep -h` strips them, which silently lets
+ * test-only writes count as production ones.
  */
-const WRITTEN_TABLES = ['books', 'enrichment', 'enrich_jobs', 'feedback', 'usage_events'] as const;
+const WRITTEN_TABLES = [
+  'books',
+  'enrichment',
+  'enrich_jobs',
+  'feedback',
+  'feedback_prompt_state',
+  'invites',
+  'profile_meta',
+  'reader_archetypes',
+  'recommendations',
+  'taste_signal',
+  'taste_traits',
+  'usage_events',
+  'user_directive',
+  'user_settings',
+] as const;
 
 type ColumnContract = { nullable: boolean; serverDefault: string | null };
 type Contract = Record<string, Record<string, ColumnContract>>;
@@ -86,7 +102,16 @@ const DRIZZLE_TABLES: Record<string, unknown> = {
   enrichment: schema.enrichment,
   enrich_jobs: schema.enrichJobs,
   feedback: schema.feedback,
+  feedback_prompt_state: schema.feedbackPromptState,
+  invites: schema.invites,
+  profile_meta: schema.profileMeta,
+  reader_archetypes: schema.readerArchetypes,
+  recommendations: schema.recommendations,
+  taste_signal: schema.tasteSignal,
+  taste_traits: schema.tasteTraits,
   usage_events: schema.usageEvents,
+  user_directive: schema.userDirective,
+  user_settings: schema.userSettings,
 };
 
 describe('Drizzle schema matches the Alembic-owned schema', () => {

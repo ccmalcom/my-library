@@ -112,6 +112,7 @@ async function seedUser(db: Db, userId: string) {
     email: `${userId}@example.com`,
     invitedBy: 'admin',
     supabaseUserId: userId,
+    status: 'pending',
   });
 }
 

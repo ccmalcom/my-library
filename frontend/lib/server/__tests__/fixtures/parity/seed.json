@@ -910,7 +910,7 @@
    "display_name": "Chase Test",
    "created_at": "2026-06-01T12:00:00",
    "updated_at": null,
-   "anthropic_api_key_encrypted": "3nI2mpYKJrOuo2SBQ3XZdZpB/VJ+u/1fG1huns4t8ixFhRPx6Fus6szAzY/o6dAw+G6bS/T2bFDAoA=="
+   "anthropic_api_key_encrypted": "sHnMKQDNB5/1VKSOPhHVGV1WbAK4UXikn2BSHTcDL+I/pBY2f/IMHpB4DpAzqaW9s5C9iWT+rOrHOQ=="
   },
   {
    "id": 101,
@@ -1037,6 +1037,84 @@
    "created_at": {
     "$hoursAgo": 0
    }
+  }
+ ],
+ "feedback": [
+  {
+   "id": 1,
+   "user_id": "local",
+   "category": "bug",
+   "body": "Swipe card lags on mobile.",
+   "trigger": null,
+   "run_id": null,
+   "page": "/swipe",
+   "app_version": "v1.2.3",
+   "created_at": "2026-07-20T09:00:00"
+  },
+  {
+   "id": 2,
+   "user_id": "local",
+   "category": "idea",
+   "body": "Let me pin a shelf to the nav.",
+   "trigger": "post-setup",
+   "run_id": null,
+   "page": "/profile",
+   "app_version": "v1.2.3",
+   "created_at": "2026-07-18T08:00:00"
+  },
+  {
+   "id": 3,
+   "user_id": "other",
+   "category": "bug",
+   "body": "Export produced an empty file.",
+   "trigger": null,
+   "run_id": null,
+   "page": "/settings",
+   "app_version": "v1.2.4",
+   "created_at": "2026-07-19T10:00:00"
+  },
+  {
+   "id": 4,
+   "user_id": "ghost",
+   "category": "praise",
+   "body": "The archetype reveal is lovely.",
+   "trigger": null,
+   "run_id": null,
+   "page": "/profile",
+   "app_version": "v1.2.4",
+   "created_at": "2026-07-21T11:00:00"
+  }
+ ],
+ "invites": [
+  {
+   "id": 1,
+   "email": "reader1@example.com",
+   "status": "active",
+   "supabase_user_id": "local",
+   "invited_by": "admin@example.com",
+   "created_at": "2026-07-02T12:00:00",
+   "revoked_at": null,
+   "accepted_at": null
+  },
+  {
+   "id": 2,
+   "email": "reader2@example.com",
+   "status": "active",
+   "supabase_user_id": "other",
+   "invited_by": "admin@example.com",
+   "created_at": "2026-07-01T12:00:00",
+   "revoked_at": null,
+   "accepted_at": null
+  },
+  {
+   "id": 3,
+   "email": "former.reader@example.com",
+   "status": "revoked",
+   "supabase_user_id": "sb-former",
+   "invited_by": "admin@example.com",
+   "created_at": "2026-06-01T12:00:00",
+   "revoked_at": "2026-06-15T12:00:00",
+   "accepted_at": null
   }
  ]
 }

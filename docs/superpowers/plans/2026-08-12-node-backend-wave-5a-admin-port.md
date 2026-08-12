@@ -2111,3 +2111,207 @@ the most useful part of it.
   same release window as the switcher flip, supply `CRON_SECRET`, confirm Fluid compute and the
   ~300s ceiling, confirm the Hobby cron cadence with `vercel crons ls`.
 - Importing a genuine large Goodreads export (carried from wave 4d, still open).
+
+## Verification Record — 2026-08-12
+
+**Outcome: Task 10 CANNOT be run as written. Not a tooling limitation — the credential the three
+admin write routes require does not exist for this project.**
+
+### The finding
+
+`SUPABASE_SERVICE_ROLE_KEY` is not set anywhere Chase has it, and he confirms the project was
+built without one. The code confirms this is coherent rather than an oversight:
+
+- Auth never needed it. `config.py` derives the JWKS URL from `supabase_url`
+  (`/auth/v1/.well-known/jwks.json`, a public endpoint), so ES256 verification works with no
+  server-side key at all. `grep` over `frontend/lib` and `frontend/app` finds only
+  `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWKS_URL` and
+  `SUPABASE_SERVICE_ROLE_KEY` — there is no anon/publishable key in the frontend source either.
+- The service-role key is consumed in exactly ONE module (`mylibrary/supabase_admin.py`, ported as
+  `lib/server/supabaseAdmin.ts`) backing exactly three operations: `invite_user`, `list_users`,
+  `delete_user`.
+- Those three back exactly three routes: `POST /admin/invite`, `POST /admin/backfill`,
+  `POST /admin/revoke`. `_base_and_headers()` raises `SupabaseAdminError` when the key is absent
+  and `api.py` maps that to **502**.
+
+**Therefore those three routes return 502 on PYTHON today, and always have.** The Node port
+reproduces that exactly (same guard, same message, same 502), so this wave is at faithful parity
+with a feature that has never functioned in production. The other four admin routes, all auth, all
+reads and every other write are unaffected — none of them touch the service-role key.
+
+### Verified
+
+- Local Next dev server starts against the real project with auth ENABLED (`GET /api/admin/me`
+  307s to `/login` rather than returning `is_admin: true`, proving it is not in local single-user
+  mode where `is_admin()` short-circuits).
+- Python-side config: `supabase_url` set, `supabase_service_role_key` NOT set, database is
+  Postgres.
+- `supabaseAdmin` resolves its config inside `request()`, not at import time, which is why the
+  four read-only admin routes and the entire parity suite work with no Supabase env present.
+
+### Not verified
+
+Everything requiring a real GoTrue call. Explicitly:
+
+- **Step 3** (invite through the real UI, email delivery, `redirect_to` pointing at
+  `/auth/callback`) — blocked, no key.
+- **Step 5** (revoke: GoTrue delete, purge, second-click no-op) — blocked, no key.
+- **Step 6** (backfill `added: 0` then `added: 1`) — blocked, no key.
+- **Steps 2 and 7** (before/after roster SQL snapshot) — separately blocked: the permissions
+  classifier denied direct production DB reads, and the Supabase MCP for this account can only see
+  an unrelated inactive `coffee-app` project. Even with a key, the irreversible Step 5 must not be
+  run without this snapshot, since Step 7's "any change to a real user's row is a stop-and-report"
+  is the only safety net.
+- The four read-only routes were NOT driven in the browser either — that needs an authenticated
+  admin session.
+
+The local dev server was stopped after probing: it binds `*:3000` (LAN-reachable) while holding
+production credentials.
+
+### What would unblock this
+
+Every Supabase project has a service-role key at Project Settings -> API -> `service_role`; it is
+retrieved, not generated. Adding it (Vercel **Production only**, server-only, never
+`NEXT_PUBLIC_*`) would make invite/backfill/revoke functional for the first time on both backends
+and make Task 10 runnable. Until then the honest status of those three routes is: correctly
+ported, never exercised end-to-end, on either backend.
+
+**Decision for Chase before wave 5b:** either provision the key and verify the feature for real,
+or accept that the admin write surface is uncredentialed and decide whether it should ship at all.
+
+### Follow-up: "use a secret key instead" needs a CODE change, not just an env var
+
+Vercel recommends Supabase's newer secret key. Per the official migration guide
+(supabase.com/docs/guides/getting-started/migrating-to-new-api-keys), the mapping is
+`service_role` -> secret key (`sb_secret_...`), legacy keys keep working **until the end of 2026**,
+and creating the new keys is additive — it does not disturb the legacy pair.
+
+**But the new keys are NOT JWTs, and our admin client sends the key on two headers.** Both backends
+build identical headers — `mylibrary/supabase_admin.py::_base_and_headers` and
+`lib/server/supabaseAdmin.ts::baseAndHeaders`:
+
+    Authorization: Bearer <key>
+    apikey: <key>
+
+The docs are explicit that this breaks with the new keys: "Send publishable and secret keys on the
+`apikey` header only. If you also pass the key on the `Authorization: Bearer` header, which many
+Supabase clients do by default, the platform tries to parse it as a JWT and rejects the request
+with `Invalid JWT`." The `pg_net` section repeats it: "The new secret keys aren't JWTs, so they're
+rejected there."
+
+So dropping an `sb_secret_...` value into `SUPABASE_SERVICE_ROLE_KEY` would most likely produce a
+502 carrying `Invalid JWT` on **both** Python and Node — a confusing failure that looks like a port
+defect and is not one. This is inherited from Python, not introduced by wave 5a; the port is
+faithful, and what it faithfully reproduces is a header shape incompatible with Supabase's forward
+path.
+
+Two paths, and they are not equivalent:
+
+1. **To run Task 10 now with zero code change: use the LEGACY `service_role` key**
+   (Settings -> API). It is a JWT, so the existing `Authorization: Bearer` + `apikey` pair works.
+   This proves the port, which is what Task 10 is for.
+2. **To follow Vercel's advice: remove the `Authorization` header** from the admin client. On Node
+   that is a one-line change in `baseAndHeaders`. Doing it on Node ONLY is a deliberate divergence
+   from Python and must be commented per Global Constraint 3 — though since wave 5b deletes the
+   Python HTTP layer, changing only Node may be the right call. Worth deciding explicitly rather
+   than by default.
+
+Untested either way: no key of either type was available during this verification, so the claim
+above is read from Supabase's documentation, not observed. Verify with one real call before
+trusting it.
+
+### Resolution: Node now sends `apikey` only (2026-08-12)
+
+Chase chose the forward path over the legacy key. `lib/server/supabaseAdmin.ts::baseAndHeaders` no
+longer sends `Authorization: Bearer <key>`; it sends `apikey` alone.
+
+This is safe for BOTH key types, which is why the header is dropped outright rather than made
+conditional on the key's shape. Supabase's gateway runs an ordered filter chain in which step 3
+translates an opaque `sb_secret_*` in the `apikey` header into its internal JWT, and step 5
+synthesizes `Authorization: Bearer <apikey>` "if the client did not send a real JWT in the
+`Authorization` header (or sent only a `Bearer sb_*` value, which is not a valid JWT)". A legacy
+`service_role` JWT travels the same path unchanged. So `apikey`-only is strictly MORE compatible
+than what Python does, not a trade-off — the previous both-headers shape is the one that breaks,
+and only with new keys.
+
+Deliberate divergence from Python, recorded per Global Constraint 3 in a comment on the header
+object itself. Python is NOT updated: Constraint 1 makes `mylibrary/` read-only, Task 9's switcher
+flip routes `/admin/*` to Node, and wave 5b deletes the Python HTTP layer. If Python ever serves
+these routes again it needs the same fix — noted in the code comment so it is not lost.
+
+`supabase-admin.test.ts`'s header case was inverted accordingly and renamed to
+`sends the key on apikey ONLY, never on Authorization`, asserting both `headers.Authorization`
+undefined and no lowercase `authorization` key. The parity tests are unaffected: they fake GoTrue
+through `_setInviteUserForTests` and never exercise these headers.
+
+Gates after the change: vitest 77 files/551 tests, jest 41/41, tsc, eslint, prettier, pytest 360.
+
+STILL UNVERIFIED AGAINST A REAL CALL. No key of either type has been exercised. The header change
+is derived from Supabase's documentation; the first real invite is what proves it.
+
+## Verification Record — 2026-08-12 (live run, supersedes the "no key" record above)
+
+Chase provisioned a new-style Supabase **secret key** (`SUPABASE_SECRET_KEY`). Run against the real
+project from a local dev server, signed in as admin by Chase; Claude drove the browser and never
+handled credentials.
+
+### THE HEADER CHANGE IS VALIDATED
+
+`POST /admin/invite` returned **201** with a real `supabase_user_id`
+(`6be12001-…`), and `POST /admin/backfill` returned `{"added":0,"total_supabase_users":8}`. Both are
+genuine GoTrue admin calls made with `apikey` ONLY and no `Authorization` header, using an opaque
+`sb_secret_*` key. The previously documentation-only claim is now observed: **two of the three
+GoTrue operations (`invite_user`, `list_users`) work with apikey-only.** `delete_user` remains
+unexercised because revoke is irreversible.
+
+### BUG FOUND AND FIXED DURING THE RUN
+
+First invite attempt returned 502
+`Supabase admin not configured (need SUPABASE_URL + SUPABASE_SECRET_KEY)`. The key was present all
+along; the missing variable was the bare **`SUPABASE_URL`**. `frontend/.env.local` carries
+`NEXT_PUBLIC_SUPABASE_URL` for the browser client, and `auth.ts::jwksUrl` already falls back
+`SUPABASE_URL ?? NEXT_PUBLIC_SUPABASE_URL` — but `supabaseAdmin.ts::baseAndHeaders` insisted on the
+bare name with no fallback. Net effect: **auth works and every admin write fails**, which is a
+silent, confusing failure mode that would have hit production identically.
+
+Two fixes, both covered by new tests (`supabase-admin.test.ts`, now 9 cases):
+1. `baseAndHeaders` uses the same `SUPABASE_URL ?? NEXT_PUBLIC_SUPABASE_URL` precedence as
+   `jwksUrl`. The project URL is not a secret; only the key is.
+2. The error now names the variable ACTUALLY missing. The old message listed both regardless, so
+   the 502 was undiagnosable from the response alone — it cost real minutes during this run.
+
+### Verified live
+
+- `GET /admin/me` -> `is_admin: true`; unauthenticated it returns `is_admin:false`, and a
+  token-less call to a gated route gives 401 `missing bearer token`.
+- `GET /admin/users` -> full roster, `book_count` aggregation correct (246 on the admin's own row),
+  active/revoked both rendering.
+- `GET /admin/usage` -> per-event rows with the invite-email join resolving, and a `$0.5460` total
+  (4dp, consistent with `round4`).
+- `GET /admin/feedback` -> 3 submissions with the email join resolving for a DIFFERENT user than
+  the admin; `?category=idea` filtered to 2 and the total recounted. Pagination params
+  (`limit=25&offset=0`) flow through on both list routes.
+- All of the above served from `localhost:3000/api/...`, i.e. **Node** — Task 9's switcher flip
+  confirmed live.
+- `POST /admin/invite` -> 201, correct response shape, `invited_by` = the admin's `sub`.
+- Invite idempotency + normalization: re-submitting `  ChaseCMalcom+Wave5A@Gmail.COM  ` returned
+  the SAME `id: 10` with the email lowercased and `created_at` unchanged — no second row.
+- `POST /admin/backfill` -> `{"added":0,"total_supabase_users":8}` on a reconciled roster.
+
+### Not verified
+
+- **Step 5 revoke** — not run. Irreversible, and Steps 2/7's before/after roster snapshot is still
+  unavailable (the permissions classifier denies direct production DB reads). `deleteUser` is
+  therefore the one GoTrue operation still unproven with the new key.
+- **Step 3 email delivery and the `redirect_to` -> `/auth/callback` check** — needs Chase's inbox.
+  Note `FRONTEND_URL` governs whether `redirect_to` is sent at all; if it is unset locally the
+  invite link points at the project's dashboard Site URL instead.
+- **Step 6 second half** (delete an invite row, re-run backfill, expect `added: 1`) — needs direct
+  DB access.
+- **Step 4** (give the invited user books before revoking) — not done, since revoke was not run.
+
+### Side effects on the real project
+
+A real Supabase auth user was created for `chasecmalcom+wave5a@gmail.com` (invite row **id 10**,
+`supabase_user_id 6be12001-d0c2-4195-b37a-0d3c6f7e4baf`) and a real invite email was sent. Nothing
+was deleted, and no pre-existing row was modified. Cleaning this up is itself Step 5's revoke.

@@ -426,8 +426,6 @@ async function del<T>(path: string): Promise<T> {
 export const api = {
   stats: () => get<Stats>('/stats'),
 
-  health: () => get<{ status: string; books: number; anthropic_key_set: boolean }>('/health'),
-
   books: (params?: { shelf?: string; limit?: number; offset?: number }) => {
     const qs = new URLSearchParams();
     if (params?.shelf) qs.set('shelf', params.shelf);
