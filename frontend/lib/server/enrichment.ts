@@ -209,6 +209,7 @@ export type EnrichmentProgress = (
 
 export interface EnrichLibraryOptions {
   userId: string;
+  bookIds?: number[];
   force?: boolean;
   limit?: number | null;
   includeUnrated?: boolean;
@@ -258,7 +259,8 @@ export async function enrichLibrary(
     .where(eq(books.userId, options.userId));
   const candidates = rows.filter(
     ({ book }) =>
-      options.includeUnrated || effectiveRating(book.appRating, book.goodreadsRating) !== null
+      (options.bookIds === undefined || options.bookIds.includes(book.id)) &&
+      (options.includeUnrated || effectiveRating(book.appRating, book.goodreadsRating) !== null)
   );
   const work = candidates.filter(
     ({ enrichment: existing }) =>

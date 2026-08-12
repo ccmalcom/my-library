@@ -110,8 +110,8 @@ shipped the **synchronous enrichment core only**: `enrichment.ts` (selection, `r
 `scoreCandidates`, `persistResolution`, `enrichLibrary`), enrichment wrappers plus per-run HTTP
 statistics in `catalog.ts`, `serializeResolutionConfidence` in `serialize.ts`, and authenticated
 blocking `POST /enrich`, flipped to Node with `{ prefix: '/enrich', methods: ['POST'], exact: true }`.
-The `exact` flag is load-bearing: it keeps `/enrich/start`, `/enrich/status/{job_id}`, and every
-other job path on Python, where they have no Node handler. Enrichment reuses `similarity.ts`'s
+The `exact` flag is load-bearing: it keeps the synchronous rule from capturing the separately
+method-scoped background-job routes. Enrichment reuses `similarity.ts`'s
 `titleSim`/`STRONG_SIM` and `dedup.ts`'s `normalizeTitle`/`surname` rather than re-porting them,
 and `effectiveRating` comes from `serialize.ts`; only `searchTitle` (`_search_title`) was new.
 Four Python quirks are reproduced deliberately: any nonempty ISBN result is HIGH with no title,
@@ -133,16 +133,53 @@ resolve on Open Library first (never reaching `isbn:googlebooks`) and Google's n
 editions trip the ambiguity rule (never reaching `search:googlebooks`). The parity test compares
 recorded URLs as sorted multisets, not sequences — neither runtime specifies book order, since
 there is no `ORDER BY`.
-**Wave 4c-2 is still blocked on the same architecture decision** and owns every background/job
-item: `POST /enrich/start`, `GET /enrich/status/{job_id}`, `enrich_jobs`, leases, tick endpoints,
-and job rate limits. Python gets detached work two ways (in-process FastAPI `BackgroundTasks` and
-Redis/arq), and Vercel has neither. `/discover` is not a precedent — it completes inside one HTTP
-request. The options are `waitUntil`, a cron-driven poller, Redis
-plus an external worker, or leaving enrichment on Python through cutover; do not add queue
-architecture in wave 4c. Note that the earlier
-plans assigned purge to wave 4 while `wave-3-verification.md:172` recommended deferring it to
-wave 5 as the risky piece; the inventory showed the opposite — purge is the easiest part and
-enrichment jobs are the hard one. Wave 5 remains admin + cutover.
+Wave 4c-2 implements `POST /enrich/start` and `GET /enrich/status/{job_id}` on Node. Internal
+`POST /api/enrich/tick` and `GET /api/enrich/janitor` are `CRON_SECRET`-authenticated same-origin
+routes, never client-switcher routes. Jobs use atomic conditional leases, poll repair, and a daily
+janitor; continuation uses Next's `after()` to dispatch only a job ID to a separate tick, never
+`waitUntil`, and `after()` never contains chunk work. Chunks are bounded by time, not count:
+`CHUNK_BUDGET_MS = 240_000` reserves headroom under the assumed
+`FUNCTION_CEILING_SECONDS = 300`, with no chunk-size knob. Progress is derived by recounting
+enrichment rows, never accumulated, and is relative to the run (`resolved_at >= started_at`),
+because counting books that merely hold enrichment rows would report 100% immediately under
+`force`. The four guards are `RATE_LIMITS.enrichStart` at 5/60s, the partial unique index
+`uq_enrich_jobs_active_user`, atomic conditional lease claim, and the attempts cap plus no-progress
+failure. One active job per user is a deliberate divergence from Python, whose unguarded inserts
+let five clicks create five jobs.
+Revision `0019_add_enrich_job_leases` adds `lease_expires_at`, `attempts`, `force`, and `run_limit`;
+it has not been applied and must be applied in the same release window as the switcher flip.
+Python's `fail_if_stale` semantics are exact: running only, non-null `started_at`, age strictly
+greater than 1,800 seconds, and `Enrichment was interrupted, please retry.` The one sanctioned
+wave-4c-1 edit is additive optional `bookIds?: number[]` on `EnrichLibraryOptions`: chunked
+`force: true` otherwise recomputes `work`, repeatedly selects the same first book, and trips the
+no-progress guard on tick 2. Omitting it preserves prior behavior and the 4c-1 parity test.
+Still out of scope or unverified are Redis, arq, QStash, every queue port, global cross-user catalog
+rate coordination, admin routes, and Python cutover/deletion (wave 5). This wave is not claimed
+deployed: Chase must confirm Vercel Fluid compute and the assumed ~300s duration and Hobby
+daily-cron cadence, and must supply `CRON_SECRET`. The cron config lives at `frontend/vercel.json`,
+**not** the repository root: the Vercel project's Root Directory is `frontend` (its build logs clone
+and then run `next build` directly, and there is no root `package.json`), so a repo-root
+`vercel.json` is silently ignored. Cron jobs also only run on **production** deployments, so the
+janitor stays dormant on preview builds; `vercel crons ls` proves what Vercel actually registered.
+Wave 4c-2 was then **live-verified** against a throwaway Docker Postgres (see the plan's Live
+verification record): the browser onboarding→enrich flow, real catalog resolution, `after()`
+continuation, the one-active-job guard under genuine concurrency, poll repair, the janitor, the
+strictly-`>`-1800s stale threshold, `CRON_SECRET` 401s, and the 5/60s limit all behave. It found one
+blocker: `POST /enrich/start` 500'd because `enrich_jobs.progress`/`total` are `NOT NULL` with **no
+server default** (Python supplies them from ORM-level `default=0`), so drizzle's emitted SQL
+`default` was rejected. It passed 493 tests only because the hand-written PGlite mirror invented
+those defaults. Fixed by passing `progress: 0, total: 0` explicitly, dropping the phantom
+`.default()`s from `schema.ts`, and tightening the mirror — which turned 24 fixtures red and is
+exactly the point. `tsc` cannot catch this class: drizzle's `$inferInsert` leaves a `notNull()`
+column without `.default()` optional.
+**Wave 4d is the next wave, and it is corrective, not additive** — see
+`docs/superpowers/plans/2026-08-11-node-backend-wave-4d-import-quotes-and-schema-drift.md`. Its
+blocker: `POST /import` and `/import/preview` **cannot parse a real Goodreads export** on Node.
+Goodreads Excel-escapes ISBNs as `="9780441172719"`; Python's `csv` accepts a quote that is not at
+field start, `csv-parse` throws `Invalid Opening Quote`. The repo's own `tests/sample_goodreads.csv`
+has this shape on every row. The measured fix is `relax_quotes: true` in `PY_DICT_READER_OPTIONS`,
+which matches Python on 6 of 8 quote shapes (up from 3); the two residual divergences are documented
+and accepted. Wave 5 (Python cutover) must not start while this is open.
 Because Claude output is nondeterministic, "parity" for these flows means the _request_ is
 byte-identical: `scripts/gen_claude_fixtures.py` monkeypatches `tracked_create` to record
 real Python `create()` kwargs into `fixtures/claude/prompts.json`, and

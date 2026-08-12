@@ -7,6 +7,8 @@ import { GET as catalogSearch } from '../../../app/api/catalog/search/route';
 import { POST as directiveDraft } from '../../../app/api/directive/draft/route';
 import { POST as booksSimilar } from '../../../app/api/books/[id]/similar/route';
 import { POST as discoverRoute } from '../../../app/api/discover/route';
+import { POST as enrichStart } from '../../../app/api/enrich/start/route';
+import { enrichJobs } from '../schema';
 
 // Cross-cutting: finding 2 of the wave-3a final review. Both routes hand-build the
 // same corrected 429 shape by calling the shared rateLimitExceededResponse helper
@@ -136,6 +138,39 @@ describe('429 rate-limit response shape, driven through the real routes', () => 
         );
       }
       await assertCorrected429(last!);
+    } finally {
+      _setDbForTests(null);
+      await close();
+    }
+  });
+
+  it('POST /api/enrich/start enforces RATE_LIMITS.enrichStart as five per minute per authenticated user', async () => {
+    silenceLogs();
+    const { db, close } = await makeTestDb();
+    try {
+      _setDbForTests(db);
+      expect(RATE_LIMITS.enrichStart).toEqual({ limit: 5, windowSeconds: 60 });
+      await db.insert(enrichJobs).values({
+        jobId: 'active-local-job',
+        progress: 0,
+        total: 0,
+        userId: 'local',
+        status: 'running',
+      });
+      let last: Response | undefined;
+      for (let i = 0; i < RATE_LIMITS.enrichStart.limit + 1; i++) {
+        last = await enrichStart(
+          new Request('http://test/api/enrich/start', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({}),
+          })
+        );
+      }
+      expect({ status: last!.status, body: await last!.json() }).toEqual({
+        status: 429,
+        body: { error: 'Rate limit exceeded: 5 per 1 minute' },
+      });
     } finally {
       _setDbForTests(null);
       await close();

@@ -83,10 +83,22 @@ same diff.
 
 ## Architecture (4c-2)
 
+> **CORRECTION, 2026-08-11 (post-inventory).** This spec originally said `waitUntil`. **That API is
+> not reachable here.** Next `16.2.9`'s `next/server` exports `NextFetchEvent` — whose *instances*
+> carry `waitUntil` — and route handlers in this repo receive plain `(Request, ctx)`, never a
+> `NextFetchEvent`. `@vercel/functions`, which exports a standalone `waitUntil`, is not a
+> dependency. The continuation mechanism is therefore **`after()` from `next/server`**, which the
+> installed version does export and which is the Next-native "run this after the response is sent"
+> primitive. The architecture is unchanged — fire a continuation after responding — only the API
+> name differs. Adding `@vercel/functions` was the alternative and was rejected: `after()` needs no
+> new dependency. Note that `after()` work still counts toward the function's duration, which is
+> fine here because the continuation only *dispatches* a fetch; the chunk itself runs in the tick's
+> own invocation with its own budget.
+
 ```
 POST /enrich/start ──► create job row (pending)          [idempotent: see guards]
                        run chunk 1 inline ──► progress saved
-                       waitUntil(fetch /api/enrich/tick)  [fire-and-forget]
+                       after(fetch /api/enrich/tick)      [fire-and-forget]
                                     │
 /api/enrich/tick  ◄─────────────────┘   secret-authed, NOT user-authed
    claim: UPDATE ... WHERE lease expired RETURNING   (atomic, one winner)
@@ -108,9 +120,34 @@ Three properties make this safe rather than clever:
 3. **The lease makes double-invocation harmless.** Poll-repair and cron may fire simultaneously;
    the atomic claim means exactly one wins.
 
-**Progress is derived, not accumulated.** Each chunk recomputes progress as the count of the user's
-books that actually hold enrichment rows. Every crash mid-chunk is therefore harmless: no
-double-counting, and a re-claim resumes exactly where reality is.
+**Progress is derived, not accumulated.** Each chunk recomputes progress from the database rather
+than incrementing a counter. Every crash mid-chunk is therefore harmless: no double-counting, and a
+re-claim resumes exactly where reality is.
+
+> **AMENDMENT, 2026-08-11 (post-inventory), approved by Chase.** The original rule — "count the
+> user's books that hold enrichment rows" — is **wrong under `force`**, where every book already
+> holds a row and progress would read 100% immediately. It also left a hole the plan draft caught:
+> `POST /enrich/start` accepts `force` and `limit`, Python keeps them alive in the BackgroundTask
+> closure, and a tick that receives only a `job_id` has no way to recover them.
+>
+> Resolution — **persist both on the job row** (`force boolean not null default false`,
+> `limit integer null`), read by every tick, and make the progress rule **relative to the run**:
+>
+> - `processed_this_run` = books whose enrichment `resolved_at >= job.started_at`
+> - `progress` = `processed_this_run` + (`force` ? 0 : books whose enrichment predates the run)
+> - remaining work under `limit` = `limit - processed_this_run`
+>
+> For a non-forced run this collapses back to "every book holding an enrichment row", matching
+> Python's `skipped + i` progress and `skipped + len(work)` total. It stays derived, so it stays
+> crash-safe.
+>
+> **No ordering change is needed**, and none should be added: Python's book query has no `ORDER BY`
+> (verified), so *which* books a `limit` selects was never a defined property. Selecting arbitrary
+> unenriched books per tick is faithful to Python, and the count is what `limit` actually constrains.
+>
+> Practical exposure today is nil — `SetupWizard.tsx:565` is the only caller and passes neither
+> option — but the API contract accepts both, and a tick silently ignoring `force` would "complete"
+> a forced run having re-enriched only the first chunk.
 
 ---
 
@@ -164,6 +201,8 @@ On `enrich_jobs`, via Alembic (Python owns migrations until wave 5) **and** the 
 |---|---|
 | `lease_expires_at TIMESTAMP NULL` | The claim. Expired-or-null means claimable. |
 | `attempts INTEGER NOT NULL DEFAULT 0` | Incremented per claim; feeds guard layer 4. |
+| `force BOOLEAN NOT NULL DEFAULT false` | Run option that must survive across ticks (see amendment). |
+| `limit INTEGER NULL` | Run option that must survive across ticks (see amendment). Quote the column name if `limit` is reserved in this context. |
 | Partial unique index on `(user_id) WHERE status IN ('pending','running')` | Guard layer 2. |
 
 `started_at` keeps its current meaning (first start) rather than being overloaded as a heartbeat, so
@@ -200,7 +239,26 @@ enrichment rows field-for-field. Plus unit tests where a subtle port bug would b
 HIGH/MEDIUM/LOW confidence boundaries, ISBN-then-search resolution order, skip-unless-`force`, and
 the upsert shape.
 
-**4c-2 is concurrency, so the tests must actually race:**
+> **CORRECTION, 2026-08-11 (post-inventory).** "The tests must actually race" is **not achievable
+> with the current harness**, and the plan must not pretend otherwise. `helpers/pglite.ts` creates a
+> single `PGlite` instance wrapped once by Drizzle, and production uses a one-connection postgres-js
+> pool per module instance — so there is no way to open two genuinely overlapping transactions on
+> separate connections in-process. No existing Node test races two writers; the one test labelled
+> concurrency interleaves sequentially inside a fake client.
+>
+> What the in-process tests CAN prove, and must:
+> - the partial unique index really rejects a second active job (sequential insert → violation),
+>   which is the property that matters, since the index is what closes the double-click race;
+> - the lease claim's conditional `UPDATE ... WHERE ... RETURNING` returns a row when claimable and
+>   **no row** when not — atomicity of a single statement is Postgres's guarantee, not something a
+>   test needs to re-derive;
+> - every guard built on those: attempts cap, no-progress stall, status re-arm, secret check.
+>
+> What they CANNOT prove is true simultaneity. The plan must **state that limitation explicitly**
+> rather than write a sequential test and describe it as a race. If a real race test is wanted, it
+> belongs in a separate human-run integration path against a real Postgres, not in the Vitest suite.
+
+**4c-2 is concurrency, so the tests must be honest about what they prove:**
 
 - Two simultaneous claims on one job → exactly one winner, one no-op
 - Two simultaneous `POST /enrich/start` → exactly one job row (proves the index, not just the check)

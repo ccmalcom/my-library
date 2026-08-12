@@ -882,3 +882,41 @@ harness before the code — and read the dev server's own log early.** It had sa
 Also worth knowing: a programmatic blob download does not persist to disk under automation, so
 "a human clicking Download gets a usable file" stayed explicitly unverified rather than being claimed.
 Both facts are now in the [[node-route-live-verification]] memory.
+
+## Wave 4c-2 live verification — two defects no suite could have caught (2026-08-11)
+
+Wave 4c-2 was signed off with all five gates green. Thirty minutes of driving the real app found
+two defects, and the shape of both is worth generalizing.
+
+**1. The test database was more forgiving than the real one.** `POST /enrich/start` 500'd on its
+first real request: `enrich_jobs.progress`/`total` are `NOT NULL` with no server default, the
+insert omitted them, drizzle emitted SQL `default`, Postgres refused. It passed 493 tests because
+the hand-written PGlite mirror declared `not null default 0` for those columns. **A hand-written
+mirror of a migration-owned schema is a second source of truth, and it will drift toward whatever
+makes tests pass.** Worse, `tsc` cannot save you here: drizzle's `$inferInsert` treats a
+`notNull()` column with no `.default()` as optional, so the only signal is a runtime constraint
+violation against a database that has the real DDL.
+
+The generalizable guard — derive the contract from the SQLAlchemy models (the Alembic baseline is
+`Base.metadata.create_all()`, so the models *are* the schema) and assert the mirror against it —
+is Task 2 of the wave 4d plan.
+
+**2. The port rejected the input the feature exists to accept.** `POST /api/import` cannot parse a
+real Goodreads export: Goodreads Excel-escapes ISBNs as `="9780441172719"`, Python's `csv` accepts
+a quote that is not at field start, `csv-parse` throws `Invalid Opening Quote`. The repo's own
+`tests/sample_goodreads.csv` has this shape on all six rows — the fixture was right there and the
+Node tests simply never fed it through the parser. **When porting a parser, the first test should
+be the real-world artifact the parser exists for, not a synthetic minimal case.**
+
+**The meta-lesson, and it is the same one both times:** a green suite proves the specified cases
+work. It says nothing about cases nobody specified, and *less than nothing* when the test harness
+itself is the thing that diverged. Both defects were on the happy path of the primary user flow.
+Neither needed a clever test — they needed one real request.
+
+Two process notes from the same session:
+
+- **Never `npx prettier --write` over a glob.** `lib/server/__tests__/*.test.ts` reformatted twelve
+  committed files I had not touched. Name every file explicitly; check `git status` after.
+- **A verification run that changes a constant must change it back and re-verify.** Proving the
+  `after()` continuation needed `CHUNK_BUDGET_MS` at 1500 instead of 240000; the final run was
+  repeated at the production value so the evidence matches what ships.

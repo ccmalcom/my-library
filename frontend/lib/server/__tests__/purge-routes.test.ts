@@ -78,6 +78,8 @@ async function seedUser(db: Db, userId: string) {
   await db.insert(schema.enrichJobs).values({
     userId,
     jobId: `job-${userId}`,
+    progress: 0,
+    total: 0,
     status: 'done',
   });
   await db.insert(schema.usageEvents).values({

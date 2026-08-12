@@ -67,8 +67,11 @@ export const NODE_DEFAULT_ROUTES: BackendRule[] = [
   { prefix: '/import/preview', methods: ['POST'], exact: true },
   { prefix: '/import', methods: ['POST'], exact: true },
   { prefix: '/export', methods: ['GET'], exact: true },
-  // Wave 4c-1: synchronous compatibility enrichment only. Background job routes stay Python.
+  // Wave 4c-1: synchronous compatibility enrichment.
   { prefix: '/enrich', methods: ['POST'], exact: true },
+  // Wave 4c-2: public background-job API. Internal tick/janitor are same-origin /api only.
+  { prefix: '/enrich/start', methods: ['POST'], exact: true },
+  { prefix: '/enrich/status/', methods: ['GET'] },
 ];
 
 /** Routes that only exist on the Node backend. */

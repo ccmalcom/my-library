@@ -43,14 +43,13 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/taste-signal', 'POST')).toBe('/api');
   });
 
-  test('auto: wave-4b import/export routes go to Node; wave 4c stays on Python', () => {
+  test('auto: wave-4b import/export routes go to Node', () => {
     expect(baseFor('/library', 'DELETE')).toBe('/api');
     expect(baseFor('/profile', 'DELETE')).toBe('/api');
     expect(baseFor('/account', 'DELETE')).toBe('/api');
     expect(baseFor('/import/preview', 'POST')).toBe('/api');
     expect(baseFor('/import', 'POST')).toBe('/api');
     expect(baseFor('/export', 'GET')).toBe('/api');
-    expect(baseFor('/enrich/start', 'POST')).toBe(PY);
   });
 
   test('wave-4b rules are exact and method-specific', () => {
@@ -63,12 +62,14 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/export/history', 'GET')).toBe(PY);
   });
 
-  test('auto: wave-4c-1 synchronous enrich goes to Node; background enrichment stays Python', () => {
+  test('auto: wave-4c enrichment routes are exact and method-scoped', () => {
     expect(baseFor('/enrich', 'POST')).toBe('/api');
     expect(baseFor('/enrich', 'GET')).toBe(PY);
     expect(baseFor('/enrich/child', 'POST')).toBe(PY);
-    expect(baseFor('/enrich/start', 'POST')).toBe(PY);
-    expect(baseFor('/enrich/status/job-1', 'GET')).toBe(PY);
+    expect(baseFor('/enrich/start', 'POST')).toBe('/api');
+    expect(baseFor('/enrich/start', 'GET')).toBe(PY);
+    expect(baseFor('/enrich/status/job-1', 'GET')).toBe('/api');
+    expect(baseFor('/enrich/status/job-1', 'POST')).toBe(PY);
   });
 
   test('node-only prefixes always hit Node', () => {
@@ -90,7 +91,7 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/stats')).toBe('/api');
   });
 
-  test('wave-2/3a/3b/3c/4a/4b/4c-1 flip list is exactly as designed', () => {
+  test('wave-2/3a/3b/3c/4a/4b/4c flip list is exactly as designed', () => {
     expect(NODE_DEFAULT_ROUTES).toEqual([
       { prefix: '/stats' },
       { prefix: '/books', methods: ['GET', 'PATCH', 'DELETE'] },
@@ -118,6 +119,8 @@ describe('backend switcher (method-aware)', () => {
       { prefix: '/import', methods: ['POST'], exact: true },
       { prefix: '/export', methods: ['GET'], exact: true },
       { prefix: '/enrich', methods: ['POST'], exact: true },
+      { prefix: '/enrich/start', methods: ['POST'], exact: true },
+      { prefix: '/enrich/status/', methods: ['GET'] },
     ]);
   });
 
@@ -137,8 +140,7 @@ describe('backend switcher (method-aware)', () => {
     expect(baseFor('/books', 'POST')).toBe('/api');
     expect(baseFor('/books/12', 'DELETE')).toBe('/api');
     expect(baseFor('/discover', 'POST')).toBe('/api'); // wave 3c-3
-    // still Python — waves 4/5
-    expect(baseFor('/enrich/start', 'POST')).toBe(PY); // wave 4
+    // still Python — wave 5
     expect(baseFor('/admin/users', 'GET')).toBe(PY); // wave 5
     // unchanged from waves 1-2
     expect(baseFor('/directive', 'PUT')).toBe('/api');

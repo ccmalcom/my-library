@@ -272,6 +272,10 @@ class EnrichJob(Base):
     total: Mapped[int] = mapped_column(Integer, default=0)      # total books in this run
     started_at: Mapped[datetime | None] = mapped_column(DateTime)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+    attempts: Mapped[int] = mapped_column(Integer, server_default="0", nullable=False)
+    force: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
+    run_limit: Mapped[int | None] = mapped_column(Integer)
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -508,7 +512,8 @@ def _ensure_user_id_column(engine, table_name: str) -> None:
     existing rows are backfilled to the local user automatically and new inserts that don't
     specify a user still land under the local tenant — so an old single-user DB keeps working.
     """
-    from sqlalchemy import inspect as sa_inspect, text as sa_text
+    from sqlalchemy import inspect as sa_inspect
+    from sqlalchemy import text as sa_text
 
     insp = sa_inspect(engine)
     if table_name not in insp.get_table_names():
@@ -531,7 +536,8 @@ def init_db() -> None:
     now backfills a `user_id` column onto pre-existing tables so an old single-user DB is
     transparently upgraded to the multi-tenant shape under the LOCAL_USER_ID tenant.
     """
-    from sqlalchemy import inspect as sa_inspect, text as sa_text
+    from sqlalchemy import inspect as sa_inspect
+    from sqlalchemy import text as sa_text
 
     engine, _ = _ensure_engine()
 

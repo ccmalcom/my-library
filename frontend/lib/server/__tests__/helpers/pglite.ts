@@ -175,14 +175,24 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       id serial primary key,
       job_id text not null unique,
       user_id text not null default 'local',
-      status text not null default 'pending',
-      progress integer not null default 0,
-      total integer not null default 0,
+      -- Deliberately NO defaults: the Alembic-owned table has none for these
+      -- three (Python sets them from ORM-level defaults). Adding them here
+      -- hides insert bugs that only appear against the real database.
+      status text not null,
+      progress integer not null,
+      total integer not null,
       started_at timestamp,
       finished_at timestamp,
       error text,
+      lease_expires_at timestamp,
+      attempts integer not null default 0,
+      force boolean not null default false,
+      run_limit integer,
       created_at timestamp not null default current_timestamp
     );
+    create unique index uq_enrich_jobs_active_user
+    on enrich_jobs (user_id)
+    where status in ('pending', 'running');
     create table feedback (
       id serial primary key,
       user_id text not null default 'local',
