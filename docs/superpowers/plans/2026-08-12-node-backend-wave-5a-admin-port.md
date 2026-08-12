@@ -102,6 +102,9 @@ assertions to check literally.
 
 ## Task 0: Baseline gate
 
+**Owner: the driving session (Sonnet/Claude), not Codex** — the last command is pytest, which
+hangs Codex's sandbox. Do not dispatch this task.
+
 **Files:** none — this task changes nothing.
 
 - [ ] **Step 1: Confirm the tree is clean and green before touching anything**
@@ -444,9 +447,14 @@ cd frontend
 npm run type-check
 npx eslint lib/server/__tests__/helpers/pglite.ts
 npx prettier --check lib/server/__tests__/helpers/pglite.ts
-cd .. && .venv/bin/ruff check scripts/gen_parity_fixtures.py
-cd .. && .venv/bin/pytest -p no:warnings
+cd ..
+.venv/bin/ruff check scripts/gen_parity_fixtures.py
+.venv/bin/pytest -p no:warnings
 ```
+
+Note the single `cd ..`. Wave 4d's plan wrote this block as two consecutive `cd .. && ...` lines,
+which lands the second command in `/home/chase/Documents` where `.venv/bin/pytest` does not exist.
+Run these from the repo root, not by chaining another `cd ..`.
 
 ---
 
@@ -1296,8 +1304,29 @@ Expected: FAIL at import resolution. Expected-red by name:
 
 - [ ] **Step 3: Add `createInvite` to `lib/server/invites.ts`**
 
-Extend the imports first: add `eq` to the `drizzle-orm` import, and add
-`import { inviteUser } from '@/lib/server/supabaseAdmin';`.
+Extend the imports first:
+
+```ts
+import { count, desc, eq } from 'drizzle-orm';
+import { getDb, schema, type Db } from '@/lib/server/db';
+import { tsToIso } from '@/lib/server/serialize';
+import { inviteUser } from '@/lib/server/supabaseAdmin';
+import { upsertUserSettings } from '@/lib/server/settings';
+import { encrypt } from '@/lib/server/crypto';
+```
+
+**There is no `setDisplayName` or `setAnthropicKey` on the Node side.** Wave 2 exposes a single
+generic writer, and the key must be encrypted before it is stored:
+
+```ts
+upsertUserSettings(
+  db: Db,
+  userId: string,
+  patch: Partial<{ anthropicApiKeyEncrypted: string | null; displayName: string }>
+): Promise<void>
+
+encrypt(plaintext: string, key?: Buffer): string
+```
 
 ```ts
 export class InviteError extends Error {
@@ -1335,11 +1364,16 @@ export async function createInvite(opts: {
 
   const db = getDb();
   if (sbId) {
-    if (opts.displayName && opts.displayName.trim()) {
-      await setDisplayName(db, sbId, opts.displayName);
+    // Python guards on the untrimmed value but STORES the trimmed one:
+    // user_settings.py does `name = (name or "").strip()` and
+    // `raw_key = (raw_key or "").strip()`. Trim on the way in, not just in the guard.
+    const displayName = opts.displayName?.trim();
+    if (displayName) {
+      await upsertUserSettings(db, sbId, { displayName });
     }
-    if (opts.anthropicApiKey && opts.anthropicApiKey.trim()) {
-      await setAnthropicKey(db, sbId, opts.anthropicApiKey);
+    const apiKey = opts.anthropicApiKey?.trim();
+    if (apiKey) {
+      await upsertUserSettings(db, sbId, { anthropicApiKeyEncrypted: encrypt(apiKey) });
     }
   }
 
@@ -1395,9 +1429,12 @@ export async function createInvite(opts: {
 `book_count: int = 0`, so the serialized 201 body should carry `0` even for a user with books. If
 the recorded fixture disagrees, the fixture wins — report the discrepancy.
 
-Import `setDisplayName` / `setAnthropicKey` from wherever the wave-2 settings writers live; find
-them with `grep -rn "anthropic_api_key_encrypted" frontend/lib/server --include=*.ts`. Do not
-re-port encryption — `lib/server/crypto.ts` already exists.
+Do not re-port encryption — `lib/server/crypto.ts` already provides `encrypt`.
+
+Python calls `set_display_name` and `set_anthropic_key`, which are two functions; Node has one
+`upsertUserSettings` taking a partial patch. Two sequential calls (as above) match Python's two
+sequential writes. Do **not** merge them into a single patch object: Python writes the display name
+before the key, and if the key write raises, the display name must already be committed.
 
 - [ ] **Step 4: Create the route**
 
@@ -1625,9 +1662,11 @@ Expected: PASS, both scenarios.
 - Modify: `frontend/lib/server/__tests__/parity-writes-admin.test.ts`
 
 **Interfaces:**
-- Consumes: `deleteUser` from `lib/server/supabaseAdmin`; `deleteAccount` from `lib/server/purge`
-  (wave 4a — find its exact exported name with
-  `grep -n "export async function" frontend/lib/server/purge.ts`).
+- Consumes: `deleteUser` from `lib/server/supabaseAdmin`; **`deleteAccountRows(tx: DbTx, userId:
+  string): Promise<AccountPurgeResult>`** from `lib/server/purge` (wave 4a). Note the name — there
+  is no `deleteAccount` export — and note that it takes a **transaction**, not a `Db`. Call it the
+  way `app/api/account/route.ts` already does:
+  `await db.transaction((tx) => deleteAccountRows(tx, userId))`.
 - Produces: `revokeUser(opts: { supabaseUserId: string }): Promise<{ supabase_user_id: string;
   status: string }>`.
 
@@ -1646,7 +1685,13 @@ enclosing transaction would roll that flag back on a purge failure and strand th
 where every retry fails.
 
 Every other Node write route in this codebase wraps its work in `db.transaction`. **This one must
-not.** Do not "fix" it. Do not let a review find "fix" it.
+not.** Do not "fix" it. Do not let a review finding "fix" it.
+
+**"Not transactional" means no single transaction spanning phases 2-4 — it does not mean no
+transactions at all.** Phase 4 is itself transactional, because `deleteAccountRows` takes a `DbTx`
+and must be called as `db.transaction((tx) => deleteAccountRows(tx, userId))`. That is correct and
+matches Python, where `delete_account` opens its own `session_scope`. The purge is atomic within
+itself; what must **not** happen is the revoked-flag commit and the purge sharing one transaction.
 
 - [ ] **Step 1: Add the failing tests**
 
@@ -1747,8 +1792,12 @@ Expected-red by name: `replays the recorded admin_revoke scenario`,
 
 - [ ] **Step 3: Implement `revokeUser`**
 
-Extend `invites.ts`'s imports first: add `utcnowTs` to the `@/lib/server/serialize` import, and
-`deleteUser` from `@/lib/server/supabaseAdmin`, and `deleteAccount` from `@/lib/server/purge`.
+Extend `invites.ts`'s imports first: add `utcnowTs` to the `@/lib/server/serialize` import, add
+`deleteUser` from `@/lib/server/supabaseAdmin`, and add `deleteAccountRows` from
+`@/lib/server/purge`.
+
+The purge seam wraps the transaction rather than `deleteAccountRows` itself, so a test can replace
+the whole phase without needing a `DbTx`:
 
 ```ts
 let deleteUserImpl: typeof deleteUser = deleteUser;
@@ -1756,9 +1805,14 @@ export function _setDeleteUserForTests(fn: typeof deleteUser | null): void {
   deleteUserImpl = fn ?? deleteUser;
 }
 
-let deleteAccountImpl: typeof deleteAccount = deleteAccount;
-export function _setDeleteAccountForTests(fn: typeof deleteAccount | null): void {
-  deleteAccountImpl = fn ?? deleteAccount;
+/** Phase 4 of revokeUser, as one unit. Transactional inside; see the note above. */
+type PurgeFn = (userId: string) => Promise<unknown>;
+const realPurge: PurgeFn = (userId) =>
+  getDb().transaction((tx) => deleteAccountRows(tx, userId));
+
+let purgeImpl: PurgeFn = realPurge;
+export function _setDeleteAccountForTests(fn: PurgeFn | null): void {
+  purgeImpl = fn ?? realPurge;
 }
 
 /**
@@ -1800,15 +1854,16 @@ export async function revokeUser(opts: {
       .where(eq(schema.invites.supabaseUserId, supabaseUserId));
   }
 
-  await deleteAccountImpl(supabaseUserId);
+  // Phase 4. Transactional in itself, but NOT sharing a transaction with the
+  // revoked-flag commit above -- that separation is the whole point.
+  await purgeImpl(supabaseUserId);
 
   return { supabase_user_id: supabaseUserId, status: 'revoked' };
 }
 ```
 
-Match `deleteAccount`'s real signature from `lib/server/purge.ts` — it may take `(db, userId)`
-rather than `(userId)`. Adapt the call and the test seam's type accordingly; do not change
-`purge.ts`.
+Do not modify `purge.ts`. `deleteAccountRows` is shared with `DELETE /account` (wave 4a) and
+changing its signature would break that route's parity.
 
 - [ ] **Step 4: Create the route**
 
