@@ -154,7 +154,7 @@ wave-4c-1 edit is additive optional `bookIds?: number[]` on `EnrichLibraryOption
 `force: true` otherwise recomputes `work`, repeatedly selects the same first book, and trips the
 no-progress guard on tick 2. Omitting it preserves prior behavior and the 4c-1 parity test.
 Still out of scope or unverified are Redis, arq, QStash, every queue port, global cross-user catalog
-rate coordination, admin routes, and Python cutover/deletion (wave 5). This wave is not claimed
+rate coordination, and Python cutover/deletion (wave 5b; admin routes shipped in 5a). This wave is not claimed
 deployed: Chase must confirm Vercel Fluid compute and the assumed ~300s duration and Hobby
 daily-cron cadence, and must supply `CRON_SECRET`. The cron config lives at `frontend/vercel.json`,
 **not** the repository root: the Vercel project's Root Directory is `frontend` (its build logs clone
@@ -179,9 +179,16 @@ real export on Node. The repo's own `tests/sample_goodreads.csv` has this shape 
 fix is `relax_quotes: true` in `PY_DICT_READER_OPTIONS`, which matches Python on 6 of 8 quote
 shapes (up from 3); the two residual divergences are documented and accepted.
 
-**Wave 5a (admin surface port) invariants.** `invites.ts` holds `listRoster`, `createInvite`,
-`backfillFromSupabase`, `revokeUser`; `supabaseAdmin.ts` is the GoTrue client with an injectable
-`GoTrueFetch` so no test touches the network. What must not be "cleaned up":
+**Wave 5a (admin surface port) invariants.** Wave 5a is complete and live-verified: all four read
+routes plus invite, backfill and revoke were exercised against the real Supabase project, so all
+three GoTrue operations are proven under the apikey-only header. `invites.ts` holds `listRoster`,
+`createInvite`, `backfillFromSupabase`, `revokeUser`; `supabaseAdmin.ts` is the GoTrue client with
+an injectable `GoTrueFetch` so no test touches the network. It sends the key on `apikey` ONLY and
+never on `Authorization` — Supabase parses an `Authorization` value as a JWT, so an opaque
+`sb_secret_*` key there yields `Invalid JWT`; Python still sends both and would 502 on a new-style
+key, deliberately unfixed because wave 5b deletes it. `baseAndHeaders` reads
+`SUPABASE_URL ?? NEXT_PUBLIC_SUPABASE_URL`, matching `auth.ts::jwksUrl`; without that fallback auth
+works while every admin write 502s. What must not be "cleaned up":
 
 - **Transaction boundaries differ per function on purpose, and harmonising them is a bug.**
   `backfillFromSupabase` IS transactional (its only remote call is a read that completes first).

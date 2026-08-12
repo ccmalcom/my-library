@@ -2315,3 +2315,34 @@ Two fixes, both covered by new tests (`supabase-admin.test.ts`, now 9 cases):
 A real Supabase auth user was created for `chasecmalcom+wave5a@gmail.com` (invite row **id 10**,
 `supabase_user_id 6be12001-d0c2-4195-b37a-0d3c6f7e4baf`) and a real invite email was sent. Nothing
 was deleted, and no pre-existing row was modified. Cleaning this up is itself Step 5's revoke.
+
+## Verification Record — Step 5 revoke (2026-08-12, Chase-run)
+
+Chase ran the revoke manually against the real project and reports it works. This closes the last
+open item from the live run above and completes Task 10.
+
+**What this proves that nothing else did:** `delete_user` is the third and final GoTrue operation,
+and it was the one still unexercised with the new opaque `sb_secret_*` key. All three admin write
+routes (`invite_user`, `list_users`, `delete_user`) are now observed working under the apikey-only
+header change — the change is fully validated against real calls, not partly documentation-derived.
+
+Reported by Chase, not observed by Claude. The specifics worth pinning down if this record is ever
+audited: whether the `invites` row flipped to `revoked_at` non-null, whether the Supabase auth user
+actually disappeared from the project, and whether the tenant purge removed that user's rows while
+leaving other tenants intact. Constraint 4's retry-safety ordering (revoked mark committed BEFORE
+the purge, no enclosing transaction) is not exercised by a successful revoke in any case — only the
+hand-written purge-failure test in `parity-writes-admin.test.ts` covers that, which is why that test
+must never be converted to a `runScenario` call.
+
+### Wave 5a status
+
+**Tasks 0-10 complete.** Nothing in this plan remains open. Residual gaps carried forward, none of
+them blockers:
+
+- Step 3 email delivery / `redirect_to` -> `/auth/callback` — needs Chase's inbox; `FRONTEND_URL`
+  governs whether `redirect_to` is sent at all.
+- Step 6 second half (delete an invite row, re-run backfill, expect `added: 1`) — needs direct DB
+  access, which the permissions classifier still denies.
+- The two DEFERRED MINORS from the ledger: the schema-contract guard never checks a default's
+  VALUE (pre-existing), and `createInvite` does not wrap a crypto `RuntimeError` into `InviteError`
+  (misconfiguration-only: 500 on Node vs 422 on Python).
