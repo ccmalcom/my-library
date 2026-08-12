@@ -277,6 +277,23 @@ Rules:
   `.claude/hooks/on_stop.py`, which is the mechanical gate (tsc, ruff, eslint, prettier, pytest);
   the two are complementary, not redundant.
 
+### Controller cost rules (measured 2026-08-12)
+
+A controller turn costs about `context_size × 0.1`; 56% of a wave session's spend is just
+re-reading context, and only 14% is generating output. So the **context floor is the only cost
+number that matters** — a Codex dispatch is 25.7k units (a 2-message Sonnet forwarder that reads
+nothing), about 1.3 controller turns. Do not optimize the dispatch; optimize the floor.
+
+- **Restart the controller between task groups.** The `.superpowers/sdd/` ledger is the state of
+  record, so a restart is free. Resetting a 167k floor to 62k cuts per-turn cost ~60%.
+- **Never leave a large-context controller idle over an hour.** The cache expires and the whole
+  context re-enters at 1.25× instead of 0.1× — 12.5× the read price, ~192k units at a 167k floor.
+  Between tasks, finish the review or end the session. This is the single largest measured waste.
+- **Read one task's text per dispatch, not the whole plan doc.** A 20.5k-token plan held resident
+  costs ~2k units every turn; re-reading one task costs ~2.5k once.
+- Full measurements, plus two cost hypotheses that were confidently wrong, are in
+  `docs/superpowers/codex-workflow-notes.md`.
+
 ## Locked decisions (do not relitigate)
 
 1. **Goodreads API is dead.** CSV export is the only ingest path. Never scrape Goodreads or call its API.

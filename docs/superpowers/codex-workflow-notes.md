@@ -1021,3 +1021,113 @@ The second `cd ..` runs from the repo root and lands in the parent directory, wh
 Write it as one `cd ..` followed by bare commands. More generally: **a chained `cd` in a
 multi-command block is state that persists into the next line**, and plans get copied between waves
 verbatim, so a directory bug propagates silently. Prefer absolute paths or a single `cd` at the top.
+
+## Controller cost is context × turns, not Codex (2026-08-12, measured mid-wave-5a)
+
+Measured against the live wave 5a execution session (`80f66831`) and all 502 transcripts on
+disk. The question was whether folding Codex into the workflow raises Claude usage. It does not
+— but the measurement found where the money actually goes, and it is not where I first guessed.
+
+### Codex costs almost nothing on the Claude side
+
+Every `/codex:rescue` dispatch spawns a **2-message Sonnet forwarder that reads no files**. All 23
+dispatches ever recorded in this repo:
+
+| | cost units |
+| --- | --- |
+| median | 25,684 |
+| mean | 28,700 |
+| range | 18,002 – 56,222 |
+| **all 23 combined** | **660,099 — 0.2% of total spend** |
+
+One dispatch ≈ **1.3 controller turns**, on Sonnet rather than Opus. The tight 18k–56k band exists
+*because* the forwarder is file-blind — its context is the task text and nothing else, so it does
+not scale with repo size. That is the property to protect: the moment a forwarder greps first, or
+the controller explores to "write a better prompt," the cost becomes unbounded and tracks context
+size. `Do not explore the repo before delegating` is a cost rule, not just a quality rule.
+
+Cost units throughout = `cache_read×0.1 + cache_write×1.25 + input×1 + output×5`.
+
+### Where the money actually goes
+
+Controller cost decomposition for the wave 5a session (889k units over 39 turns):
+
+| | share |
+| --- | --- |
+| re-reading context (`cache_read × 0.1`) | **55.8%** |
+| writing new context (`cache_write × 1.25`) | 30.6% |
+| generating output (`output × 5`) | 13.7% |
+
+Output averaged ~300 tokens/turn. **The controller is barely generating anything — it is paying to
+re-read.** Per-turn cost is therefore ≈ `context_size × 0.1`, which makes the context floor the
+only number that matters. That session's floor: 62.5k after turn 1, 167k by turn 39. Plan doc plus
+prompt templates alone are ~23k tokens of it — about 2,300 units on *every* turn.
+
+### The 5% tax nobody was looking at
+
+Across all 16,795 turns on disk, **16.7M units (5.0% of all spend) went to re-writing context that
+was already cached** — 25× everything Codex has cost. 80 events:
+
+| cause | events | units | share of waste |
+| --- | --- | --- | --- |
+| >1h idle (cache TTL expiry) | 29 | **7.02M** | 42% |
+| <60s gap (structural) | 22 | 4.71M | 28% |
+| 5min–1h | 16 | 3.15M | 19% |
+| 60s–5min | 13 | 1.86M | 11% |
+
+Waste per event is proportional to the floor when it fires: a 167k context that expires costs
+~192k units to rebuild, because the whole thing re-enters at 1.25× instead of 0.1× — **12.5× the
+read price.**
+
+The structural 28% is **not explained.** The one event traced in detail preserved total context but
+moved the cache boundary (37,986 stayed cached, 82,809 was re-written 13 seconds later). Cause
+unidentified. Recorded as an open question rather than a story — see below.
+
+### Two hypotheses that were wrong, and how they died
+
+Both are left in, because the pattern of failure is the useful part.
+
+1. **"It is narration overhead."** I reported 33 of 39 turns as tool-free narration. False. The
+   transcript writes **one record per content block**, each carrying the full turn's usage, so a
+   turn of `[thinking, tool_use]` is two records. Deduping by message id and keeping the first
+   record hid every tool call behind its `thinking` block. Real count: **36 of 39 turns had tool
+   calls.** Aggregate costs were unaffected (dedup by id was still correct); only the attribution
+   was wrong.
+2. **"ToolSearch invalidates the cache."** Plausible — it loads tool schemas, tools sit at the
+   front of the prompt. False. **120 ToolSearch calls, only 12 preceded a rewrite**, and those
+   clustered at a **median context of 264,913 tokens**. It correlates with big-context moments; it
+   does not cause them. Had this been written up unverified, it would have produced a
+   "batch your ToolSearch calls" rule that saves nothing.
+
+Same lesson this file already carries about Codex — *observations are reliable, attributions need
+checking* — applied to a cost analysis instead of a code review. **An unverified causal claim about
+tooling is not made safe by being quantitative.** Both hypotheses had real numbers attached.
+
+### A transcript-analysis gotcha worth keeping
+
+Subagent transcripts live at `<project>/<session-id>/subagents/agent-*.jsonl` — **one directory
+level deeper** than main-thread sessions. A `projects/*/*.jsonl` glob silently misses all of them.
+Here that was 348 files and **15.6% of total spend**. Any token accounting that does not explicitly
+include the `subagents/` layer is undercounting, and it will undercount precisely the
+subagent-driven work you are trying to evaluate.
+
+### Rules earned
+
+- **Restart the controller between task groups.** The ledger is already the state of record — the
+  SDD skill mandates it because conversation memory does not survive compaction. Resetting a 167k
+  floor to 62k cuts per-turn cost ~60%; over wave 5a's 7 remaining Codex tasks that is ~2.1M units,
+  roughly 3× everything Codex has cost this repo to date.
+- **Never park a large-context controller past an hour.** Biggest single waste bucket (7.02M
+  units). Between tasks, finish the review or let the session end — do not leave it idling.
+- **Read one task's text per dispatch, not the whole plan.** The 5a plan is 20.5k tokens. Resident
+  it costs ~2k units/turn forever; re-read per task it costs ~2.5k once. Net ~345k over a wave.
+- **Do not optimize the Codex dispatch.** 25.7k units median. It is noise against the above.
+
+Levers 1 and 2 compound: expiry waste is proportional to the floor at the moment it fires.
+
+### Open question
+
+What causes the structural (<60s) cache-boundary moves — 4.71M units, 28% of the waste? Not
+ToolSearch. The traced event followed a 12-call `TaskCreate` batch, but one instance is not
+evidence, and the mechanism (total context preserved, boundary moved) was not explained. Worth
+instrumenting before anyone writes a rule about it.
