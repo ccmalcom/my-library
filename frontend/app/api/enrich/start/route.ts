@@ -5,7 +5,6 @@ import { rearmAfterResponse } from '@/lib/server/enrichmentDispatch';
 import {
   claimJob,
   createOrGetActiveJob,
-  FUNCTION_CEILING_SECONDS,
   oneBookEnrichmentRunner,
   runClaimedChunk,
   serializeJob,
@@ -19,7 +18,10 @@ const EnrichStartBody = z.object({
   limit: z.number().int().nullable().default(null),
 });
 
-export const maxDuration = FUNCTION_CEILING_SECONDS;
+// Next.js requires a statically analyzable literal here — an imported binding fails the build
+// with "Invalid segment configuration export detected". Must stay equal to
+// FUNCTION_CEILING_SECONDS in lib/server/enrichmentJobs.ts; enrich-max-duration.test.ts asserts it.
+export const maxDuration = 300;
 
 async function readJob(db: Db, jobId: string) {
   const rows = await db.select().from(enrichJobs).where(eq(enrichJobs.jobId, jobId)).limit(1);

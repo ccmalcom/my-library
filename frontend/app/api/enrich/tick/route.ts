@@ -3,7 +3,6 @@ import { getDb } from '@/lib/server/db';
 import { isValidCronSecret, rearmAfterResponse } from '@/lib/server/enrichmentDispatch';
 import {
   claimJob,
-  FUNCTION_CEILING_SECONDS,
   oneBookEnrichmentRunner,
   runClaimedChunk,
 } from '@/lib/server/enrichmentJobs';
@@ -15,7 +14,10 @@ const EnrichTickBody = z
   })
   .strict();
 
-export const maxDuration = FUNCTION_CEILING_SECONDS;
+// Next.js requires a statically analyzable literal here — an imported binding fails the build
+// with "Invalid segment configuration export detected". Must stay equal to
+// FUNCTION_CEILING_SECONDS in lib/server/enrichmentJobs.ts; enrich-max-duration.test.ts asserts it.
+export const maxDuration = 300;
 
 export const POST = withApi(
   '/api/enrich/tick',
