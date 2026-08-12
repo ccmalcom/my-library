@@ -968,3 +968,56 @@ What survives as guidance: budget Codex's **exploration**, not its verification;
 the background rather than blocking a Bash call on them; and when a run is slow, **measure the
 gates yourself before theorising** — it costs four minutes and it is the difference between a fact
 and a plausible story.
+
+## Codex as a pre-execution plan reviewer — 4 findings, 4 real (2026-08-12)
+
+New use of Codex this session, and the highest value-per-minute it has produced so far: a
+**read-only review of a plan document before any execution**, dispatched with an explicit checklist
+of every symbol and signature the plan asserts.
+
+Wave 5a's plan claimed `setDisplayName`/`setAnthropicKey` and `deleteAccount` existed. Neither did —
+the real symbols are `upsertUserSettings(db, userId, patch)` plus `encrypt()`, and
+`deleteAccountRows(tx: DbTx, userId)`. Both would have failed at the first `tsc` of the task that
+used them, mid-wave, after a Codex dispatch had already burned its budget writing against a
+fictional API.
+
+**All four findings verified real.** That is a better hit rate than any post-implementation review
+in this repo so far, and the reason is structural: a plan asserts dozens of checkable facts in one
+place, and checking them is pure lookup work with no judgement required — exactly what a
+budget-boxed Codex run is good at.
+
+What made it work, and should be copied:
+
+- **Name the symbols to check, explicitly, in the prompt.** Not "review this plan" but "it asserts
+  X in file A, Y in file B — report any that do not exist or have a different signature." The
+  findings map one-to-one onto the checklist items.
+- **Say what not to run.** The prompt named pytest and `npm install` as forbidden and explained
+  why. No budget was lost to a hanging sandbox.
+- **Ask it to skip correct claims.** "If a claim is correct, do not list it" produced a four-item
+  list instead of a forty-item audit, and every item was actionable.
+- **Flag your own uncertainty in the plan first.** The plan already said "find `deleteAccount`'s
+  real signature — it may be `(db, userId)` or `(userId)`". Codex closed exactly those gaps. A plan
+  that hides its uncertainty gets a worse review than one that advertises it.
+
+It also caught a **parity** bug, not just a symbol bug: Python's `set_display_name` /
+`set_anthropic_key` strip their inputs before storing, while the plan's code trimmed only inside the
+guard and stored the untrimmed value. No fixture would have caught that — the recorder only ever
+sends clean values. Symbol-checking and behavior-checking are worth asking for in the same prompt.
+
+## A gate-block shell bug that has now shipped twice (2026-08-12)
+
+Both wave 4d's and wave 5a's plans wrote their final gate block as:
+
+```bash
+cd frontend
+...
+cd .. && .venv/bin/ruff check scripts/foo.py
+cd .. && .venv/bin/pytest -p no:warnings
+```
+
+The second `cd ..` runs from the repo root and lands in the parent directory, where
+`.venv/bin/pytest` does not exist. Wave 5a's copy was inherited from wave 4d's by pattern-matching.
+
+Write it as one `cd ..` followed by bare commands. More generally: **a chained `cd` in a
+multi-command block is state that persists into the next line**, and plans get copied between waves
+verbatim, so a directory bug propagates silently. Prefer absolute paths or a single `cd` at the top.
