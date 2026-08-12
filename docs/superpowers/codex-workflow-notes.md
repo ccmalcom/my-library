@@ -1361,3 +1361,82 @@ belong in code, not in a model: assert that every key in `python-responses.json`
 on lines porting a Python `or`. Where ollama does fit is work that costs a whole session rather
 than a turn — commit-message drafting from a diff, triaging a long CI log down to the failing
 block. Real, but small. Keep it out of the SDD loop.
+
+## Wave 5b-1: a gate command that reads a blank as a pass
+
+Wave 5b-1's Task 0 (record the green-gate baseline) turned up one finding worth keeping, because
+it is the same failure family as the plan's own Global Constraint 5 ("a command pointed at the
+wrong runner matches zero tests, exits 0, and reads as a pass") — but arriving from a direction
+that constraint does not cover.
+
+**`python -m pytest -q 2>&1 | tail -3` does not show the pass count on this machine.** Under
+pytest 9.1.1 the warnings summary is emitted after the short test summary, so the `360 passed in
+Xs` line falls outside the last three lines. The command still exits 0. An executor following the
+plan literally sees three lines of warning text, no number, and a zero exit — and records a pass
+having never observed the count. Use `python -m pytest -p no:warnings 2>&1 | tail -3`, or grep for
+the count rather than tailing.
+
+Generalized: **`| tail -N` is not a gate.** It is a display convenience that silently depends on
+how chatty the tool's epilogue is, and tool upgrades move that boundary. Any gate whose purpose is
+to produce a *number* must extract the number (grep/`--json`), not slice the tail and hope. This
+is worth a pass over other plans' gate blocks — the same `| tail -3` / `| tail -5` idiom is
+pervasive in this repo's plan documents.
+
+Two smaller notes from the same task:
+
+- **A plan's "Verified Facts" drift between authoring and execution, and benignly.** Three of
+  wave 5b-1's numbers had moved by execution time: vitest 551→552, Node `route.ts` files 49→50,
+  branch commits ahead of `main` 123→124. None indicated a problem; all three were explained by
+  commits landing after the plan was written. The plan's own instruction — "Record what you
+  actually observe, not what this plan predicts" — is what made this cheap. Worth copying into
+  future plans verbatim; without it an executor is tempted to reconcile the difference silently.
+- **`git merge-tree --write-tree HEAD <branch>` settles "will this conflict?" without touching
+  the working tree.** Wave 5b-1 reserved a Codex dispatch for the case where Task 1's merge
+  conflicted. One read-only command proved the merge clean and retired the dispatch before it was
+  written. Cheaper than dispatching to find out, and it leaves nothing to abort.
+
+### The gate set had a hole exactly the size of `next build`
+
+Found during wave 5b-1, not by a task in the plan: **every Vercel preview deployment from commit
+`107b5c8` (wave 4c-2) onward had been failing — eight consecutive red builds across four waves —
+while all five local gates stayed green the whole time.** Production on `main` was unaffected, so
+nothing surfaced it.
+
+Cause: wave 4c-2 wrote `export const maxDuration = FUNCTION_CEILING_SECONDS;` on
+`app/api/enrich/start/route.ts` and `app/api/enrich/tick/route.ts`. Next.js reads route segment
+config with a **static analyzer**, so the value must be a literal; an imported binding fails.
+Every other route in the repo already used the literal `300`. The build dies during "Collecting
+page data" with:
+
+```
+⨯ Invalid segment configuration export detected. This can cause unexpected behavior from the
+  configs not being applied. You should see the relevant failures in the logs above.
+```
+
+Two things make this nasty. First, **the referenced "failures in the logs above" do not exist** —
+Next prints no line naming the offending file, locally or on Vercel. The whole local build log is
+nine lines. Diagnosis was: enumerate every segment-config export, notice two that are identifiers
+where eleven others are literals, substitute, rebuild. Second, **it is invisible to every gate we
+run.** `tsc` is happy (the binding is a `number`), eslint is happy, vitest and jest never load the
+module through Next's analyzer. `next build` is the only thing that catches it, and it was in
+nobody's gate list.
+
+Lessons:
+
+- **`npm run build` belongs in the gate set for any wave touching `frontend/`,** alongside tsc and
+  eslint. A green test suite plus a green `tsc` is not evidence that the app deploys. This is the
+  same lesson as wave 4c-2's `NOT NULL` blocker (493 green tests, 500 on the real database) and
+  wave 4d's Goodreads quoting — three times now, the defect lived in the gap between "the tests
+  pass" and "the thing runs."
+- **Check the deploy dashboard at the START of a release wave, not at the verification task.**
+  Wave 5b-1's Task 4 is "verify on a preview deployment"; it would have discovered this four tasks
+  in, after the migration task had already been dispatched against production. One
+  `list_deployments` call in Task 0 would have caught it. Worth adding to the baseline task of any
+  future release wave: *record the current deployment state of every environment.*
+- **When a framework says "see the errors above" and there are none, do not go looking for a
+  hidden log.** Bisect the config surface instead. Enumerating all thirteen segment exports took
+  one grep and immediately showed the two outliers.
+- Guard it with a test that reads **source text**, not the imported value: importing the route
+  still observes `300` when the binding is reintroduced, so only a source-level assertion catches
+  the shape that breaks the build. `app/api/enrich/enrich-max-duration.test.ts` does this, and was
+  verified to go red when the bug is put back.
