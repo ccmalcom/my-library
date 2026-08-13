@@ -25,7 +25,10 @@ export const PUT = withApi(
     }
     const parsed = PutBody.safeParse(raw);
     if (!parsed.success) {
-      throw new ApiError(422, `validation error: ${parsed.error.issues[0]?.message ?? 'invalid body'}`);
+      throw new ApiError(
+        422,
+        `validation error: ${parsed.error.issues[0]?.message ?? 'invalid body'}`
+      );
     }
     await setConfigValue(getDb(), DEBUG_MODE_KEY, parsed.data.debug_mode);
     return Response.json({ debug_mode: parsed.data.debug_mode });

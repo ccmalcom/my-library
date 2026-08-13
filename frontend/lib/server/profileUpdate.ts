@@ -39,7 +39,7 @@ export const REVISE_TOOL = {
 
 export const REVISE_SYSTEM =
   "You are a literary taste analyst maintaining a reader's evolving taste profile. " +
-  'You are given the profile you previously inferred plus the reader\'s most recent ' +
+  "You are given the profile you previously inferred plus the reader's most recent " +
   'rating and review changes. You make the SMALLEST revision that honors the new ' +
   'evidence: keep what still holds, adjust confidence where the new data strengthens ' +
   'or weakens a claim, retire claims the new evidence contradicts, and add genuinely ' +
@@ -57,10 +57,7 @@ export async function booksChangedSince(
   since: string | null,
   userId: string
 ): Promise<BookRow[]> {
-  const conds = [
-    eq(schema.books.userId, userId),
-    isNotNull(schema.books.feedbackUpdatedAt),
-  ];
+  const conds = [eq(schema.books.userId, userId), isNotNull(schema.books.feedbackUpdatedAt)];
   if (since !== null) conds.push(gt(schema.books.feedbackUpdatedAt, since));
 
   const rows = await db
@@ -151,8 +148,8 @@ export async function collectUpdateInputs(
 
   const citedIds = new Set<number>();
   for (const t of currentRows) {
-    for (const i of ((t.exhibits as number[] | null) ?? [])) citedIds.add(i);
-    for (const i of ((t.contrasts as number[] | null) ?? [])) citedIds.add(i);
+    for (const i of (t.exhibits as number[] | null) ?? []) citedIds.add(i);
+    for (const i of (t.contrasts as number[] | null) ?? []) citedIds.add(i);
   }
   const wantedIds = [...new Set([...citedIds, ...changedIds])];
 
@@ -206,7 +203,9 @@ export async function updateTasteProfile(
   const traitVerdicts = await db
     .select({ id: schema.tasteTraits.id })
     .from(schema.tasteTraits)
-    .where(and(eq(schema.tasteTraits.userId, userId), gt(schema.tasteTraits.verdictUpdatedAt, since)))
+    .where(
+      and(eq(schema.tasteTraits.userId, userId), gt(schema.tasteTraits.verdictUpdatedAt, since))
+    )
     .limit(1);
   const newSignals = await db
     .select({ id: schema.tasteSignal.id })

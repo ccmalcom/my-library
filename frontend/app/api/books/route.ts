@@ -3,7 +3,13 @@ import { z } from 'zod';
 import { withApi, ApiError } from '@/lib/server/http';
 import { getDb, schema } from '@/lib/server/db';
 import { bookOut, VALID_SHELVES } from '@/lib/server/books';
-import { effectiveRating, parseBoolParam, utcnowTs, todayIsoDate, pyList } from '@/lib/server/serialize';
+import {
+  effectiveRating,
+  parseBoolParam,
+  utcnowTs,
+  todayIsoDate,
+  pyList,
+} from '@/lib/server/serialize';
 import { sameWork } from '@/lib/server/dedup';
 
 const Query = z.object({
@@ -17,7 +23,10 @@ export const GET = withApi('/api/books', async (req, ctx) => {
   const params = Object.fromEntries(new URL(req.url).searchParams);
   const parsed = Query.safeParse(params);
   if (!parsed.success) {
-    throw new ApiError(422, `validation error: ${parsed.error.issues[0]?.message ?? 'invalid query'}`);
+    throw new ApiError(
+      422,
+      `validation error: ${parsed.error.issues[0]?.message ?? 'invalid query'}`
+    );
   }
   const { shelf, limit, offset } = parsed.data;
   const ratedOnly = parseBoolParam(parsed.data.rated_only);
@@ -67,7 +76,10 @@ export const POST = withApi('/api/books', async (req, ctx) => {
   const raw = await req.json().catch(() => null);
   const parsed = AddBook.safeParse(raw);
   if (!parsed.success) {
-    throw new ApiError(422, `validation error: ${parsed.error.issues[0]?.message ?? 'invalid body'}`);
+    throw new ApiError(
+      422,
+      `validation error: ${parsed.error.issues[0]?.message ?? 'invalid body'}`
+    );
   }
   const b = parsed.data;
 

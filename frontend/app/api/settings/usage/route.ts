@@ -43,8 +43,6 @@ export const GET = withApi('/api/settings/usage', async (_req, ctx) => {
     cap_usd: cap,
     pct: round4(pct),
     warn: pct >= warnThreshold,
-    by_operation: Object.fromEntries(
-      Object.entries(byOp).map(([k, v]) => [k, round4(v)])
-    ),
+    by_operation: Object.fromEntries(Object.entries(byOp).map(([k, v]) => [k, round4(v)])),
   });
 });

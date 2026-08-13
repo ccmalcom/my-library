@@ -16,7 +16,6 @@ describe('profile traits + status parity', () => {
   for (const stage of ['empty', 'seeded'] as const) {
     test(`${stage}: traits`, () => checkParity(stage, 'GET /profile', traits));
     // changed_book_ids order is DB-dependent in Python (no ORDER BY) — compare sorted.
-    test(`${stage}: status`, () =>
-      checkParity(stage, 'GET /profile/status', status, sortChanged));
+    test(`${stage}: status`, () => checkParity(stage, 'GET /profile/status', status, sortChanged));
   }
 });

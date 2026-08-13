@@ -32,7 +32,9 @@ describe('write parity: settings', () => {
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ configured: true });
 
-      const rows = await db.select().from(schema.userSettings)
+      const rows = await db
+        .select()
+        .from(schema.userSettings)
         .where(eq(schema.userSettings.userId, 'local'));
       const stored = rows[0]?.anthropicApiKeyEncrypted;
       expect(stored).toBeTruthy();

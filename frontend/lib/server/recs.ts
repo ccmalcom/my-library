@@ -32,8 +32,13 @@ export function recOut(r: typeof schema.recommendations.$inferSelect) {
 
 /** Port of feedback_vocab.REJECT_REASONS — order matters for the pyList() 422 detail. */
 export const REJECT_REASONS = [
-  'wrong_genre', 'too_dark', 'tried_author', 'too_long',
-  'not_now', 'overhyped', 'wrong_vibe',
+  'wrong_genre',
+  'too_dark',
+  'tried_author',
+  'too_long',
+  'not_now',
+  'overhyped',
+  'wrong_vibe',
 ] as const;
 
 type RecRow = typeof schema.recommendations.$inferSelect;
@@ -41,25 +46,44 @@ type RecRow = typeof schema.recommendations.$inferSelect;
 /** Idempotently land a recommended book in the user's library on `shelf`.
  *  Port of api.py::_ensure_library_book (same-work dedup, stub enrichment). */
 export async function ensureLibraryBook(db: Db, rec: RecRow, shelf: string, userId: string) {
-  const existing = await db.select().from(schema.books)
+  const existing = await db
+    .select()
+    .from(schema.books)
     .where(and(eq(schema.books.userId, userId), isNotNull(schema.books.title)));
   for (const b of existing) {
     if (sameWork(b.title, b.author, rec.title, rec.author)) {
-      const enr = (await db.select().from(schema.enrichment)
-        .where(eq(schema.enrichment.bookId, b.id)))[0] ?? null;
+      const enr =
+        (await db.select().from(schema.enrichment).where(eq(schema.enrichment.bookId, b.id)))[0] ??
+        null;
       return { book: b, enrichment: enr };
     }
   }
-  const [book] = await db.insert(schema.books).values({
-    userId, title: rec.title, author: rec.author, isbn13: rec.isbn13,
-    yearPublished: rec.year, exclusiveShelf: shelf,
-    source: 'recommendation', goodreadsRating: 0,
-  }).returning();
-  const [enr] = await db.insert(schema.enrichment).values({
-    bookId: book.id, resolvedSource: rec.catalogSource, resolvedId: rec.catalogId,
-    subjects: rec.subjects, description: rec.description, coverUrl: rec.coverUrl,
-    resolutionConfidence: 1.0, confidenceLabel: 'RECOMMENDATION',
-    matchMethod: 'recommendation_' + shelf,
-  }).returning();
+  const [book] = await db
+    .insert(schema.books)
+    .values({
+      userId,
+      title: rec.title,
+      author: rec.author,
+      isbn13: rec.isbn13,
+      yearPublished: rec.year,
+      exclusiveShelf: shelf,
+      source: 'recommendation',
+      goodreadsRating: 0,
+    })
+    .returning();
+  const [enr] = await db
+    .insert(schema.enrichment)
+    .values({
+      bookId: book.id,
+      resolvedSource: rec.catalogSource,
+      resolvedId: rec.catalogId,
+      subjects: rec.subjects,
+      description: rec.description,
+      coverUrl: rec.coverUrl,
+      resolutionConfidence: 1.0,
+      confidenceLabel: 'RECOMMENDATION',
+      matchMethod: 'recommendation_' + shelf,
+    })
+    .returning();
   return { book, enrichment: enr };
 }

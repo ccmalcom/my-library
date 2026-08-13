@@ -21,10 +21,7 @@ export const GET = withApi('/api/profile/status', async (_req, ctx) => {
         isNotNull(schema.books.feedbackUpdatedAt),
         gt(schema.books.feedbackUpdatedAt, since)
       )
-    : and(
-        eq(schema.books.userId, userId),
-        isNotNull(schema.books.feedbackUpdatedAt)
-      );
+    : and(eq(schema.books.userId, userId), isNotNull(schema.books.feedbackUpdatedAt));
   const candidates = await db
     .select()
     .from(schema.books)
@@ -43,10 +40,7 @@ export const GET = withApi('/api/profile/status', async (_req, ctx) => {
         isNotNull(schema.tasteTraits.verdictUpdatedAt),
         gt(schema.tasteTraits.verdictUpdatedAt, since)
       )
-    : and(
-        eq(schema.tasteTraits.userId, userId),
-        isNotNull(schema.tasteTraits.verdictUpdatedAt)
-      );
+    : and(eq(schema.tasteTraits.userId, userId), isNotNull(schema.tasteTraits.verdictUpdatedAt));
   const verdictCount = await db
     .select({ n: sql<number>`count(*)` })
     .from(schema.tasteTraits)
@@ -55,18 +49,12 @@ export const GET = withApi('/api/profile/status', async (_req, ctx) => {
   ctx.timer.mark('db');
 
   const recRejectDirty =
-    meta?.recFeedbackUpdatedAt != null &&
-    (since === null || meta.recFeedbackUpdatedAt > since);
+    meta?.recFeedbackUpdatedAt != null && (since === null || meta.recFeedbackUpdatedAt > since);
   const enrichmentCorrectedDirty =
-    meta?.enrichmentCorrectedAt != null &&
-    (since === null || meta.enrichmentCorrectedAt > since);
+    meta?.enrichmentCorrectedAt != null && (since === null || meta.enrichmentCorrectedAt > since);
 
   return Response.json({
-    dirty:
-      changed.length > 0 ||
-      traitVerdictDirty ||
-      recRejectDirty ||
-      enrichmentCorrectedDirty,
+    dirty: changed.length > 0 || traitVerdictDirty || recRejectDirty || enrichmentCorrectedDirty,
     changed_books: changed.length,
     changed_book_ids: changed.map((b) => b.id),
     last_profiled_at: tsToIso(since),

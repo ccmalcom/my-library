@@ -37,7 +37,7 @@ export const TRAIT_INPUT_SCHEMA = {
           claim: {
             type: 'string',
             description:
-              "A specific, falsifiable claim about what drives this " +
+              'A specific, falsifiable claim about what drives this ' +
               "reader's ratings, e.g. 'Rewards dense political " +
               "world-building over fast plotting.' Avoid generic " +
               'genre statements.',
@@ -89,7 +89,7 @@ export const PROFILE_TOOL = {
 };
 
 export const PROFILE_SYSTEM =
-  'You are a literary taste analyst. You infer what drives a specific reader\'s ' +
+  "You are a literary taste analyst. You infer what drives a specific reader's " +
   'ratings from their library metadata. You reason about CONTRAST between rating ' +
   'tiers, never asserting a trait without citing the books that evidence it. You ' +
   'only cite book ids that appear in the provided data.';

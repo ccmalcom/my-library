@@ -18,8 +18,14 @@ describe('dedup', () => {
   });
   it('sameWork: edition variant matches, sibling subtitles do not', () => {
     expect(sameWork('Dune', 'Frank Herbert', 'Dune: Special Edition', 'Herbert')).toBe(true);
-    expect(sameWork('Exodus: The Archimedes Engine', 'Peter F. Hamilton',
-                    'Exodus: The Helium Sea', 'Peter F. Hamilton')).toBe(false);
+    expect(
+      sameWork(
+        'Exodus: The Archimedes Engine',
+        'Peter F. Hamilton',
+        'Exodus: The Helium Sea',
+        'Peter F. Hamilton'
+      )
+    ).toBe(false);
     expect(sameWork('Dune', 'Frank Herbert', 'Dune', 'Arthur C. Clarke')).toBe(false);
   });
   it('sameWork: same-surname different-author collision (inherited from Python behavior)', () => {

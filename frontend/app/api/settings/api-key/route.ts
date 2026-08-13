@@ -8,7 +8,9 @@ export const PUT = withApi('/api/settings/api-key', async (req, ctx) => {
   const key = typeof raw?.api_key === 'string' ? raw.api_key.trim() : '';
   if (!key) throw new ApiError(422, 'API key must not be empty.');
   const db = getDb();
-  await db.transaction((tx) => upsertUserSettings(tx, ctx.user.userId, { anthropicApiKeyEncrypted: encrypt(key) }));
+  await db.transaction((tx) =>
+    upsertUserSettings(tx, ctx.user.userId, { anthropicApiKeyEncrypted: encrypt(key) })
+  );
   ctx.timer.mark('db');
   return Response.json({ configured: true });
 });

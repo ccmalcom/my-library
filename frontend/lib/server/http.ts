@@ -36,10 +36,16 @@ export function withApi(
   route: string,
   handler: (req: Request, ctx: ApiCtx) => Promise<Response>,
   opts: WithApiOpts = {}
-): (req: Request, routeCtx?: { params?: Promise<Record<string, string>> | Record<string, string> }) => Promise<Response> {
+): (
+  req: Request,
+  routeCtx?: { params?: Promise<Record<string, string>> | Record<string, string> }
+) => Promise<Response> {
   const requireAuth = opts.requireAuth ?? true;
 
-  return async (req: Request, routeCtx?: { params?: Promise<Record<string, string>> | Record<string, string> }): Promise<Response> => {
+  return async (
+    req: Request,
+    routeCtx?: { params?: Promise<Record<string, string>> | Record<string, string> }
+  ): Promise<Response> => {
     const requestId = newRequestId();
     const timer = makeTimer();
     let user: AuthUser | undefined;

@@ -37,38 +37,61 @@ function snoozeHours(): number {
 /** Insert or update the (user_id, trigger, run_id) FeedbackPromptState row. */
 export async function upsertPromptState(
   db: Db,
-  args: { userId: string; trigger: string; runId: string; status: string; snoozeUntil?: string | null }
+  args: {
+    userId: string;
+    trigger: string;
+    runId: string;
+    status: string;
+    snoozeUntil?: string | null;
+  }
 ): Promise<void> {
-  const rows = await db.select().from(schema.feedbackPromptState).where(and(
-    eq(schema.feedbackPromptState.userId, args.userId),
-    eq(schema.feedbackPromptState.trigger, args.trigger),
-    eq(schema.feedbackPromptState.runId, args.runId),
-  ));
+  const rows = await db
+    .select()
+    .from(schema.feedbackPromptState)
+    .where(
+      and(
+        eq(schema.feedbackPromptState.userId, args.userId),
+        eq(schema.feedbackPromptState.trigger, args.trigger),
+        eq(schema.feedbackPromptState.runId, args.runId)
+      )
+    );
   if (rows[0]) {
-    await db.update(schema.feedbackPromptState)
+    await db
+      .update(schema.feedbackPromptState)
       .set({ status: args.status, snoozeUntil: args.snoozeUntil ?? null, updatedAt: utcnowTs() })
       .where(eq(schema.feedbackPromptState.id, rows[0].id));
   } else {
     await db.insert(schema.feedbackPromptState).values({
-      userId: args.userId, trigger: args.trigger, runId: args.runId,
-      status: args.status, snoozeUntil: args.snoozeUntil ?? null,
+      userId: args.userId,
+      trigger: args.trigger,
+      runId: args.runId,
+      status: args.status,
+      snoozeUntil: args.snoozeUntil ?? null,
     });
   }
 }
 
 /** Return true iff the feedback prompt should be shown to userId for this trigger/run. */
 export async function checkPromptEligibility(
-  db: Db, userId: string, trigger: string, runId: string | null
+  db: Db,
+  userId: string,
+  trigger: string,
+  runId: string | null
 ): Promise<boolean> {
   if (!promptsEnabled()) return false;
   const now = utcnowTs();
 
   if (ONE_TIME_TRIGGERS.includes(trigger)) {
-    const rows = await db.select().from(schema.feedbackPromptState).where(and(
-      eq(schema.feedbackPromptState.userId, userId),
-      eq(schema.feedbackPromptState.trigger, trigger),
-      eq(schema.feedbackPromptState.runId, ''),
-    ));
+    const rows = await db
+      .select()
+      .from(schema.feedbackPromptState)
+      .where(
+        and(
+          eq(schema.feedbackPromptState.userId, userId),
+          eq(schema.feedbackPromptState.trigger, trigger),
+          eq(schema.feedbackPromptState.runId, '')
+        )
+      );
     const row = rows[0];
     if (!row) return true;
     if (row.status === 'ask_later') {
@@ -79,26 +102,41 @@ export async function checkPromptEligibility(
 
   if (trigger === REPEATABLE_TRIGGER) {
     const rid = runId ?? '';
-    const globalDontAsk = await db.select().from(schema.feedbackPromptState).where(and(
-      eq(schema.feedbackPromptState.userId, userId),
-      eq(schema.feedbackPromptState.trigger, REPEATABLE_TRIGGER),
-      eq(schema.feedbackPromptState.runId, ''),
-      eq(schema.feedbackPromptState.status, 'dont_ask'),
-    ));
+    const globalDontAsk = await db
+      .select()
+      .from(schema.feedbackPromptState)
+      .where(
+        and(
+          eq(schema.feedbackPromptState.userId, userId),
+          eq(schema.feedbackPromptState.trigger, REPEATABLE_TRIGGER),
+          eq(schema.feedbackPromptState.runId, ''),
+          eq(schema.feedbackPromptState.status, 'dont_ask')
+        )
+      );
     if (globalDontAsk[0]) return false;
-    const fbRows = await db.select().from(schema.feedback).where(and(
-      eq(schema.feedback.userId, userId),
-      eq(schema.feedback.trigger, REPEATABLE_TRIGGER),
-      eq(schema.feedback.runId, rid),
-    ));
+    const fbRows = await db
+      .select()
+      .from(schema.feedback)
+      .where(
+        and(
+          eq(schema.feedback.userId, userId),
+          eq(schema.feedback.trigger, REPEATABLE_TRIGGER),
+          eq(schema.feedback.runId, rid)
+        )
+      );
     if (fbRows[0]) return false;
-    const snooze = await db.select().from(schema.feedbackPromptState).where(and(
-      eq(schema.feedbackPromptState.userId, userId),
-      eq(schema.feedbackPromptState.trigger, REPEATABLE_TRIGGER),
-      eq(schema.feedbackPromptState.runId, rid),
-      eq(schema.feedbackPromptState.status, 'ask_later'),
-      gt(schema.feedbackPromptState.snoozeUntil, now),
-    ));
+    const snooze = await db
+      .select()
+      .from(schema.feedbackPromptState)
+      .where(
+        and(
+          eq(schema.feedbackPromptState.userId, userId),
+          eq(schema.feedbackPromptState.trigger, REPEATABLE_TRIGGER),
+          eq(schema.feedbackPromptState.runId, rid),
+          eq(schema.feedbackPromptState.status, 'ask_later'),
+          gt(schema.feedbackPromptState.snoozeUntil, now)
+        )
+      );
     return !snooze[0];
   }
 
@@ -107,17 +145,24 @@ export async function checkPromptEligibility(
 
 /** Record the user's dismiss decision (mode already validated by the route). */
 export async function dismissPrompt(
-  db: Db, userId: string, trigger: string, runId: string | null, mode: string
+  db: Db,
+  userId: string,
+  trigger: string,
+  runId: string | null,
+  mode: string
 ): Promise<void> {
   let stateRunId: string;
   let snoozeUntil: string | null;
   if (mode === 'dont_ask') {
     stateRunId = '';
     snoozeUntil = null;
-  } else { // 'ask_later' — mode already validated by the route
+  } else {
+    // 'ask_later' — mode already validated by the route
     stateRunId = ONE_TIME_TRIGGERS.includes(trigger) ? '' : (runId ?? '');
     snoozeUntil = new Date(Date.now() + snoozeHours() * 3_600_000)
-      .toISOString().replace('T', ' ').replace('Z', '');
+      .toISOString()
+      .replace('T', ' ')
+      .replace('Z', '');
   }
   await upsertPromptState(db, { userId, trigger, runId: stateRunId, status: mode, snoozeUntil });
 }

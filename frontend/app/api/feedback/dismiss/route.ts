@@ -12,7 +12,9 @@ export const POST = withApi('/api/feedback/dismiss', async (req, ctx) => {
   if (mode !== 'ask_later' && mode !== 'dont_ask') {
     throw new ApiError(422, "mode must be 'ask_later' or 'dont_ask'");
   }
-  const trigger = String(raw?.trigger ?? '').toLowerCase().trim();
+  const trigger = String(raw?.trigger ?? '')
+    .toLowerCase()
+    .trim();
   const runIdRaw = raw?.run_id;
   const runIdNorm = typeof runIdRaw === 'string' && runIdRaw.trim() ? runIdRaw.trim() : null;
   if (trigger === 'post-recs' && mode === 'ask_later' && !runIdNorm) {

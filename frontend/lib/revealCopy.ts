@@ -7,7 +7,8 @@ export const POLE_LINES: Record<string, string> = {
   'engine:P': 'Momentum is non-negotiable. A story owes you forward motion.',
   'engine:C': 'People are the plot. Everything else is scenery.',
   'range:B': 'Your shelf refuses a genre. Range isn’t indecision — it’s appetite.',
-  'range:D': 'You go deep, not wide. Loyalty is your love language — to genres, to series, to authors.',
+  'range:D':
+    'You go deep, not wide. Loyalty is your love language — to genres, to series, to authors.',
   'resonance:H': 'A book earns its keep in feeling. If it didn’t move you, it didn’t happen.',
   'resonance:M': 'Structure is beautiful to you. You admire the how as much as the what.',
 };
@@ -25,8 +26,6 @@ export function ratingQuip(avg: number | null): string {
 export const FORMAT_LINES: Record<'novel' | 'novella' | 'collection' | 'series', string> = {
   series: 'Mostly series. You don’t want a story — you want a residence.',
   novel: 'Standalones, mostly. One book, one world, done right.',
-  novella:
-    'You like them short and sharp. Length is not depth, and you know it.',
-  collection:
-    'Story collections keep showing up. You read like a taster, not a tourist.',
+  novella: 'You like them short and sharp. Length is not depth, and you know it.',
+  collection: 'Story collections keep showing up. You read like a taster, not a tourist.',
 };

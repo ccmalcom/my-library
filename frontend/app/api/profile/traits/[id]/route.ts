@@ -20,31 +20,41 @@ export const PATCH = withApi('/api/profile/traits/[id]', async (req, ctx) => {
   const raw = await req.json().catch(() => null);
   const parsed = Body.safeParse(raw);
   if (!parsed.success) {
-    throw new ApiError(422, `validation error: ${parsed.error.issues[0]?.message ?? 'invalid body'}`);
+    throw new ApiError(
+      422,
+      `validation error: ${parsed.error.issues[0]?.message ?? 'invalid body'}`
+    );
   }
   const b = parsed.data;
   if (b.claim == null && b.user_note == null && b.status == null && b.user_weight == null) {
-    throw new ApiError(422, 'at least one field (claim, user_note, status, user_weight) must be provided');
+    throw new ApiError(
+      422,
+      'at least one field (claim, user_note, status, user_weight) must be provided'
+    );
   }
   const traitId = parseIdParam(ctx.params.id);
   const db = getDb();
   const { trait, updates } = await db.transaction(async (tx) => {
-    const rows = await tx.select().from(schema.tasteTraits)
+    const rows = await tx
+      .select()
+      .from(schema.tasteTraits)
       .where(eq(schema.tasteTraits.id, traitId));
     const trait = rows[0];
     if (!trait || trait.userId !== ctx.user.userId) {
       throw new ApiError(404, `Trait ${traitId} not found`);
     }
     const updates: Partial<typeof trait> = {};
-    if (b.claim != null) { updates.claim = b.claim.trim(); updates.status = 'edited'; }
+    if (b.claim != null) {
+      updates.claim = b.claim.trim();
+      updates.status = 'edited';
+    }
     if (b.user_note != null) updates.userNote = b.user_note;
     if (b.status != null || b.user_weight != null) {
       if (b.status != null) updates.status = b.status; // verdict overrides 'edited'
       if (b.user_weight != null) updates.userWeight = b.user_weight;
       updates.verdictUpdatedAt = utcnowTs();
     }
-    await tx.update(schema.tasteTraits).set(updates)
-      .where(eq(schema.tasteTraits.id, traitId));
+    await tx.update(schema.tasteTraits).set(updates).where(eq(schema.tasteTraits.id, traitId));
     return { trait, updates };
   });
   ctx.timer.mark('db');

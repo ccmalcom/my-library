@@ -93,6 +93,10 @@ describe('trackedCreate', () => {
     expect(client.messages.create).toHaveBeenCalledOnce();
     const rows = await usageRows();
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ user_id: 'u2', operation: 'recommend_rerank', model: 'claude-sonnet-4-6' });
+    expect(rows[0]).toMatchObject({
+      user_id: 'u2',
+      operation: 'recommend_rerank',
+      model: 'claude-sonnet-4-6',
+    });
   });
 });

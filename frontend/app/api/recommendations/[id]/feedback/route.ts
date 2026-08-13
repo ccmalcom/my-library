@@ -35,20 +35,32 @@ export const PATCH = withApi('/api/recommendations/[id]/feedback', async (req, c
     throw new ApiError(422, "reject_reasons may only be provided when status is 'rejected'");
   }
   if (rejectReasonsProvided) {
-    const valid = rejectReasons.length > 0 && rejectReasons.every((r) => (REJECT_REASONS as readonly string[]).includes(r));
+    const valid =
+      rejectReasons.length > 0 &&
+      rejectReasons.every((r) => (REJECT_REASONS as readonly string[]).includes(r));
     if (!valid) {
       if (rejectReasons.length === 0) {
-        throw new ApiError(422, `reject_reasons must be a non-empty list. Valid codes: ${pyList([...REJECT_REASONS])}`);
+        throw new ApiError(
+          422,
+          `reject_reasons must be a non-empty list. Valid codes: ${pyList([...REJECT_REASONS])}`
+        );
       }
-      const unknown = rejectReasons.filter((r) => !(REJECT_REASONS as readonly string[]).includes(r));
-      throw new ApiError(422, `Unknown reject_reasons: ${pyList(unknown)}. Valid codes: ${pyList([...REJECT_REASONS])}`);
+      const unknown = rejectReasons.filter(
+        (r) => !(REJECT_REASONS as readonly string[]).includes(r)
+      );
+      throw new ApiError(
+        422,
+        `Unknown reject_reasons: ${pyList(unknown)}. Valid codes: ${pyList([...REJECT_REASONS])}`
+      );
     }
   }
 
   const recId = parseIdParam(ctx.params.id);
   const db = getDb();
   const result = await db.transaction(async (tx) => {
-    const recs = await tx.select().from(schema.recommendations)
+    const recs = await tx
+      .select()
+      .from(schema.recommendations)
       .where(eq(schema.recommendations.id, recId));
     const rec = recs[0];
     if (!rec || rec.userId !== ctx.user.userId) {
@@ -61,11 +73,15 @@ export const PATCH = withApi('/api/recommendations/[id]/feedback', async (req, c
     if (rejectReasonsProvided) {
       updates.rejectReasons = rejectReasons;
       const meta = await ensureProfileMeta(tx, ctx.user.userId);
-      await tx.update(schema.profileMeta).set({ recFeedbackUpdatedAt: utcnowTs() })
+      await tx
+        .update(schema.profileMeta)
+        .set({ recFeedbackUpdatedAt: utcnowTs() })
         .where(eq(schema.profileMeta.id, meta.id));
     }
     if (Object.keys(updates).length) {
-      await tx.update(schema.recommendations).set(updates)
+      await tx
+        .update(schema.recommendations)
+        .set(updates)
         .where(eq(schema.recommendations.id, recId));
     }
     const updated = { ...rec, ...updates };

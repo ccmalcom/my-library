@@ -26,12 +26,11 @@ describe('enrich route maxDuration segment config', () => {
     expect(
       value,
       `maxDuration in ${rel} must be a numeric literal, not an identifier — ` +
-        `an imported binding fails next build`,
+        `an imported binding fails next build`
     ).toMatch(/^\d+$/);
 
-    expect(
-      Number(value),
-      `maxDuration in ${rel} has drifted from FUNCTION_CEILING_SECONDS`,
-    ).toBe(FUNCTION_CEILING_SECONDS);
+    expect(Number(value), `maxDuration in ${rel} has drifted from FUNCTION_CEILING_SECONDS`).toBe(
+      FUNCTION_CEILING_SECONDS
+    );
   });
 });

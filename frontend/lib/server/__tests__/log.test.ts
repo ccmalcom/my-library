@@ -59,6 +59,11 @@ describe('log', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     logDebug('r1', 'cache miss', { key: 'k' });
     const parsed = JSON.parse(spy.mock.calls[0][0] as string);
-    expect(parsed).toMatchObject({ level: 'debug', requestId: 'r1', message: 'cache miss', key: 'k' });
+    expect(parsed).toMatchObject({
+      level: 'debug',
+      requestId: 'r1',
+      message: 'cache miss',
+      key: 'k',
+    });
   });
 });

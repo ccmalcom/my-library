@@ -51,7 +51,11 @@ export function logRequest(entry: RequestLogEntry): void {
   console.log(JSON.stringify({ ts: new Date().toISOString(), level: 'info', ...entry }));
 }
 
-export function logDebug(requestId: string, message: string, extra?: Record<string, unknown>): void {
+export function logDebug(
+  requestId: string,
+  message: string,
+  extra?: Record<string, unknown>
+): void {
   console.log(
     JSON.stringify({ ts: new Date().toISOString(), level: 'debug', requestId, message, ...extra })
   );

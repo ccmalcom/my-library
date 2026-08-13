@@ -27,8 +27,10 @@ export function normalizeFullTitle(t: string | null): string {
 /** Same work: equal full titles, or one is the other's bare pre-colon base
  *  (edition variant). Two different subtitles on a shared base are different works. */
 export function sameWork(
-  titleA: string | null, authorA: string | null,
-  titleB: string | null, authorB: string | null
+  titleA: string | null,
+  authorA: string | null,
+  titleB: string | null,
+  authorB: string | null
 ): boolean {
   if (surname(authorA) !== surname(authorB)) return false;
   const fullA = normalizeFullTitle(titleA);

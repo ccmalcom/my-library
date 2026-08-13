@@ -17,8 +17,7 @@ export const GET = withApi('/api/directive', async (_req, ctx) => {
   // Python truthiness: `not (row.nl_text or row.constraints)` — an empty dict is
   // falsy in Python, so nl_text='' + constraints={} → the EMPTY shape.
   const constraints = (row?.constraints ?? {}) as Record<string, unknown>;
-  const meaningful =
-    row && (row.nlText || Object.keys(constraints).length > 0);
+  const meaningful = row && (row.nlText || Object.keys(constraints).length > 0);
   if (!meaningful) return Response.json(EMPTY);
   return Response.json({
     nl_text: row.nlText,
@@ -36,14 +35,19 @@ export const PUT = withApi('/api/directive', async (req, ctx) => {
   }
   const db = getDb();
   const after = await db.transaction(async (tx) => {
-    const rows = await tx.select().from(schema.userDirective)
+    const rows = await tx
+      .select()
+      .from(schema.userDirective)
       .where(eq(schema.userDirective.userId, ctx.user.userId));
     if (rows[0]) {
-      await tx.update(schema.userDirective).set({
-        nlText: text || null,
-        constraints: Object.keys(cleaned).length ? cleaned : null,
-        updatedAt: utcnowTs(), // ORM onupdate twin — only the update branch stamps it
-      }).where(eq(schema.userDirective.id, rows[0].id));
+      await tx
+        .update(schema.userDirective)
+        .set({
+          nlText: text || null,
+          constraints: Object.keys(cleaned).length ? cleaned : null,
+          updatedAt: utcnowTs(), // ORM onupdate twin — only the update branch stamps it
+        })
+        .where(eq(schema.userDirective.id, rows[0].id));
     } else {
       await tx.insert(schema.userDirective).values({
         userId: ctx.user.userId,
@@ -52,8 +56,12 @@ export const PUT = withApi('/api/directive', async (req, ctx) => {
       });
     }
     // Python re-reads via get_directive and returns the same shape as GET.
-    return (await tx.select().from(schema.userDirective)
-      .where(eq(schema.userDirective.userId, ctx.user.userId)))[0];
+    return (
+      await tx
+        .select()
+        .from(schema.userDirective)
+        .where(eq(schema.userDirective.userId, ctx.user.userId))
+    )[0];
   });
   const constraints = (after?.constraints ?? {}) as Record<string, unknown>;
   const meaningful = after && (after.nlText || Object.keys(constraints).length > 0);
@@ -68,8 +76,7 @@ export const PUT = withApi('/api/directive', async (req, ctx) => {
 
 export const DELETE = withApi('/api/directive', async (_req, ctx) => {
   const db = getDb();
-  await db.delete(schema.userDirective)
-    .where(eq(schema.userDirective.userId, ctx.user.userId));
+  await db.delete(schema.userDirective).where(eq(schema.userDirective.userId, ctx.user.userId));
   ctx.timer.mark('db');
   return Response.json(EMPTY);
 });
