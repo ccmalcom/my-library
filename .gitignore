@@ -22,12 +22,18 @@ venv/
 # TypeScript build cache
 frontend/tsconfig.tsbuildinfo
 
+# Node deps / tool caches. frontend/.gitignore already covers frontend/node_modules;
+# this catches the repo-root node_modules/.vite cache vitest creates when run from here.
+node_modules/
+
 #UI Test
 
 frontend/app/ui-test/
 
 #claude docs
-docs/superpowers/
+# docs/superpowers/ is tracked on purpose: the Node-migration specs, wave plans and
+# verification ledgers are project history, not scratch. Only the tooling's own state
+# directory below stays ignored.
 .superpowers/
 .vscode/
 .agents/

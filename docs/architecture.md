@@ -4,9 +4,19 @@
 
 - Python engine, exposed as a **FastAPI service** (`mylibrary/api.py`) with a matching
   **Typer CLI** (`mylibrary/cli.py`). Same core functions back both.
-- The frontend is a separate **TypeScript / Next.js** app in `frontend/` that calls this
-  engine over HTTP (Pattern B). The Python side owns the SQLite schema; the frontend only
-  reads it / calls the API. Keep that seam clean — don't have two languages run migrations.
+- The frontend is a separate **TypeScript / Next.js** app in `frontend/`.
+
+> **This section describes the original two-tier design and is being superseded.** Waves 0–5a
+> ported the whole HTTP surface to Next.js route handlers (`frontend/app/api/**`) over drizzle
+> (`frontend/lib/server/**`), and wave 5b retires the Python service and Railway entirely. The
+> **Typer CLI and the pipeline modules below remain accurate** — they are what the port was ported
+> *from*, and the CLI is staying. What is no longer true is "the frontend only calls the API": it
+> now queries Postgres directly. See `docs/frontend.md` for the switcher and `docs/hosting.md` for
+> the cutover.
+>
+> One part of the original seam survives deliberately: **Alembic remains the single source of truth
+> for schema.** The Node side never runs migrations, and its drizzle definitions mirror what Alembic
+> produced. Don't have two languages run migrations.
 - SQLite via SQLAlchemy 2.0 (`mylibrary/db.py`). DB and API cache live under `data/`
   (gitignored).
 

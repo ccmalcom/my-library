@@ -2,6 +2,15 @@
 
 ## BUGS
 
+- **Enrichment job dispatch is not fault-tolerant.** `runClaimedChunk` nulls `leaseExpiresAt` and
+  *then* awaits `deps.dispatch(...)` with no `try`/`catch` (`frontend/lib/server/enrichmentJobs.ts:449`,
+  and the same shape at `:190` in `repairActiveJobs`). Any dispatch failure — network blip, cold
+  start, or a missing `CRON_SECRET` — leaves the job `running` with its lease already released and
+  no continuation queued, which `uq_enrich_jobs_active_user` turns into a permanent block on that
+  user until someone edits the row by hand. Fix by dispatching before releasing the lease, or by
+  catching the failure and leaving the lease intact so the janitor reclaims it. Found in wave 5b;
+  see `docs/hosting.md` for the full failure trace.
+
 ## enhancements
 
 - Social — add friends, see each other's activity, etc.
@@ -29,7 +38,7 @@
 - No-Anthropic-key error UX — shows error + prompts for key on profile/recommend
 - Onboarding empty state — setup/onboarding wizard shows on home / swipe / my library
 
-## Wave 3 — Recommender depth
+## Wave 3 — Recommender depth - COMPLETE
 
 - "More books like this" from a selected library book (smallest, highest-visibility win, specific recommendations based only on selected book)
 - NL discovery — natural-language "find me a book like X" search (builds on the above)

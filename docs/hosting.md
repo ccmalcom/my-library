@@ -7,6 +7,14 @@ Invite-only / free launch. Bring-your-own Anthropic key (encrypted at rest). Bun
 
 Local SQLite single-user mode is still the default when env vars are unset.
 
+> **Status (wave 5b, 2026-08-12): Railway is being retired.** The Node backend now serves every
+> frontend-facing route — all 54 routes in `mylibrary/api.py` are covered by `NODE_DEFAULT_ROUTES`
+> in `frontend/lib/backend.ts`, leaving only `/health` and `/healthz`, which are Railway's own
+> probes. Once the Node branch merges to `main`, the target architecture is
+> **Vercel (Next.js route handlers) → Supabase Postgres/auth**, with no Python service. Everything
+> below describing Railway is retained because it is still accurate until that merge lands, and
+> because the Alembic notes remain true of any deployment that runs migrations at boot.
+
 Full plan: **`mylibrary-web-distribution-plan.md`**. Deploy runbook: **`mylibrary-phase5-deploy-runbook.md`**.
 
 ## Environment variables
@@ -27,6 +35,55 @@ Full plan: **`mylibrary-web-distribution-plan.md`**. Deploy runbook: **`mylibrar
 - `FRONTEND_URL` — deployed frontend origin, no trailing slash (e.g. `https://my-library.vercel.app`). Used to build `redirect_to=<FRONTEND_URL>/auth/callback` on the Supabase invite call, so invited users land somewhere that actually establishes their session — see Admin console notes below. Unset = Supabase falls back to its dashboard-configured Site URL.
 - `MYLIBRARY_MONTHLY_SOFT_CAP_USD` — per-user month-to-date soft spend cap in USD. Default `5.0`. Warn-only; never blocks a call.
 - `MYLIBRARY_USAGE_WARN_THRESHOLD` — fraction of the cap (0..1) at which the soft-warn flag turns on. Default `0.8`.
+
+### Node backend environment variables
+
+The Next.js route handlers read their own set, which **overlaps but is not identical** to
+`config.Settings`. Authoritative list, derived from every environment read under `frontend/lib` and `frontend/app`:
+
+`ADMIN_EMAILS`, `ANTHROPIC_API_KEY`, `CRON_SECRET`, `DATABASE_URL`, `ENCRYPTION_KEY`,
+`FEEDBACK_PROMPTS_ENABLED`, `FEEDBACK_SNOOZE_HOURS`, `FRONTEND_URL`, `GOOGLE_BOOKS_API_KEY`,
+`MYLIBRARY_MODEL`, `MYLIBRARY_MONTHLY_SOFT_CAP_USD`, `MYLIBRARY_REQ_PER_SEC`,
+`MYLIBRARY_USAGE_WARN_THRESHOLD`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`,
+`SUPABASE_JWKS_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_URL`, `TZ`.
+
+Differences from Python that have each cost real debugging time:
+
+- **`SUPABASE_SECRET_KEY`, not `SUPABASE_SERVICE_ROLE_KEY`.** The two backends read different names
+  for the same credential. Node sends it on the `apikey` header ONLY — Supabase parses an
+  `Authorization` value as a JWT, so an opaque `sb_secret_*` key there yields `Invalid JWT`.
+- **`SUPABASE_URL ?? NEXT_PUBLIC_SUPABASE_URL`.** `supabaseAdmin.ts:39` and `auth.ts::jwksUrl` both
+  accept either. Without the fallback, auth works while every admin write 502s.
+- **`CRON_SECRET` is required, and its absence is not a soft failure** — see below.
+- Node has no `REDIS_URL`, `CORS_ORIGINS`, `MYLIBRARY_DATA_DIR`, or `SUPABASE_JWT_SECRET`: there is
+  no queue, same-origin routes need no CORS, the catalog cache is a Postgres table
+  (`catalog_cache`), and only the JWKS/ES256 path is implemented.
+
+#### `CRON_SECRET` — required, and it fails destructively when unset
+
+Set it in Vercel for **Production and Preview**; generate with `openssl rand -hex 32`. The value is
+arbitrary and need not match across environments — each environment both signs and validates with
+its own copy. Vercel automatically sends `Authorization: Bearer $CRON_SECRET` to cron endpoints
+whenever a variable of that name exists, so the janitor authenticates with no extra wiring.
+
+The failure mode when it is unset is worse than "cron does not run". `isValidCronSecret` fails
+closed (`enrichmentDispatch.ts:32`), which is benign, but `rearmAfterResponse` **throws**
+(`enrichmentDispatch.ts:38`), and `deps.dispatch` is awaited with no `try`/`catch` at
+`enrichmentJobs.ts:449` (`runClaimedChunk`) and `enrichmentJobs.ts:190` (`repairActiveJobs`). So any
+enrichment run needing a second chunk: 500s `POST /enrich/start`; leaves the job `running` with
+`leaseExpiresAt` already nulled by the preceding update; 500s `GET /enrich/status/{job_id}` too,
+because poll repair hits the same throw; and cannot be cleaned up by the janitor, which 401s. The
+job is orphaned permanently, and `uq_enrich_jobs_active_user` then blocks that user from starting
+another enrichment without manual DB intervention.
+
+It is invisible to a casual smoke test — a small library finishes in one chunk and never calls
+`dispatch` at all. **Any enrichment smoke test must use a library large enough to require a second
+chunk.**
+
+> **Known robustness gap, not yet fixed.** The un-guarded `await deps.dispatch(...)` orphans a job
+> the same way on any dispatch failure — network blip, cold start — because the lease is released
+> before the dispatch is attempted. Ordering the dispatch before the lease release, or letting a
+> failure leave the lease intact for the janitor, would make it self-healing.
 
 ## Auth (`auth.py`)
 
@@ -78,7 +135,65 @@ Verifies Supabase access tokens and returns `sub` as `user_id`. Supabase signs w
 
 **Baseline gotcha (fixed):** `0001_initial` builds the schema via `Base.metadata.create_all()` from the _live_ models — so as models gained new columns, the baseline started creating them too. On a fresh DB, later migrations tried to add already-existing columns → `duplicate column name`. Fix: **migrations 0002+ are idempotent** — they inspect the bind and skip if the column/table already exists. Any future migration that adds something already in the models' `create_all` baseline must guard the same way.
 
-Migration chain: `0001_initial_multitenant_schema` → `0002_display_name` → `0003_enrich_jobs` → `0004_...` → `0005_reader_archetypes` → `0006_add_exclude_from_profile` → ... → `0013_invites` → `0014_usage_events` → `0015_enrichment_corrected_at` → `0016_trait_reveal_line`.
+Migration chain: `0001_initial_multitenant_schema` → `0002_display_name` → `0003_enrich_jobs` → `0004_...` → `0005_reader_archetypes` → `0006_add_exclude_from_profile` → ... → `0012_book_is_favorite` → `fbc5292134c4_add_enrichment_language` → `0013_invites` → `0014_usage_events` → `0015_enrichment_corrected_at` → `0016_trait_reveal_line` → `0017_user_directive` → `0018_node_wave0_tables` → `0019_add_enrich_job_leases`.
+
+Note `fbc5292134c4` sits between `0012` and `0013` despite its unsequenced name — the chain is
+linear, not branched. `0018` and `0019` were authored on `feat/node-backend` and do not exist on
+`main`.
+
+### Deploy landmine: the running image must contain the DB's current revision
+
+`start.sh` runs `python -m alembic upgrade head` under `set -euo pipefail` **before** `exec uvicorn`.
+Alembic must be able to locate the revision recorded in the database's `alembic_version` table
+inside the image's own `alembic/versions/` directory. If it cannot, it raises
+`CommandError: Can't locate revision identified by '<rev>'`, the script exits non-zero, uvicorn
+never binds `$PORT`, and the platform healthcheck can never pass. `railway.json` sets
+`restartPolicyMaxRetries: 3`, so the deploy then fails.
+
+**This bites whenever a migration is applied to production from a branch checkout that the deployed
+branch does not contain.** It happened in wave 5b: `0018_node_wave0_tables` was applied to
+production by hand from `feat/node-backend`, while Railway deploys from `main`, which stops at
+`0017`. Nothing broke immediately because the running container had booted while the DB was still
+at `0017` — the failure only surfaced on the next deploy.
+
+Two things make it nastier than a failed deploy:
+
+- **A restart is enough to trigger it.** Restarting re-runs the container CMD, so a healthy instance
+  survives only until something restarts it. The service is effectively armed, not merely
+  un-deployable.
+- **It is silent until then.** There is no check that the deployed branch's migration set covers the
+  production revision.
+
+Rule: **never apply a migration to production from a branch the deployment does not track.** If you
+must, cherry-pick the revision files onto the deployed branch in the same window. Migration files
+alone are inert — the Python app reads none of the wave-0 Node tables — so a migrations-only commit
+is a safe repair.
+
+### `enrich_jobs.progress` / `.total`: two legitimate schema lineages
+
+The same migration set produces two different column shapes depending on the database's age, and
+both are correct:
+
+- **Fresh DB** — the `0001` baseline's `create_all()` builds `enrich_jobs` from the live models,
+  where `db.py:271-272` declare `mapped_column(Integer, default=0)`: an ORM-level default with **no**
+  `server_default`, and non-Optional `Mapped[int]` so NOT NULL. `0003` then short-circuits on
+  `if _has_table("enrich_jobs")`. Result: **NOT NULL, no server default.**
+- **Older DB (including production)** — predates the model, so the table came from `0003`'s
+  `op.create_table`, whose lines 47-48 specify `nullable=False, server_default="0"`. Result:
+  **NOT NULL, server default `0`.**
+
+The Node code supplies `progress: 0, total: 0` explicitly (wave 4c-2's fix), so it inserts
+successfully against either shape. The shape that actually breaks things is the first one combined
+with a drizzle schema that declares `.default()` and omits the column from the INSERT — that is the
+500 wave 4c-2 hit.
+
+> **Consequence for the drizzle baseline:** generate it from a `pg_dump` of **production**, never
+> from a fresh `alembic upgrade head`. A fresh run yields the `create_all` lineage and would bake the
+> wrong shape into the baseline.
+
+By contrast, `0019`'s new columns are unambiguous: `lease_expires_at` and `run_limit` are
+`nullable=True`; `attempts` and `force` are `nullable=False` with `server_default` `0` / `false`
+(`0019_add_enrich_job_leases.py:21,25,30,33`).
 
 ## Spend tracking (soft-warn)
 

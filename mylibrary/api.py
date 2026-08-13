@@ -15,8 +15,6 @@ from __future__ import annotations
 
 import fnmatch
 import json
-import shutil
-import tempfile
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Annotated
@@ -55,7 +53,6 @@ from .feedback import (
     submit_feedback,
 )
 from .importers import csv_headers, detect_format, import_text, sample_rows, suggest_mapping
-from .ingest import ingest_csv
 from .invites import (
     InviteError,
     backfill_from_supabase,
@@ -106,7 +103,6 @@ from .schemas import (
     FeedbackSubmit,
     ImportPreviewOut,
     ImportSummaryOut,
-    IngestRequest,
     InviteRequest,
     ProfileHighlightsOut,
     ProfileStatusOut,
@@ -430,51 +426,6 @@ def _ensure_library_book(session, rec: Recommendation, shelf: str, user_id: str)
         )
     )
     return book
-
-
-@app.post("/ingest")
-def ingest(req: IngestRequest, user_id: UserId) -> dict:
-    path = req.csv_path or str(get_settings().csv_path)
-    try:
-        return ingest_csv(path, user_id=user_id)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.post("/ingest/upload")
-async def ingest_upload(user_id: UserId, file: UploadFile = File(...)) -> dict:
-    """Accept a Goodreads CSV upload, save it to data/, and run ingest.
-
-    This is the first-run path: the user doesn't need to know where data/ lives or how
-    to put a file there manually. The frontend setup wizard calls this endpoint.
-    """
-    if not (file.filename or "").lower().endswith(".csv"):
-        raise HTTPException(status_code=422, detail="Uploaded file must be a .csv")
-
-    settings = get_settings()
-    settings.csv_path.parent.mkdir(parents=True, exist_ok=True)
-    dest = settings.csv_path
-
-    # Stream the upload to a temp file first, then rename atomically so we never leave
-    # data/goodreads_library_export.csv in a half-written state.
-    with tempfile.NamedTemporaryFile(
-        delete=False, dir=dest.parent, suffix=".csv.tmp"
-    ) as tmp:
-        shutil.copyfileobj(file.file, tmp)
-        tmp_path = tmp.name
-
-    try:
-        import os
-        os.replace(tmp_path, dest)
-        return ingest_csv(str(dest), user_id=user_id)
-    except Exception as e:
-        # Clean up temp on failure
-        try:
-            import os
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 def _decode_upload(file: UploadFile) -> str:

@@ -5,8 +5,7 @@
  */
 
 import { getSupabaseClient } from '@/utils/supabase/client';
-
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
+import { baseFor } from '@/lib/backend';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────────────
 
@@ -363,7 +362,7 @@ async function authHeaders(): Promise<Record<string, string>> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${baseFor(path, 'GET')}${path}`, {
     cache: 'no-store',
     headers: { ...(await authHeaders()) },
   });
@@ -372,7 +371,7 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${baseFor(path, 'POST')}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -385,7 +384,7 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 }
 
 async function patch<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${baseFor(path, 'PATCH')}${path}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify(body),
@@ -398,7 +397,7 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function put<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${baseFor(path, 'PUT')}${path}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify(body),
@@ -411,7 +410,7 @@ async function put<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function del<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${baseFor(path, 'DELETE')}${path}`, {
     method: 'DELETE',
     headers: { ...(await authHeaders()) },
   });
@@ -426,8 +425,6 @@ async function del<T>(path: string): Promise<T> {
 
 export const api = {
   stats: () => get<Stats>('/stats'),
-
-  health: () => get<{ status: string; books: number; anthropic_key_set: boolean }>('/health'),
 
   books: (params?: { shelf?: string; limit?: number; offset?: number }) => {
     const qs = new URLSearchParams();
@@ -502,27 +499,11 @@ export const api = {
   /** All recommendations the user has rejected, newest first. */
   rejectedRecs: () => get<Recommendation[]>('/recommendations/rejected'),
 
-  /** Upload a Goodreads CSV and run ingest. Used by the setup wizard. */
-  ingestUpload: async (file: File): Promise<Record<string, unknown>> => {
-    const form = new FormData();
-    form.append('file', file);
-    const res = await fetch(`${BASE}/ingest/upload`, {
-      method: 'POST',
-      body: form,
-      headers: { ...(await authHeaders()) }, // no Content-Type — the browser sets the multipart boundary
-    });
-    if (!res.ok) {
-      const detail = await res.text();
-      throw new Error(`Upload failed (${res.status}): ${detail}`);
-    }
-    return res.json() as Promise<Record<string, unknown>>;
-  },
-
   /** Sniff an uploaded CSV: detected format, headers, sample rows, guessed mapping. */
   importPreview: async (file: File): Promise<ImportPreview> => {
     const form = new FormData();
     form.append('file', file);
-    const res = await fetch(`${BASE}/import/preview`, {
+    const res = await fetch(`${baseFor('/import/preview', 'POST')}/import/preview`, {
       method: 'POST',
       body: form,
       headers: { ...(await authHeaders()) },
@@ -540,7 +521,7 @@ export const api = {
     form.append('file', file);
     form.append('format', opts?.format ?? 'auto');
     if (opts?.mapping) form.append('mapping', JSON.stringify(opts.mapping));
-    const res = await fetch(`${BASE}/import`, {
+    const res = await fetch(`${baseFor('/import', 'POST')}/import`, {
       method: 'POST',
       body: form,
       headers: { ...(await authHeaders()) },
@@ -612,7 +593,7 @@ export const api = {
 
   /** Dismiss a feedback prompt. */
   dismissFeedback: async (payload: FeedbackDismiss): Promise<void> => {
-    const res = await fetch(`${BASE}/feedback/dismiss`, {
+    const res = await fetch(`${baseFor('/feedback/dismiss', 'POST')}/feedback/dismiss`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
       body: JSON.stringify(payload),
@@ -636,7 +617,7 @@ export const api = {
   // ── Export ────────────────────────────────────────────────────────────────
   /** Download the library as a CSV or JSON blob (auth-attached). */
   exportLibrary: async (format: 'csv' | 'json'): Promise<Blob> => {
-    const res = await fetch(`${BASE}/export?format=${format}`, {
+    const res = await fetch(`${baseFor('/export', 'GET')}/export?format=${format}`, {
       headers: { ...(await authHeaders()) },
     });
     if (!res.ok) throw new Error(`Export failed (${res.status}): ${await res.text()}`);
@@ -799,7 +780,9 @@ export interface AdminUser {
  * unconditionally (NavBar) to decide whether to show admin UI at all.
  */
 export async function adminMe(): Promise<{ is_admin: boolean }> {
-  const res = await fetch(`${BASE}/admin/me`, { headers: { ...(await authHeaders()) } });
+  const res = await fetch(`${baseFor('/admin/me', 'GET')}/admin/me`, {
+    headers: { ...(await authHeaders()) },
+  });
   if (!res.ok) return { is_admin: false };
   return res.json() as Promise<{ is_admin: boolean }>;
 }
@@ -924,3 +907,29 @@ export interface Usage {
 
 /** Get the caller's month-to-date Anthropic spend. GET /settings/usage */
 export const getUsage = (): Promise<Usage> => get<Usage>('/settings/usage');
+
+// ─── Node backend admin (wave 0) ───────────────────────────────────────────────────────
+
+export interface AdminConfig {
+  debug_mode: boolean;
+}
+
+export async function getAdminConfig(): Promise<AdminConfig> {
+  return get<AdminConfig>('/admin/config');
+}
+
+export async function putAdminConfig(debugMode: boolean): Promise<AdminConfig> {
+  return put<AdminConfig>('/admin/config', { debug_mode: debugMode });
+}
+
+export const ADMIN_CONFIG_KEY = '/admin/config';
+
+/** Liveness probe for the System tab. `base` is a full origin ('' = same origin). */
+export async function pingBackend(base: string, path: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${base}${path}`, { cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

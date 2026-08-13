@@ -83,7 +83,7 @@ python -m mylibrary.cli serve                  # or: uvicorn mylibrary.api:app -
 ```
 
 Then open http://127.0.0.1:8000/docs for interactive endpoints:
-`GET /health`, `GET /stats`, `POST /ingest`, `POST /enrich`, `POST /profile`,
+`GET /health`, `GET /stats`, `POST /enrich`, `POST /profile`,
 `GET /books`, `GET /profile`, `POST /recommend`, `GET /recommendations`.
 
 ## Tests
