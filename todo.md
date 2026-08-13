@@ -35,29 +35,48 @@
   with `Enrichment was interrupted, please retry.` at 16:00:12 (1866s, past the strict 1800s
   threshold), preserving `progress` at 65/159.
 
-- **Add-book search ranking scores correct matches 0 (deferred to after the Python delete).**
-  Root cause is `matchScore` (`frontend/lib/server/catalog.ts:424`, mirror of `_match_score`,
-  `mylibrary/catalog.py:449`) — NOT retrieval. Instrumenting all four source fetches showed the
-  target book present in every candidate pool for every failing query; it scores 0, ties with
-  noise, and the year-DESC tiebreaker floats recent junk above it. Two defects:
-  1. `normFull` maps non-alphanumerics to a *space*, so `"The Android's Dream"` becomes
-     `the android s dream` with a stray `s` token. Query `the androids dream` then fails all five
-     bands → score 0. Typing the apostrophe scores 100. Fix: strip `['’ʼ]` to empty *before* the
+- ~~**Add-book search ranking scores correct matches 0.**~~ **FIXED 2026-08-13, Node only.**
+  Root cause was `matchScore` (`frontend/lib/server/catalog.ts`, mirror of `_match_score`,
+  `mylibrary/catalog.py:449`) — NOT retrieval. Both defects are fixed:
+  1. `normFull` mapped non-alphanumerics to a *space*, so `"The Android's Dream"` became
+     `the android s dream` with a stray `s` token and the query `the androids dream` failed all
+     five bands → score 0. Apostrophes (`['’ʼ‘]`) now elide to empty *before* the
      `[^a-z0-9 ]`→space pass.
-  2. Query tokens can never span title AND author — the scorer checks query-vs-title or
-     query-vs-author, never both. `lock in scalzi` scores 0 against *Lock In* by John Scalzi while
-     `"Trivia-On-Books Lock in by John Scalzi"` scores 60 (all tokens in its *title*), so adding the
-     author makes results strictly worse. Fix: peel author-matching tokens off the query, score the
-     remainder against the title in a band above the title-only bands.
-  Prototype verified against live catalogs: `The Androids Dream`, `Lock In Scalzi` and
-  `scalzi lock in` all go from absent-in-top-8 to #1; `Lock In`, `dune`, `the fault in our stars`
-  unchanged. **Deferred deliberately**: `catalog-search.test.ts` asserts Node's output byte-matches
-  recorded Python output, so fixing this before the Python delete means fixing both runtimes and
-  re-recording the fixture. Chase's call (2026-08-13) — do it once Python is gone and there is no
-  parity constraint. Scope is these two defects only.
+  2. Query tokens could never span title AND author. `matchScore` now peels author-matching
+     tokens off the query and scores the remainder against the title, in bands above the
+     title-only ones. **Graded 95 (remainder == title) / 92 (title starts with remainder) / 90
+     (remainder ⊆ title tokens)** — this grading was NOT in the original write-up and is
+     load-bearing: a single flat band leaves *The Lock In Series* tied with *Lock In*, which
+     then wins on the year tiebreaker.
+  **Python's `_match_score` was deliberately NOT fixed** (Chase's call 2026-08-13) — it serves
+  zero traffic and is deleted with the rest of `mylibrary/`. Parity survived anyway:
+  `catalog-search.test.ts` still passes untouched, because neither fix moves `dune`,
+  `ancillary justice`, or the ISBN query, so `expected.json` needed no regeneration.
+  Covered by `catalog-ranking.test.ts` — behavioral, not parity, tests against real pools
+  recorded by `scripts/gen_search_ranking_fixtures.py`. That recorder **merges into
+  `http.json` additively on purpose**: a full `gen_catalog_fixtures.py` re-record also
+  regenerates `enrichment-expected.json`, whose seven seeds were hand-picked by probing live
+  catalogs to hit five specific match branches, and can flip one for reasons unrelated to search.
+  Live-verified against real catalogs on an isolated Postgres: `the androids dream`,
+  `lock in scalzi` and `scalzi lock in` all went from absent-in-top-8 to #1; `lock in`,
+  `the fault in our stars` and `ancillary justice` unaffected.
 - **Search tiebreakers favor recency over canonicity** (separate, pre-existing, lower priority).
-  `rankKey`'s year-DESC tiebreaker floats reissues and study guides above canonical works — plain
-  `dune` returns a graphic novel and a Kevin J. Anderson title above Frank Herbert's.
+  The year-DESC tiebreaker in `searchBooks`' sort comparator floats reissues and study guides
+  above canonical works — plain `dune` returns Kevin J. Anderson's above Frank Herbert's.
+  **Confirmed still live 2026-08-13** after the ranking fix above, which does not address it.
+  Note the committed `dune` fixture pool happens to order Herbert first, so no fixture-driven
+  test can currently reproduce this — a fresh recording is needed, in its OWN fixture file, so
+  it does not overwrite the pool `catalog-search.test.ts`'s parity assertions depend on.
+  Two candidate signals, neither free:
+  - `edition_count` from Open Library is the right signal but is **not** in the `fields` param
+    we request; adding it changes the request URL, and the parity test replays recorded URLs
+    asserting Node issues exactly Python's. **Blocked until the Python delete.**
+  - Counting dedup sightings (`mergeInto` already collapses duplicate editions across all four
+    fetches; a canonical work has far more) needs no URL change and is source-neutral —
+    viable now. Untried.
+  Google's `ratingsCount` was evaluated and rejected: sparse and tiny (25, 5, 3, mostly absent),
+  and absent entirely from Open Library, so it acts as a source preference rather than a
+  tiebreaker.
 
 ## Python retirement — in flight
 
@@ -81,7 +100,11 @@ After the delete (5b-2 Tasks 1–7, no deadline):
 - [ ] Strip `NEXT_PUBLIC_API_URL` and the `python`/`auto` switcher. **Once Railway is gone the
       admin System tab's `python` override is a foot-gun that breaks every route if toggled** —
       do this promptly rather than "eventually".
-- [ ] Fix add-book search ranking (deferred below — it was blocked on the Python parity fixture).
+- [x] Fix add-book search ranking — done early, 2026-08-13, without waiting for the delete. Node
+      only; the parity fixture turned out not to be a blocker (see BUGS above).
+- [ ] Fix the search canonicity tiebreaker using Open Library `edition_count` — this one really
+      is blocked on the delete, because it changes the request URL the parity test replays.
+      Skip if the dedup-sightings alternative (see BUGS) lands first.
 - [ ] Rewrite `CLAUDE.md`'s current-state line with no wave numbering in the present tense.
 
 ## enhancements

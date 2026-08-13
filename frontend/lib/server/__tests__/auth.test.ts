@@ -41,7 +41,10 @@ describe('auth', () => {
 
   it('verifies a valid ES256 token and extracts sub + email', async () => {
     process.env.ADMIN_EMAILS = 'chase@example.com';
-    const { jwks, token } = await makeJwksAndToken({ sub: 'user-123', email: 'reader@example.com' });
+    const { jwks, token } = await makeJwksAndToken({
+      sub: 'user-123',
+      email: 'reader@example.com',
+    });
     const user = await verifyRequestUser(`Bearer ${token}`, jwks);
     expect(user).toEqual({ userId: 'user-123', email: 'reader@example.com', isAdmin: false });
   });

@@ -20,7 +20,9 @@ export const PUT = withApi('/api/settings/profile', async (req, ctx) => {
   const db = getDb();
   const displayName = await db.transaction(async (tx) => {
     await upsertUserSettings(tx, ctx.user.userId, { displayName: name });
-    const rows = await tx.select().from(schema.userSettings)
+    const rows = await tx
+      .select()
+      .from(schema.userSettings)
       .where(eq(schema.userSettings.userId, ctx.user.userId));
     return rows[0]?.displayName ?? null;
   });

@@ -409,11 +409,19 @@ export async function googleBooksEnrichmentSearch(
 }
 
 function normFull(s: string | null | undefined): string {
-  return (s ?? '')
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    (s ?? '')
+      .toLowerCase()
+      // Apostrophes elide to NOTHING, before the pass below turns punctuation into
+      // spaces. Mapping them to a space splits a possessive into a stray one-letter
+      // token -- "The Android's Dream" became `the android s dream`, so the natural
+      // query `the androids dream` matched no band at all and scored 0. Readers
+      // routinely omit the apostrophe; that must not change the ranking.
+      .replace(/['’ʼ‘]/g, '')
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 function searchDedupKey(title: string | null, author: string | null): string {
@@ -430,6 +438,32 @@ function matchScore(query: string, cand: Candidate): number {
   if (title.startsWith(q)) return 80;
   const qTokens = new Set(q.split(' ').filter(Boolean));
   const tTokens = new Set(title.split(' ').filter(Boolean));
+
+  // A query may name the title AND the author -- "lock in scalzi". Scoring the whole
+  // query against one field at a time can never match such a query, so *Lock In* by
+  // John Scalzi scored 0 while the study guide "Trivia-On-Books Lock in by John
+  // Scalzi" scored 60 on the band below, every token being in its own title. Naming
+  // the author made results strictly worse. So: peel the tokens the author accounts
+  // for, then score what remains against the title. Banded above the title-only
+  // bands, because matching both fields is a stronger signal than matching one.
+  // Graded the same way as the title-only bands below, so that among the candidates
+  // an author-bearing query matches, the tightest title still wins: "lock in scalzi"
+  // must surface *Lock In* over *The Lock In Series*, which otherwise ties it and
+  // takes first place on the year tiebreaker.
+  if (author) {
+    const aTokens = new Set(author.split(' ').filter(Boolean));
+    // qTokens is built from q.split, and JS Sets iterate in insertion order, so the
+    // remainder stays in the order the reader typed it.
+    const rest = [...qTokens].filter((t) => !aTokens.has(t));
+    const usedAuthor = rest.length < qTokens.size;
+    if (usedAuthor && rest.length) {
+      const restText = rest.join(' ');
+      if (title === restText) return 95;
+      if (title.startsWith(restText)) return 92;
+      if (rest.every((t) => tTokens.has(t))) return 90;
+    }
+  }
+
   if (qTokens.size && [...qTokens].every((t) => tTokens.has(t))) return 60;
   if (title.includes(q)) return 40;
   if (author && author.includes(q)) return 20;

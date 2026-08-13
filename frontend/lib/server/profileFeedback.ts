@@ -133,9 +133,7 @@ export function feedbackBlock(feedback: FeedbackContext | null): string {
       .map((d) => `${d.claim} (weight ${pyFloatStr(d.user_weight)})`)
       .join('; ');
     lines.push(
-      'The following traits should be softened (user finds them less ' +
-        'important): ' +
-        rendered
+      'The following traits should be softened (user finds them less ' + 'important): ' + rendered
     );
   }
   if (feedback.more_like.length) {
@@ -175,9 +173,35 @@ export function feedbackBlock(feedback: FeedbackContext | null): string {
 
 // Copied verbatim from profile._REJECT_STOPWORDS.
 const REJECT_STOPWORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'of', 'to', 'in', 'on', 'for', 'with',
-  'above', 'all', 'over', 'under', 'this', 'that', 'these', 'those', 'its',
-  'it', 'is', 'are', 'be', 'as', 'than', 'but', 'not', 'no',
+  'a',
+  'an',
+  'the',
+  'and',
+  'or',
+  'of',
+  'to',
+  'in',
+  'on',
+  'for',
+  'with',
+  'above',
+  'all',
+  'over',
+  'under',
+  'this',
+  'that',
+  'these',
+  'those',
+  'its',
+  'it',
+  'is',
+  'are',
+  'be',
+  'as',
+  'than',
+  'but',
+  'not',
+  'no',
 ]);
 
 /** Twin of profile._claim_tokens: re.findall(r"[a-z0-9]+", text.lower()) minus stopwords. */

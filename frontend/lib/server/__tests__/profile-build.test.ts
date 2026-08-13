@@ -6,7 +6,12 @@ import seedJson from './fixtures/parity/seed.json';
 import type { Seed } from './helpers/pglite';
 import { tierFor, buildTiers } from '../profileTiers';
 import { pyJsonDumps } from '../serialize';
-import { feedbackContext, feedbackBlock, claimTokens, removeRejectedClaims } from '../profileFeedback';
+import {
+  feedbackContext,
+  feedbackBlock,
+  claimTokens,
+  removeRejectedClaims,
+} from '../profileFeedback';
 import { extractTasteProfile } from '../profileBuild';
 import { schema } from '../db';
 
@@ -55,7 +60,14 @@ describe('buildTiers', () => {
       const dune = tiers.get('5')!.find((b) => b.id === 1)!;
 
       expect(Object.keys(dune)).toEqual([
-        'id', 'title', 'author', 'year', 'pages', 'subjects', 'series', 'read_year',
+        'id',
+        'title',
+        'author',
+        'year',
+        'pages',
+        'subjects',
+        'series',
+        'read_year',
       ]);
       expect(dune).toMatchObject({
         id: 1,
@@ -71,7 +83,15 @@ describe('buildTiers', () => {
       // A book with an app_review gets a trailing `review` key; one without does not.
       const phm = tiers.get('5')!.find((b) => b.id === 3)!;
       expect(Object.keys(phm)).toEqual([
-        'id', 'title', 'author', 'year', 'pages', 'subjects', 'series', 'read_year', 'review',
+        'id',
+        'title',
+        'author',
+        'year',
+        'pages',
+        'subjects',
+        'series',
+        'read_year',
+        'review',
       ]);
       expect(phm.review).toBe('Loved the problem-solving.');
 
@@ -150,10 +170,7 @@ describe('feedbackContext', () => {
       ]);
 
       const ctx = await feedbackContext(db, 'local');
-      expect(ctx.more_like).toEqual([
-        'Dune by Frank Herbert',
-        'The Fifth Season by N.K. Jemisin',
-      ]);
+      expect(ctx.more_like).toEqual(['Dune by Frank Herbert', 'The Fifth Season by N.K. Jemisin']);
       expect(ctx.less_like).toEqual(['Foundation by Isaac Asimov']);
     } finally {
       await close();
@@ -178,8 +195,14 @@ describe('feedbackContext', () => {
 
 describe('feedbackBlock', () => {
   const empty = {
-    confirmed: [], edited: [], rejected: [], downweighted: [],
-    more_like: [], less_like: [], favorites: [], directive_text: null,
+    confirmed: [],
+    edited: [],
+    rejected: [],
+    downweighted: [],
+    more_like: [],
+    less_like: [],
+    favorites: [],
+    directive_text: null,
   };
 
   it('returns an empty string when nothing is set', () => {
@@ -200,7 +223,10 @@ describe('feedbackBlock', () => {
   it('renders a downweighted float the way Python str(float) does', () => {
     const out = feedbackBlock({
       ...empty,
-      downweighted: [{ claim: 'Likes long books.', user_weight: 0.5 }, { claim: 'X.', user_weight: 1 }],
+      downweighted: [
+        { claim: 'Likes long books.', user_weight: 0.5 },
+        { claim: 'X.', user_weight: 1 },
+      ],
     });
     expect(out).toContain('Likes long books. (weight 0.5); X. (weight 1.0)');
   });
@@ -252,7 +278,10 @@ describe('removeRejectedClaims', () => {
 
   it('keeps a trait below the overlap threshold', () => {
     // 1/4 = 0.25
-    const kept = removeRejectedClaims([t('Enjoys hard science fiction.')], ['Enjoys sparkly vampire romance.']);
+    const kept = removeRejectedClaims(
+      [t('Enjoys hard science fiction.')],
+      ['Enjoys sparkly vampire romance.']
+    );
     expect(kept.map((x) => x.claim)).toEqual(['Enjoys hard science fiction.']);
   });
 
@@ -335,9 +364,27 @@ describe('extractTasteProfile', () => {
       await loadSeed(db, seedJson as Seed);
       const client = fakeClaude([
         traitsResponse([
-          { claim: 'Avoids grimdark tone entirely.', polarity: 'aversion', exhibits: [6], contrasts: [], inference_confidence: 0.5 },
-          { claim: 'Values competence and problem-solving protagonists.', polarity: 'reward', exhibits: [3], contrasts: [], inference_confidence: 0.9 },
-          { claim: 'Rewards slow, atmospheric fiction.', polarity: 'reward', exhibits: [1], contrasts: [], inference_confidence: 0.6 },
+          {
+            claim: 'Avoids grimdark tone entirely.',
+            polarity: 'aversion',
+            exhibits: [6],
+            contrasts: [],
+            inference_confidence: 0.5,
+          },
+          {
+            claim: 'Values competence and problem-solving protagonists.',
+            polarity: 'reward',
+            exhibits: [3],
+            contrasts: [],
+            inference_confidence: 0.9,
+          },
+          {
+            claim: 'Rewards slow, atmospheric fiction.',
+            polarity: 'reward',
+            exhibits: [1],
+            contrasts: [],
+            inference_confidence: 0.6,
+          },
         ]),
       ]);
 
@@ -347,7 +394,9 @@ describe('extractTasteProfile', () => {
       const proposed = await db
         .select()
         .from(schema.tasteTraits)
-        .where(and(eq(schema.tasteTraits.userId, 'local'), eq(schema.tasteTraits.status, 'proposed')));
+        .where(
+          and(eq(schema.tasteTraits.userId, 'local'), eq(schema.tasteTraits.status, 'proposed'))
+        );
       expect(proposed.map((p) => p.claim)).toEqual(['Rewards slow, atmospheric fiction.']);
     } finally {
       await close();

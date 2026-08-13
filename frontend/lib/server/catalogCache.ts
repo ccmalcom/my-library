@@ -28,7 +28,10 @@ export async function cacheGet(db: Db, url: string): Promise<CacheLookup> {
 }
 
 export async function cachePut(
-  db: Db, url: string, source: string, payload: unknown
+  db: Db,
+  url: string,
+  source: string,
+  payload: unknown
 ): Promise<void> {
   const key = cacheKeyFor(url);
   // jsonb cannot store a bare SQL NULL and still mean "JSON null" — store the

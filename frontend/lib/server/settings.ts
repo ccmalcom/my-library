@@ -10,7 +10,9 @@ import { decrypt } from './crypto';
  * matching Python.
  */
 export async function keyConfigured(db: Db, userId: string): Promise<boolean> {
-  const rows = await db.select().from(schema.userSettings)
+  const rows = await db
+    .select()
+    .from(schema.userSettings)
     .where(eq(schema.userSettings.userId, userId));
   const row = rows[0];
   let configured: boolean;
@@ -24,13 +26,18 @@ export async function keyConfigured(db: Db, userId: string): Promise<boolean> {
 }
 
 export async function upsertUserSettings(
-  db: Db, userId: string,
+  db: Db,
+  userId: string,
   patch: Partial<{ anthropicApiKeyEncrypted: string | null; displayName: string }>
 ): Promise<void> {
-  const rows = await db.select().from(schema.userSettings)
+  const rows = await db
+    .select()
+    .from(schema.userSettings)
     .where(eq(schema.userSettings.userId, userId));
   if (rows[0]) {
-    await db.update(schema.userSettings).set({ ...patch, updatedAt: utcnowTs() })
+    await db
+      .update(schema.userSettings)
+      .set({ ...patch, updatedAt: utcnowTs() })
       .where(eq(schema.userSettings.id, rows[0].id));
   } else {
     await db.insert(schema.userSettings).values({ userId, ...patch });

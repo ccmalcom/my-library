@@ -90,6 +90,11 @@ export async function trackedCreate<T extends MessagesClient>(
     ReturnType<T['messages']['create']>
   >;
   const usage = (message as { usage?: UsageLike | null })?.usage ?? null;
-  await recordUsage(db, { userId: meta.userId, model: params.model, operation: meta.operation, usage });
+  await recordUsage(db, {
+    userId: meta.userId,
+    model: params.model,
+    operation: meta.operation,
+    usage,
+  });
   return message;
 }

@@ -2,18 +2,8 @@
 
 import useSWR from 'swr';
 import { useEffect, useState } from 'react';
-import {
-  getAdminConfig,
-  putAdminConfig,
-  pingBackend,
-  ADMIN_CONFIG_KEY,
-} from '@/lib/api';
-import {
-  getBackendChoice,
-  setBackendChoice,
-  pythonBase,
-  type BackendChoice,
-} from '@/lib/backend';
+import { getAdminConfig, putAdminConfig, pingBackend, ADMIN_CONFIG_KEY } from '@/lib/api';
+import { getBackendChoice, setBackendChoice, pythonBase, type BackendChoice } from '@/lib/backend';
 import { Badge, Button, Card, Spinner, useToast } from '@/components/ui';
 
 const CHOICES: { value: BackendChoice; label: string; hint: string }[] = [
@@ -112,7 +102,8 @@ export function SystemTab() {
         </p>
         {configError ? (
           <p className="text-sm text-danger">
-            Couldn&apos;t load debug mode: {configError instanceof Error ? configError.message : 'request failed'}
+            Couldn&apos;t load debug mode:{' '}
+            {configError instanceof Error ? configError.message : 'request failed'}
           </p>
         ) : isLoading || !config ? (
           <Spinner label="Loading" />

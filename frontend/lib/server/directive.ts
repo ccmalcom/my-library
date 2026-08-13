@@ -14,7 +14,8 @@ export function cleanDirectiveConstraints(raw: unknown): Record<string, unknown>
     const val = r[key];
     if (typeof val === 'boolean') continue;
     if (typeof val === 'number' && Number.isInteger(val)) out[key] = val;
-    else if (typeof val === 'string' && /^\d+$/.test(val.trim())) out[key] = parseInt(val.trim(), 10);
+    else if (typeof val === 'string' && /^\d+$/.test(val.trim()))
+      out[key] = parseInt(val.trim(), 10);
   }
 
   const excl = (Array.isArray(r.exclude_subjects) ? r.exclude_subjects : [])

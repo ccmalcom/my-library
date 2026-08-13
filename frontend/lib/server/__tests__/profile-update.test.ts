@@ -49,7 +49,14 @@ describe('buildUpdatePrompt', () => {
 
   it('renders an integral inference_confidence as a Python float', () => {
     const traits = [
-      { id: 1, claim: 'A.', polarity: 'reward', inference_confidence: pyFloat(1), exhibits: [1], contrasts: [] },
+      {
+        id: 1,
+        claim: 'A.',
+        polarity: 'reward',
+        inference_confidence: pyFloat(1),
+        exhibits: [1],
+        contrasts: [],
+      },
     ];
     const out = buildUpdatePrompt(traits, new Map(), [1], null);
     expect(out).toContain('"inference_confidence": 1.0');
@@ -71,7 +78,13 @@ describe('updateTasteProfile', () => {
       await loadSeed(db, seedJson as Seed);
       const client = fakeClaude([
         reviseResponse([
-          { claim: 'Rewards problem-solving under pressure.', polarity: 'reward', exhibits: [3], contrasts: [9999], inference_confidence: 0.9 },
+          {
+            claim: 'Rewards problem-solving under pressure.',
+            polarity: 'reward',
+            exhibits: [3],
+            contrasts: [9999],
+            inference_confidence: 0.9,
+          },
         ]),
       ]);
 
@@ -86,7 +99,9 @@ describe('updateTasteProfile', () => {
       const proposed = await db
         .select()
         .from(schema.tasteTraits)
-        .where(and(eq(schema.tasteTraits.userId, 'local'), eq(schema.tasteTraits.status, 'proposed')));
+        .where(
+          and(eq(schema.tasteTraits.userId, 'local'), eq(schema.tasteTraits.status, 'proposed'))
+        );
       expect(proposed).toHaveLength(1);
       // 9999 is not in books_meta, so it is filtered from contrasts.
       expect(proposed[0].contrasts).toEqual([]);
@@ -104,7 +119,9 @@ describe('updateTasteProfile', () => {
       await loadSeed(db, seedJson as Seed);
       await db
         .delete(schema.tasteTraits)
-        .where(and(eq(schema.tasteTraits.userId, 'local'), eq(schema.tasteTraits.status, 'proposed')));
+        .where(
+          and(eq(schema.tasteTraits.userId, 'local'), eq(schema.tasteTraits.status, 'proposed'))
+        );
 
       const client = fakeClaude([reviseResponse([])]);
       const out = await updateTasteProfile(db, client, 'local');
@@ -221,9 +238,7 @@ describe('updateTasteProfile', () => {
         name: 'revise_taste_traits',
       });
       const messages = client.calls[0].params.messages as { content: string }[];
-      expect(messages[0].content).toContain(
-        'CHANGED BOOK IDS (the edits driving this update): []'
-      );
+      expect(messages[0].content).toContain('CHANGED BOOK IDS (the edits driving this update): []');
     } finally {
       await close();
     }

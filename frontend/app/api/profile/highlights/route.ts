@@ -42,15 +42,12 @@ export const GET = withApi('/api/profile/highlights', async (_req, ctx) => {
   const rated = rows.filter(
     (r) => effectiveRating(r.books.appRating, r.books.goodreadsRating) !== null
   );
-  const ratingOf = (r: Row) =>
-    effectiveRating(r.books.appRating, r.books.goodreadsRating)!;
+  const ratingOf = (r: Row) => effectiveRating(r.books.appRating, r.books.goodreadsRating)!;
 
   const loved = rated.filter((r) => ratingOf(r) >= LOVED_MIN);
   const thin = loved.length < COLD_START_LOVED || rated.length < COLD_START_RATED;
 
-  const nAuthors = new Set(
-    rated.map((r) => r.books.author).filter((a): a is string => !!a)
-  ).size;
+  const nAuthors = new Set(rated.map((r) => r.books.author).filter((a): a is string => !!a)).size;
 
   // top_genres: rating-weighted, insertion-ordered (stable sort keeps ties in
   // first-seen order, matching Counter.most_common).
@@ -111,9 +108,7 @@ export const GET = withApi('/api/profile/highlights', async (_req, ctx) => {
     if (dominant !== null && buckets[dominant] === 0) dominant = null;
   }
 
-  const years = rated
-    .map((r) => r.books.yearPublished)
-    .filter((y): y is number => !!y);
+  const years = rated.map((r) => r.books.yearPublished).filter((y): y is number => !!y);
   const eraSplit =
     years.length > 0
       ? {

@@ -15,7 +15,9 @@ describe('catalog cache', () => {
       expect(await cacheGet(db, 'https://x/1')).toEqual({ hit: false, payload: null });
       await cachePut(db, 'https://x/1', 'openlibrary', { docs: [1, 2] });
       expect(await cacheGet(db, 'https://x/1')).toEqual({ hit: true, payload: { docs: [1, 2] } });
-    } finally { await close(); }
+    } finally {
+      await close();
+    }
   });
 
   it('distinguishes a cached null (404) from a miss', async () => {
@@ -23,7 +25,9 @@ describe('catalog cache', () => {
     try {
       await cachePut(db, 'https://x/404', 'openlibrary', null);
       expect(await cacheGet(db, 'https://x/404')).toEqual({ hit: true, payload: null });
-    } finally { await close(); }
+    } finally {
+      await close();
+    }
   });
 
   it('re-putting the same url overwrites rather than erroring', async () => {
@@ -32,6 +36,8 @@ describe('catalog cache', () => {
       await cachePut(db, 'https://x/2', 'googlebooks', { a: 1 });
       await cachePut(db, 'https://x/2', 'googlebooks', { a: 2 });
       expect(await cacheGet(db, 'https://x/2')).toEqual({ hit: true, payload: { a: 2 } });
-    } finally { await close(); }
+    } finally {
+      await close();
+    }
   });
 });

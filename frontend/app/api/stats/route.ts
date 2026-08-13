@@ -23,9 +23,7 @@ export const GET = withApi('/api/stats', async (_req, ctx) => {
     .where(eq(schema.tasteTraits.userId, userId));
   ctx.timer.mark('db');
 
-  const rated = books.filter(
-    (b) => effectiveRating(b.appRating, b.goodreadsRating) !== null
-  );
+  const rated = books.filter((b) => effectiveRating(b.appRating, b.goodreadsRating) !== null);
 
   const ratingDist: Record<string, number> = {};
   for (const b of rated) {

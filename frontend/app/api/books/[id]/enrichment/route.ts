@@ -22,7 +22,10 @@ export const PATCH = withApi('/api/books/[id]/enrichment', async (req, ctx) => {
   const raw = await req.json().catch(() => null);
   const parsed = Body.safeParse(raw);
   if (!parsed.success) {
-    throw new ApiError(422, `validation error: ${parsed.error.issues[0]?.message ?? 'invalid body'}`);
+    throw new ApiError(
+      422,
+      `validation error: ${parsed.error.issues[0]?.message ?? 'invalid body'}`
+    );
   }
   const b = parsed.data;
   const catalogSource = (b.catalog_source ?? '').trim();
@@ -32,34 +35,45 @@ export const PATCH = withApi('/api/books/[id]/enrichment', async (req, ctx) => {
   }
   const bookId = parseIdParam(ctx.params.id);
   const db = getDb();
-  const rows = await db.select().from(schema.books)
+  const rows = await db
+    .select()
+    .from(schema.books)
     .where(and(eq(schema.books.id, bookId), eq(schema.books.userId, ctx.user.userId)));
   const book = rows[0];
   if (!book) throw new ApiError(404, `Book ${bookId} not found.`);
 
   const fields = {
-    resolvedSource: catalogSource, resolvedId: catalogId,
-    subjects: b.subjects ?? [], coverUrl: b.cover_url ?? null,
+    resolvedSource: catalogSource,
+    resolvedId: catalogId,
+    subjects: b.subjects ?? [],
+    coverUrl: b.cover_url ?? null,
     description: b.description ?? null, // always overwritten, even to null — Python behavior
-    confidenceLabel: 'CORRECTED', resolutionConfidence: 1.0,
-    matchMethod: 'user_correction', resolvedAt: utcnowTs(),
+    confidenceLabel: 'CORRECTED',
+    resolutionConfidence: 1.0,
+    matchMethod: 'user_correction',
+    resolvedAt: utcnowTs(),
   };
   const enr = await db.transaction(async (tx) => {
-    const existing = await tx.select().from(schema.enrichment)
+    const existing = await tx
+      .select()
+      .from(schema.enrichment)
       .where(eq(schema.enrichment.bookId, bookId));
     if (existing[0]) {
-      await tx.update(schema.enrichment).set(fields)
-        .where(eq(schema.enrichment.bookId, bookId));
+      await tx.update(schema.enrichment).set(fields).where(eq(schema.enrichment.bookId, bookId));
     } else {
       await tx.insert(schema.enrichment).values({ bookId, ...fields });
     }
 
     const meta = await ensureProfileMeta(tx, ctx.user.userId);
-    await tx.update(schema.profileMeta).set({ enrichmentCorrectedAt: utcnowTs() })
+    await tx
+      .update(schema.profileMeta)
+      .set({ enrichmentCorrectedAt: utcnowTs() })
       .where(eq(schema.profileMeta.id, meta.id));
 
-    return (await tx.select().from(schema.enrichment)
-      .where(eq(schema.enrichment.bookId, bookId)))[0] ?? null;
+    return (
+      (await tx.select().from(schema.enrichment).where(eq(schema.enrichment.bookId, bookId)))[0] ??
+      null
+    );
   });
   ctx.timer.mark('db');
   return Response.json(bookOut(book, enr));

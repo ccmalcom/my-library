@@ -22,9 +22,7 @@ describe('errorResponse', () => {
 describe('withApi', () => {
   it('passes the local user to the handler and returns its response', async () => {
     silenceLogs();
-    const handler = withApi('echo', async (_req, ctx) =>
-      Response.json({ user: ctx.user.userId })
-    );
+    const handler = withApi('echo', async (_req, ctx) => Response.json({ user: ctx.user.userId }));
     const res = await handler(new Request('http://x/api/echo'));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ user: 'local' });

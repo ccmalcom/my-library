@@ -9,7 +9,9 @@ import { parseIdParam } from '@/lib/server/serialize';
 export const DELETE = withApi('/api/books/[id]', async (_req, ctx) => {
   const bookId = parseIdParam(ctx.params.id);
   const db = getDb();
-  const rows = await db.select().from(schema.books)
+  const rows = await db
+    .select()
+    .from(schema.books)
     .where(and(eq(schema.books.id, bookId), eq(schema.books.userId, ctx.user.userId)));
   const book = rows[0];
   if (!book) throw new ApiError(404, `Book ${bookId} not found.`);

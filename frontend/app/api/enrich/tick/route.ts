@@ -1,11 +1,7 @@
 import { z } from 'zod';
 import { getDb } from '@/lib/server/db';
 import { isValidCronSecret, rearmAfterResponse } from '@/lib/server/enrichmentDispatch';
-import {
-  claimJob,
-  oneBookEnrichmentRunner,
-  runClaimedChunk,
-} from '@/lib/server/enrichmentJobs';
+import { claimJob, oneBookEnrichmentRunner, runClaimedChunk } from '@/lib/server/enrichmentJobs';
 import { ApiError, withApi } from '@/lib/server/http';
 
 const EnrichTickBody = z

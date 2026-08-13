@@ -66,9 +66,7 @@ describe('pyJsonDumps (wave-3b extensions)', () => {
   });
 
   it('serializes a PyFloat with a decimal point', () => {
-    expect(pyJsonDumps({ inference_confidence: pyFloat(1) })).toBe(
-      '{"inference_confidence": 1.0}'
-    );
+    expect(pyJsonDumps({ inference_confidence: pyFloat(1) })).toBe('{"inference_confidence": 1.0}');
     expect(pyJsonDumps({ inference_confidence: pyFloat(0.8) })).toBe(
       '{"inference_confidence": 0.8}'
     );
