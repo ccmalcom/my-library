@@ -1492,3 +1492,31 @@ port.
   that wave 5b-1 already added.
 - Cheap repair: cherry-pick the revision files onto the deployed branch. Migration files are inert
   to an app that reads none of the new tables.
+
+## Wave 5b: a hand-rolled gate list drops gates the template already has
+
+The dispatch that fixed the un-guarded enrichment dispatch named three gates — `vitest` on the one
+touched file, `npm run type-check`, `npx eslint`. Codex ran exactly those three, all green, and the
+work was correct. `.claude/hooks/on_stop.py` then failed the turn on **prettier**, against a test
+file Codex had written with a multi-line call that prettier collapses.
+
+The gate was not missing from the docs. `npx prettier --write [files you touched]` is line 158 of
+the verification block in `codex-prompt-templates.md`, and "run `npx prettier --write` only on files
+you touched" is line 24. The dispatch dropped it because the gate list was **written from scratch**
+instead of pasted from the template — exactly what CLAUDE.md's "use the prompt templates, do not
+re-derive these per wave" exists to prevent.
+
+- **The failure mode of re-deriving a gate list is silent subtraction.** Nothing about the dispatch
+  looked incomplete; three plausible gates were named and all three passed. What was missing was
+  only visible against the template. This is the same shape as the `next build` hole found in
+  5b-1 — a green gate set that is green because it is small.
+- **Paste the verification block verbatim, then add task-specific gates to it.** Editing down from
+  the template is safe; composing up from memory is not.
+- **`on_stop.py` is the backstop for exactly this class**, and it caught this one — as it caught the
+  broken `tsc` in wave 4b. A gate that only ever fires at stop time is a gate the dispatch should
+  have named.
+
+Deliberate, and worth keeping: `npm run build` was excluded from that dispatch on the grounds that
+the change touched one server module with no route-segment surface, and a multi-minute build inside
+a ~10-minute Codex budget risks eating the task. The controller ran it instead. Excluding a slow
+gate and running it yourself is fine; forgetting a fast one is not.
