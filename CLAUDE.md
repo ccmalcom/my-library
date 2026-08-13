@@ -262,15 +262,36 @@ route table live on `feat/node-backend`, while production Vercel deploys from `m
 merge lands production serves 100% Python and deleting Railway is an outage. Merging also repairs
 Railway's healthcheck for free, so a real fallback exists during the smoke test.
 
-Four durable facts from 5b, all recorded in `docs/hosting.md` with full detail:
+Six durable facts from 5b, all recorded in `docs/hosting.md` with full detail:
 
-- **`CRON_SECRET` unset is destructive, not merely disabling.** `rearmAfterResponse` throws rather
-  than returning falsy, and `deps.dispatch` is awaited un-guarded at `enrichmentJobs.ts:449` and
-  `:190`, after the lease has already been nulled. Any enrichment needing a second chunk 500s
-  `/enrich/start`, 500s `/enrich/status/{job_id}` via poll repair, cannot be janitored (401), and
-  leaves a `running` job that `uq_enrich_jobs_active_user` turns into a permanent block on that
-  user. Invisible to a small-library smoke test — **always test enrichment with a library big
-  enough to need a second chunk.**
+- **The proxy matcher ate every internal tick — this, not `CRON_SECRET`, is why enrichment
+  continuation had never run in production.** `proxy.ts` matched `/api/*`, and `updateSession`
+  307-redirects any cookieless request to `/login`; the internal `/api/enrich/tick` fetch carries a
+  `CRON_SECRET` bearer and no cookies. The janitor was dead for the same reason. Fixed by adding
+  `api` to the matcher's negative lookahead — the middleware gates **pages only**, and API routes do
+  their own bearer auth via `withApi`. Two reasons it hid for four waves: **a 307 is a successful
+  fetch**, so nothing threw and nothing logged; and **`rearmed: true` means "a tick was scheduled",
+  not "a tick succeeded"**, because `after()` runs the fetch post-response where
+  `runClaimedChunk`'s `try`/`catch` can never see it. **Tick count alone is not evidence of
+  continuation** — 21 ticks coexisted with progress frozen at 65/159. Require the tick count AND
+  progress advancing.
+
+- **`CRON_SECRET` unset used to be destructive, not merely disabling** — `rearmAfterResponse` throws
+  rather than returning falsy, and `deps.dispatch` was awaited un-guarded at `enrichmentJobs.ts:449`
+  and `:190`, after the lease had already been nulled, permanently orphaning any enrichment needing
+  a second chunk. **Guarded as of commit `ef28810`** (2026-08-13): both sites catch,
+  `runClaimedChunk` returns `rearmed: false`, `repairActiveJobs` survives a mid-sweep failure and
+  counts it in `dispatchFailed`. A dispatch failure is now recoverable — but *not* self-healing,
+  since a missing secret also 401s the janitor that would reclaim the job. Still invisible to a
+  small-library smoke test — **always test enrichment with a library big enough to need a second
+  chunk.**
+- **The enrichment continuation path can only be tested on the production custom domain.** Vercel
+  SSO protection is on, scoped `all_except_custom_domains`, and `rearmAfterResponse` self-fetches
+  `request.url`'s origin (`enrichmentDispatch.ts:39`) carrying only the `CRON_SECRET` bearer. On a
+  **preview** deploy that self-fetch is intercepted by the protection layer before the function
+  runs, and the failure is **indistinguishable from a broken `CRON_SECRET`** — so a preview test
+  returns a confident wrong answer. Production is exempt only via `shelfsprite.app`. The proof is
+  `/api/enrich/tick` appearing **≥ 2** times in the logs, never the job reaching `done`.
 - **Never apply a migration to production from a branch the deployment does not track.** `start.sh`
   runs `alembic upgrade head` before uvicorn under `set -euo pipefail`, so if the DB's
   `alembic_version` names a revision absent from the deployed image, the container cannot boot and

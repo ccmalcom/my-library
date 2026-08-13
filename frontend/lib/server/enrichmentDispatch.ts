@@ -40,11 +40,20 @@ export function rearmAfterResponse(request: Request, jobId: string): void {
   const schedule = testOverrides?.schedule ?? after;
   const dispatch = testOverrides?.fetch ?? globalThis.fetch.bind(globalThis);
   schedule(async () => {
-    await dispatch(url, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ job_id: jobId }),
-      cache: 'no-store',
-    });
+    // after() runs post-response, so runClaimedChunk cannot catch this outcome; rearmed means
+    // the tick was scheduled, not that it succeeded.
+    try {
+      const response = await dispatch(url, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ job_id: jobId }),
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        console.error(`Failed to dispatch enrichment job ${jobId}: HTTP ${response.status}`);
+      }
+    } catch (error) {
+      console.error(`Failed to dispatch enrichment job ${jobId}`, error);
+    }
   });
 }
