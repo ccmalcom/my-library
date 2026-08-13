@@ -1,12 +1,12 @@
-# MyLibrary — analysis engine
+# ShelfSprite — analysis engine
 
 A personal, AI-powered book-analysis engine built on a Goodreads export. The pipeline
 ingests your library, enriches it with real catalog metadata, infers an evidence-backed
 **taste profile**, and recommends what to read next with a **two-stage recommender**
-(retrieve real catalog candidates → Claude reranks/explains). No web UI yet — NL
-discovery, the feedback loop, and evals come in later phases.
+(retrieve real catalog candidates → Claude reranks/explains).
 
-> Working name: *MyLibrary* (the project was "BetterReads", but that name is taken).
+> Live at [shelfsprite.app](https://shelfsprite.app). Built under the working name *MyLibrary*
+> (the original "BetterReads" was taken); rebranded 2026-08-13.
 
 ## Architecture
 

@@ -215,9 +215,22 @@ export function maskVolatile(v: unknown): unknown {
   return v;
 }
 
-/** Mask only the clock-derived date stamp in an otherwise exact export filename. */
+/**
+ * Mask the clock-derived date stamp in an otherwise exact export filename, and
+ * normalize the brand segment along with it.
+ *
+ * The brand normalization is load-bearing, not tidiness: Node emits
+ * `shelfsprite-backup-` since the rebrand, while the recorded Python responses in
+ * `fixtures/parity/write-scenarios.json` predate it and still say
+ * `mylibrary-backup-`. That divergence is intentional — Python is being retired,
+ * so re-recording the fixture against a renamed Python would be work on code
+ * scheduled for deletion. Node's exact filename is still asserted directly by
+ * `import-export-routes.test.ts`, so collapsing it here loses no coverage.
+ */
 export function maskVolatileHeader(value: string | null): string | null {
-  return value?.replace(/mylibrary-backup-\d{8}\.(csv|json)/, 'mylibrary-backup-<date>.$1') ?? null;
+  return (
+    value?.replace(/(?:mylibrary|shelfsprite)-backup-\d{8}\.(csv|json)/, 'backup-<date>.$1') ?? null
+  );
 }
 
 function maskVolatileHeaders(

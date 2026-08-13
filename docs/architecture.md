@@ -1,4 +1,4 @@
-# Architecture — MyLibrary
+# Architecture — ShelfSprite
 
 ## Stack
 

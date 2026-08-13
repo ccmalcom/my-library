@@ -25,7 +25,7 @@ const monoFont = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'MyLibrary',
+  title: 'ShelfSprite',
   description: 'Your personal AI-powered reading engine',
   icons: { icon: '/favicon.ico' },
 };

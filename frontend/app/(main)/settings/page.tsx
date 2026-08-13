@@ -41,9 +41,7 @@ function DangerAction({
       setConfirming(false);
     } catch (e) {
       setError(
-        e instanceof Error
-          ? e.message
-          : 'Something went wrong, and nothing was changed. Try again.'
+        e instanceof Error ? e.message : 'Something went wrong, and nothing was changed. Try again.'
       );
     } finally {
       setRunning(false);
@@ -134,7 +132,7 @@ export default function SettingsPage() {
     try {
       const blob = await api.exportLibrary(format);
       const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      downloadBlob(blob, `mylibrary-backup-${stamp}.${format}`);
+      downloadBlob(blob, `shelfsprite-backup-${stamp}.${format}`);
       toast.success('Backup downloaded. Your ratings and reviews are in it.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Export failed.');
@@ -262,7 +260,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="mb-1 font-display text-3xl font-bold tracking-tight text-text">Settings</h1>
       <p className="mb-8 text-sm text-muted">
-        MyLibrary uses your own Anthropic API key for the taste profile and recommendations.
+        ShelfSprite uses your own Anthropic API key for the taste profile and recommendations.
       </p>
 
       {/* Display name */}
@@ -472,7 +470,7 @@ export default function SettingsPage() {
         <Card>
           <h2 className="mb-1 font-display text-lg font-semibold text-text">Import books</h2>
           <p className="mb-4 text-sm text-muted">
-            Bring in your library from Goodreads, StoryGraph, a MyLibrary backup, or any CSV.
+            Bring in your library from Goodreads, StoryGraph, a ShelfSprite backup, or any CSV.
           </p>
           <Button onClick={() => setShowImport(true)}>Import from a file</Button>
         </Card>
@@ -483,8 +481,8 @@ export default function SettingsPage() {
         <Card>
           <h2 className="mb-1 font-display text-lg font-semibold text-text">Backup your library</h2>
           <p className="mb-4 text-sm text-muted">
-            Download everything you have rated and reviewed. CSV re-imports into MyLibrary; JSON is
-            a complete backup.
+            Download everything you have rated and reviewed. CSV re-imports into ShelfSprite; JSON
+            is a complete backup.
           </p>
           <div className="flex gap-2">
             <Button

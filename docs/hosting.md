@@ -1,4 +1,4 @@
-# Hosting & Deployment — MyLibrary
+# Hosting & Deployment — ShelfSprite
 
 ## Overview
 

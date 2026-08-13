@@ -59,7 +59,7 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
     ctx.fillStyle = '#a3a09d';
     ctx.font = '500 22px system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('MyLibrary', 56, 68);
+    ctx.fillText('ShelfSprite', 56, 68);
 
     // Code
     ctx.fillStyle = accentColor;
@@ -97,7 +97,7 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
   }
 
   async function handleCopyText() {
-    const text = `I am ${archetype.name} (${archetype.code}) on MyLibrary`;
+    const text = `I am ${archetype.name} (${archetype.code}) on ShelfSprite`;
     try {
       await navigator.clipboard.writeText(text);
       toast.success('Copied to clipboard');
@@ -125,7 +125,7 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
             style={{ background: accentColor }}
             aria-hidden="true"
           />
-          <p className="relative font-mono text-xs text-muted mb-3">MyLibrary</p>
+          <p className="relative font-mono text-xs text-muted mb-3">ShelfSprite</p>
           <p
             className="relative font-mono text-5xl font-bold tracking-widest mb-2"
             style={{ color: accentColor }}

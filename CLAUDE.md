@@ -1,13 +1,18 @@
-# CLAUDE.md — MyLibrary
+# CLAUDE.md — ShelfSprite
 
 Project context for AI assistants. Read this file first, then load sub-docs as needed.
 
 ## What this is
 
-MyLibrary is a personal, AI-powered book-analysis engine built on a Goodreads CSV export.
+ShelfSprite is a personal, AI-powered book-analysis engine built on a Goodreads CSV export.
 Pipeline: `ingest -> enrich -> taste profile -> recommend`. Exposed as a FastAPI service + Next.js frontend.
 
-Working name is "MyLibrary" (the original "BetterReads" is taken).
+The product is **ShelfSprite**, live at `shelfsprite.app`. It was built under the working name
+"MyLibrary" (the original "BetterReads" was taken); the rebrand landed 2026-08-13. The Python
+package, its env var prefix (`MYLIBRARY_*`), the `mylibrary.backend` localStorage key, and the
+`docs/superpowers/` plan archive all still say `mylibrary` — the first three are deleted or renamed
+in the Python-retirement cleanup, and the archive is a historical record that is deliberately
+left alone.
 
 **Current state:** Phase 6 live — Vercel frontend → Railway web → Supabase Postgres/auth.
 Invite-only / free launch. Admin console (invite/revoke users) shipped. Frontend redesign + mobile optimization deployed.
@@ -428,7 +433,7 @@ and the controllers were the other 89%. Do not optimize the dispatch; optimize t
 ## Locked decisions (do not relitigate)
 
 1. **Goodreads API is dead.** CSV export is the only ingest path. Never scrape Goodreads or call its API.
-2. **Goodreads is import-once.** The CSV is a cold-start seed; MyLibrary owns ratings and feedback going forward. Import must never clobber in-app `app_rating` or `app_review`.
+2. **Goodreads is import-once.** The CSV is a cold-start seed; ShelfSprite owns ratings and feedback going forward. Import must never clobber in-app `app_rating` or `app_review`.
 3. **The recommender is two-stage** (retrieval of real catalog candidates, then Claude reranks/explains). The LLM is NOT the recommender. Stage-1 is hybrid (deterministic metadata expansion + Claude-seeded search queries, all resolved against the live catalog so no invented titles survive).
 4. **Taste profile is metadata-driven** — cold-start signal comes from ratings + enriched metadata grouped by tier. In-app `app_review` values ARE fed in as direct signal and weighted above metadata inference once written.
 5. **Enrichment is the foundation.** Every book gets a `resolution_confidence` (HIGH/MEDIUM/LOW); ambiguous matches are scored LOW on purpose so a later feedback step surfaces them.

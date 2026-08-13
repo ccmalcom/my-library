@@ -19,7 +19,7 @@ const MAPPING_FIELDS: { field: MappingField; label: string; required?: boolean }
 const FORMAT_LABEL: Record<string, string> = {
   goodreads: 'Goodreads',
   storygraph: 'The StoryGraph',
-  canonical: 'MyLibrary backup',
+  canonical: 'ShelfSprite backup',
   unknown: 'Custom CSV',
 };
 
@@ -108,7 +108,7 @@ export default function ImportModal({
         Import books
       </h2>
       <p className="mb-4 text-sm text-muted">
-        Goodreads, StoryGraph, a MyLibrary backup, or any CSV from another app.
+        Goodreads, StoryGraph, a ShelfSprite backup, or any CSV from another app.
       </p>
 
       {!preview && (

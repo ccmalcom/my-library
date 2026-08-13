@@ -77,8 +77,8 @@ function ArchetypeExplainerModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <p className="text-muted">
-            The four letters combine into one of 16 named archetypes, from The Wandering Escapist
-            to The Cerebral Architect. Your code is derived from your actual rated books and taste
+            The four letters combine into one of 16 named archetypes, from The Wandering Escapist to
+            The Cerebral Architect. Your code is derived from your actual rated books and taste
             traits, so it should feel like you.
           </p>
 
@@ -248,7 +248,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
             compact ? 'text-3xl' : 'text-4xl sm:text-5xl',
           ].join(' ')}
         >
-          MyLibrary doesn&apos;t know you yet.
+          ShelfSprite doesn&apos;t know you yet.
         </h1>
         <p className="mt-4 text-muted text-sm max-w-sm mx-auto">
           Build your taste profile and find out what your shelf says about you.

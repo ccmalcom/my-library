@@ -1,4 +1,4 @@
-# Conventions & Gotchas — MyLibrary
+# Conventions & Gotchas — ShelfSprite
 
 ## TypeScript / TSX
 

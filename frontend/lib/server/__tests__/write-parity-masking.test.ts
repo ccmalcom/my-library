@@ -43,11 +43,21 @@ describe('write parity volatile masking', () => {
     expect(maskVolatile(utcOffset)).toBe(utcOffset);
   });
 
-  it('normalizes only the date stamp in otherwise exact export headers', () => {
-    const first = 'attachment; filename="mylibrary-backup-20260811.csv"';
-    const second = 'attachment; filename="mylibrary-backup-20260812.csv"';
+  it('normalizes the date stamp in otherwise exact export headers', () => {
+    const first = 'attachment; filename="shelfsprite-backup-20260811.csv"';
+    const second = 'attachment; filename="shelfsprite-backup-20260812.csv"';
 
     expect(maskVolatileHeader(first)).toEqual(maskVolatileHeader(second));
-    expect(maskVolatileHeader(first)).toBe('attachment; filename="mylibrary-backup-<date>.csv"');
+    expect(maskVolatileHeader(first)).toBe('attachment; filename="backup-<date>.csv"');
+  });
+
+  it('collapses the pre-rebrand Python filename onto the Node one', () => {
+    // Recorded Python responses predate the ShelfSprite rebrand. Both sides must
+    // mask to the same value or every export write-parity scenario fails on a
+    // difference that is intentional. See maskVolatileHeader's comment.
+    const recordedPython = 'attachment; filename="mylibrary-backup-20260812.json"';
+    const node = 'attachment; filename="shelfsprite-backup-20260812.json"';
+
+    expect(maskVolatileHeader(node)).toEqual(maskVolatileHeader(recordedPython));
   });
 });
