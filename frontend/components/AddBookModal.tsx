@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { BookOpen } from 'lucide-react';
 import { api, type Book, type CatalogResult, type Shelf } from '@/lib/api';
-import { Button, Modal, useToast } from '@/components/ui';
+import { Button, Modal, StarRating, useToast } from '@/components/ui';
 
 interface Props {
   onAdded: (book: Book) => void;
@@ -36,7 +36,6 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
   const [selected, setSelected] = useState<CatalogResult | null>(null);
   const [shelf, setShelf] = useState<Shelf>(defaultShelf);
   const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
   const [review, setReview] = useState('');
   const [saving, setSaving] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
@@ -106,7 +105,6 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
     }
   }
 
-  const shownStars = hover || rating;
   const reviewWithoutRating = review.trim() !== '' && rating === 0;
 
   return (
@@ -277,25 +275,13 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
                 </button>
               )}
             </div>
-            <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onMouseEnter={() => setHover(n)}
-                  onClick={() => setRating(n)}
-                  className="text-3xl leading-none transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
-                  aria-label={`${n} star${n > 1 ? 's' : ''}`}
-                >
-                  <span
-                    className={n <= shownStars ? 'text-accent' : 'text-faint'}
-                    aria-hidden="true"
-                  >
-                    ★
-                  </span>
-                </button>
-              ))}
-            </div>
+            <StarRating
+              value={rating}
+              onChange={setRating}
+              allowHalf
+              size={30}
+              label="Your rating"
+            />
           </div>
 
           {/* Optional review */}

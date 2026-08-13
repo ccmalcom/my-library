@@ -26,6 +26,8 @@ export const GET = withApi('/api/stats', async (_req, ctx) => {
   const rated = books.filter((b) => effectiveRating(b.appRating, b.goodreadsRating) !== null);
 
   const ratingDist: Record<string, number> = {};
+  // Keys are "0.5".."5" -- String() on a numeric-mode rating gives "4" for
+  // whole stars and "4.5" for halves, per the serialization rule.
   for (const b of rated) {
     const r = String(effectiveRating(b.appRating, b.goodreadsRating));
     ratingDist[r] = (ratingDist[r] ?? 0) + 1;

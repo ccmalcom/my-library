@@ -13,7 +13,8 @@ import {
   type Recommendation,
   type Shelf,
 } from '@/lib/api';
-import { Button, Badge, Card, Modal } from '@/components/ui';
+import { Button, Badge, Card, Modal, StarRating } from '@/components/ui';
+import { inStarBand } from '@/lib/server/rating';
 import BookEditModal from '@/components/BookEditModal';
 import BookDetailModal from '@/components/BookDetailModal';
 import AddBookModal from '@/components/AddBookModal';
@@ -32,14 +33,7 @@ type Tab = 'read' | 'to-read' | 'currently-reading' | 'did-not-finish' | 'reject
 
 function StarDisplay({ rating }: { rating: number | null }) {
   if (!rating) return <span className="font-mono text-xs text-faint">unrated</span>;
-  return (
-    <span className="font-mono text-sm text-accent" aria-label={`${rating} stars`}>
-      {'\u2605'.repeat(rating)}
-      <span className="text-faint" aria-hidden="true">
-        {'\u2605'.repeat(5 - rating)}
-      </span>
-    </span>
-  );
+  return <StarRating value={rating} readOnly allowHalf size={14} label="Rating" />;
 }
 
 function CoverThumb({
@@ -147,7 +141,7 @@ function ReadTab({ books }: { books: Book[] }) {
   }
 
   const filtered = rated
-    .filter((b) => (filterStar !== null ? b.effective_rating === filterStar : true))
+    .filter((b) => (filterStar !== null ? inStarBand(b.effective_rating, filterStar) : true))
     .filter((b) => {
       if (!search) return true;
       const q = search.toLowerCase();

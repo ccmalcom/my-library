@@ -267,7 +267,7 @@
    "response_mode": "json",
    "status": 422,
    "body": {
-    "detail": "rating must be between 1 and 5 (or omitted/0 for unrated)."
+    "detail": "rating must be 0.5 to 5 in half-star steps (or omitted/0 for unrated)."
    },
    "headers": {},
    "maskDetail": false
@@ -726,7 +726,7 @@
    "response_mode": "json",
    "status": 422,
    "body": {
-    "detail": "rating must be between 1 and 5 (or 0 to clear)."
+    "detail": "rating must be 0.5 to 5 in half-star steps (or 0 to clear)."
    },
    "headers": {},
    "maskDetail": false

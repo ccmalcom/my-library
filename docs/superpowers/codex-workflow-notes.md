@@ -1570,3 +1570,24 @@ Two import changes follow from 0.5 becoming the floor, and both look like regres
 `.5` now yields `0.5` instead of `1`, and `0.4` now yields `0.5` instead of `null` (unrated). Each
 got an inline comment at the expectation site saying why, because the next reader's instinct is to
 restore the old number.
+
+### The same trap one level down: vitest cannot see `components/`
+
+Task 8 adds `components/ui/__tests__/StarRating.test.tsx` and the plan's gate for it is
+`npx vitest run components/ui/__tests__/StarRating.test.tsx`. That command matches **zero tests and
+exits 0**. `vitest.config.ts` pins `include: ['lib/server/**/*.test.ts', 'app/api/**/*.test.ts']`,
+so nothing under `components/` is reachable, and the pattern is `.ts` where the file is `.tsx`.
+
+- **The runner split is by directory, not by kind.** jest owns everything outside `lib/server/` and
+  `app/api/` (its `testPathIgnorePatterns` names exactly those two); vitest owns those two. So a
+  component test belongs to **jest**, and jest's `testMatch` already covers
+  `**/__tests__/**/*.test.ts?(x)` — the file is picked up with no config change.
+- **Both runners are `testEnvironment: 'node'` and there are zero component tests in the repo.**
+  `jest-environment-jsdom` is a devDependency but unused. Prefer a per-file
+  `/** @jest-environment jsdom */` docblock over flipping the global default, so the five existing
+  node suites keep their environment.
+- **`@testing-library/react` is not installed, and Codex has no network.** Any task whose tests need
+  a new devDependency is controller work first, dispatch second — otherwise the run burns its budget
+  discovering it cannot proceed. Check the dependency exists before writing the brief, not after.
+- Generalizing the wave's two hits: **verify the gate command matches something before sending it.**
+  `--listTests` (jest) and a bare `vitest list` (vitest) both answer this in one command.

@@ -358,6 +358,18 @@ function TraitsSection({
 function RatingSection({ stats }: { stats: Stats }) {
   const total = stats.rated ?? 0;
   const byStarData = stats.by_star ?? {};
+  const buckets = Array.from(
+    new Set([
+      5,
+      4,
+      3,
+      2,
+      1,
+      ...Object.keys(byStarData)
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0),
+    ])
+  ).sort((a, b) => b - a);
 
   return (
     <section className="space-y-4">
@@ -370,13 +382,14 @@ function RatingSection({ stats }: { stats: Stats }) {
       </div>
       <Card>
         <div className="space-y-3">
-          {[5, 4, 3, 2, 1].map((star) => {
+          {buckets.map((star) => {
             const count = byStarData[String(star)] ?? 0;
             const pct = total > 0 ? (count / total) * 100 : 0;
             return (
               <div key={star} className="flex items-center gap-3">
-                <span className="w-12 shrink-0 text-right font-mono text-sm text-accent">
-                  {'\u2605'.repeat(star)}
+                <span className="w-14 shrink-0 text-right font-mono text-sm text-accent">
+                  {'\u2605'.repeat(Math.floor(star))}
+                  {star % 1 ? '\u00bd' : ''}
                 </span>
                 <div className="flex-1 overflow-hidden rounded-full bg-elevated h-2.5">
                   <div

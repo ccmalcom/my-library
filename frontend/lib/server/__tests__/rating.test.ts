@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isHalfStep, ratingSchema, roundRatingHalfStar } from '../rating';
+import { inStarBand, isHalfStep, ratingSchema, roundRatingHalfStar } from '../rating';
 
 describe('roundRatingHalfStar', () => {
   it('keeps values already on the half-star grid', () => {
@@ -59,5 +59,27 @@ describe('serialization rule', () => {
   it('renders whole ratings without a decimal', () => {
     expect(JSON.stringify({ rating: 4 })).toBe('{"rating":4}');
     expect(JSON.stringify({ rating: 4.5 })).toBe('{"rating":4.5}');
+  });
+});
+
+describe('inStarBand', () => {
+  it('matches a whole rating to its chip', () => {
+    expect(inStarBand(4, 4)).toBe(true);
+    expect(inStarBand(5, 5)).toBe(true);
+  });
+
+  it('matches a half rating to the whole-star chip above it', () => {
+    expect(inStarBand(3.5, 4)).toBe(true);
+    expect(inStarBand(0.5, 1)).toBe(true);
+  });
+
+  it('does not match ratings outside the chip band', () => {
+    expect(inStarBand(3, 4)).toBe(false);
+    expect(inStarBand(4.5, 4)).toBe(false);
+  });
+
+  it('does not match an unrated value', () => {
+    expect(inStarBand(null, 1)).toBe(false);
+    expect(inStarBand(null, 5)).toBe(false);
   });
 });

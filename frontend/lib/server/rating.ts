@@ -41,3 +41,13 @@ export function roundRatingHalfStar(value: number): number | null {
  * comparison, so 3.7 and 0.25 are rejected without float slop.
  */
 export const ratingSchema = z.number().min(RATING_MIN).max(RATING_MAX).multipleOf(RATING_STEP);
+
+/**
+ * True when `rating` falls in the band a whole-star filter chip covers:
+ * the chip's own star and the half below it, so a 3.5 is reachable from
+ * the "4" chip. Without this, half-rated books match no chip at all.
+ */
+export function inStarBand(rating: number | null, chip: number): boolean {
+  if (rating === null) return false;
+  return rating > chip - 1 && rating <= chip;
+}
