@@ -10,6 +10,39 @@
   user until someone edits the row by hand. Fix by dispatching before releasing the lease, or by
   catching the failure and leaving the lease intact so the janitor reclaims it. Found in wave 5b;
   see `docs/hosting.md` for the full failure trace.
+  **Priority raised by the 2026-08-13 production smoke.** A forced re-enrich of Chase's library
+  (159 rated books) took **221s against the 240s `CHUNK_BUDGET_MS`** — an 18-second margin — and
+  Vercel logs confirmed `/api/enrich/start` × 1, `/api/enrich/tick` × 0. So the continuation path
+  has *never* run in production, and the first library that crosses 240s (a slightly larger rated
+  shelf, or one slow catalog day) is the one that discovers this bug by getting permanently wedged.
+  Fix this BEFORE deleting Railway — deletion removes the fallback. Continuation can be proven on a
+  *preview* deploy with a temporarily lowered `CHUNK_BUDGET_MS`: crons don't run on preview, but the
+  tick dispatch is a plain `fetch` from `after()`, so it exercises fine there provided `CRON_SECRET`
+  is also set in the Preview environment.
+
+- **Add-book search ranking scores correct matches 0 (deferred to after the Python delete).**
+  Root cause is `matchScore` (`frontend/lib/server/catalog.ts:424`, mirror of `_match_score`,
+  `mylibrary/catalog.py:449`) — NOT retrieval. Instrumenting all four source fetches showed the
+  target book present in every candidate pool for every failing query; it scores 0, ties with
+  noise, and the year-DESC tiebreaker floats recent junk above it. Two defects:
+  1. `normFull` maps non-alphanumerics to a *space*, so `"The Android's Dream"` becomes
+     `the android s dream` with a stray `s` token. Query `the androids dream` then fails all five
+     bands → score 0. Typing the apostrophe scores 100. Fix: strip `['’ʼ]` to empty *before* the
+     `[^a-z0-9 ]`→space pass.
+  2. Query tokens can never span title AND author — the scorer checks query-vs-title or
+     query-vs-author, never both. `lock in scalzi` scores 0 against *Lock In* by John Scalzi while
+     `"Trivia-On-Books Lock in by John Scalzi"` scores 60 (all tokens in its *title*), so adding the
+     author makes results strictly worse. Fix: peel author-matching tokens off the query, score the
+     remainder against the title in a band above the title-only bands.
+  Prototype verified against live catalogs: `The Androids Dream`, `Lock In Scalzi` and
+  `scalzi lock in` all go from absent-in-top-8 to #1; `Lock In`, `dune`, `the fault in our stars`
+  unchanged. **Deferred deliberately**: `catalog-search.test.ts` asserts Node's output byte-matches
+  recorded Python output, so fixing this before the Python delete means fixing both runtimes and
+  re-recording the fixture. Chase's call (2026-08-13) — do it once Python is gone and there is no
+  parity constraint. Scope is these two defects only.
+- **Search tiebreakers favor recency over canonicity** (separate, pre-existing, lower priority).
+  `rankKey`'s year-DESC tiebreaker floats reissues and study guides above canonical works — plain
+  `dune` returns a graphic novel and a Kevin J. Anderson title above Frank Herbert's.
 
 ## enhancements
 
@@ -51,3 +84,5 @@
 - Admin console — users, token usage, API usage, feedback (overlaps Wave 1 cost visibility)
 
 ## Shelves & data model
+
+## openrouter instead of only claude
