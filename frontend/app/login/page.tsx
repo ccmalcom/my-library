@@ -51,7 +51,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-base px-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-2xl">
         <p className="mb-1 text-center font-mono text-xs font-semibold uppercase tracking-widest text-faint">
-          MyLibrary
+          ShelfSprite
         </p>
         <h1 className="mb-6 text-center font-display text-2xl font-extrabold tracking-tight text-text">
           Welcome back

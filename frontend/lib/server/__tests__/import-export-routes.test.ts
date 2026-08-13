@@ -290,7 +290,7 @@ test('CSV export is byte-exact and round-trips through the canonical parser', as
   expect(res.status).toBe(200);
   expect(res.headers.get('content-type')).toBe('text/csv; charset=utf-8');
   expect(res.headers.get('content-disposition')).toMatch(
-    /^attachment; filename="mylibrary-backup-\d{8}\.csv"$/
+    /^attachment; filename="shelfsprite-backup-\d{8}\.csv"$/
   );
   const bytes = await res.text();
   expect(bytes).toBe(

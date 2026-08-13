@@ -15,7 +15,7 @@ export const GET = withApi('/api/export', async (req, ctx) => {
   return new Response(body, {
     headers: {
       'Content-Type': format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json',
-      'Content-Disposition': `attachment; filename="mylibrary-backup-${stamp}.${format}"`,
+      'Content-Disposition': `attachment; filename="shelfsprite-backup-${stamp}.${format}"`,
     },
   });
 });

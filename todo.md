@@ -2,25 +2,31 @@
 
 ## BUGS
 
-- **Enrichment continuation has never actually run in production.** (The un-guarded dispatch that
-  made this dangerous is **fixed** — commit `ef28810`; both call sites now catch, `runClaimedChunk`
-  returns `rearmed: false` instead of throwing, `repairActiveJobs` survives a mid-sweep failure and
-  counts it in `dispatchFailed`. Both guards are mutation-tested. See `docs/hosting.md`.)
-  **Root cause found 2026-08-13, and it was never `CRON_SECRET`.** `proxy.ts`'s matcher covered
-  `/api/*`, so `updateSession` 307-redirected the cookieless internal `/api/enrich/tick` fetch to
-  `/login` before the handler ran — and did the same to the cron-invoked `/api/enrich/janitor`, so
-  the janitor had never run either. Fixed by adding `api` to the matcher's negative lookahead, plus
-  a `response.ok` check in `rearmAfterResponse` so a non-2xx tick is logged instead of silently
-  counted as success. Both mutation-tested. **Not yet merged or deployed.**
-  Remaining verification, in this order:
-  1. Merge the matcher + visibility fixes **with** `CHUNK_BUDGET_MS` still at the temporary
-     `100_000`. Reverting the budget first puts you back to a 221s run that fits in one chunk and
-     proves nothing.
-  2. Re-run the forced enrich on production and require BOTH `/api/enrich/tick` **≥ 2** AND progress
-     advancing past 65/159. **Tick count alone is not evidence** — 21 ticks coexisted with frozen
-     progress, every one a 307, each triggered by a status poll's poll-repair redispatch.
-  3. Confirm the janitor fires at 03:17 UTC (it never has).
-  4. Revert `CHUNK_BUDGET_MS` to `240_000`.
+- **Enrichment continuation: FIXED and verified in production 2026-08-13.** One item still open —
+  see "remaining" below.
+  **Root cause, and it was never `CRON_SECRET`.** `proxy.ts`'s matcher covered `/api/*`, so
+  `updateSession` 307-redirected the cookieless internal `/api/enrich/tick` fetch to `/login`
+  before the handler ran — and did the same to the cron-invoked `/api/enrich/janitor`, so the
+  janitor had never run either. Fixed by adding `api` to the matcher's negative lookahead, plus a
+  `response.ok` check in `rearmAfterResponse` so a non-2xx tick is logged instead of silently
+  counted as success. Both mutation-tested. Merged as `e2c373e` (PR #43).
+  The un-guarded dispatch that made this dangerous was fixed separately in `ef28810`: both call
+  sites now catch, `runClaimedChunk` returns `rearmed: false` instead of throwing,
+  `repairActiveJobs` survives a mid-sweep failure and counts it in `dispatchFailed`. Both guards
+  are mutation-tested. See `docs/hosting.md`.
+  **Verified on `shelfsprite.app`** under a temporary 100s budget: a forced 159-book run spanned
+  two chunks and reached `done` at 159/159. `CHUNK_BUDGET_MS` reverted to `240_000` in `2b4686c`.
+  **Remaining: confirm the janitor fires at `17 3 * * *` UTC — it never has.** First real
+  opportunity is the night of 2026-08-13, now that the matcher fix is deployed.
+  Two criteria corrections worth keeping:
+  - **"≥ 2 ticks, never `done`" was the wrong bar** — it was extrapolated from a 221s run, and the
+    149s verification run legitimately produced exactly 1 tick. The real bar is a tick invocation
+    **and** progress advancing across the chunk boundary.
+  - **Tick count alone is never evidence** — 21 ticks once coexisted with progress frozen at
+    65/159, every one a 307 triggered by a status poll's poll-repair redispatch.
+  **`tick→tick` chaining is still unproven**: the verification job finished inside its first tick,
+  so no tick ever had to re-arm another. At `240_000` this library completes in one chunk and
+  cannot test it — needs a ~`40_000` budget or a much larger library.
   Do NOT test any of this on a preview deployment: Vercel SSO is enabled
   (`all_except_custom_domains`), so a preview tick is intercepted by the protection layer too — a
   second, independent cause with the same symptom.
@@ -52,6 +58,31 @@
 - **Search tiebreakers favor recency over canonicity** (separate, pre-existing, lower priority).
   `rankKey`'s year-DESC tiebreaker floats reissues and study guides above canonical works — plain
   `dune` returns a graphic novel and a Kevin J. Anderson title above Frank Herbert's.
+
+## Python retirement — in flight
+
+Production has served 100% Node since `fdc5c84`; the full smoke (sign-in, library, profile,
+`POST /recommend`, multi-chunk enrichment) passed on `shelfsprite.app` 2026-08-13 with zero
+Railway traffic and zero non-200s. **Railway is PAUSED as of 2026-08-13 — delete on or after
+2026-08-20** (5b-2 Task 8 Step 3: a paused service costs nothing and restarts instantly).
+
+Before the delete:
+
+- [ ] Confirm the janitor fired (see the enrichment item under BUGS).
+- [ ] Record Railway's environment-variable **names** into the ledger. Anything set only there —
+      absent from `.env.example` and Vercel — is a configuration fact that dies with the service.
+- [ ] Re-confirm zero traffic from Railway's own 7-day request log.
+
+After the delete (5b-2 Tasks 1–7, no deadline):
+
+- [ ] drizzle baseline generated from a production `pg_dump`, **never** a fresh `alembic upgrade
+      head` — see CLAUDE.md on the two legitimate `enrich_jobs.progress`/`total` shapes.
+- [ ] Delete `mylibrary/`, `tests/`, `alembic/`, the fixture recorders.
+- [ ] Strip `NEXT_PUBLIC_API_URL` and the `python`/`auto` switcher. **Once Railway is gone the
+      admin System tab's `python` override is a foot-gun that breaks every route if toggled** —
+      do this promptly rather than "eventually".
+- [ ] Fix add-book search ranking (deferred below — it was blocked on the Python parity fixture).
+- [ ] Rewrite `CLAUDE.md`'s current-state line with no wave numbering in the present tense.
 
 ## enhancements
 
@@ -86,7 +117,7 @@
 - NL discovery — natural-language "find me a book like X" search (builds on the above)
 - Full feedback / labeling surface — surface LOW-confidence enrichment matches for correction
 
-## Wave 4 — Delight & growth
+## Wave 4 — Delight & growth - COMPLETE
 
 - Spotify Wrapped-style profile reveal on onboarding
   - in general, I want to spice up the onboarding flow by immediately surfacing the profile to the user (possibly each trait individually) and the user approving/denying/modifying. Also maybe we should add some more metadata to the profile like favorite genres, authors, types (short story, novella, novel, seires, etc.)

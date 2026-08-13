@@ -24,6 +24,7 @@ Read-only with respect to git (only `git diff` / `git ls-files`).
 """
 import json
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -57,6 +58,18 @@ def run(cmd, cwd):
 
 def tail(text, n=25):
     return "\n".join(text.strip().splitlines()[-n:])
+
+
+def sh_args(paths):
+    """Shell-quote paths for the npm commands, which run through `sh -c`.
+
+    Load-bearing for Next.js route groups: `app/(main)/settings/page.tsx` contains
+    parentheses, which `sh` reads as a subshell and dies on with a syntax error
+    *before* eslint or prettier is invoked. The hook then reports a tool failure
+    for a tool that never ran, which is indistinguishable from a real lint error.
+    Spaces and quotes in filenames break the same way.
+    """
+    return " ".join(shlex.quote(p) for p in paths)
 
 
 def main():
@@ -102,13 +115,13 @@ def main():
 
     # --- eslint on changed frontend files ---
     if fe_lint and (fe_dir / "node_modules" / "eslint").exists():
-        r = run("npm exec --no -- eslint " + " ".join(fe_lint), fe_dir)
+        r = run("npm exec --no -- eslint " + sh_args(fe_lint), fe_dir)
         if r.returncode != 0:
             msgs.append("[eslint FAILED]\n" + tail(r.stdout + r.stderr))
 
     # --- prettier --check on changed frontend files ---
     if fe_fmt and (fe_dir / "node_modules" / "prettier").exists():
-        r = run("npm exec --no -- prettier --check " + " ".join(fe_fmt), fe_dir)
+        r = run("npm exec --no -- prettier --check " + sh_args(fe_fmt), fe_dir)
         if r.returncode != 0:
             msgs.append(
                 "[prettier FAILED] (run `npm run format` in frontend/ to fix)\n"

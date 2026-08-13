@@ -231,13 +231,13 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
       <div>
         <h2 className="mb-1 text-xl font-semibold text-text">Add your Anthropic API key</h2>
         <p className="text-sm text-muted">
-          MyLibrary runs on Claude. It reads your ratings to build a taste profile and find your
+          ShelfSprite runs on Claude. It reads your ratings to build a taste profile and find your
           next books, and that takes an API key.
         </p>
       </div>
 
       <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning space-y-1">
-        <p>Without a key, MyLibrary can shelve your books but can&apos;t think about them.</p>
+        <p>Without a key, ShelfSprite can shelve your books but can&apos;t think about them.</p>
         <p>
           Get one at{' '}
           <a
@@ -396,11 +396,7 @@ function UploadStep({
 
       <p className="text-center text-xs text-faint">
         No Goodreads or StoryGraph history?{' '}
-        <a
-          href="/mylibrary-template.csv"
-          download
-          className="text-accent hover:underline"
-        >
+        <a href="/shelfsprite-template.csv" download className="text-accent hover:underline">
           Download a CSV template
         </a>
         , fill in the books you remember, and drop it in above.
@@ -729,9 +725,7 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
   }
 
   if (revealOpen) {
-    return (
-      <RevealSequence onClose={goHome} onFinish={goRecommend} />
-    );
+    return <RevealSequence onClose={goHome} onFinish={goRecommend} />;
   }
 
   return (
@@ -782,7 +776,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
       <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
           <h1 className="font-display text-3xl font-bold tracking-tight text-text">
-            Welcome to MyLibrary
+            Welcome to ShelfSprite
           </h1>
           <p className="mt-1 text-sm text-muted">
             {step === 'name' || step === 'api-key'

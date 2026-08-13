@@ -1,4 +1,4 @@
-# Frontend — MyLibrary
+# Frontend — ShelfSprite
 
 Next.js (App Router) + React + Tailwind + SWR (data fetching) + framer-motion (swipe).
 

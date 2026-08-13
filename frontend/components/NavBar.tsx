@@ -33,7 +33,7 @@ export default function NavBar() {
     <nav className="sticky top-0 z-50 border-b border-border bg-base/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
         <span className="font-mono text-xs font-semibold uppercase tracking-widest text-muted">
-          MyLibrary
+          ShelfSprite
         </span>
         {/* Desktop nav links */}
         <div className="hidden sm:flex gap-1">
