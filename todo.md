@@ -2,23 +2,32 @@
 
 ## BUGS
 
-- **Enrichment job dispatch is not fault-tolerant.** `runClaimedChunk` nulls `leaseExpiresAt` and
-  *then* awaits `deps.dispatch(...)` with no `try`/`catch` (`frontend/lib/server/enrichmentJobs.ts:449`,
-  and the same shape at `:190` in `repairActiveJobs`). Any dispatch failure — network blip, cold
-  start, or a missing `CRON_SECRET` — leaves the job `running` with its lease already released and
-  no continuation queued, which `uq_enrich_jobs_active_user` turns into a permanent block on that
-  user until someone edits the row by hand. Fix by dispatching before releasing the lease, or by
-  catching the failure and leaving the lease intact so the janitor reclaims it. Found in wave 5b;
-  see `docs/hosting.md` for the full failure trace.
-  **Priority raised by the 2026-08-13 production smoke.** A forced re-enrich of Chase's library
-  (159 rated books) took **221s against the 240s `CHUNK_BUDGET_MS`** — an 18-second margin — and
-  Vercel logs confirmed `/api/enrich/start` × 1, `/api/enrich/tick` × 0. So the continuation path
-  has *never* run in production, and the first library that crosses 240s (a slightly larger rated
-  shelf, or one slow catalog day) is the one that discovers this bug by getting permanently wedged.
-  Fix this BEFORE deleting Railway — deletion removes the fallback. Continuation can be proven on a
-  *preview* deploy with a temporarily lowered `CHUNK_BUDGET_MS`: crons don't run on preview, but the
-  tick dispatch is a plain `fetch` from `after()`, so it exercises fine there provided `CRON_SECRET`
-  is also set in the Preview environment.
+- **Enrichment continuation has never actually run in production.** (The un-guarded dispatch that
+  made this dangerous is **fixed** — commit `ef28810`; both call sites now catch, `runClaimedChunk`
+  returns `rearmed: false` instead of throwing, `repairActiveJobs` survives a mid-sweep failure and
+  counts it in `dispatchFailed`. Both guards are mutation-tested. See `docs/hosting.md`.)
+  **Root cause found 2026-08-13, and it was never `CRON_SECRET`.** `proxy.ts`'s matcher covered
+  `/api/*`, so `updateSession` 307-redirected the cookieless internal `/api/enrich/tick` fetch to
+  `/login` before the handler ran — and did the same to the cron-invoked `/api/enrich/janitor`, so
+  the janitor had never run either. Fixed by adding `api` to the matcher's negative lookahead, plus
+  a `response.ok` check in `rearmAfterResponse` so a non-2xx tick is logged instead of silently
+  counted as success. Both mutation-tested. **Not yet merged or deployed.**
+  Remaining verification, in this order:
+  1. Merge the matcher + visibility fixes **with** `CHUNK_BUDGET_MS` still at the temporary
+     `100_000`. Reverting the budget first puts you back to a 221s run that fits in one chunk and
+     proves nothing.
+  2. Re-run the forced enrich on production and require BOTH `/api/enrich/tick` **≥ 2** AND progress
+     advancing past 65/159. **Tick count alone is not evidence** — 21 ticks coexisted with frozen
+     progress, every one a 307, each triggered by a status poll's poll-repair redispatch.
+  3. Confirm the janitor fires at 03:17 UTC (it never has).
+  4. Revert `CHUNK_BUDGET_MS` to `240_000`.
+  Do NOT test any of this on a preview deployment: Vercel SSO is enabled
+  (`all_except_custom_domains`), so a preview tick is intercepted by the protection layer too — a
+  second, independent cause with the same symptom.
+  Residual: the only automatic recovery is `failIfStale`, which fires on a *user-initiated status
+  poll*, not a timer. Verified live 2026-08-13 — a job abandoned at 15:29:06 was marked `error`
+  with `Enrichment was interrupted, please retry.` at 16:00:12 (1866s, past the strict 1800s
+  threshold), preserving `progress` at 65/159.
 
 - **Add-book search ranking scores correct matches 0 (deferred to after the Python delete).**
   Root cause is `matchScore` (`frontend/lib/server/catalog.ts:424`, mirror of `_match_score`,

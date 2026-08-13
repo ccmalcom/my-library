@@ -66,24 +66,80 @@ arbitrary and need not match across environments — each environment both signs
 its own copy. Vercel automatically sends `Authorization: Bearer $CRON_SECRET` to cron endpoints
 whenever a variable of that name exists, so the janitor authenticates with no extra wiring.
 
-The failure mode when it is unset is worse than "cron does not run". `isValidCronSecret` fails
-closed (`enrichmentDispatch.ts:32`), which is benign, but `rearmAfterResponse` **throws**
-(`enrichmentDispatch.ts:38`), and `deps.dispatch` is awaited with no `try`/`catch` at
-`enrichmentJobs.ts:449` (`runClaimedChunk`) and `enrichmentJobs.ts:190` (`repairActiveJobs`). So any
-enrichment run needing a second chunk: 500s `POST /enrich/start`; leaves the job `running` with
-`leaseExpiresAt` already nulled by the preceding update; 500s `GET /enrich/status/{job_id}` too,
-because poll repair hits the same throw; and cannot be cleaned up by the janitor, which 401s. The
-job is orphaned permanently, and `uq_enrich_jobs_active_user` then blocks that user from starting
-another enrichment without manual DB intervention.
+`isValidCronSecret` fails closed (`enrichmentDispatch.ts:32`), which is benign. `rearmAfterResponse`
+**throws** when the variable is absent (`enrichmentDispatch.ts:38`), which used to be destructive:
+`deps.dispatch` was awaited with no `try`/`catch`, so any enrichment needing a second chunk 500'd
+`POST /enrich/start`, 500'd `GET /enrich/status/{job_id}` through poll repair, and left the job
+`running` with `leaseExpiresAt` already nulled — orphaned permanently, with
+`uq_enrich_jobs_active_user` blocking that user from starting another enrichment without manual DB
+intervention.
+
+**Guarded as of 2026-08-13.** Both call sites now catch dispatch failures. `runClaimedChunk` keeps
+the progress write and the null lease, returns `rearmed: false` instead of throwing, and logs.
+`repairActiveJobs` catches per job so one bad row no longer aborts the janitor's whole sweep, and
+counts the failure in a separate `dispatchFailed` field (`failed` still means "marked error by
+`failIfStale`"). A dispatch failure is therefore recoverable rather than fatal.
+
+**It is recoverable, not self-healing.** A null lease is what makes a job reclaimable by
+`repairActiveJobs` — but if `CRON_SECRET` is itself the cause of the dispatch failure, the janitor is
+401ing too, so nothing healthy is left to reclaim it. The job waits, intact, until the secret is
+fixed.
 
 It is invisible to a casual smoke test — a small library finishes in one chunk and never calls
 `dispatch` at all. **Any enrichment smoke test must use a library large enough to require a second
-chunk.**
+chunk.** Measured 2026-08-13: a forced 159-book run took 221s against the 240s `CHUNK_BUDGET_MS`,
+finishing in one chunk with `/api/enrich/tick` invoked **zero** times. An 18-second margin is not a
+test.
 
-> **Known robustness gap, not yet fixed.** The un-guarded `await deps.dispatch(...)` orphans a job
-> the same way on any dispatch failure — network blip, cold start — because the lease is released
-> before the dispatch is attempted. Ordering the dispatch before the lease release, or letting a
-> failure leave the lease intact for the janitor, would make it self-healing.
+#### The proxy matcher ate every internal tick (fixed 2026-08-13)
+
+**This, not `CRON_SECRET`, is why enrichment continuation had never once run in production.**
+`proxy.ts`'s matcher covered `/api/*`, and `updateSession` redirects any request without a Supabase
+**session cookie** to `/login`. `rearmAfterResponse` self-fetches `/api/enrich/tick` with a
+`CRON_SECRET` bearer and no cookies, so every tick was **307-redirected before the handler ran**.
+Same for `/api/enrich/janitor`, which Vercel's cron also invokes cookieless — so the janitor, the
+backstop the whole recovery design leans on, had never run either.
+
+Fixed by adding `api` to the matcher's negative lookahead. API routes authenticate themselves via
+`withApi` (bearer only — no route under `app/api/` reads cookies or uses `createServerClient`), and
+the cron routes validate `CRON_SECRET`. The middleware gates **pages only**.
+
+Two things made this invisible for four waves:
+
+- **A 307 is a successful fetch.** Nothing threw, so the wave-5b dispatch guards never fired and
+  nothing was logged. `rearmAfterResponse` now inspects `response.ok` and logs job id + status.
+- **`rearmed: true` means "a tick was scheduled", not "a tick succeeded".** The fetch runs inside
+  `after()`, post-response, so `runClaimedChunk`'s `try`/`catch` can only ever catch a synchronous
+  throw from `requireCronSecret()` — never a network result. Do not "fix" this by awaiting the
+  dispatch; that would block the response and defeat the design.
+
+Diagnostic rule earned here: **tick count alone is not evidence of continuation.** A run showed 21
+`/api/enrich/tick` invocations with progress frozen at 65/159 — each one a 307, and each one caused
+by a status poll triggering poll repair. Require the tick count **and** progress advancing.
+
+`failIfStale` was verified live the same day: a job started 15:29:06 and abandoned was marked
+`error` with `Enrichment was interrupted, please retry.` on the first status poll after the strict
+1800s threshold (at 16:00:12, 1866s), preserving `progress` at 65/159. That is the only automatic
+recovery that currently exists — it fires on a user-initiated poll, not on a timer.
+
+#### The continuation path can only be tested against the production custom domain
+
+`rearmAfterResponse` builds the tick URL as `new URL('/api/enrich/tick', request.url)`
+(`enrichmentDispatch.ts:39`) — it self-fetches whatever origin served the request, carrying only
+`Authorization: Bearer $CRON_SECRET`.
+
+Vercel SSO deployment protection is enabled for this project, scoped `all_except_custom_domains`.
+So on a **preview** deployment that self-fetch is intercepted by the protection layer before the
+function runs — it has no protection-bypass token. The tick fails, the job stalls, and the symptom
+is **indistinguishable from a broken `CRON_SECRET`**. Do not debug a continuation failure on a
+preview URL; the answer will be wrong.
+
+Production is exempt only because it is served from the custom domain `shelfsprite.app`. To exercise
+continuation, temporarily lower `CHUNK_BUDGET_MS`, deploy to production, run a forced enrich there,
+and confirm `/api/enrich/tick` appears **≥ 2** times in the runtime logs — the tick count is the
+proof, not the job reaching `done`. The alternative, Vercel's Protection Bypass for Automation,
+requires `enrichmentDispatch.ts` to send `x-vercel-protection-bypass`, i.e. a change to the very
+code path under test.
 
 ## Auth (`auth.py`)
 

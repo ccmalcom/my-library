@@ -12,8 +12,8 @@ const PUBLIC_PREFIXES = ['/login', '/auth'];
  * unauthenticated users are redirected to /login. No-op in local mode (no Supabase env),
  * so local dev runs unauthenticated exactly as before.
  *
- * Note: this only guards the Next.js *pages* (UX). The actual data is protected by the
- * FastAPI backend, which verifies the JWT independently.
+ * This middleware gates pages only. API routes do their own bearer authentication via
+ * withApi and must stay excluded from the proxy matcher.
  */
 export async function updateSession(request: NextRequest) {
   if (!url || !key) return NextResponse.next({ request }); // local mode: auth disabled
