@@ -163,6 +163,7 @@ export interface ActiveJobRepairSummary {
   examined: number;
   rearmed: number;
   failed: number;
+  dispatchFailed: number;
 }
 
 export async function repairActiveJobs(
@@ -176,6 +177,7 @@ export async function repairActiveJobs(
     .where(inArray(enrichJobs.status, ['pending', 'running']));
   let rearmed = 0;
   let failed = 0;
+  let dispatchFailed = 0;
 
   for (const row of activeRows) {
     const repaired = await failIfStale(db, row, now);
@@ -187,12 +189,17 @@ export async function repairActiveJobs(
       repaired.leaseExpiresAt === null ||
       timestampMillis(repaired.leaseExpiresAt) <= now.getTime()
     ) {
-      await dispatch(repaired.jobId);
-      rearmed += 1;
+      try {
+        await dispatch(repaired.jobId);
+        rearmed += 1;
+      } catch (error) {
+        dispatchFailed += 1;
+        console.error(`Failed to dispatch enrichment job ${repaired.jobId}`, error);
+      }
     }
   }
 
-  return { examined: activeRows.length, rearmed, failed };
+  return { examined: activeRows.length, rearmed, failed, dispatchFailed };
 }
 
 interface RawJobRow {
@@ -446,12 +453,18 @@ export async function runClaimedChunk(
     .update(enrichJobs)
     .set({ progress: progressAfter, total: initial.total, leaseExpiresAt: null })
     .where(eq(enrichJobs.jobId, job.jobId));
-  await deps.dispatch(job.jobId);
+  let rearmed = true;
+  try {
+    await deps.dispatch(job.jobId);
+  } catch (error) {
+    rearmed = false;
+    console.error(`Failed to dispatch enrichment job ${job.jobId}`, error);
+  }
   return {
     outcome: 'continued',
     progressBefore,
     progressAfter,
     remaining: finalState.remaining,
-    rearmed: true,
+    rearmed,
   };
 }

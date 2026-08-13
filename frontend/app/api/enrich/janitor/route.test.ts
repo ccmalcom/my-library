@@ -96,7 +96,7 @@ describe('GET /api/enrich/janitor', () => {
       dispatched: dispatchMock.mock.calls.map(([, id]) => id),
     }).toEqual({
       status: 200,
-      body: { examined: 3, rearmed: 2, failed: 0 },
+      body: { examined: 3, rearmed: 2, failed: 0, dispatchFailed: 0 },
       dispatched: ['expired-pending-job', 'expired-running-job'],
     });
   });
@@ -143,7 +143,7 @@ describe('GET /api/enrich/janitor', () => {
       dispatched: dispatchMock.mock.calls.map(([, id]) => id),
     }).toEqual({
       status: 200,
-      body: { examined: 3, rearmed: 1, failed: 1 },
+      body: { examined: 3, rearmed: 1, failed: 1, dispatchFailed: 0 },
       dispatched: ['expired-job'],
     });
     expect(rows.map((row) => ({ jobId: row.jobId, status: row.status, error: row.error }))).toEqual(

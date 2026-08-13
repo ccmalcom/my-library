@@ -10,6 +10,7 @@ import {
   claimJob,
   createOrGetActiveJob,
   defaultJobOptions,
+  repairActiveJobs,
   runClaimedChunk,
   serializeJob,
   type EnrichJobRow,
@@ -538,6 +539,78 @@ describe('enrichment jobs', () => {
           finished_at: null,
         },
         leaseExpiresAt: null,
+      });
+    } finally {
+      await close();
+    }
+  });
+
+  it('keeps a continued chunk reclaimable when continuation dispatch rejects', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      await seedBooks(db, 'user-a', [1, 2, 3]);
+      await seedClaimedJob(db, {
+        jobId: 'dispatch-failed',
+        userId: 'user-a',
+        progress: 0,
+        total: 3,
+        attempts: 1,
+      });
+      const result = await runClaimedChunk(db, claimed('dispatch-failed', 'user-a'), {
+        nowMs: sequenceClock([0, 1, CHUNK_BUDGET_MS]),
+        runOne: async (_db, bookId) => {
+          await seedEnrichment(db, [bookId]);
+        },
+        dispatch: async () => {
+          throw new Error('dispatch unavailable');
+        },
+      });
+      const [row] = await db
+        .select()
+        .from(enrichJobs)
+        .where(eq(enrichJobs.jobId, 'dispatch-failed'));
+
+      expect({
+        result,
+        progress: row.progress,
+        total: row.total,
+        status: row.status,
+        leaseExpiresAt: row.leaseExpiresAt,
+      }).toEqual({
+        result: {
+          outcome: 'continued',
+          progressBefore: 0,
+          progressAfter: 1,
+          remaining: 2,
+          rearmed: false,
+        },
+        progress: 1,
+        total: 3,
+        status: 'running',
+        leaseExpiresAt: null,
+      });
+    } finally {
+      await close();
+    }
+  });
+
+  it('continues repairing later active jobs when a middle dispatch rejects', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      await db.insert(enrichJobs).values([
+        { jobId: 'repair-first', userId: 'user-a', status: 'pending', progress: 0, total: 0 },
+        { jobId: 'repair-middle', userId: 'user-b', status: 'pending', progress: 0, total: 0 },
+        { jobId: 'repair-last', userId: 'user-c', status: 'pending', progress: 0, total: 0 },
+      ]);
+      const dispatch = vi.fn(async (jobId: string) => {
+        if (jobId === 'repair-middle') throw new Error('dispatch unavailable');
+      });
+
+      const result = await repairActiveJobs(db, new Date('2026-08-11T12:00:00Z'), dispatch);
+
+      expect({ result, dispatches: dispatch.mock.calls }).toEqual({
+        result: { examined: 3, rearmed: 2, failed: 0, dispatchFailed: 1 },
+        dispatches: [['repair-first'], ['repair-middle'], ['repair-last']],
       });
     } finally {
       await close();
