@@ -6,7 +6,19 @@ import { books, enrichment, enrichJobs } from './schema';
 import { effectiveRating, tsToIso, utcnowTs } from './serialize';
 
 export const FUNCTION_CEILING_SECONDS = 300; // Assumption: live Vercel Hobby + Fluid compute supports this.
-export const CHUNK_BUDGET_MS = 240_000; // Leaves 60s under that assumed ceiling for final writes/response.
+// TEMPORARY — REVERT TO 240_000 AFTER THE CONTINUATION TEST.
+// Lowered to 100s so a real enrichment run is forced to span multiple chunks and actually
+// exercise the after()->/api/enrich/tick continuation, which has never executed in production
+// (2026-08-13 smoke: a forced 159-book run finished in 221s, 18s under the 240s budget, so
+// /api/enrich/start ran once and /api/enrich/tick zero times). This MUST be tested against the
+// production custom domain: Vercel SSO protection is enabled for all_except_custom_domains, and
+// rearmAfterResponse self-fetches request.url's origin with only the CRON_SECRET bearer, so on a
+// preview deployment the tick is intercepted by the protection layer and fails in a way that is
+// indistinguishable from a broken CRON_SECRET.
+// Safe while it lasts: this changes how work is split across invocations, never the work or the
+// data, and 100s sits far under the 300s maxDuration ceiling. Expect 3 chunks / 2 ticks / attempts
+// = 3 for a 221s run, against MAX_JOB_ATTEMPTS of 25.
+export const CHUNK_BUDGET_MS = 100_000; // TEMPORARY (was 240_000 — leaves 60s under the ceiling).
 export const LEASE_SECONDS = 300;
 export const STALE_JOB_SECONDS = 1_800;
 export const MAX_JOB_ATTEMPTS = 25;
@@ -163,6 +175,7 @@ export interface ActiveJobRepairSummary {
   examined: number;
   rearmed: number;
   failed: number;
+  dispatchFailed: number;
 }
 
 export async function repairActiveJobs(
@@ -176,6 +189,7 @@ export async function repairActiveJobs(
     .where(inArray(enrichJobs.status, ['pending', 'running']));
   let rearmed = 0;
   let failed = 0;
+  let dispatchFailed = 0;
 
   for (const row of activeRows) {
     const repaired = await failIfStale(db, row, now);
@@ -187,12 +201,17 @@ export async function repairActiveJobs(
       repaired.leaseExpiresAt === null ||
       timestampMillis(repaired.leaseExpiresAt) <= now.getTime()
     ) {
-      await dispatch(repaired.jobId);
-      rearmed += 1;
+      try {
+        await dispatch(repaired.jobId);
+        rearmed += 1;
+      } catch (error) {
+        dispatchFailed += 1;
+        console.error(`Failed to dispatch enrichment job ${repaired.jobId}`, error);
+      }
     }
   }
 
-  return { examined: activeRows.length, rearmed, failed };
+  return { examined: activeRows.length, rearmed, failed, dispatchFailed };
 }
 
 interface RawJobRow {
@@ -446,12 +465,18 @@ export async function runClaimedChunk(
     .update(enrichJobs)
     .set({ progress: progressAfter, total: initial.total, leaseExpiresAt: null })
     .where(eq(enrichJobs.jobId, job.jobId));
-  await deps.dispatch(job.jobId);
+  let rearmed = true;
+  try {
+    await deps.dispatch(job.jobId);
+  } catch (error) {
+    rearmed = false;
+    console.error(`Failed to dispatch enrichment job ${job.jobId}`, error);
+  }
   return {
     outcome: 'continued',
     progressBefore,
     progressAfter,
     remaining: finalState.remaining,
-    rearmed: true,
+    rearmed,
   };
 }
