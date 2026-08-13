@@ -135,11 +135,39 @@ is **indistinguishable from a broken `CRON_SECRET`**. Do not debug a continuatio
 preview URL; the answer will be wrong.
 
 Production is exempt only because it is served from the custom domain `shelfsprite.app`. To exercise
-continuation, temporarily lower `CHUNK_BUDGET_MS`, deploy to production, run a forced enrich there,
-and confirm `/api/enrich/tick` appears **≥ 2** times in the runtime logs — the tick count is the
-proof, not the job reaching `done`. The alternative, Vercel's Protection Bypass for Automation,
-requires `enrichmentDispatch.ts` to send `x-vercel-protection-bypass`, i.e. a change to the very
-code path under test.
+continuation, temporarily lower `CHUNK_BUDGET_MS`, deploy to production, and run a forced enrich
+there. The alternative, Vercel's Protection Bypass for Automation, requires `enrichmentDispatch.ts`
+to send `x-vercel-protection-bypass`, i.e. a change to the very code path under test.
+
+#### Continuation verified in production (2026-08-13)
+
+Run on `shelfsprite.app` under a temporary `CHUNK_BUDGET_MS = 100_000`, forced, 159 rated books:
+
+| Time (UTC) | Event |
+| --- | --- |
+| 18:05:42 | `POST /enrich/start` claims the job and runs chunk 1 inline |
+| ~18:07:22 | Chunk 1 stops at a book boundary, re-arms |
+| 18:07:24 | `POST /api/enrich/tick` → 200, `durationMs` 47385 |
+| 18:08:11 | Job `done` at **159/159** |
+
+Progress crossed the chunk boundary rather than merely moving within one chunk: 86 → 109 → 136 →
+147 → 158 → 159. Real work, not a replay — the confidence histogram shifted (MEDIUM 46→45, LOW
+17→18). `CHUNK_BUDGET_MS` was reverted to `240_000` immediately afterward.
+
+Two corrections to the proof standard this section previously stated:
+
+- **"`/api/enrich/tick` ≥ 2" is the wrong acceptance bar, and reaching `done` is not disqualifying.**
+  That bar was extrapolated from a 221s run, predicting 3 chunks / 2 ticks. The verification run
+  took 149s — catalog latency varies — so it finished in 2 chunks with exactly **1** tick. The
+  honest criterion is the one already stated above: **a tick invocation AND progress advancing
+  across the boundary.** A job reaching `done` after a tick is strictly stronger evidence than a
+  second tick, because the pre-fix failure mode was a job that never finished.
+- **What this run does NOT prove: tick→tick chaining.** The job completed inside the first tick, so
+  no tick ever had to re-arm another one. `rearmAfterResponse` firing from `after()` in the *tick*
+  route remains unexercised in production. At `240_000` this library finishes in a single chunk and
+  cannot test it; reproducing it needs a budget near `40_000` or a substantially larger library.
+  Inductive comfort only: `start` and `tick` dispatch through the identical `deps.dispatch` →
+  `rearmAfterResponse(request, jobId)` path.
 
 ## Auth (`auth.py`)
 

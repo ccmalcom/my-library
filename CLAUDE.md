@@ -290,8 +290,16 @@ Six durable facts from 5b, all recorded in `docs/hosting.md` with full detail:
   `request.url`'s origin (`enrichmentDispatch.ts:39`) carrying only the `CRON_SECRET` bearer. On a
   **preview** deploy that self-fetch is intercepted by the protection layer before the function
   runs, and the failure is **indistinguishable from a broken `CRON_SECRET`** — so a preview test
-  returns a confident wrong answer. Production is exempt only via `shelfsprite.app`. The proof is
-  `/api/enrich/tick` appearing **≥ 2** times in the logs, never the job reaching `done`.
+  returns a confident wrong answer. Production is exempt only via `shelfsprite.app`.
+  **Verified working 2026-08-13** on `shelfsprite.app` under a temporary 100s budget: a forced
+  159-book run spanned two chunks and reached `done` at 159/159 (`start` 18:05:42, one
+  `/api/enrich/tick` at 18:07:24 running 47.4s). Budget reverted to `240_000` the same day. Two
+  corrections to the bar this line used to state: **"≥ 2 ticks, never `done`" is the wrong
+  criterion** — it was extrapolated from a 221s run, and the 149s verification run legitimately
+  produced exactly 1 tick; the real bar is a tick invocation **and** progress advancing across the
+  chunk boundary. And **tick→tick chaining is still unproven** — the job finished inside the first
+  tick, so no tick ever had to re-arm another. At `240_000` this library completes in one chunk and
+  cannot test it again; that needs a ~`40_000` budget or a much larger library.
 - **Never apply a migration to production from a branch the deployment does not track.** `start.sh`
   runs `alembic upgrade head` before uvicorn under `set -euo pipefail`, so if the DB's
   `alembic_version` names a revision absent from the deployed image, the container cannot boot and
