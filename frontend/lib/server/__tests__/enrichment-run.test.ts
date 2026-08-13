@@ -286,7 +286,13 @@ describe('library enrichment orchestration', () => {
     const { db, close } = await makeTestDb();
     try {
       const rated = await seedNamedBook(db, '101', 'Rated new');
-      await seedNamedBook(db, '102', 'App-rated zero', { goodreadsRating: 0, appRating: 0 });
+      // Was `appRating: 0` until half-star ratings landed. `app_rating = 0` is
+      // now rejected by ck_books_app_rating_half_step -- NULL is the "no
+      // override" sentinel and 0.5 is the floor -- so that row can no longer
+      // exist. 0.5 keeps what this case actually pins: a book selected for
+      // enrichment because its app_rating makes it count as rated, even though
+      // its Goodreads rating is 0.
+      await seedNamedBook(db, '102', 'App-rated minimum', { goodreadsRating: 0, appRating: 0.5 });
       await seedNamedBook(db, '103', 'Unrated', { goodreadsRating: 0 });
       const resolvedExisting = await seedNamedBook(db, '104', 'Resolved existing');
       const unresolvedExisting = await seedNamedBook(db, '105', 'Unresolved existing', {

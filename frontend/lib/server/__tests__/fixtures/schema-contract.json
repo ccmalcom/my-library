@@ -112,7 +112,7 @@
     },
     "progress": {
       "nullable": false,
-      "serverDefault": null
+      "serverDefault": "0"
     },
     "run_limit": {
       "nullable": true,
@@ -128,7 +128,7 @@
     },
     "total": {
       "nullable": false,
-      "serverDefault": null
+      "serverDefault": "0"
     },
     "user_id": {
       "nullable": false,

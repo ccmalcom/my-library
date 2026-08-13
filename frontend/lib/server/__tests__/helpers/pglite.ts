@@ -52,8 +52,8 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       additional_authors text,
       isbn13 text,
       exclusive_shelf text,
-      goodreads_rating integer not null,
-      app_rating integer,
+      goodreads_rating numeric(2,1) not null,
+      app_rating numeric(2,1),
       app_review text,
       feedback_updated_at timestamp,
       date_read date,
@@ -63,6 +63,12 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       source text not null,
       exclude_from_profile boolean not null default false,
       is_favorite boolean not null default false,
+      constraint ck_books_app_rating_half_step check (
+        app_rating is null or (app_rating >= 0.5 and app_rating <= 5.0 and (app_rating * 2) % 1 = 0)
+      ),
+      constraint ck_books_goodreads_rating_half_step check (
+        goodreads_rating = 0 or (goodreads_rating >= 0.5 and goodreads_rating <= 5.0 and (goodreads_rating * 2) % 1 = 0)
+      ),
       constraint uq_book_user_goodreads unique (user_id, goodreads_book_id)
     );
     create table enrichment (
@@ -175,12 +181,17 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       id serial primary key,
       job_id text not null unique,
       user_id text not null default 'local',
-      -- Deliberately NO defaults: the Alembic-owned table has none for these
-      -- three (Python sets them from ORM-level defaults). Adding them here
-      -- hides insert bugs that only appear against the real database.
+      -- Deliberately NO default on status: the Alembic-owned table has none
+      -- (Python sets it from an ORM-level default). Adding one here hides
+      -- insert bugs that only appear against the real database.
+      -- progress/total DO carry "default 0", because production really has it
+      -- (the 0003 lineage, verified 2026-08-13). The mirror's job is to match
+      -- production, not to be uniformly strict. The inserts still pass both
+      -- values explicitly -- see the note in schema.ts and the guard in
+      -- __tests__/enrich-job-insert.test.ts.
       status text not null,
-      progress integer not null,
-      total integer not null,
+      progress integer not null default 0,
+      total integer not null default 0,
       started_at timestamp,
       finished_at timestamp,
       error text,
