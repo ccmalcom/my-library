@@ -11,7 +11,8 @@ import {
   parseStorygraph,
   stringifyCanonical,
 } from '../import-csv';
-import { pyRoundHalfEven, roundRatingHalfUp } from '../serialize';
+import { roundRatingHalfStar } from '../rating';
+import { pyRoundHalfEven } from '../serialize';
 
 describe('Python csv compatibility', () => {
   test('returns headers when no data records exist', () => {
@@ -69,11 +70,13 @@ describe('Python csv compatibility', () => {
   });
 });
 
-test('star rounding is half-up, not Python banker rounding', () => {
-  expect(roundRatingHalfUp(4.5)).toBe(5);
-  expect(roundRatingHalfUp(4.4)).toBe(4);
-  expect(roundRatingHalfUp(0.4)).toBeNull();
-  expect(roundRatingHalfUp(9)).toBe(5);
+test('star rounding is half-up on the half-star grid, not Python banker rounding', () => {
+  // Half-star grid, halves going up. Banker's rounding would send 4.25 to 4.0
+  // and 0.25 to 0.0 -- import stars must not route through pyRound.
+  expect(roundRatingHalfStar(4.25)).toBe(4.5);
+  expect(roundRatingHalfStar(4.24)).toBe(4);
+  expect(roundRatingHalfStar(0.4)).toBe(0.5);
+  expect(roundRatingHalfStar(9)).toBe(5);
   expect(pyRoundHalfEven(4.5)).toBe(4);
 });
 
@@ -127,7 +130,9 @@ const numericCases: [string, number | null, number | null][] = [
   ['1_0.5', 10, 5],
   ['1e3', 1000, 5],
   ['1E3', 1000, 5],
-  ['.5', 0, 1],
+  // 0.5, not 1: half stars survive import as of the half-star wave. The old
+  // whole-star helper promoted this to 1.
+  ['.5', 0, 0.5],
   ['5.', 5, 5],
   ['+5', 5, 5],
   [' 7 ', 7, 5],
@@ -210,6 +215,24 @@ test('parses a complete StoryGraph row with half-up rating and review', () => {
         externalId: null,
       },
     ],
+  });
+});
+
+describe('storygraph half stars', () => {
+  test('preserves a half-star rating', () => {
+    const csv =
+      'Title,Authors,Contributors,ISBN/UID,Read Status,Star Rating,Review,Last Date Read,Date Added\n' +
+      'Piranesi,Susanna Clarke,,,read,4.5,,2024-01-02,2024-01-01\n';
+    const parsed = parseStorygraph(csv);
+    expect(parsed.rows[0].rating).toBe(4.5);
+  });
+
+  test('snaps an off-grid rating to the nearest half', () => {
+    const csv =
+      'Title,Authors,Contributors,ISBN/UID,Read Status,Star Rating,Review,Last Date Read,Date Added\n' +
+      'Piranesi,Susanna Clarke,,,read,3.7,,2024-01-02,2024-01-01\n';
+    const parsed = parseStorygraph(csv);
+    expect(parsed.rows[0].rating).toBe(3.5);
   });
 });
 

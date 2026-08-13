@@ -25,15 +25,50 @@ describe('tierFor', () => {
   });
 });
 
+describe('tierFor with half stars', () => {
+  it('gives half stars their own buckets', () => {
+    expect(tierFor(5)).toBe('5');
+    expect(tierFor(4.5)).toBe('4.5');
+    expect(tierFor(4)).toBe('4');
+    expect(tierFor(3.5)).toBe('3.5');
+    expect(tierFor(3)).toBe('3');
+  });
+
+  it('collapses everything at or below 2.5 into <=2', () => {
+    expect(tierFor(2.5)).toBe('<=2');
+    expect(tierFor(2)).toBe('<=2');
+    expect(tierFor(0.5)).toBe('<=2');
+  });
+
+  it('still treats above-5 as the top tier', () => {
+    expect(tierFor(5.5)).toBe('5');
+  });
+});
+
+describe('buildTiers key order', () => {
+  it('emits buckets in prompt order', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      // Order is load-bearing: the Map is serialized into the Claude prompt,
+      // and '4.5'/'3.5' are not integer-like, so a plain object would order
+      // them differently again.
+      const tiers = await buildTiers(db, 'local');
+      expect([...tiers.keys()]).toEqual(['5', '4.5', '4', '3.5', '3', '<=2', 'dnf', 'rejected']);
+    } finally {
+      await close();
+    }
+  });
+});
+
 describe('buildTiers', () => {
-  it('groups the seeded library into Python-ordered tiers', async () => {
+  it('groups the seeded library into the eight half-star tiers, in prompt order', async () => {
     const { db, close } = await makeTestDb();
     try {
       await loadSeed(db, seedJson as Seed);
       const tiers = await buildTiers(db, 'local');
 
-      // Key order must match profile.py's dict literal exactly.
-      expect([...tiers.keys()]).toEqual(['5', '4', '3', '<=2', 'dnf', 'rejected']);
+      // This deliberately diverges from Python's six buckets per Global Constraint 1.
+      expect([...tiers.keys()]).toEqual(['5', '4.5', '4', '3.5', '3', '<=2', 'dnf', 'rejected']);
 
       const ids = (k: string) => tiers.get(k)!.map((b) => b.id);
       // 1,2,11,12,13 are goodreads_rating 5; 3 is app_rating 5; 7 is app_rating 5.

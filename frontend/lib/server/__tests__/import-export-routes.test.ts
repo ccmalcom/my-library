@@ -163,7 +163,10 @@ test('POST import parses generic mapping and returns exact counters from one com
     additionalAuthors: null,
     isbn13: null,
     exclusiveShelf: 'read',
-    goodreadsRating: 5,
+    // goodreadsRating is 4.5, not 5: the source CSV's Stars column is literally
+    // "4.5". The old whole-star import helper promoted it. Half stars now
+    // survive the round trip through numeric(2,1) as a real JS number.
+    goodreadsRating: 4.5,
     appRating: null,
     appReview: 'Excellent',
     feedbackUpdatedAt: expect.any(String),

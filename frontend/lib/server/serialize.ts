@@ -67,13 +67,6 @@ export function serializeResolutionConfidence(label: 'HIGH' | 'MEDIUM' | 'LOW' |
   return pyRound(confidence, 2);
 }
 
-/** Import-star normalization: Python's nonnegative int(value + 0.5), capped at five. */
-export function roundRatingHalfUp(value: number): number | null {
-  if (!Number.isFinite(value)) return null;
-  const rounded = Math.trunc(value + 0.5);
-  return rounded <= 0 ? null : Math.min(rounded, 5);
-}
-
 /** Python's `round(x, 2)`. */
 export function round2(x: number): number {
   return pyRound(x, 2);

@@ -1036,7 +1036,17 @@ describe('POST /api/profile route', () => {
         expect(body.rated_books).toBe(13); // every tier except `rejected`, per profile-build.test.ts
         expect(body.traits_saved).toBe(1);
         expect(body.model).toBe('claude-sonnet-5');
-        expect(body.tiers).toEqual({ '5': 7, '4': 3, '3': 1, '<=2': 1, dnf: 1, rejected: 1 });
+        // Empty half-star buckets are reported by design, keeping the response shape stable.
+        expect(body.tiers).toEqual({
+          '5': 7,
+          '4.5': 0,
+          '4': 3,
+          '3.5': 0,
+          '3': 1,
+          '<=2': 1,
+          dnf: 1,
+          rejected: 1,
+        });
       } finally {
         _setDbForTests(null);
         await close();
