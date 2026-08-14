@@ -59,6 +59,46 @@ Differences from Python that have each cost real debugging time:
   no queue, same-origin routes need no CORS, the catalog cache is a Postgres table
   (`catalog_cache`), and only the JWKS/ES256 path is implemented.
 
+### Railway's environment, recorded at retirement (2026-08-14)
+
+Railway's variable set is a configuration fact that dies with the service, so it is recorded here
+before the delete. Eleven variables were set (**names only** — values were never read):
+
+`ADMIN_EMAILS`, `CORS_ORIGINS`, `DATABASE_URL`, `ENCRYPTION_KEY`, `FEEDBACK_PROMPTS_ENABLED`,
+`FEEDBACK_SNOOZE_HOURS`, `FRONTEND_URL`, `GOOGLE_BOOKS_API_KEY`, `MYLIBRARY_DATA_DIR`,
+`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL`.
+
+Two absences are themselves findings. **`REDIS_URL` was never set**, which is direct evidence for
+what `worker.py`'s docstring only asserted: arq was opt-in and the no-Redis BackgroundTask path was
+the real production mode. And **none of the four `MYLIBRARY_*` tuning vars** — `MODEL`,
+`REQ_PER_SEC`, `MONTHLY_SOFT_CAP_USD`, `USAGE_WARN_THRESHOLD` — were set, so production ran on their
+code defaults throughout.
+
+Dies with the service, correctly: `CORS_ORIGINS` and `MYLIBRARY_DATA_DIR` have no Node reader
+(same-origin routes, Postgres catalog cache). `SUPABASE_SERVICE_ROLE_KEY` is the old name for the
+credential Vercel holds as `SUPABASE_SECRET_KEY` — see above.
+
+**Three variables Node DOES read were set on Railway and are absent from Vercel:**
+
+| Variable | Node reader | Fallback when unset | Verdict |
+|---|---|---|---|
+| `FEEDBACK_SNOOZE_HOURS` | `feedbackPrompts.ts:32` | `72`, matching `.env.example` | benign |
+| `FEEDBACK_PROMPTS_ENABLED` | `feedbackPrompts.ts:27` | `true` | benign **only if Railway's value was also `true`** |
+| `FRONTEND_URL` | `supabaseAdmin.ts:123` | omits `redirect_to` | **live defect — see below** |
+
+`FEEDBACK_PROMPTS_ENABLED` exists specifically to be flipped to `false` post-beta
+(`.env.example:58`). Node's unset-fallback is `true`, so if Railway held `false`, the cutover
+silently re-enabled targeted prompts. The value was masked; confirm it before assuming benign.
+
+**`FRONTEND_URL` is unset on Vercel and that is a real defect, not bookkeeping.** `inviteUser`
+appends `?redirect_to=<FRONTEND_URL>/auth/callback` only when the variable is present. Without it
+the parameter is omitted entirely and Supabase falls back to the project's dashboard-configured
+Site URL, which may point at the wrong environment — so an invited user can land somewhere that
+never establishes their session. This matters more than it looks: the product is **invite-only**,
+so admin-console invites are the sole way anyone joins. Set `FRONTEND_URL=https://shelfsprite.app`
+on Vercel (Production, and Preview if invites are ever tested there); new values need a redeploy to
+reach running functions.
+
 #### `CRON_SECRET` — required, and it fails destructively when unset
 
 Set it in Vercel for **Production and Preview**; generate with `openssl rand -hex 32`. The value is

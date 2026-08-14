@@ -87,9 +87,24 @@ Railway traffic and zero non-200s. **Railway is PAUSED as of 2026-08-13 — dele
 
 Before the delete:
 
-- [ ] Confirm the janitor fired (see the enrichment item under BUGS).
-- [ ] Record Railway's environment-variable **names** into the ledger. Anything set only there —
-      absent from `.env.example` and Vercel — is a configuration fact that dies with the service.
+- [ ] Confirm the janitor fired (see the enrichment item under BUGS). **Vercel runtime-log
+      retention does not reach `03:17 UTC`** — a 24h log query returns nothing for the janitor and
+      an explicit 02:00–06:00 UTC window fails with `ExceedsBillingLimitError`, so absence of log
+      lines is a false negative, not evidence. The cron IS registered (`vercel crons ls` →
+      `/api/enrich/janitor`, `17 3 * * *`). Needs a different evidence source — e.g. have the
+      janitor write a durable row, or catch it inside the retention window.
+- [x] Record Railway's environment-variable names into the ledger — done 2026-08-14, all eleven in
+      `docs/hosting.md` under "Railway's environment, recorded at retirement". Two absences were
+      findings in themselves (`REDIS_URL` never set, confirming arq was never the production path;
+      no `MYLIBRARY_*` tuning vars, so production ran on code defaults). It also turned up the two
+      items below.
+- [ ] **Set `FRONTEND_URL=https://shelfsprite.app` on Vercel.** Node's `inviteUser`
+      (`supabaseAdmin.ts:123`) reads it to build the invite `redirect_to`; it was set on Railway and
+      is absent from Vercel, so since cutover Supabase has been falling back to its dashboard Site
+      URL. Invite-only product — this is the only way anyone joins. Needs a redeploy to take effect.
+- [ ] **Confirm what `FEEDBACK_PROMPTS_ENABLED` was set to on Railway.** Node defaults it to `true`
+      when unset and it is absent from Vercel, so if Railway held `false` the cutover silently
+      re-enabled targeted feedback prompts. The value was masked when the names were recorded.
 - [ ] Re-confirm zero traffic from Railway's own 7-day request log.
 
 After the delete (5b-2 Tasks 1–7, no deadline):
