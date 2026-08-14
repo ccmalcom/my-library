@@ -120,6 +120,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
         <div className="flex-1 min-w-0">
           {editing ? (
             <textarea
+              aria-label="Edit trait claim"
               ref={textareaRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
