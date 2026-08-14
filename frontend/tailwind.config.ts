@@ -14,6 +14,7 @@ const config: Config = {
         surface: 'var(--surface)',
         elevated: 'var(--elevated)',
         border: 'var(--border)',
+        'border-strong': 'var(--border-strong)',
         hairline: 'var(--hairline)',
         text: 'var(--text)',
         muted: 'var(--muted)',

@@ -8,24 +8,25 @@
   --surface: #1f1b18;
   --elevated: #2a2420;
   --border: #3a332d;
+  --border-strong: #7a6f66; /* >=3:1 on surface+elevated — interactive control edges (WCAG 1.4.11) */
   --hairline: #2a2420;
 
   /* text */
   --text: #f5f0e8;
   --muted: #a89f92;
-  --faint: #6e665c;
+  --faint: #948b81; /* >=4.5:1 on bg/surface/elevated — was #6e665c (3.03 on surface) */
 
   /* brand + semantics */
   --accent: #ff5c3a;
   --accent-hover: #ff7355;
   --accent-quiet: rgba(255, 92, 58, 0.12);
   --success: #5bbf7b;
-  --danger: #e0524b;
+  --danger: #ea6b64; /* was #e0524b — 4.46 on surface failed AA body */
   --warning: #f5b82e;
 
   /* semantic quiet backgrounds (opacity-adjusted; opacity modifier needs channel triplets) */
   --success-quiet: rgba(91, 191, 123, 0.12);
-  --danger-quiet: rgba(224, 82, 75, 0.12);
+  --danger-quiet: rgba(234, 107, 100, 0.12);
   --warning-quiet: rgba(245, 184, 46, 0.12);
 
   /* per-user accent (set at runtime; fallback = persimmon) */
