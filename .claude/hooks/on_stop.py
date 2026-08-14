@@ -6,19 +6,16 @@ verification on the files that changed, so regressions surface before you hit
 them manually:
 
   - frontend `tsc --noEmit`            (any frontend .ts/.tsx changed)
-  - `ruff check` on changed .py        (if ruff is installed)
   - eslint on changed frontend files   (if eslint is installed)
   - prettier --check on changed files  (if prettier is installed)
-  - `pytest -q`                        (any tracked .py changed; venv interpreter)
   - nudge when code changed but no .md  (docs convention)
 
-Linters/tests run on changed files only, so a clean turn stays quiet and you are
-not blocked by pre-existing debt in files Claude did not touch. Node tools are
-skipped silently until their package appears in frontend/node_modules, and ruff
-is skipped until it is installed -- so this never breaks before `npm install` /
-`pip install -r requirements.txt`. On any finding it writes to stderr and exits
-2, feeding the message back to Claude so it keeps working. `stop_hook_active` is
-honored as a loop guard (fires at most once per stop cycle).
+Checks run on changed files only, so a clean turn stays quiet and you are not
+blocked by pre-existing debt in files Claude did not touch. Node tools are
+skipped silently until their package appears in frontend/node_modules. On any
+finding it writes to stderr and exits 2, feeding the message back to Claude so it
+keeps working. `stop_hook_active` is honored as a loop guard (fires at most once
+per stop cycle).
 
 Read-only with respect to git (only `git diff` / `git ls-files`).
 """
@@ -40,14 +37,6 @@ def git(root, *args):
         ).stdout
     except Exception:
         return ""
-
-
-def venv_python(root):
-    for rel in (".venv/Scripts/python.exe", ".venv/bin/python"):
-        p = root / rel
-        if p.exists():
-            return str(p)
-    return sys.executable
 
 
 def run(cmd, cwd):
@@ -90,7 +79,6 @@ def main():
         return 0
 
     ts = [c for c in changed if c.startswith("frontend/") and c.endswith((".ts", ".tsx"))]
-    py = [c for c in changed if c.endswith(".py") and not c.startswith("alembic/versions/")]
     docs = [c for c in changed if c.endswith(".md")]
     code = [c for c in changed if c.endswith((".py", ".ts", ".tsx"))]
     fe = [c for c in changed if c.startswith("frontend/")]
@@ -98,7 +86,6 @@ def main():
     fe_fmt = [c[len("frontend/"):] for c in fe if c.endswith(PRETTIER_EXT)]
 
     fe_dir = root / "frontend"
-    vp = venv_python(root)
     msgs = []
 
     # --- frontend type-check ---
@@ -106,12 +93,6 @@ def main():
         r = run("npm run -s type-check", fe_dir)
         if r.returncode != 0:
             msgs.append("[type-check FAILED] frontend tsc --noEmit\n" + tail(r.stdout + r.stderr))
-
-    # --- ruff on changed .py ---
-    if py and run([vp, "-m", "ruff", "--version"], root).returncode == 0:
-        r = run([vp, "-m", "ruff", "check", *py], root)
-        if r.returncode != 0:
-            msgs.append("[ruff FAILED]\n" + tail(r.stdout + r.stderr))
 
     # --- eslint on changed frontend files ---
     if fe_lint and (fe_dir / "node_modules" / "eslint").exists():
@@ -127,12 +108,6 @@ def main():
                 "[prettier FAILED] (run `npm run format` in frontend/ to fix)\n"
                 + tail(r.stdout + r.stderr)
             )
-
-    # --- pytest on changed .py ---
-    if py:
-        r = run([vp, "-m", "pytest", "-q"], root)
-        if r.returncode != 0:
-            msgs.append("[pytest FAILED]\n" + tail(r.stdout + r.stderr))
 
     # --- docs drift ---
     if code and not docs:

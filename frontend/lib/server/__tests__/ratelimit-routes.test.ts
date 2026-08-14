@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { makeTestDb } from './helpers/pglite';
-import { setupParityEnv } from './helpers/parity';
+import { setupTestEnv } from './helpers/testEnv';
 import { _setDbForTests } from '../db';
 import { RATE_LIMITS } from '../ratelimit';
 import { GET as catalogSearch } from '../../../app/api/catalog/search/route';
@@ -15,10 +15,10 @@ import { enrichJobs } from '../schema';
 // (ratelimit.ts) — nothing previously proved that shape actually reaches an HTTP
 // response from a real, rate-limited request. Drives checkRateLimit past its 30/minute
 // limit through the real exported route handlers (the pattern established in
-// parity-claude-flows.test.ts's reveal-lines route describe block: setupParityEnv() +
+// parity-claude-flows.test.ts's reveal-lines route describe block: setupTestEnv() +
 // _setDbForTests(db) + calling the route function directly with a real Request).
 describe('429 rate-limit response shape, driven through the real routes', () => {
-  setupParityEnv();
+  setupTestEnv();
   afterEach(() => vi.restoreAllMocks());
 
   function silenceLogs() {
@@ -62,7 +62,7 @@ describe('429 rate-limit response shape, driven through the real routes', () => 
       _setDbForTests(db);
       expect(RATE_LIMITS.directiveDraft).toEqual({ limit: 30, windowSeconds: 60 });
 
-      // setupParityEnv deletes ANTHROPIC_API_KEY and this test seeds no user_settings row,
+      // setupTestEnv deletes ANTHROPIC_API_KEY and this test seeds no user_settings row,
       // so every "allowed" request 400s on the no-key branch (checked AFTER the rate limit
       // in the route) before ever touching Claude — no fakeClaude/mocking needed to drive
       // 30 requests past the limit.
@@ -122,7 +122,7 @@ describe('429 rate-limit response shape, driven through the real routes', () => 
       _setDbForTests(db);
       expect(RATE_LIMITS.discover).toEqual({ limit: 30, windowSeconds: 60 });
 
-      // setupParityEnv deletes ANTHROPIC_API_KEY and this test seeds no user_settings
+      // setupTestEnv deletes ANTHROPIC_API_KEY and this test seeds no user_settings
       // row, so every "allowed" request 400s on the no-key branch (checked AFTER the
       // rate limit in the route). Discovery has no metadata pool, so none of these
       // reaches the catalog either — no mocking needed.

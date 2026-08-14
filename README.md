@@ -1,99 +1,62 @@
-# ShelfSprite — analysis engine
+# ShelfSprite
 
-A personal, AI-powered book-analysis engine built on a Goodreads export. The pipeline
-ingests your library, enriches it with real catalog metadata, infers an evidence-backed
-**taste profile**, and recommends what to read next with a **two-stage recommender**
-(retrieve real catalog candidates → Claude reranks/explains).
+ShelfSprite is a personal, AI-assisted book-analysis and recommendation app. It imports a
+Goodreads library, enriches books with Open Library and Google Books metadata, builds an
+evidence-backed taste profile, and recommends real catalog books through a two-stage pipeline:
+deterministic retrieval followed by Claude reranking and explanation.
 
-> Live at [shelfsprite.app](https://shelfsprite.app). Built under the working name *MyLibrary*
-> (the original "BetterReads" was taken); rebranded 2026-08-13.
+> Live at [shelfsprite.app](https://shelfsprite.app). Built under the working name _MyLibrary_;
+> rebranded 2026-08-13.
 
 ## Architecture
 
-Python engine, built as a **FastAPI service** so the eventual TypeScript/Next.js
-frontend can call it over HTTP (key stays server-side). The same core functions run as
-an offline CLI for batch work.
+ShelfSprite is a single Next.js application in `frontend/`, deployed on Vercel. Browser calls go
+through the typed client in `frontend/lib/api.ts` to same-origin `/api` route handlers. Server code
+under `frontend/lib/server/` verifies Supabase sessions, accesses Supabase Postgres through
+drizzle-orm, calls catalog providers, and runs the profile and recommendation flows.
 
-```
-Goodreads CSV ──▶ ingest ──▶ books ──▶ enrich ──▶ enrichment (+ confidence)
-                                                        │
-                                                        ▼
-                                                   taste profile  ◀── Claude (tool use)
-                                                        │
-                                                        ▼
-                  Open Library / Google Books ──▶ recommend ──▶ recommendations
-                  (retrieve real candidates)          ▲
-                                                       └── Claude reranks + explains
+```text
+Goodreads CSV -> import -> books -> enrichment -> taste profile -> recommendations
+                                |          |              |
+                  Open Library / Google Books        Claude
 ```
 
-SQLite is the store and the future cross-language seam: this Python side owns the
-schema; the frontend reads it (or calls the API).
+The recommender never asks Claude to invent titles. Stage 1 retrieves and filters real catalog
+candidates; Stage 2 lets Claude rerank and explain only that bounded set.
 
-## Pipeline stages
-
-1. **Ingest** (`ingest.py`) — Goodreads CSV → `books`, idempotent on `Book Id`. Handles
-   the Excel-escaped `="..."` ISBNs, treats `My Rating == 0` as *unrated*, and never
-   overwrites in-app `app_rating` on re-import.
-2. **Enrich** (`enrich.py`) — resolve each rated book via Open Library (ISBN, then
-   title+author) with a Google Books fallback. Emits a `resolution_confidence`
-   (HIGH/MEDIUM/LOW); ambiguous common-title matches are deliberately scored LOW so a
-   later feedback phase can surface them. Raw responses are cached to `data/cache/`, so
-   re-runs hit disk, not the network.
-3. **Taste profile** (`profile.py`) — groups rated books by star tier and asks Claude
-   (via tool use / structured output) what *distinguishes* the tiers — what separates
-   5★ from 4★, and what the rare low-rated books share. Every trait cites the book ids
-   that support it. Needs `ANTHROPIC_API_KEY`.
-4. **Recommend** (`recommend.py`) — two-stage, and the LLM is *not* the recommender.
-   **Stage 1 (retrieval)** is hybrid: deterministic metadata expansion (more books in
-   your loved subjects/authors) plus Claude-seeded *search queries* — every query is run
-   against the live catalog, so only real books survive. Both pools are merged, deduped,
-   and filtered against your library. **Stage 2 (rerank)** has Claude score the real
-   candidates against your taste profile and explain each pick, citing the trait ids and
-   library book ids it leaned on. The served set is persisted (one `run_id` per call) for
-   the future feedback loop. Needs `ANTHROPIC_API_KEY`.
-
-## Setup
+## Local development
 
 ```bash
-cd mylibrary
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-cp .env.example .env        # then add your ANTHROPIC_API_KEY
+cd frontend
+npm install
+npm run dev
 ```
 
-Export your library from Goodreads (My Books → Import and export → Export Library) and
-save it as `data/goodreads_library_export.csv`.
+The app opens at <http://localhost:3000>. `DATABASE_URL` is required for server data access. A
+fully unconfigured Supabase auth layer is optional in local development; when neither a Supabase
+project URL nor an explicit JWKS URL is configured, requests use the single local user. See
+`docs/hosting.md` for the current variable list and deployment notes.
 
-## Run it (CLI)
+## Validation
+
+Run the complete gate from `frontend/`:
 
 ```bash
-python -m mylibrary.cli ingest                 # uses data/goodreads_library_export.csv
-python -m mylibrary.cli enrich                 # add --limit 10 to test cheaply first
-python -m mylibrary.cli profile                # needs ANTHROPIC_API_KEY
-python -m mylibrary.cli recommend --n 10       # two-stage recs; needs ANTHROPIC_API_KEY
-python -m mylibrary.cli recs                   # reprint the latest recommend run
-python -m mylibrary.cli stats                  # rating dist, enrichment coverage, etc.
+npm run test:server
+npm test
+npm run type-check
+npm run lint
+npm run format:check
+npm run build
 ```
 
-## Run it (API)
+Jest and Vitest cover different paths, and `next build` catches failures the other checks cannot,
+so a complete validation includes both test runners and the build.
 
-```bash
-python -m mylibrary.cli serve                  # or: uvicorn mylibrary.api:app --reload
-```
+## Documentation
 
-Then open http://127.0.0.1:8000/docs for interactive endpoints:
-`GET /health`, `GET /stats`, `POST /enrich`, `POST /profile`,
-`GET /books`, `GET /profile`, `POST /recommend`, `GET /recommendations`.
-
-## Tests
-
-```bash
-pytest          # ingest idempotency + CSV quirks + enrichment matching (no network)
-```
-
-## What's intentionally NOT here yet
-
-NL discovery ("something cozy like X"), the feedback surface that turns rejected recs
-into labeled negatives and lets you refine the taste profile iteratively, the web UI, and
-the eval harness. Those are the next phases.
+- `CLAUDE.md` — current code map, load-bearing invariants, and commands.
+- `docs/architecture.md` — server module map and locked product decisions.
+- `docs/frontend.md` — UI, auth, client, and component conventions.
+- `docs/hosting.md` — Vercel/Supabase operations, migrations, and retired-service history.
+- `docs/conventions.md` — repository gotchas and data invariants.

@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { makeTestDb, loadSeed } from './helpers/pglite';
-import seedJson from './fixtures/parity/seed.json';
+import seedJson from './fixtures/seed.json';
 import { buildSignal, isColdStart, mostCommon } from '../recSignal';
 import { isPyFloat } from '../serialize';
 

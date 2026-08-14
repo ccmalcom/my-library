@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { makeTestDb, loadSeed } from './helpers/pglite';
-import seedJson from './fixtures/parity/seed.json';
-import { setupParityEnv } from './helpers/parity';
+import seedJson from './fixtures/seed.json';
+import { setupTestEnv } from './helpers/testEnv';
 import { _setDbForTests } from '../db';
 import { schema } from '../db';
 import { POST } from '@/app/api/recommend/route';
@@ -14,7 +14,7 @@ const req = (body?: unknown) =>
   });
 
 describe('POST /api/recommend', () => {
-  setupParityEnv();
+  setupTestEnv();
 
   test('422s on a missing body and on a non-integer n, like FastAPI', async () => {
     const { db, close } = await makeTestDb();
@@ -46,7 +46,7 @@ describe('POST /api/recommend', () => {
     try {
       await loadSeed(db, seedJson as any);
       await db.update(schema.profileMeta).set({ lastProfiledAt: '2026-08-01 00:00:00' });
-      // setupParityEnv clears the env key, but the SEED stores an encrypted per-user
+      // setupTestEnv clears the env key, but the SEED stores an encrypted per-user
       // key for 'local'. Without clearing it too, resolveAnthropicKey succeeds, a real
       // Anthropic client is built, and the run 500s on a live network call.
       await db.update(schema.userSettings).set({ anthropicApiKeyEncrypted: null });

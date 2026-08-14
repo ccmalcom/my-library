@@ -2,111 +2,94 @@
 
 ## TypeScript / TSX
 
-- **`Modal` component** (`components/ui/Modal.tsx`) takes `labelId` (ARIA string) + `onClose` + optional `className` — no `title` prop. Render the heading _inside_ as a child with `id={labelId}`. Missing `className` leaves the dialog unstyled.
-
-- **No non-ASCII characters inside JS string literals in `.tsx` files.** Turbopack rejects them with "Expected '</', got 'ident'". Em dashes (`—`), curly quotes, ellipses, etc. are fine in JSX _text nodes_ (between tags) but must not appear inside `"..."` or `'...'` JS string values. Use plain ASCII equivalents (`-`, `...`) or unicode escapes (`—`) in string literals.
-
-- **No IIFEs inside JSX in `.tsx` files.** Turbopack rejects `{(() => { ... })()}` with the same parse error. Compute derived values as plain variables at the top of the component function.
-
-- **The edit tool injects curly/smart quotes into `.tsx` string literals.** When AI edit tools write double-quoted JS strings, they may emit U+201C/U+201D curly quotes instead of straight `"`. Fix with:
-
-  ```bash
-  python3 -c "
-  path = 'frontend/app/.../page.tsx'
-  with open(path, 'rb') as f: c = f.read()
-  c = c.replace(b'\xe2\x80\x9c', b'\"').replace(b'\xe2\x80\x9d', b'\"')
-  with open(path, 'wb') as f: f.write(c)
-  "
-  ```
-
-  Prefer **single-quoted strings** (`'...'`) in `.tsx` className arrays to sidestep this.
-
-- **Never render a star row with `'★'.repeat(rating)`.** `String.prototype.repeat` truncates
-  its count, so a 4.5 draws four stars — pixel-identical to a 4, with no way to tell them apart —
-  while any sibling `aria-label` still announces "4.5". Use `<StarRating readOnly>`, or
-  `repeat(Math.floor(n))` followed by `{n % 1 ? '½' : ''}` where a text glyph is wanted
-  (`profile/page.tsx` does the latter in both its breakdowns). This shipped three times in the
-  half-star wave; it is the single easiest half-star regression to reintroduce.
-
-- **A rating-keyed response object loses its server-side sort.** Any payload keyed by rating
-  (`/stats`'s `by_star`, `/profile/subjects`'s `by_tier`) is a plain JS object, and V8 emits
-  integer-like keys in ascending numeric order *before* string keys in insertion order. So a route
-  that carefully sorts `5, 4.5, 4, 3.5` serves `Object.keys` as `4, 5, 4.5, 3.5` — whole stars
-  ascending, then halves. The ordering is not recoverable on the client except by re-sorting, so
-  **every consumer must re-sort numerically itself**; do not "clean up" a client-side sort on the
-  grounds that the route already sorted. A `Map` preserves order but does not survive JSON.
+- **`Modal`** (`components/ui/Modal.tsx`) takes `labelId`, `onClose`, and an optional `className`.
+  It has no `title` prop; render the heading inside the modal with `id={labelId}`.
+- **No non-ASCII characters inside JavaScript string literals in `.tsx` files.** Turbopack can
+  reject them. Unicode is fine in JSX text nodes. In a JavaScript expression use an escape when
+  needed; in a bare JSX attribute, an escape is not processed and appears as literal text.
+- **No IIFEs inside JSX.** Compute derived values as ordinary variables at the top of the
+  component.
+- **Never render ratings with `'★'.repeat(rating)`.** `repeat` truncates 4.5 to four stars. Use
+  `<StarRating readOnly>`, or render full stars plus an explicit half glyph.
+- **Rating-keyed response objects do not preserve numeric display order.** V8 emits integer-like
+  object keys before other keys, so consumers of `by_star` and `by_tier` must sort numerically.
+  Do not remove a client-side sort just because the server inserted keys in the desired order.
 
 ## Git
 
-- **Never run git state-mutating commands** (`git stash`, `git checkout`, `git reset`, `git commit`, etc.) as part of inspecting or verifying code — the user owns git. The sandbox mount is flaky and can interrupt these mid-operation, leaving a stale `.git/index.lock` that **blocks the user's own commits**, and the sandbox can't delete it. To read history use read-only commands only (`git log`, `git diff`, `git show`). To check whether an edit is valid, read the file back with the file tools.
-
-## Python / CLI
-
-- **Run via `python -m`** (`python -m mylibrary.cli ...`, `python -m pytest`). The console scripts (pytest.exe, uvicorn.exe) may not be on PATH. On Windows use `.venv/Scripts/python -m pytest` — bare `python` may lack packages (e.g. `slowapi`) installed only in the venv.
-- **`session_scope()` is the DB context manager; `get_session()` is not.** `get_session()` returns a bare `Session` (no `__exit__`). All core functions use `with session_scope() as session:`. Don't write `with get_session() as session:` — it will fail.
-- **Windows PowerShell**: no `&&`. Chain with `;` + `if ($?) { ... }`, or run commands separately.
-- Currently developed on **Python 3.14** — first suspect for any odd runtime behavior.
-
-## Enrichment
-
-- **Commits per book** so Ctrl+C is safe and re-runs resume (already-enriched books are skipped; unresolved/LOW are committed and won't auto-retry without `--force`).
-- **Request rate** is tunable via `--rps` or `MYLIBRARY_REQ_PER_SEC` (default 8/s). The enrich summary's `http` block reports 429s per host — lower the rate if they appear.
-- **Failed resolutions are committed as unresolved rows** (so they don't auto-retry). Re-attempt just those with `enrich --retry-unresolved` instead of `--force` (which redoes the whole library). Open Library is flaky; transient timeouts are common.
-
-## Search & Recommender
-
-- **Two normalizers, different purposes:** `_norm_full` (search path, `catalog.py`) keeps subtitles — do NOT use it in enrichment matching. `enrich._normalize_title` (enrichment path) splits on `:` — do NOT use it in search. Conflating them will break series dedup or enrichment matching respectively.
-- **Language policy:** captured at enrich time from the catalog candidate; filtered at recommend time. Unknown-language candidates (`language=None`) are always allowed through — never silently dropped. When the library has no language data, the recommender defaults to English-only candidates.
-- **Cold-start thresholds and author-cap constants are tunable knobs** in `recommend.py` (`_COLD_START_LOVED`, `_COLD_START_RATED`, `_MAX_PER_AUTHOR`, `_MAX_LIBRARY_AUTHOR_SHARE`) — adjust there, not in tests or callers.
-- **Series/edition gating (Stage 1, `recommend.py`):** `_series_ok` only catches sequels that carry a Goodreads/OL-style `(Series, #N)` title suffix — series without that numbering convention in the title text aren't detected (no series-field fetch; deterministic title parsing only, matching the manual-search picker's `_apply_series_grouping` precedent). `_fuzzy_duplicate` / `_is_learner_edition` are additional gates in `_assemble`'s `add()`; new marker/threshold tuning belongs in `recommend.py` module constants (`_LEARNER_EDITION_MARKERS`), not in tests or callers.
+- Treat the user's working tree as authoritative. Use read-only history commands such as
+  `GIT_PAGER=cat git diff`, `git log`, and `git show` while inspecting or verifying work. Do not
+  commit on the user's behalf.
 
 ## Data invariants
 
-- **`books` is never dropped.** It holds the only irreplaceable data (ratings, reviews). New columns are added in place via `ALTER TABLE ... ADD COLUMN` in `init_db`. Only the disposable tables (`taste_traits`, `recommendations`) get dropped+recreated.
-- **Purge cascade contract** (`purge.py`): `clear_profile` drops derived taste data (traits + recs + profile_meta + archetype), keeps books. `clear_library` = that **plus** books/enrichments. `delete_account` = everything the user owns, in *every* table — the invariant is "the `user_id` owns no rows anywhere." `TasteSignal` and `EnrichJob` are **durable**: they survive `clear_library`/`clear_profile` and are dropped *only* by `delete_account`. When you add a new user-scoped table, wire it into `delete_account` or you silently break this invariant.
-- **Review requires a rating.** Both `set_book_feedback` and `add_book` reject a review on an unrated book (`ValueError` → 422). Both `BookEditModal` and `AddBookModal` enforce this client-side.
-- **Profile dirty-state**: `set_book_feedback` bumps `Book.feedback_updated_at`; the profile is "dirty" when any rated/DNF book — or any **favorited** book, including unrated ones — changed after `ProfileMeta.last_profiled_at` (`books_changed_since` includes favorites because they're sent to Claude as positive signal). A third signal, `ProfileMeta.enrichment_corrected_at` (bumped by `library.correct_enrichment`, Wave 3c's LOW-confidence fix-match queue), also dirties the profile. `profile_status()` / `GET /profile/status` expose this; the frontend banner keys off it.
-- **`exclude_from_profile`** (`Book` column, bool, default False): tracks a book without including it in taste profiling or archetype derivation. Toggling goes through `set_book_feedback` (dirtying the profile). `build_tiers` and `books_changed_since` both filter `exclude_from_profile == False`. Alembic migration: `0006_add_exclude_from_profile` (idempotent). Frontend: toggle in `BookEditModal`; "excluded" badge on library rows.
+- **`books` is never dropped or recreated by a migration.** It contains irreplaceable ratings and
+  reviews. Add or alter columns in place and inspect generated migration SQL before applying it.
+- **Purge behavior is deliberate.** `deleteProfileRows` removes derived profile data and
+  recommendations but keeps books. The library reset adds book/enrichment deletion. `TasteSignal`
+  and `EnrichJob` rows survive both resets and are removed only by `deleteAccountRows`. Wire every
+  new user-owned table into account deletion.
+- **Review requires a rating.** Book creation and feedback updates reject review text on an unrated
+  book, except for the existing DNF feedback rule. `BookEditModal` and `AddBookModal` enforce the
+  same contract client-side.
+- **Profile dirty-state includes more than rating changes.** Rated, DNF, or favorited books changed
+  after `lastProfiledAt` dirty the profile. A correction timestamp in
+  `profileMeta.enrichmentCorrectedAt`, trait verdicts, taste signals, and recommendation feedback
+  also participate in rebuild/update decisions.
+- **`excludeFromProfile` keeps a book tracked while removing its metadata from taste analysis.**
+  Toggling it is a feedback change. `buildTiers` filters excluded books, and an exclusion-only
+  change can require a full rebuild because an incremental prompt cannot retract missing metadata.
+- Ratings use half-star steps. Database columns remain `numeric(2,1)` with drizzle
+  `mode: 'number'`; `0` is a clear/unrated sentinel, not a rating.
 
-## Recommender
+## Search and recommender
 
-- **`recommend` requires a clean, up-to-date profile** — raises `RuntimeError` (→ HTTP 400) if `last_profiled_at` is `None` or any rated/reviewed book has changed since the last build. Build/update the profile first.
-- **`recommend` never re-recommends a library book** (dedup by normalized title + author surname, reusing `enrich._normalize_title` / `_surname`). Individual recommendations and their feedback are durable; rejection reasons and swipe decisions feed back into future profiles.
-- **Swipe decisions land books in the library** (`PATCH /recommendations/{id}/feedback`, shared `_ensure_library_book` helper): `accepted` → to-read shelf, `already_read` → read shelf, `rejected` → no book but excluded from dedup + stores optional `reject_reasons` (validated against `feedback_vocab.REJECT_REASONS`). `already_read` returns the created/matched book so the UI can prompt a review; the create is idempotent on the same title+author. Swipe decisions dirty the profile.
-- **The stub enrichment must carry `rec.description`.** `_ensure_library_book` creates a stub `Enrichment` (`confidence_label="RECOMMENDATION"`) from the `Recommendation` row — it must copy `description`, `cover_url`, and `subjects` across. Because the book now *has* an enrichment row, a later `enrich` run skips it (`enrich.py`: `if force or b.enrichment is None`), so any field omitted here is permanently null in the UI until an `enrich --force`. Dropping `description` is what made every recommendation-accepted to-read book show "No description available."
-- **User feedback on recommendations** (`PATCH /recommendations/{id}/feedback`): accepts `status` (accepted/already_read/rejected), optional `reject_reasons` (list of reason slugs), and optional `notes`. Reject reasons are validated against the canonical vocabulary and aggregated for use in reranking.
+- **The LLM is not the recommender.** `recAssemble.ts` performs deterministic retrieval against
+  real catalogs; Claude may seed searches and then rerank only the bounded candidate pool.
+- Search ranking and enrichment matching use different normalization rules. Keep manual search in
+  `catalog.ts`; keep same-work and title similarity behavior in `dedup.ts` and `similarity.ts`.
+  Do not merge paths merely because both normalize titles.
+- **Unknown-language candidates always pass.** When the library has no language signal, the
+  recommender defaults its allowed known language to English.
+- Cold-start thresholds live in `recSignal.ts`; pool-size knobs live in `recAssemble.ts`; author,
+  language, series, duplicate, learner-edition, and directive filters live in `recFilters.ts`.
+  Adjust the owning module, not tests or callers.
+- Series gating detects the supported numbered-title convention; do not imply that arbitrary
+  series metadata exists when the catalog record does not provide it.
+- Recommendation decisions are durable signal. Accepted and already-read recommendations create
+  or match a library book; rejected recommendations remain excluded from future candidate sets and
+  can retain structured reasons and notes.
+- When landing a recommendation in the library, preserve its description, cover, and subjects in
+  the stub enrichment. That row prevents ordinary enrichment from treating the book as unresolved.
 
 ## Profile
 
-- **Incremental vs. full re-profile**: prefer `update_taste_profile` (`reprofile` / `POST /profile/update`) after edits — it's cheap. `extract_taste_profile` (`profile` / `reprofile --full` / `POST /profile`) is the full rebuild. Update falls back to a full build when there's no prior profile.
-- **Trait verdict feedback** (`PATCH /profile/traits/{id}`): set `status` (confirmed/rejected) and/or `user_weight` (float, default 1.0). Confirmed traits are preserved across re-profiles; rejected traits are filtered from Claude's output. Downweighted traits (`user_weight < 1.0`) are softened in prompt context. All verdicts stamp `verdict_updated_at` and dirty the profile.
-- **Taste signals** (`POST /taste-signal`): record "more like this" or "less like this" for a specific book or recommendation. Book-kind signals are durable and feed into profile builds as positive/negative signal. Rec-kind signals capture snapshot data so recommendations can be removed without losing steering. All signals dirty the profile.
-- **`/profile/subjects`** (`GET`): aggregates enrichment subjects for all rated books, grouped by star tier. Subject counts normalise capitalisation and cap per-book contribution at 8 subjects.
+- `updateTasteProfile` is the normal path after edits; it falls back to a full
+  `extractTasteProfile` rebuild when there is no prior profile or incremental evidence is
+  insufficient.
+- Recommendations require a built, current profile. `runRecommend` rejects a missing profile or
+  relevant book changes since `lastProfiledAt`.
+- Trait verdicts and weights are user feedback. Confirmed traits survive later builds, rejected
+  claims are filtered, downweighted traits are softened, and each verdict dirties the profile.
+- Taste signals are durable positive or negative evidence. Recommendation-kind signals retain a
+  snapshot so deleting recommendation rows does not erase the steering input.
+- `/profile/subjects` aggregates enrichment subjects for rated books by tier, normalizes casing,
+  and caps each book's subject contribution.
 
-## SWR cache / frontend state
+## SWR cache and frontend state
 
-- **After each setup wizard step**, refresh the shared `"stats"` SWR key by passing fresh data — `await mutate("stats", api.stats(), { revalidate: false })` — **not** a bare `mutate("stats")`. A bare call only revalidates, and SWR won't refetch a key no mounted component subscribes to, so the cache keeps the stale `total: 0`.
-- **`LibraryGate` latches** its setup-vs-ready decision on first stats load. The wizard calls `onComplete` at its final step to advance deliberately — don't make the gate reactive to `stats.total` changing.
+- After setup/import mutations, refresh the shared stats cache with fresh data:
+  `await mutate('stats', api.stats(), { revalidate: false })`. A bare `mutate('stats')` may not
+  refetch when no mounted component subscribes to the key.
+- `LibraryGate` latches its setup-versus-ready decision on the first stats load. The wizard advances
+  it through `onComplete`; do not make the gate reactively swap out as soon as a book is imported.
 
 ## Manual add
 
-- **Search-and-pick only** — the book stored is always a real catalog hit, never free-typed. Consistent with the "no invented titles" rule.
-- Dedup is by normalized title + author surname; a duplicate returns **409** (`BookExistsError`), which `AddBookModal` shows as "already in your library".
+- Manual add is search-and-pick only: stored books come from real catalog hits, never free-typed
+  titles. Same-work duplicates return 409 and are surfaced as already in the library.
 
-## Alembic (see also `docs/hosting.md`)
+## Linting and formatting
 
-- Any future migration that adds a column/table already present in the models' `create_all` baseline must be idempotent (inspect the bind and skip if already exists).
-
-## Claude Code hooks
-
-- Hooks live in `.claude/settings.json` (checked in) and dispatch to Python scripts in `.claude/hooks/` (stdlib only, so no jq/bash/PowerShell dependency on Windows). They run **in Claude Code only** — not Cowork — so commits there are fine and the hooks don't touch git beyond read-only `git diff` / `git ls-files`.
-- **`pre_bash.py`** (PreToolUse on Bash): blocks shell commands that read the `.env` secrets file (`cat .env`, `source .env`, etc.) while allowing `.env.example` / `.env.local`. Pairs with the `Read(./.env)` + `Edit(./.env)` deny rules in `settings.json` — the deny rules cover the file tools, this covers the shell hole. `.env.example` stays fully readable.
-- **`post_edit.py`** (PostToolUse on Edit/Write/MultiEdit): reminds to add an idempotent Alembic migration when `mylibrary/db.py` changes. Exits 2 to surface the note to Claude.
-- **`on_stop.py`** (Stop): on turn end, inspects uncommitted changes and runs, on the **changed files only** — `tsc --noEmit` (frontend `.ts/.tsx`), `ruff check` (changed `.py`), `eslint` (changed frontend files), `prettier --check` (changed frontend files), and `pytest -q` (any tracked `.py`, via the `.venv` interpreter). It also warns if code changed without a `.md` update. Exits 2 on any finding; honors `stop_hook_active` as a loop guard so it fires at most once per stop cycle. Changed-files scoping means you're never blocked by pre-existing debt in files Claude didn't touch.
-- These run automatically on **your machine** — they assume `python` is on PATH and (for the frontend checks) `frontend/node_modules` is installed. To make any of them personal-only rather than shared, move that block to `.claude/settings.local.json` (gitignored).
-
-## Linting / formatting
-
-- **Python:** `ruff` (config in `ruff.toml`, line-length 100, `E/F/W/I`, `E501` ignored). Run `ruff check .` / `ruff check --fix .` / `ruff format .`. Added to `requirements.txt` — `pip install -r requirements.txt` to activate.
-- **Frontend:** ESLint (flat config `frontend/eslint.config.mjs`, `next/core-web-vitals` + `next/typescript`) and Prettier (`frontend/.prettierrc.json`, **single quotes** — matches the TSX curly-quote guidance above). Scripts: `npm run lint` / `lint:fix` / `format` / `format:check`. `cd frontend && npm install` to pull `eslint`, `eslint-config-next`, `@eslint/eslintrc`, `prettier` and activate.
-- The Stop hook runs all of these on changed files and **skips any tool that isn't installed yet**, so nothing breaks before you run the installs.
+- ESLint and Prettier are configured in `frontend/`. Run `npm run lint`,
+  `npm run format:check`, and the rest of the gates documented in `CLAUDE.md` from that directory.

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import seedJson from './fixtures/parity/seed.json';
+import seedJson from './fixtures/seed.json';
 import { makeTestDb, loadSeed } from './helpers/pglite';
 import { buildBookSignal } from '../recSignal';
 import { dedupKey } from '../recFilters';

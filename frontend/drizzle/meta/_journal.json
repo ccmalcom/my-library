@@ -15,6 +15,13 @@
       "when": 1786652642535,
       "tag": "0001_half_star_ratings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786670374154,
+      "tag": "0002_align_nullability",
+      "breakpoints": true
     }
   ]
 }

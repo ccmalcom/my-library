@@ -1,9 +1,9 @@
 import { describe, test, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
-import seedJson from './fixtures/parity/seed.json';
+import seedJson from './fixtures/seed.json';
 import httpFixtures from './fixtures/claude/recommend-http.json';
 import { makeTestDb, loadSeed } from './helpers/pglite';
-import { setupParityEnv } from './helpers/parity';
+import { setupTestEnv } from './helpers/testEnv';
 import { installHttpReplay } from './helpers/httpReplay';
 import { schema } from '../db';
 import { runSimilar } from '../recSimilarRun';
@@ -58,7 +58,7 @@ function fakeClient(rankedPayload: unknown[]): ClaudeClient & { calls: any[] } {
 }
 
 describe('runSimilar', () => {
-  setupParityEnv();
+  setupTestEnv();
 
   test('runs both stages, drops bad indices, rounds scores and does not persist', async () => {
     const { db, close } = await makeTestDb();

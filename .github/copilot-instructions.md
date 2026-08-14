@@ -1,136 +1,86 @@
-# MyLibrary — Copilot Agent Instructions
+# ShelfSprite — Copilot Agent Instructions
 
-Trust these instructions. Only search when the information here is incomplete or appears incorrect.
+Trust these instructions. Read `CLAUDE.md` before changing behavior, then inspect the relevant
+source or focused document.
 
-## Suggesting & reviewing changes — do no harm (read first)
+## Suggesting and reviewing changes
 
-A code suggestion that breaks the build is worse than no suggestion. Past review suggestions have silently broken this repo; hold every proposed edit to these rules:
+- Keep edits minimal and syntactically self-contained. Include a whole object, array, config
+  block, or multi-line construct when changing it; if a complete replacement would be unwieldy,
+  describe the change instead of emitting a broken fragment.
+- Match the repository's Prettier and ESLint formatting.
+- Prefer a focused fix over unrelated refactors or renames.
+- Do not call work complete without reporting which validation commands actually ran.
+- **Not every bug is a code bug.** Runtime configuration lives in Vercel project settings and in
+  the Supabase dashboard. For example, invite links require `FRONTEND_URL` in Vercel and the exact
+  `/auth/callback` URL in Supabase Auth -> URL Configuration -> Redirect URLs. A code edit cannot
+  repair a missing variable or dashboard allowlist entry; identify the configuration fault.
 
-- **Keep suggested edits minimal and syntactically self-contained.** When you touch an object/array literal, config file, or multi-line construct, include the *whole* structure — never drop a key, an opening `[`/`{`, or a closing bracket. (A prior suggestion deleted the `collectCoverageFrom: [` line from `frontend/jest.config.js`, leaving an orphaned array that broke the entire jest suite.) If you can't show a complete, parseable replacement, describe the change in prose instead of emitting a broken patch.
-- **A suggestion is only "done" when it leaves all four validations green** (see Build and validate): `pytest`, `npm run type-check`, `npm test`, `npm run format:check`. If you cannot verify one, say so explicitly — do not assert the change is safe.
-- **Match existing formatting** (Prettier for TS/TSX, the surrounding style for Python). A change that fails `prettier --check` fails the commit via a Stop hook.
-- **Not every bug is a code bug.** Some failures are rooted in deployment env (Railway vars) or the Supabase dashboard (e.g. invite links need `FRONTEND_URL` set *and* `…/auth/callback` on the Auth → Redirect URLs allowlist — no code change fixes a missing allowlist entry). When the root cause is config/infra, flag the config; don't propose a code edit that can't address it.
-- **Prefer surgical over clever.** Don't bundle refactors, renames, or "while I'm here" cleanups into a fix — they widen the blast radius of a wrong suggestion.
+## Current system
 
-## What this repo is
+ShelfSprite is one TypeScript/Next.js application under `frontend/`. Vercel hosts both the pages
+and same-origin `/api` route handlers. Supabase provides authentication and Postgres; server code
+uses drizzle-orm. There is no separate backend service or resident worker.
 
-Personal AI-powered book-analysis engine built on a Goodreads CSV export. Pipeline: ingest → enrich → taste profile → recommend. Exposed as a FastAPI service + Next.js frontend. Deployed: Vercel frontend → Railway (uvicorn) → Supabase Postgres/auth. Local dev uses SQLite with no auth.
-
-## Stack
-
-| Layer | Tech |
-|---|---|
-| Backend | Python 3.14, FastAPI 0.138, SQLAlchemy 2.0, Pydantic 2, Typer CLI |
-| DB | SQLite (local dev) / Postgres via psycopg v3 (hosted — `postgresql+psycopg://`) |
-| AI | Anthropic SDK (`claude-sonnet-5` default; haiku for cheap tasks) |
-| Frontend | Next.js 16, React 18, TypeScript 5, Tailwind CSS 3, SWR 2, Supabase SSR |
-| Migrations | `init_db()` self-migrate (SQLite local); Alembic (Postgres hosted, `alembic/versions/`) |
+| Layer          | Technology                                                    |
+| -------------- | ------------------------------------------------------------- |
+| Application    | Next.js 16, React 18, TypeScript 5                            |
+| UI             | Tailwind CSS 3, SWR 2, Framer Motion                          |
+| Data           | Supabase Postgres, drizzle-orm, drizzle-kit                   |
+| Auth           | Supabase SSR and ES256 bearer verification                    |
+| AI and catalog | Anthropic SDK, Open Library, Google Books                     |
+| Tests          | Jest for client/shared paths; Vitest for server and API paths |
 
 ## Build and validate
 
-### Python backend
+Run from `frontend/`:
 
 ```bash
-# Bootstrap (one-time)
-python -m venv .venv && .venv\Scripts\activate   # Windows
-pip install -r requirements.txt
-
-# Run tests — always use the venv python, not bare python/pytest
-.venv\Scripts\python -m pytest          # 201 tests, ~27s, all green
-# pytest.ini: testpaths=tests, addopts=-q
-
-# Run the API
-.venv\Scripts\python -m mylibrary.cli serve     # FastAPI at http://127.0.0.1:8000/docs
+npm install
+npm run test:server
+npm test
+npm run type-check
+npm run lint
+npm run format:check
+npm run build
 ```
 
-**Never** use bare `pytest` or `python` — console scripts may not be on PATH. Always `.venv\Scripts\python -m ...` on Windows.
-
-### Frontend
-
-```bash
-cd frontend
-npm install          # always before build/type-check
-npm run type-check   # tsc --noEmit — run this to validate TS changes
-npm test             # jest (ts-jest, node env) — pure-logic unit tests in lib/__tests__/
-npm run format:check # prettier — a Stop hook FAILS the turn if this is not clean
-npm run build        # next build
-npm run dev          # dev server at http://localhost:3000
-```
-
-Put pure, testable logic in a `lib/*.ts` helper with a `lib/__tests__/*.test.ts` beside it (the jest env is `node`, so there is **no DOM** — don't import React/components into tests). `jest.config.js` must stay valid JS or the **entire** suite fails to load.
-
-### No CI/CD workflows exist. Validation = `pytest` + `npm run type-check` + `npm test` + `npm run format:check`. Run all four before proposing a change is complete.
+The runners are intentionally disjoint: Jest excludes `lib/server/**` and `app/api/**`; Vitest
+owns those paths. `npm run build` is required because it catches Next segment-config and prerender
+failures. For local development, run `npm run dev`.
 
 ## Project layout
 
-```
-mylibrary/          # Python package — the entire backend
-  db.py             # SQLAlchemy models + init_db() + session_scope()
-  config.py         # Settings dataclass, env vars, LOCAL_USER_ID = "local"
-  api.py            # FastAPI app, all HTTP routes
-  cli.py            # Typer CLI (same core functions as API)
-  ingest.py         # Goodreads CSV → books table
-  enrich.py         # Open Library + Google Books resolution
-  catalog.py        # catalog search clients (search_books, googlebooks_*, openlibrary_*)
-  profile.py        # taste profile extraction via Claude tool-use
-  recommend.py      # two-stage recommender; tunable constants at top of file
-  library.py        # in-app edits: set_book_feedback, add_book, remove_book
-  purge.py          # bulk data removal: clear_profile / clear_library / delete_account
-  archetype.py      # 4-axis reader archetype via Claude Haiku
-  worker.py         # arq background job engine for enrichment
-  feedback.py       # beta feedback collection endpoints
-  feedback_vocab.py # REJECT_REASONS slug vocabulary (single source of truth)
-  auth.py           # Supabase JWT verification → user_id
-  user_settings.py  # per-user Anthropic key (AES-256-GCM encrypted)
-  stats.py          # read-only dataset stats (field names are a frontend contract)
-alembic/versions/   # Postgres migrations (numbered 0001–fbc5…)
+```text
 frontend/
-  app/              # Next.js App Router pages
-  components/       # React components (UI in components/ui/)
-  lib/api.ts        # typed fetch client — all backend calls go through here
-  lib/bookLinks.ts  # Goodreads / StoryGraph link helpers
-  utils/supabase/   # Supabase client + middleware
-data/               # gitignored runtime data (DB, cache, CSV)
-tests/              # pytest suite — conftest.py isolates each test to a tmp SQLite DB
-docs/               # architecture.md, conventions.md, hosting.md, frontend.md
+  app/              Next.js pages and same-origin API route handlers
+  components/       application and design-system components
+  lib/api.ts        typed browser client; every request uses /api
+  lib/server/       auth, database, catalog, enrichment, profile, recommender, admin
+  drizzle/          migration SQL and drizzle metadata
+  proxy.ts          page-session middleware; deliberately excludes /api
+docs/               architecture, frontend, hosting, and conventions
 ```
 
-## Critical rules — read before writing any code
+## Critical rules
 
-### Python / SQLAlchemy
-
-- **Session context manager**: always `with session_scope() as session:`. Never `with get_session() as session:` — `get_session()` returns a bare `Session` with no `__exit__` and will fail.
-- **Eager loading**: use `selectinload()` when accessing relationships in a loop. Lazy loading inside a loop causes an N+1 query per row.
-- **New ORM columns require a migration block in `init_db()`** for SQLite local mode. After adding a column to a model, add an `ALTER TABLE … ADD COLUMN` block inside the `if "<table>" in insp.get_table_names():` pattern in `db.py`. And add a corresponding Alembic migration in `alembic/versions/` for Postgres.
-- **`max(1, int(x))`** — always floor-guard integer-truncated share calculations to prevent zero-dropping candidates.
-- Every core function takes `user_id: str = LOCAL_USER_ID` as a trailing parameter. Never omit it when adding new functions.
-- All user-owned tables have a `user_id` column. **When you add a new user-scoped table, wire it into `purge.delete_account()`** or you silently break the invariant that delete_account removes all user data.
-
-### Data invariants
-
-- **`books` is never dropped** — it holds the only irreplaceable data. Add columns via `ALTER TABLE ADD COLUMN` only; never `DROP TABLE books` or recreate it.
-- **Review requires a rating** — `set_book_feedback` and `add_book` raise `ValueError` (→ 422) if a review is set without a rating.
-- **`TasteSignal` rows are durable** — never deleted by `clear_library` or `clear_profile`; only by `delete_account`.
-- **`stats.py` field names are a frontend contract**: `total`, `rated`, `unrated`, `mean_rating`, `by_star`, `shelves`. Never rename them.
-
-### Recommender
-
-- **The LLM is not the recommender.** Stage 1 is deterministic retrieval against the live catalog; only real books survive. Stage 2 is Claude rerank/explain. Never have Claude invent titles.
-- Two normalizers serve different purposes — **never swap them**: `catalog._norm_full` (search, subtitle-preserving); `enrich._normalize_title` (enrichment, splits on `:`).
-- Tunable constants (`_COLD_START_LOVED`, `_COLD_START_RATED`, `_MAX_PER_AUTHOR`, `_MAX_LIBRARY_AUTHOR_SHARE`) live only in `recommend.py`. Never duplicate them in tests or callers.
-- In `_assemble()`, the raw candidate dict's `source` key becomes `catalog_source` and `resolved_id` becomes `catalog_id`. When adding new fields, add them to **both** the initial `by_key[key] = {…}` block and the dedup merge `else` branch or they are silently dropped.
-- Language filter: `None`-language candidates always pass through. Never silently drop them.
-
-### TypeScript / TSX
-
-- **No non-ASCII characters inside JS string literals in `.tsx` files** — Turbopack rejects them. Em dashes, curly quotes, etc. are fine in JSX text nodes (between tags) but not inside `"…"` or `'…'` string values. Use ASCII equivalents or unicode escapes.
-  - **A bare JSX attribute value (`placeholder="…"`, `alt="…"`, etc.) is not a JS string literal — it gets zero escape processing.** A unicode escape sequence written directly inside `attr="…"` renders to the user as those literal backslash-u-and-4-hex-digit characters, not the character it names (this shipped as a real bug once — see `FeedbackModal.tsx`/`useFeedbackPrompt.tsx` git history for the fix). Two correct options: put the actual ASCII character directly in the attribute string (no escape needed there), or if an escape is genuinely required, move the value into a JS expression first — `attr={'text — more text'}` — where escape processing applies.
-- **No IIFEs inside JSX** — Turbopack rejects `{(() => { … })()}`. Compute derived values as plain variables at the top of the component function.
-- `Modal` in `components/ui/Modal.tsx` takes `labelId` + `onClose` + optional `className`. No `title` prop — render the heading as a child with `id={labelId}`.
-- SWR cache invalidation after mutations: use `mutate("stats", api.stats(), { revalidate: false })`, not bare `mutate("stats")` — a bare call won't refetch a key no mounted component subscribes to.
-
-### Environment
-
-- Local mode: no env vars needed; DB is `data/mylibrary.db`; user_id = `"local"`.
-- Hosted mode: `DATABASE_URL` activates Postgres (auto-normalized to `postgresql+psycopg://`); `SUPABASE_URL` activates auth; `ENCRYPTION_KEY` required for per-user API key storage.
-- Tests: `conftest.py` sets `MYLIBRARY_DATA_DIR` to a tmp dir and clears `DATABASE_URL`, `SUPABASE_URL`, `REDIS_URL`, etc. — tests always run against a fresh in-memory-equivalent SQLite DB and are fully hermetic.
+- Tenant-scope every user-owned query with the authenticated `userId`. New user-owned tables must
+  also be removed by `deleteAccountRows`.
+- Reviews require a rating. Ratings use the 0.5 grid; `0` is only the clear/unrated sentinel.
+- Never drop or recreate `books` during a migration. Generate with drizzle-kit, inspect the SQL,
+  and apply migrations manually outside the Vercel build.
+- The LLM is not the recommender. Deterministic Stage 1 retrieval supplies real catalog books;
+  Claude only reranks and explains that bounded pool.
+- Unknown-language catalog candidates pass the language filter. Keep recommender tuning constants
+  in their owning modules (`recSignal.ts`, `recAssemble.ts`, and `recFilters.ts`), not in callers or
+  tests.
+- `frontend/proxy.ts` must exclude `api`; route handlers authenticate themselves, and cookieless
+  enrichment continuation depends on bypassing page middleware.
+- `enrich/start` and `enrich/tick` must each export the literal `maxDuration = 300`; an imported
+  value breaks Next's static segment-config analysis.
+- `supabaseAdmin.ts` sends the secret using `apikey` only. Keep its message fallback as
+  `data.msg || data.message`.
+- In TSX, keep non-ASCII characters out of JavaScript string literals, avoid IIFEs in JSX, and use
+  `Modal` with `labelId`, `onClose`, and an optional `className`.
+- After setup mutations, refresh stats with
+  `mutate('stats', api.stats(), { revalidate: false })`; a bare mutation can leave the cache stale.
