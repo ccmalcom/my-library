@@ -12,7 +12,9 @@
 
 ## Global Constraints
 
-- **Do not commit.** Chase commits manually. Every task ends by staging (`git add`) and reporting what changed — never `git commit`, never `git push`.
+- **Commit at the end of each task; never push.** Chase authorized commits on this branch (`impeccable-redesign`) specifically. One commit per task, after that task's gates pass. Do not `git push`, do not open a PR, and do not commit from any other branch — if `git branch --show-current` is not `impeccable-redesign`, stop and ask.
+- **Commit messages are plain lowercase prose**, matching this repo's history (`rm python, update docs`, `align production column nullability with schema.ts`). No `feat:`/`fix:` prefixes. **Never** append a `Co-Authored-By: Claude` trailer.
+- **Never amend or rebase a commit you did not create in this session.** `19a0664` (this plan) is Chase's.
 - **All gates run from `frontend/`.** A task is not done until these pass:
   `npm run test:server` · `npm test` · `npm run type-check` · `npm run lint` · `npm run format:check` · `npm run build`
 - `npm run build` is mandatory — it is the only gate that catches Next segment-config and prerender failures.
@@ -277,12 +279,12 @@ Expected: PASS, 7 tests.
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check`
 Expected: all pass.
 
-- [ ] **Step 6: Stage and report**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add frontend/lib/contrast.ts frontend/lib/__tests__/contrast.test.ts
+git commit -m "add dependency-free contrast and oklch color math"
 ```
-Report the file list. **Do not commit** — Chase commits manually.
 
 ---
 
@@ -401,10 +403,11 @@ Expected: PASS.
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 Expected: all pass.
 
-- [ ] **Step 6: Stage and report**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add frontend/app/globals.css frontend/tailwind.config.ts frontend/lib/__tests__/tokens.test.ts
+git commit -m "raise --faint and --danger to AA body contrast, add --border-strong"
 ```
 
 ---
@@ -497,10 +500,11 @@ Change both to `text-base`. If the grep returns other hits, fix them the same wa
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 7: Stage and report**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add frontend/components/ui/Button.tsx frontend/components/ui/__tests__/Button.test.tsx frontend/components/TasteHero.tsx
+git add frontend/components/ui/Button.tsx frontend/components/ui/__tests__/Button.test.tsx frontend/components/TasteHero.tsx frontend/components/FeedbackLauncher.tsx
+git commit -m "use dark ink on accent and danger fills instead of white"
 ```
 
 ---
@@ -602,10 +606,11 @@ Expected: all three exported. If any is missing, add it.
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 7: Stage and report**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add frontend/components/ui/Field.tsx frontend/components/ui/Input.tsx frontend/components/ui/Textarea.tsx frontend/components/ui/index.ts frontend/components/ui/__tests__/Field.test.tsx
+git commit -m "strengthen control borders and cover Field's label association with tests"
 ```
 
 ---
@@ -705,10 +710,11 @@ In `frontend/app/auth/callback/page.tsx`, replace the two `<label>`/`<input>` pa
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 7: Stage and report**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add frontend/app/login/page.tsx frontend/app/auth/callback/page.tsx frontend/app/__tests__/login.test.tsx
+git commit -m "label the login and password-reset fields via Field"
 ```
 
 ---
@@ -807,10 +813,11 @@ Expected: no output.
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 8: Stage and report**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add "frontend/app/(main)/settings/page.tsx" "frontend/app/(main)/admin/page.tsx" frontend/components/admin/UsageTab.tsx frontend/components/admin/FeedbackTab.tsx frontend/app/__tests__/settings.test.tsx
+git commit -m "label every settings and admin control, including the three password fields"
 ```
 
 ---
@@ -925,11 +932,14 @@ For each hit, confirm by eye that it is inside a `Field` render prop or carries 
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 8: Stage and report**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add frontend/components frontend/app
+git commit -m "label the remaining modal and toolbar controls"
 ```
+
+> `git add` on whole directories is deliberate here — this task touches ten files. Run `git status --short` first and confirm the staged set contains nothing unexpected before committing.
 
 ---
 
@@ -1064,10 +1074,11 @@ In `frontend/components/BookEditModal.tsx`, compute dirtiness from the state alr
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 7: Stage and report**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add frontend/components/ui/Modal.tsx frontend/components/BookEditModal.tsx frontend/components/__tests__/Modal.test.tsx
+git commit -m "lock body scroll and guard backdrop close against unsaved review edits"
 ```
 
 ---
@@ -1144,10 +1155,11 @@ Expected: PASS.
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 6: Stage and report**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add "frontend/app/(main)/swipe/page.tsx" frontend/app/__tests__/rejectModal.test.tsx
+git commit -m "make the reject modal's cancel actually cancel"
 ```
 
 ---
@@ -1376,10 +1388,11 @@ Because `--user-ink` is now a triplet rather than a hex, `TasteAccent.ink` must 
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 8: Stage and report**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add frontend/lib/tasteAccent.ts frontend/lib/__tests__/tasteAccent.test.ts frontend/app/globals.css frontend/tailwind.config.ts "frontend/app/(main)/page.tsx" frontend/components/TasteHero.tsx
+git commit -m "solve taste accents for contrast instead of pinning hsl lightness"
 ```
 
 ---
@@ -1526,10 +1539,11 @@ Then lock it in so it cannot regress — add to `frontend/lib/__tests__/tasteAcc
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 7: Stage and report**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add frontend/components/TasteHero.tsx frontend/components/__tests__/TasteHero.test.tsx frontend/lib/__tests__/tasteAccent.test.ts
+git commit -m "drench the taste hero in the user's archetype color"
 ```
 
 ---
@@ -1625,10 +1639,11 @@ Expected: PASS.
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 7: Stage and report**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add "frontend/app/(main)/page.tsx" frontend/app/__tests__/dashboard.test.tsx
+git commit -m "surface the taste hero on the dashboard and break the uniform card rhythm"
 ```
 
 ---
@@ -1736,10 +1751,11 @@ Expected: no output — both now read from `lib/nav.ts`.
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
-- [ ] **Step 8: Stage and report**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add frontend/lib/nav.ts frontend/components/NavBar.tsx frontend/components/BottomNav.tsx frontend/components/__tests__/nav.test.tsx
+git commit -m "drive both navs from one route table so discover is reachable on mobile"
 ```
 
 ---
@@ -1794,12 +1810,16 @@ Report what you saw. If any step cannot be reached because of missing local env,
 ```
 Expected: the trend line shows movement from the 24/40 baseline. Report the new score and any issues that survived.
 
-- [ ] **Step 6: Stage and report**
+- [ ] **Step 6: Report**
 
 ```bash
 git status --short
+git log --oneline 19a0664..HEAD
 ```
-Summarize every file touched across all 14 tasks. **Do not commit.**
+
+Expected: a clean working tree and 13 task commits on top of `19a0664`. Summarize every file touched across all 14 tasks and paste the commit list.
+
+**Do not push and do not open a PR** — Chase decides when this branch leaves the machine.
 
 ---
 
