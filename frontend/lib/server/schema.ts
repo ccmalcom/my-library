@@ -240,12 +240,22 @@ export const enrichJobs = pgTable(
     id: serial().primaryKey().notNull(),
     jobId: varchar('job_id').notNull(),
     userId: varchar('user_id').default('local').notNull(),
-    // No .default() on `status`: the Alembic-owned table has NO server default
-    // for it (Python's `default="pending"` is ORM-level only). Declaring one
-    // here makes drizzle emit SQL `default` on insert, which Postgres rejects
-    // against a NOT NULL column with no default. `progress`/`total` DID share
-    // this comment until the half-star wave -- see the note on them below for
-    // why they now carry .default(0) while their inserts stay explicit.
+    // No .default() on `status` -- but NOT for the reason this comment used to
+    // give. It claimed the Alembic-owned table has no server default for this
+    // column; introspecting production on 2026-08-14 falsified that (it carries
+    // DEFAULT 'pending', as does `invites.status`). Same error, same cause, as
+    // the `usage_events` comment below: the claim was read off the SQLAlchemy
+    // models rather than off the database.
+    //
+    // The declaration stays bare anyway, for the reason that survives: a
+    // .default() here makes the column OPTIONAL in `$inferInsert`, and a
+    // baseline-lineage database really does have no default, so an omitted
+    // `status` would be a NOT NULL violation there. The divergence is inert --
+    // the app always supplies a status -- and `generate` never sees it, because
+    // it diffs schema.ts against the snapshot rather than the database.
+    // `progress`/`total` DID share this comment until the half-star wave -- see
+    // the note on them below for why they now carry .default(0) while their
+    // inserts stay explicit.
     status: varchar().notNull(),
     // Production carries DEFAULT 0 (the `0003` lineage), so the generated
     // baseline must too -- without it drizzle-kit generate emits a spurious
@@ -330,11 +340,22 @@ export const usageEvents = pgTable(
     userId: varchar('user_id').default('local').notNull(),
     model: varchar().notNull(),
     operation: varchar().notNull(),
-    // NOT NULL with no server default in the Alembic-owned table: the models declare
-    // `mapped_column(Integer, default=0)`, which is an ORM-level default applied by
-    // Python at insert time and emits no DDL clause. A phantom `.default()` here would
-    // make drizzle emit SQL `default` for an omitted column and 500 against real
-    // Postgres — the POST /enrich/start bug, one table over.
+    // These are `.notNull()` with no `.default()` DELIBERATELY, but NOT for the reason
+    // this comment used to give. It claimed production was "NOT NULL with no server
+    // default"; a direct introspection of production on 2026-08-13 falsified both
+    // halves — these columns were NULLABLE and carried `DEFAULT 0`. The old claim was
+    // read off the SQLAlchemy models, never off the database. `0002_align_nullability`
+    // repairs the nullability half.
+    //
+    // The DEFAULT half is left divergent on purpose: declaring `.default(0)` here would
+    // make these OPTIONAL in drizzle's `$inferInsert`, dissolving the tsc guard that
+    // forces call sites to pass values explicitly. That guard is the one that had to be
+    // hand-rebuilt as `NewJobValues` after the POST /enrich/start bug. The divergence is
+    // inert — the app always supplies these — and `generate` never sees it, because it
+    // diffs against the snapshot rather than the database.
+    //
+    // The general lesson, which cost a red production deploy once already: a claim about
+    // the database's shape is only worth what the introspection behind it is worth.
     inputTokens: integer('input_tokens').notNull(),
     outputTokens: integer('output_tokens').notNull(),
     cacheCreationInputTokens: integer('cache_creation_input_tokens').notNull(),

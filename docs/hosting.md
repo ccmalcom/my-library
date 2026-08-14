@@ -263,6 +263,46 @@ half-star write truncates in silence. The script now slices to the first migrati
 many it skipped. Real migrations belong to `db:migrate`; if you ever need to adopt a database at a
 later revision, verify the column types first rather than widening this loop.
 
+### `generate` cannot see the database — drift lives outside its diff
+
+**`drizzle-kit generate` diffs `lib/server/schema.ts` against `drizzle/meta/*.json`. It never reads
+the database.** So any divergence between the snapshot lineage and the *actual* production schema is
+invisible to it: generate emits nothing, the drift persists, and the absence of a generated migration
+reads as "no drift" when it means "not checked". `0002_align_nullability.sql` is hand-written for
+exactly this reason — every column in it is already `.notNull()` in `schema.ts` and already NOT NULL
+in the snapshot, so the two agree and generate has nothing to say.
+
+**Where the drift came from.** Production was built by Alembic, and the revisions that added these
+columns omitted NOT NULL. The SQLAlchemy models declared `nullable=False` / `default=0`, which
+SQLAlchemy enforces at the ORM layer and which emits no DDL. Nine columns were left nullable in
+production while every layer above them assumed otherwise:
+
+| Table | Columns |
+|---|---|
+| `invites` | `created_at` |
+| `taste_signal` | `created_at` |
+| `user_directive` | `created_at` |
+| `usage_events` | `created_at`, `input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`, `cost_usd` |
+
+A database created fresh from `0000_baseline` already has these NOT NULL, so `0002` is a no-op there
+and a repair on any Alembic-lineage database. `SET NOT NULL` on an already-NOT NULL column is a no-op
+in Postgres, so it is safe to apply twice.
+
+**Server defaults are deliberately left divergent, and that is not the same bug.** Production also
+carries defaults `schema.ts` does not declare — `enrich_jobs.status` and `invites.status` are
+`DEFAULT 'pending'`, and the five `usage_events` numerics are `DEFAULT 0`. Declaring these in
+`schema.ts` would make them optional in drizzle's `$inferInsert` and dissolve the tsc guard that
+forces call sites to pass values explicitly — the guard that had to be hand-rebuilt as `NewJobValues`
+after the `POST /enrich/start` 500. The divergence is inert, because the app always supplies these
+values, and generate never trips on it because both sides of its diff agree. It is **recorded** in
+`schema.ts` rather than resolved.
+
+**The general lesson, which cost a red production deploy once already:** a claim about the database's
+shape is only worth what the introspection behind it is worth. Two comments in `schema.ts` asserted
+production's nullability and defaults from a reading of the SQLAlchemy models; direct introspection
+falsified both. Verify against `information_schema.columns`, not against the models. Sibling case:
+`enrich_jobs.progress`/`.total` below, where two lineages are both legitimate.
+
 ### Alembic (frozen — history)
 
 `alembic.ini` + `alembic/env.py` (pulls `settings.db_url`). Run `alembic upgrade head` on deploy. `init_db()` returns early in multi-tenant mode (Alembic is the source of truth); locally it still self-migrates SQLite and backfills `user_id`.

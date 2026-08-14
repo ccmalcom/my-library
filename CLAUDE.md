@@ -162,6 +162,18 @@ It **has been applied** — production's `alembic_version` reads `0019_add_enric
 (verified read-only 2026-08-13), which is Alembic head. **Alembic is now frozen:** it owned
 migrations while Python was live, and with Python retired every new migration goes through
 drizzle-kit instead. Do not add an `0020`. See `docs/hosting.md` for the drizzle workflow.
+**`drizzle-kit generate` never reads the database** — it diffs `schema.ts` against
+`drizzle/meta/*.json`, so drift against *production* is invisible to it and "generate emitted
+nothing" means "not checked", not "no drift". `0002_align_nullability.sql` is hand-written for that
+reason: it sets NOT NULL on nine Alembic-era columns (`invites`/`taste_signal`/`user_directive`
+`.created_at`, plus `usage_events.created_at` and its five numerics) that the SQLAlchemy models
+enforced only at the ORM layer. It is a no-op on a `0000_baseline` database and safe to apply twice.
+Production's extra server defaults (`enrich_jobs.status`/`invites.status` `DEFAULT 'pending'`, the
+five `usage_events` numerics `DEFAULT 0`) are **deliberately left undeclared** in `schema.ts`:
+declaring them makes the columns optional in `$inferInsert` and dissolves the tsc guard that forces
+explicit values. **Verify any claim about production's shape against `information_schema.columns`,
+never against the models** — two `schema.ts` comments asserted nullability and defaults read off the
+SQLAlchemy models, and introspection falsified both.
 Python's `fail_if_stale` semantics are exact: running only, non-null `started_at`, age strictly
 greater than 1,800 seconds, and `Enrichment was interrupted, please retry.` The one sanctioned
 wave-4c-1 edit is additive optional `bookIds?: number[]` on `EnrichLibraryOptions`: chunked
