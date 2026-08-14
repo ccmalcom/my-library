@@ -187,25 +187,37 @@ server default** (Python supplies them from ORM-level `default=0`), so drizzle's
 `default` was rejected. It passed 493 tests only because the hand-written PGlite mirror invented
 those defaults. Fixed by passing `progress: 0, total: 0` explicitly, dropping the phantom
 `.default()`s from `schema.ts`, and tightening the mirror — which turned 24 fixtures red and is
-exactly the point. `tsc` cannot catch this class: drizzle's `$inferInsert` leaves a `notNull()`
-column without `.default()` optional.
+exactly the point. Drizzle's `$inferInsert` leaves a `notNull()` column without `.default()`
+optional, so it cannot catch this class on its own. **This path is nevertheless tsc-guarded**, and
+the guard is the hand-written `NewJobValues` interface (`enrichmentJobs.ts`), which declares
+`progress`/`total` required — `createOrGetActiveJob` types its payload against that, not against
+`$inferInsert`. That is why `schema.ts` was later allowed to carry `.default(0)` again for baseline
+fidelity (without it `drizzle-kit generate` emits a spurious `DROP DEFAULT` against production's
+`0003` lineage) without reopening the bug. Verified by deleting `progress: 0` from the call site:
+tsc fails with "missing the following properties ... progress, total". Pinned by a
+`@ts-expect-error` assertion in `__tests__/enrich-job-insert.test.ts` — do not "simplify" that file
+into a source-text grep, which is what it used to be and which any stray `progress: 0` satisfied.
 **Half-star ratings (2026-08-13).** Ratings are a 0.5 grid from 0.5 to 5.0. `books.app_rating` and
 `books.goodreads_rating` are `numeric(2,1)` with half-step CHECK constraints
 (`drizzle/0001_half_star_ratings.sql`, applied with `ALTER COLUMN ... TYPE ... USING` — never
 drop-and-recreate, production holds real ratings). Both columns MUST use drizzle's
 `mode: 'number'`; without it the driver returns `"3.5"` as a string and every numeric comparison
-misbehaves silently. `lib/server/rating.ts` is the domain module — `ratingSchema`,
+misbehaves silently. `lib/server/rating.ts` is the domain module — `isValidRating`,
 `roundRatingHalfStar`, `isHalfStep`, `inStarBand` — deliberately separate from `serialize.ts`,
-which is the CPython-compatibility layer. Three invariants that look like bugs and are not:
+which is the CPython-compatibility layer. **Keep `rating.ts` dependency-free:** `StarRating` and
+the library page import from it, so anything added here ships to every client bundle. It briefly
+exported a zod `ratingSchema`, which put the whole zod runtime in every page's JS to supply two
+numeric constants; `isValidRating` is a plain predicate for that reason, and both call sites only
+ever used it as a boolean anyway. Three invariants that look like bugs and are not:
 
 - **`0` is never a rating; it is a sentinel.** `app_rating IS NULL` means "no override",
   `goodreads_rating = 0` means "unrated", and `0` on the wire means "clear this rating". The Zod
   body schemas on `POST /books` and `PATCH /books/{id}/feedback` are deliberately PERMISSIVE
-  (`z.number()`); the real check is the manual guard that follows, via
-  `ratingSchema.safeParse(...)`. Moving `ratingSchema` into the Zod object makes Zod reject
-  out-of-range values first, which changes the 422 body from the guard's message to
-  `validation error: ...` and breaks the recorded `add-book-invalid` / `book-feedback-invalid`
-  parity scenarios. Mutation-tested: that change turns 5 tests red.
+  (`z.number()`); the real check is the manual guard that follows, via `isValidRating(...)`.
+  Folding the range/step check into the Zod object makes Zod reject out-of-range values first,
+  which changes the 422 body from the guard's message to `validation error: ...` and breaks the
+  recorded `add-book-invalid` / `book-feedback-invalid` parity scenarios. Mutation-tested: that
+  change turns 5 tests red.
 - **Whole ratings serialize as integers** (`4`, never `4.0`), halves as `4.5` — `/stats`'s `by_star`
   keys depend on `String()` over a numeric-mode value doing exactly this.
 - **Import uses `roundRatingHalfStar`, not banker's rounding.** Half-up to the nearest half star,

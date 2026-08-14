@@ -3,7 +3,8 @@ import { setupParityEnv } from './helpers/parity';
 import { runScenario } from './helpers/write-parity';
 import { loadSeed, makeTestDb, type Seed } from './helpers/pglite';
 import seedJson from './fixtures/parity/seed.json';
-import { _setDbForTests } from '../db';
+import { eq } from 'drizzle-orm';
+import { _setDbForTests, getDb, schema } from '../db';
 import { DELETE as deleteBook } from '../../../app/api/books/[id]/route';
 import { PATCH as patchBookFeedback } from '../../../app/api/books/[id]/feedback/route';
 import { PATCH as patchBookShelf } from '../../../app/api/books/[id]/shelf/route';
@@ -58,18 +59,32 @@ describe('half-star ratings', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
   }
 
-  // Assert the persisted value, not just the status: a route that accepted 4.5
-  // but truncated it to 4 on the way to the column would still return 200.
+  /**
+   * Re-read the column instead of trusting the response body. The route
+   * returns `bookSummary(next)`, built in memory before the UPDATE and never
+   * re-selected, so against an `integer` column it would still answer 4.5
+   * while the database held 4. Only a fresh SELECT catches truncation.
+   */
+  async function storedRating(id: number) {
+    const rows = await getDb()
+      .select({ appRating: schema.books.appRating })
+      .from(schema.books)
+      .where(eq(schema.books.id, id));
+    return rows[0]?.appRating ?? null;
+  }
+
   it('accepts rating 4.5 and stores it as 4.5', async () => {
     const res = await patchRating(4.5);
     expect(res.status).toBe(200);
     expect((await res.json()).app_rating).toBe(4.5);
+    expect(await storedRating(1)).toBe(4.5);
   });
 
   it('accepts rating 0.5 and stores it as 0.5', async () => {
     const res = await patchRating(0.5);
     expect(res.status).toBe(200);
     expect((await res.json()).app_rating).toBe(0.5);
+    expect(await storedRating(1)).toBe(0.5);
   });
 
   it('rejects off-grid rating 3.7', async () => {

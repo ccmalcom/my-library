@@ -248,11 +248,14 @@ export const enrichJobs = pgTable(
     // why they now carry .default(0) while their inserts stay explicit.
     status: varchar().notNull(),
     // Production carries DEFAULT 0 (the `0003` lineage), so the generated
-    // baseline must too. This is for schema/baseline fidelity ONLY -- the
-    // inserts still pass progress/total explicitly, because a
-    // create_all-lineage DB and the PGlite mirror have no default and
-    // omitting them is what 500'd POST /enrich/start in wave 4c-2.
-    // Guarded by __tests__/enrich-job-insert.test.ts.
+    // baseline must too -- without it drizzle-kit generate emits a spurious
+    // DROP DEFAULT. This is for schema/baseline fidelity ONLY: the inserts
+    // still pass progress/total explicitly, because a create_all-lineage DB
+    // has no default and omitting them is what 500'd POST /enrich/start in
+    // wave 4c-2. .default() loosens `$inferInsert`, but the insert payload is
+    // typed against the hand-written `NewJobValues`, which keeps both fields
+    // required -- so tsc still catches an omission here. Pinned by
+    // __tests__/enrich-job-insert.test.ts.
     progress: integer().notNull().default(0),
     total: integer().notNull().default(0),
     startedAt: timestamp('started_at', { mode: 'string' }),

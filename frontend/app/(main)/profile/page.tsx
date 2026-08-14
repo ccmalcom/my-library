@@ -413,7 +413,10 @@ function RatingSection({ stats }: { stats: Stats }) {
 
 function GenreSection({ subjects }: { subjects: SubjectBreakdown }) {
   const [tier, setTier] = useState<string>('all');
-  const tierKeys = Object.keys(subjects.by_tier);
+  // Re-sort client-side: `by_tier` is a plain object, so V8 emits the
+  // integer-like keys ("3", "4", "5") ascending ahead of the half-star string
+  // keys ("3.5", "4.5"), discarding the route's descending sort.
+  const tierKeys = Object.keys(subjects.by_tier).sort((a, b) => Number(b) - Number(a));
 
   const items = tier === 'all' ? subjects.overall : (subjects.by_tier[tier] ?? []);
   const maxCount = items[0]?.count ?? 1;
@@ -439,8 +442,14 @@ function GenreSection({ subjects }: { subjects: SubjectBreakdown }) {
             All
           </button>
           {tierKeys.map((k) => (
-            <button key={k} onClick={() => setTier(k)} className={filterBtnClass(tier === k)}>
-              {'\u2605'.repeat(Number(k))}
+            <button
+              key={k}
+              onClick={() => setTier(k)}
+              className={filterBtnClass(tier === k)}
+              aria-label={`${k} star${k === '1' ? '' : 's'}`}
+            >
+              {'\u2605'.repeat(Math.floor(Number(k)))}
+              {Number(k) % 1 ? '\u00bd' : ''}
             </button>
           ))}
         </div>

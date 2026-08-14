@@ -282,7 +282,7 @@
    "response_mode": "json",
    "status": 422,
    "body": {
-    "detail": "A review requires a rating (1-5). Rate the book, or omit the review."
+    "detail": "A review requires a rating (0.5 to 5). Rate the book, or omit the review."
    },
    "headers": {},
    "maskDetail": false
@@ -675,7 +675,7 @@
    "response_mode": "json",
    "status": 422,
    "body": {
-    "detail": "A review requires a rating. Rate the book 1-5 (same update is fine) before saving a review."
+    "detail": "A review requires a rating. Rate the book 0.5 to 5 (same update is fine) before saving a review."
    },
    "headers": {},
    "maskDetail": false

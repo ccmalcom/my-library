@@ -21,6 +21,21 @@
 
   Prefer **single-quoted strings** (`'...'`) in `.tsx` className arrays to sidestep this.
 
+- **Never render a star row with `'★'.repeat(rating)`.** `String.prototype.repeat` truncates
+  its count, so a 4.5 draws four stars — pixel-identical to a 4, with no way to tell them apart —
+  while any sibling `aria-label` still announces "4.5". Use `<StarRating readOnly>`, or
+  `repeat(Math.floor(n))` followed by `{n % 1 ? '½' : ''}` where a text glyph is wanted
+  (`profile/page.tsx` does the latter in both its breakdowns). This shipped three times in the
+  half-star wave; it is the single easiest half-star regression to reintroduce.
+
+- **A rating-keyed response object loses its server-side sort.** Any payload keyed by rating
+  (`/stats`'s `by_star`, `/profile/subjects`'s `by_tier`) is a plain JS object, and V8 emits
+  integer-like keys in ascending numeric order *before* string keys in insertion order. So a route
+  that carefully sorts `5, 4.5, 4, 3.5` serves `Object.keys` as `4, 5, 4.5, 3.5` — whole stars
+  ascending, then halves. The ordering is not recoverable on the client except by re-sorting, so
+  **every consumer must re-sort numerically itself**; do not "clean up" a client-side sort on the
+  grounds that the route already sorted. A `Map` preserves order but does not survive JSON.
+
 ## Git
 
 - **Never run git state-mutating commands** (`git stash`, `git checkout`, `git reset`, `git commit`, etc.) as part of inspecting or verifying code — the user owns git. The sandbox mount is flaky and can interrupt these mid-operation, leaving a stale `.git/index.lock` that **blocks the user's own commits**, and the sandbox can't delete it. To read history use read-only commands only (`git log`, `git diff`, `git show`). To check whether an edit is valid, read the file back with the file tools.

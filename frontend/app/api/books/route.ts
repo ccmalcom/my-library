@@ -11,7 +11,7 @@ import {
   pyList,
 } from '@/lib/server/serialize';
 import { sameWork } from '@/lib/server/dedup';
-import { ratingSchema } from '@/lib/server/rating';
+import { isValidRating } from '@/lib/server/rating';
 
 const Query = z.object({
   rated_only: z.string().optional(),
@@ -91,7 +91,7 @@ export const POST = withApi('/api/books', async (req, ctx) => {
     throw new ApiError(422, `shelf must be one of ${pyList(VALID_SHELVES)}.`);
   }
   // 0 is the "unrated" sentinel, not a rating.
-  if (b.rating != null && b.rating !== 0 && !ratingSchema.safeParse(b.rating).success) {
+  if (b.rating != null && b.rating !== 0 && !isValidRating(b.rating)) {
     throw new ApiError(
       422,
       'rating must be 0.5 to 5 in half-star steps (or omitted/0 for unrated).'
@@ -101,7 +101,10 @@ export const POST = withApi('/api/books', async (req, ctx) => {
   const isbn13 = (b.isbn13 ?? '').trim() || null;
   const review = (b.review ?? '').trim() || null;
   if (review && (b.rating == null || b.rating === 0)) {
-    throw new ApiError(422, 'A review requires a rating (1-5). Rate the book, or omit the review.');
+    throw new ApiError(
+      422,
+      'A review requires a rating (0.5 to 5). Rate the book, or omit the review.'
+    );
   }
 
   const db = getDb();

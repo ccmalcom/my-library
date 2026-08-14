@@ -26,7 +26,7 @@ export const PATCH = withApi('/api/books/[id]/shelf', async (req, ctx) => {
   ) {
     throw new ApiError(
       422,
-      'A review requires a rating. Rate the book 1-5 before moving it off did-not-finish.'
+      'A review requires a rating. Rate the book 0.5 to 5 before moving it off did-not-finish.'
     );
   }
   await db.update(schema.books).set({ exclusiveShelf: shelf }).where(eq(schema.books.id, bookId));

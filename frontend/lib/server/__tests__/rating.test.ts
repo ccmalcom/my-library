@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inStarBand, isHalfStep, ratingSchema, roundRatingHalfStar } from '../rating';
+import { inStarBand, isHalfStep, isValidRating, roundRatingHalfStar } from '../rating';
 
 describe('roundRatingHalfStar', () => {
   it('keeps values already on the half-star grid', () => {
@@ -39,16 +39,22 @@ describe('isHalfStep', () => {
   });
 });
 
-describe('ratingSchema', () => {
+describe('isValidRating', () => {
   it('accepts half stars and whole stars', () => {
-    expect(ratingSchema.safeParse(4.5).success).toBe(true);
-    expect(ratingSchema.safeParse(1).success).toBe(true);
+    for (const good of [0.5, 1, 3.5, 4.5, 5]) {
+      expect(isValidRating(good)).toBe(true);
+    }
   });
 
-  it('rejects off-grid, out-of-range, and zero', () => {
-    for (const bad of [3.7, 0.25, 0, 5.5, -1]) {
-      expect(ratingSchema.safeParse(bad).success).toBe(false);
+  it('rejects off-grid, out-of-range, zero, and non-finite', () => {
+    for (const bad of [3.7, 0.25, 0, 5.5, -1, NaN, Infinity]) {
+      expect(isValidRating(bad)).toBe(false);
     }
+  });
+
+  it('rejects float slop that only looks like a half step', () => {
+    expect(isValidRating(0.1 + 0.2)).toBe(false);
+    expect(isValidRating(4.5000001)).toBe(false);
   });
 });
 

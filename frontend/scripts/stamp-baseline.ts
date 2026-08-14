@@ -1,7 +1,8 @@
 /**
- * One-shot: record already-applied migrations in drizzle's ledger WITHOUT
- * executing their SQL. Used once, to adopt drizzle-kit on a database that
+ * One-shot: record the BASELINE migration in drizzle's ledger WITHOUT
+ * executing its SQL. Used once, to adopt drizzle-kit on a database that
  * Alembic built (production is at alembic head 0019_add_enrich_job_leases).
+ * Everything after 0000 is a real migration and belongs to `db:migrate`.
  *
  * Running this against a database that does NOT already have the schema
  * leaves you with an empty DB that drizzle believes is fully migrated.
@@ -33,9 +34,24 @@ async function main() {
       );
     }
 
-    const migrations = readMigrationFiles({
+    // ONLY the baseline. readMigrationFiles() returns every migration in the
+    // folder, and stamping records a migration as applied WITHOUT running its
+    // SQL -- so stamping anything past 0000 against a database that has the
+    // Alembic schema but not that migration marks it done while the schema is
+    // still old, and `db:migrate` will never repair it. (Concretely: an
+    // unstamped 0001_half_star_ratings leaves app_rating as `integer`, and
+    // every half-star write then truncates in silence.) Real migrations are
+    // applied by `db:migrate`, never here.
+    const all = readMigrationFiles({
       migrationsFolder: path.join(__dirname, '..', 'drizzle'),
     });
+    const migrations = all.slice(0, 1);
+    if (migrations.length === 0) throw new Error('no migrations found in drizzle/');
+    if (all.length > 1) {
+      console.log(
+        `stamping the baseline only; ${all.length - 1} later migration(s) left for db:migrate`
+      );
+    }
 
     await sql`create schema if not exists drizzle`;
     await sql`

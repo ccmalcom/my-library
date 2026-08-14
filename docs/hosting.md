@@ -254,6 +254,15 @@ initialize an empty database. Per `docs/hosting.md`'s own rule, the baseline was
 `pg_dump` of production rather than a fresh `alembic upgrade head`, because
 `enrich_jobs.progress`/`total` differ between the two lineages.
 
+**It stamps `0000` and nothing else, deliberately.** Stamping records a migration as applied
+*without running its SQL*, so stamping anything past the baseline marks real schema work as done
+that was never performed — and `db:migrate` will then never repair it. Concretely: run the
+unrestricted version today against a dev DB restored from a pre-`0001` dump and it marks
+`0001_half_star_ratings` applied while `app_rating` is still `integer`, after which every
+half-star write truncates in silence. The script now slices to the first migration and logs how
+many it skipped. Real migrations belong to `db:migrate`; if you ever need to adopt a database at a
+later revision, verify the column types first rather than widening this loop.
+
 ### Alembic (frozen — history)
 
 `alembic.ini` + `alembic/env.py` (pulls `settings.db_url`). Run `alembic upgrade head` on deploy. `init_db()` returns early in multi-tenant mode (Alembic is the source of truth); locally it still self-migrates SQLite and backfills `user_id`.

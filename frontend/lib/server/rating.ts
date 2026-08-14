@@ -7,8 +7,11 @@
  * This is deliberately NOT in serialize.ts: that module is the CPython
  * compatibility layer (pyRound/pyRepr/pyJsonDumps), and these are
  * ShelfSprite domain rules consumed by routes, import, and UI alike.
+ *
+ * Keep this module dependency-free. `StarRating` and the library page import
+ * from it, so anything pulled in here ships to every client bundle -- a zod
+ * import cost every page the zod runtime just to reach two numeric constants.
  */
-import { z } from 'zod';
 
 export const RATING_STEP = 0.5;
 export const RATING_MIN = 0.5;
@@ -37,10 +40,17 @@ export function roundRatingHalfStar(value: number): number | null {
 }
 
 /**
- * Zod validator for an incoming rating. `.multipleOf` uses decimal-safe
- * comparison, so 3.7 and 0.25 are rejected without float slop.
+ * True when `value` is a rating the API accepts: on the half-star grid and
+ * within [0.5, 5.0]. Note 0 is NOT valid here -- it is the clear/unrated
+ * sentinel, and callers must special-case it before asking.
+ *
+ * Deliberately a plain predicate rather than a zod schema. Both call sites
+ * use it only as a boolean (the 422 message is written by hand, so parse
+ * issues are discarded), and zod in this module reaches client bundles.
  */
-export const ratingSchema = z.number().min(RATING_MIN).max(RATING_MAX).multipleOf(RATING_STEP);
+export function isValidRating(value: number): boolean {
+  return Number.isFinite(value) && value >= RATING_MIN && value <= RATING_MAX && isHalfStep(value);
+}
 
 /**
  * True when `rating` falls in the band a whole-star filter chip covers:
