@@ -12,19 +12,10 @@ import {
   ADMIN_USERS_KEY,
   type AdminUser,
 } from '@/lib/api';
-import { Button, Card, Badge, Spinner, useToast } from '@/components/ui';
+import { Button, Card, Badge, Spinner, useToast, Field, Input } from '@/components/ui';
 import { UsageTab } from '@/components/admin/UsageTab';
 import { FeedbackTab } from '@/components/admin/FeedbackTab';
 import { SystemTab } from '@/components/admin/SystemTab';
-
-const inputClass = [
-  'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
-  'placeholder-faint focus:border-accent focus:outline-none',
-  'focus-visible:ring-1 focus-visible:ring-accent',
-].join(' ');
-
-const labelClass =
-  'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
 
 const STATUS_VARIANT: Record<string, 'default' | 'success' | 'danger' | 'warning'> = {
   invited: 'warning',
@@ -140,43 +131,47 @@ export default function AdminPage() {
             <Card>
               <h2 className="mb-4 font-display text-lg font-semibold text-text">Invite a user</h2>
               <form onSubmit={handleInvite} className="space-y-3">
-                <div>
-                  <label className={labelClass}>Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="invite@example.com"
-                    required
-                    className={inputClass}
-                  />
-                </div>
+                <Field label="Email">
+                  {(p) => (
+                    <Input
+                      {...p}
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="invite@example.com"
+                      required
+                    />
+                  )}
+                </Field>
                 {showExtra ? (
                   <>
-                    <div>
-                      <label className={labelClass}>Name (optional)</label>
-                      <input
-                        type="text"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="Alex"
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Anthropic API key (optional)</label>
-                      <input
-                        type="password"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="sk-ant-..."
-                        autoComplete="off"
-                        className={[inputClass, 'font-mono'].join(' ')}
-                      />
-                      <p className="mt-1 text-xs text-faint">
-                        Pre-fills their key and name so setup skips those steps.
-                      </p>
-                    </div>
+                    <Field label="Name (optional)">
+                      {(p) => (
+                        <Input
+                          {...p}
+                          type="text"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          placeholder="Alex"
+                        />
+                      )}
+                    </Field>
+                    <Field label="Anthropic API key (optional)">
+                      {(p) => (
+                        <Input
+                          {...p}
+                          type="password"
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          placeholder="sk-ant-..."
+                          autoComplete="off"
+                          className="font-mono"
+                        />
+                      )}
+                    </Field>
+                    <p className="mt-1 text-xs text-faint">
+                      Pre-fills their key and name so setup skips those steps.
+                    </p>
                   </>
                 ) : (
                   <button

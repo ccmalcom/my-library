@@ -14,7 +14,7 @@ import {
   type UserProfile,
   type Usage,
 } from '@/lib/api';
-import { Button, Card, Badge, useToast } from '@/components/ui';
+import { Button, Card, Badge, useToast, Field, Input } from '@/components/ui';
 import { getSupabaseClient, authEnabled } from '@/utils/supabase/client';
 import ImportModal from '@/components/ImportModal';
 
@@ -87,15 +87,6 @@ function DangerAction({
     </div>
   );
 }
-
-const inputClass = [
-  'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
-  'placeholder-faint focus:border-accent focus:outline-none',
-  'focus-visible:ring-1 focus-visible:ring-accent',
-].join(' ');
-
-const labelClass =
-  'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
 
 export default function SettingsPage() {
   const toast = useToast();
@@ -275,18 +266,17 @@ export default function SettingsPage() {
           )}
 
           <form onSubmit={handleSaveName} className="space-y-3">
-            <div>
-              <label className={labelClass}>
-                {userProfile?.display_name ? 'Update name' : 'Set your name'}
-              </label>
-              <input
-                type="text"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder={userProfile?.display_name ?? 'e.g. Alex'}
-                className={inputClass}
-              />
-            </div>
+            <Field label={userProfile?.display_name ? 'Update name' : 'Set your name'}>
+              {(p) => (
+                <Input
+                  {...p}
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  placeholder={userProfile?.display_name ?? 'e.g. Alex'}
+                />
+              )}
+            </Field>
             <Button type="submit" loading={nameSaving} disabled={nameSaving || !nameInput.trim()}>
               {nameSaving ? 'Saving\u2026' : 'Save name'}
             </Button>
@@ -300,32 +290,34 @@ export default function SettingsPage() {
           <Card>
             <h2 className="mb-4 font-display text-lg font-semibold text-text">Change email</h2>
             <form onSubmit={handleChangeEmail} className="space-y-3">
-              <div>
-                <label className={labelClass}>Current password</label>
-                <input
-                  type="password"
-                  value={emailCurrentPassword}
-                  onChange={(e) => {
-                    setEmailCurrentPassword(e.target.value);
-                    setEmailError(null);
-                  }}
-                  autoComplete="current-password"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>New email</label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => {
-                    setNewEmail(e.target.value);
-                    setEmailError(null);
-                  }}
-                  placeholder="new@example.com"
-                  className={inputClass}
-                />
-              </div>
+              <Field label="Current password">
+                {(p) => (
+                  <Input
+                    {...p}
+                    type="password"
+                    value={emailCurrentPassword}
+                    onChange={(e) => {
+                      setEmailCurrentPassword(e.target.value);
+                      setEmailError(null);
+                    }}
+                    autoComplete="current-password"
+                  />
+                )}
+              </Field>
+              <Field label="New email">
+                {(p) => (
+                  <Input
+                    {...p}
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => {
+                      setNewEmail(e.target.value);
+                      setEmailError(null);
+                    }}
+                    placeholder="new@example.com"
+                  />
+                )}
+              </Field>
               {emailError && <p className="text-xs text-danger">{emailError}</p>}
               <p className="text-xs text-faint">
                 A confirmation link will be sent to your new address.
@@ -348,48 +340,51 @@ export default function SettingsPage() {
           <Card>
             <h2 className="mb-4 font-display text-lg font-semibold text-text">Change password</h2>
             <form onSubmit={handleChangePassword} className="space-y-3">
-              <div>
-                <label className={labelClass}>Current password</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => {
-                    setCurrentPassword(e.target.value);
-                    setPasswordError(null);
-                  }}
-                  autoComplete="current-password"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>New password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
-                    setPasswordError(null);
-                  }}
-                  autoComplete="new-password"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Confirm new password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    setPasswordError(null);
-                  }}
-                  autoComplete="new-password"
-                  className={inputClass}
-                />
-                {confirmPassword && newPassword !== confirmPassword && (
-                  <p className="mt-1 text-xs text-danger">Passwords don&apos;t match.</p>
+              <Field label="Current password">
+                {(p) => (
+                  <Input
+                    {...p}
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => {
+                      setCurrentPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    autoComplete="current-password"
+                  />
                 )}
-              </div>
+              </Field>
+              <Field label="New password">
+                {(p) => (
+                  <Input
+                    {...p}
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    autoComplete="new-password"
+                  />
+                )}
+              </Field>
+              <Field label="Confirm new password">
+                {(p) => (
+                  <Input
+                    {...p}
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    autoComplete="new-password"
+                  />
+                )}
+              </Field>
+              {confirmPassword && newPassword !== confirmPassword && (
+                <p className="mt-1 text-xs text-danger">Passwords don&apos;t match.</p>
+              )}
               {passwordError && <p className="text-xs text-danger">{passwordError}</p>}
               <Button
                 type="submit"
@@ -427,29 +422,31 @@ export default function SettingsPage() {
           </div>
 
           <form onSubmit={handleSave} className="space-y-3">
-            <div>
-              <label className={labelClass}>{configured ? 'Replace key' : 'Add your key'}</label>
-              <input
-                type="password"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                placeholder="sk-ant-..."
-                autoComplete="off"
-                className={[inputClass, 'font-mono'].join(' ')}
-              />
-              <p className="mt-2 text-xs text-faint">
-                Stored encrypted on the server and never shown again. Get one at{' '}
-                <a
-                  href="https://console.anthropic.com/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-accent hover:underline"
-                >
-                  console.anthropic.com
-                </a>
-                .
-              </p>
-            </div>
+            <Field label={configured ? 'Replace key' : 'Add your key'}>
+              {(p) => (
+                <Input
+                  {...p}
+                  type="password"
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  placeholder="sk-ant-..."
+                  autoComplete="off"
+                  className="font-mono"
+                />
+              )}
+            </Field>
+            <p className="mt-2 text-xs text-faint">
+              Stored encrypted on the server and never shown again. Get one at{' '}
+              <a
+                href="https://console.anthropic.com/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent hover:underline"
+              >
+                console.anthropic.com
+              </a>
+              .
+            </p>
 
             <div className="flex items-center gap-2">
               <Button type="submit" loading={saving} disabled={saving || !key.trim()}>
