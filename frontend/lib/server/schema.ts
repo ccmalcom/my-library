@@ -19,6 +19,8 @@ import {
   uniqueIndex,
   unique,
   integer,
+  numeric,
+  check,
   date,
   boolean,
   foreignKey,
@@ -84,8 +86,17 @@ export const books = pgTable(
     additionalAuthors: varchar('additional_authors'),
     isbn13: varchar(),
     exclusiveShelf: varchar('exclusive_shelf'),
-    goodreadsRating: integer('goodreads_rating').notNull(),
-    appRating: integer('app_rating'),
+    // numeric(2,1) spans 0.0-9.9; ratings are 0.5-5.0 on a 0.5 grid.
+    // `mode: 'number'` is LOAD-BEARING: without it the driver returns
+    // "3.5" as a string and every comparison (effectiveRating, tierFor,
+    // LOVED_MIN, sorts, the stats mean) misbehaves silently.
+    // goodreads_rating has NO server default in production -- do not add one.
+    goodreadsRating: numeric('goodreads_rating', {
+      precision: 2,
+      scale: 1,
+      mode: 'number',
+    }).notNull(),
+    appRating: numeric('app_rating', { precision: 2, scale: 1, mode: 'number' }),
     appReview: text('app_review'),
     feedbackUpdatedAt: timestamp('feedback_updated_at', { mode: 'string' }),
     dateRead: date('date_read'),
@@ -108,6 +119,14 @@ export const books = pgTable(
     index('ix_books_isbn13').using('btree', table.isbn13.asc().nullsLast().op('text_ops')),
     index('ix_books_user_id').using('btree', table.userId.asc().nullsLast().op('text_ops')),
     unique('uq_book_user_goodreads').on(table.userId, table.goodreadsBookId),
+    check(
+      'ck_books_app_rating_half_step',
+      sql`${table.appRating} is null or (${table.appRating} >= 0.5 and ${table.appRating} <= 5.0 and (${table.appRating} * 2) % 1 = 0)`
+    ),
+    check(
+      'ck_books_goodreads_rating_half_step',
+      sql`${table.goodreadsRating} = 0 or (${table.goodreadsRating} >= 0.5 and ${table.goodreadsRating} <= 5.0 and (${table.goodreadsRating} * 2) % 1 = 0)`
+    ),
   ]
 );
 
@@ -221,13 +240,24 @@ export const enrichJobs = pgTable(
     id: serial().primaryKey().notNull(),
     jobId: varchar('job_id').notNull(),
     userId: varchar('user_id').default('local').notNull(),
-    // No .default() on these three: the Alembic-owned table has NO server
-    // default for them (Python's `default=0` / `default="pending"` are ORM-level
-    // only). Declaring one here makes drizzle emit SQL `default` on insert,
-    // which Postgres rejects against a NOT NULL column with no default.
+    // No .default() on `status`: the Alembic-owned table has NO server default
+    // for it (Python's `default="pending"` is ORM-level only). Declaring one
+    // here makes drizzle emit SQL `default` on insert, which Postgres rejects
+    // against a NOT NULL column with no default. `progress`/`total` DID share
+    // this comment until the half-star wave -- see the note on them below for
+    // why they now carry .default(0) while their inserts stay explicit.
     status: varchar().notNull(),
-    progress: integer().notNull(),
-    total: integer().notNull(),
+    // Production carries DEFAULT 0 (the `0003` lineage), so the generated
+    // baseline must too -- without it drizzle-kit generate emits a spurious
+    // DROP DEFAULT. This is for schema/baseline fidelity ONLY: the inserts
+    // still pass progress/total explicitly, because a create_all-lineage DB
+    // has no default and omitting them is what 500'd POST /enrich/start in
+    // wave 4c-2. .default() loosens `$inferInsert`, but the insert payload is
+    // typed against the hand-written `NewJobValues`, which keeps both fields
+    // required -- so tsc still catches an omission here. Pinned by
+    // __tests__/enrich-job-insert.test.ts.
+    progress: integer().notNull().default(0),
+    total: integer().notNull().default(0),
     startedAt: timestamp('started_at', { mode: 'string' }),
     finishedAt: timestamp('finished_at', { mode: 'string' }),
     error: text(),

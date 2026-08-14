@@ -25,3 +25,11 @@ lib/server/__tests__/fixtures/parity/
 # expected.json and http.json have never been Prettier-clean on any commit, so
 # nothing complained until wave 4c-1's re-record made them dirty.
 lib/server/__tests__/fixtures/catalog/
+
+# drizzle-kit's own bookkeeping, rewritten by `npm run db:generate` on every
+# run. Same deal as the fixtures above: Prettier's layout is undone by the very
+# next generate, and drizzle only ever reads these via JSON.parse, so their
+# formatting is never load-bearing. The .sql migrations alongside them are not
+# ignored -- Prettier has no SQL parser, so it skips them on its own, and the
+# hand-corrected `ALTER COLUMN ... USING` statements must stay reviewable.
+drizzle/meta/

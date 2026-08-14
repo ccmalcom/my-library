@@ -139,7 +139,19 @@ describe('prompt parity: full taste-profile build', () => {
       await loadSeed(db, seedJson as any);
       const tiers = await buildTiers(db, 'local');
       const feedback = await feedbackContext(db, 'local');
-      expect(buildProfilePrompt(tiers, feedback)).toBe(py.messages[0].content);
+      // Global Constraint 1: half-star tiers deliberately diverge from Python's six
+      // buckets, so the eight-bucket prompt can no longer be byte-identical to the
+      // recording. Rather than retire this assertion -- which would stop detecting
+      // every other kind of prompt drift -- we hand the builder Python's six buckets
+      // and still require byte-equality. This proves the ONLY change to the profile
+      // prompt is the two new tiers; anything else still fails here.
+      const pythonBuckets = new Map([...tiers].filter(([k]) => k !== '4.5' && k !== '3.5'));
+      expect(buildProfilePrompt(pythonBuckets, feedback)).toBe(py.messages[0].content);
+
+      // And the real eight-bucket prompt renders the new tiers in order.
+      const actual = buildProfilePrompt(tiers, feedback);
+      expect(actual).toContain("'4.5': 0");
+      expect(actual).toContain("'3.5': 0");
       expect(PROFILE_SYSTEM).toBe(py.system);
       expect(PROFILE_TOOL).toEqual(py.tools[0]);
       expect(profileModel()).toBe(py.model);

@@ -63,6 +63,18 @@ function StatsStripSkeleton() {
 
 function RatingsBreakdown({ stats }: { stats: Stats }) {
   if (!stats.by_star || Object.keys(stats.by_star).length === 0) return null;
+  const buckets = Array.from(
+    new Set([
+      5,
+      4,
+      3,
+      2,
+      1,
+      ...Object.keys(stats.by_star)
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0),
+    ])
+  ).sort((a, b) => b - a);
 
   return (
     <Card>
@@ -70,12 +82,13 @@ function RatingsBreakdown({ stats }: { stats: Stats }) {
         Ratings breakdown
       </p>
       <div className="space-y-2">
-        {[5, 4, 3, 2, 1].map((star) => {
+        {buckets.map((star) => {
           const count = stats.by_star[String(star)] ?? 0;
           const pct = stats.rated > 0 ? (count / stats.rated) * 100 : 0;
           return (
             <div key={star} className="flex items-center gap-3">
-              <span className="w-8 text-right font-mono text-sm text-muted">
+              {/* w-12, not w-8: a half-star label ("4.5 ★") wraps at the narrower width. */}
+              <span className="w-12 shrink-0 whitespace-nowrap text-right font-mono text-sm text-muted">
                 {star}
                 <span aria-hidden="true"> ★</span>
               </span>

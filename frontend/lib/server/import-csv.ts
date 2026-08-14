@@ -1,7 +1,7 @@
 import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';
 import { VALID_SHELVES } from './books';
-import { roundRatingHalfUp } from './serialize';
+import { roundRatingHalfStar } from './rating';
 
 export const SOURCE_FOR = {
   goodreads: 'goodreads_import',
@@ -184,7 +184,7 @@ export function normalizeShelf(raw: string | null | undefined): string | null {
 
 function parseRating(raw: string | null): number | null {
   const value = parsePythonFloat(raw);
-  return value == null ? null : roundRatingHalfUp(value);
+  return value == null ? null : roundRatingHalfStar(value);
 }
 
 function firstAuthor(raw: string | null): [string | null, string | null] {

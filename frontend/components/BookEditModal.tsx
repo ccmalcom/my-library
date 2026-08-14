@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { mutate } from 'swr';
 import { api, PROFILE_STATUS_KEY, type Book, type BookFeedbackRequest } from '@/lib/api';
-import { Button, Modal, useToast } from '@/components/ui';
+import { Button, Modal, StarRating, useToast } from '@/components/ui';
 
 interface Props {
   book: Book;
@@ -41,7 +41,6 @@ export default function BookEditModal({
   const initialExclude = book.exclude_from_profile ?? false;
 
   const [rating, setRating] = useState(initialRating);
-  const [hover, setHover] = useState(0);
   const [review, setReview] = useState(initialReview);
   const [dateRead, setDateRead] = useState(initialDate);
   const [exclude, setExclude] = useState(initialExclude);
@@ -116,7 +115,6 @@ export default function BookEditModal({
     }
   }
 
-  const shown = hover || rating;
   const busy = saving || removing;
 
   return (
@@ -172,22 +170,7 @@ export default function BookEditModal({
             </button>
           )}
         </div>
-        <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onMouseEnter={() => setHover(n)}
-              onClick={() => setRating(n)}
-              className="rounded text-3xl leading-none transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
-              aria-label={`${n} star${n > 1 ? 's' : ''}`}
-            >
-              <span className={n <= shown ? 'text-accent' : 'text-faint'} aria-hidden="true">
-                ★
-              </span>
-            </button>
-          ))}
-        </div>
+        <StarRating value={rating} onChange={setRating} allowHalf size={30} label="Your rating" />
         {rating === 0 && (
           <p className="mt-1 text-xs text-faint">
             {book.goodreads_rating > 0 ? 'Unrated (Goodreads import cleared).' : 'Unrated.'}

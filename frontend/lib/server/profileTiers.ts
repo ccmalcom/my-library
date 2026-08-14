@@ -1,8 +1,11 @@
 /**
  * Port of profile.py's tier construction (_tier, _book_payload, build_tiers).
  * The result is a Map, not an object: Python preserves the dict literal's
- * insertion order ('5','4','3','<=2','dnf','rejected') and V8 would reorder the
- * integer-like keys ahead of the rest, changing the byte-exact prompt.
+ * insertion order ('5','4.5','4','3.5','3','<=2','dnf','rejected') and V8 would
+ * reorder the integer-like keys ahead of the rest, changing the byte-exact
+ * prompt. '4.5' and '3.5' are not integer-like, so an object would order them
+ * differently again -- the Map is what keeps the order stated rather than
+ * inferred.
  */
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { schema, type Db } from './db';
@@ -12,11 +15,17 @@ export type BookRow = typeof schema.books.$inferSelect;
 export type EnrichmentRow = typeof schema.enrichment.$inferSelect;
 export type Tiers = Map<string, Record<string, unknown>[]>;
 
-/** Twin of profile._tier. */
+/**
+ * Half stars get their own tiers so the profile sees the distinction the
+ * reader actually drew. Diverges from Python's profile._tier on purpose --
+ * Python is dead (Railway paused) and is not being kept in step.
+ */
 export function tierFor(rating: number): string {
   if (rating >= 5) return '5';
-  if (rating === 4) return '4';
-  if (rating === 3) return '3';
+  if (rating >= 4.5) return '4.5';
+  if (rating >= 4) return '4';
+  if (rating >= 3.5) return '3.5';
+  if (rating >= 3) return '3';
   return '<=2';
 }
 
@@ -51,7 +60,9 @@ export function bookPayload(book: BookRow, enr: EnrichmentRow | null): Record<st
 export async function buildTiers(db: Db, userId: string): Promise<Tiers> {
   const tiers: Tiers = new Map([
     ['5', []],
+    ['4.5', []],
     ['4', []],
+    ['3.5', []],
     ['3', []],
     ['<=2', []],
     ['dnf', []],

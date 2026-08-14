@@ -213,7 +213,57 @@ Verifies Supabase access tokens and returns `sub` as `user_id`. Supabase signs w
 - `NEXT_PUBLIC_API_URL` must include `https://` and is inlined at build time (rebuild after changing).
 - `CORS_ORIGINS` must be the exact Vercel origin, no trailing slash.
 
-## Alembic migrations
+## Migrations: drizzle-kit (current) and Alembic (frozen)
+
+**Alembic is frozen at `0019_add_enrich_job_leases`, which is what production's `alembic_version`
+reads (verified read-only 2026-08-13).** It owned migrations while the Python backend was live.
+With Python retired, every new migration goes through **drizzle-kit**. Do not author an `0020`.
+The Alembic section below is retained as history — it still explains the schema production has.
+
+### Authoring a drizzle migration
+
+```bash
+cd frontend
+npm run db:generate     # diffs lib/server/schema.ts against drizzle/meta, writes drizzle/NNNN_*.sql
+# --- hand-review the generated SQL before going further ---
+npm run db:migrate      # applies pending migrations to $DATABASE_URL
+```
+
+**Always read the generated SQL before applying it.** drizzle-kit will happily emit a
+drop-and-recreate for a column type change, which on `books` would destroy real ratings. A type
+change must come out as `ALTER COLUMN ... TYPE ... USING ...`; if it doesn't, hand-write it.
+`0001_half_star_ratings.sql` is the worked example — it widens both rating columns with `USING`
+casts and adds the half-step CHECK constraints, touching no data.
+
+**Migrations are applied manually, never by the build.** The Vercel build must not run
+`db:migrate`: builds run once per deployment (including previews and rollbacks), so a
+build-triggered migration races itself across concurrent deploys and can run against the wrong
+database entirely. Run it by hand, against a known `DATABASE_URL`, in a chosen release window.
+
+The same branch-coupling landmine as Alembic applies — see "the running image must contain the
+DB's current revision" below. Do not apply a migration from a branch production does not deploy.
+
+### The baseline was stamped, not executed
+
+`drizzle/0000_baseline.sql` is a snapshot of the schema Alembic had already built. It was never run
+against production — running it would try to create tables that exist. `npm run db:stamp-baseline`
+(`scripts/stamp-baseline.ts`) instead records `0000_baseline` as already-applied in drizzle's
+`__drizzle_migrations` table, so `db:migrate` starts at `0001`. It is a **one-shot**: it refuses to
+run unless `public.books` already exists, precisely so it can never be mistaken for a way to
+initialize an empty database. Per `docs/hosting.md`'s own rule, the baseline was generated from a
+`pg_dump` of production rather than a fresh `alembic upgrade head`, because
+`enrich_jobs.progress`/`total` differ between the two lineages.
+
+**It stamps `0000` and nothing else, deliberately.** Stamping records a migration as applied
+*without running its SQL*, so stamping anything past the baseline marks real schema work as done
+that was never performed — and `db:migrate` will then never repair it. Concretely: run the
+unrestricted version today against a dev DB restored from a pre-`0001` dump and it marks
+`0001_half_star_ratings` applied while `app_rating` is still `integer`, after which every
+half-star write truncates in silence. The script now slices to the first migration and logs how
+many it skipped. Real migrations belong to `db:migrate`; if you ever need to adopt a database at a
+later revision, verify the column types first rather than widening this loop.
+
+### Alembic (frozen — history)
 
 `alembic.ini` + `alembic/env.py` (pulls `settings.db_url`). Run `alembic upgrade head` on deploy. `init_db()` returns early in multi-tenant mode (Alembic is the source of truth); locally it still self-migrates SQLite and backfills `user_id`.
 

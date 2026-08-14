@@ -12,7 +12,7 @@ import {
   USER_PROFILE_KEY,
   type Book,
 } from '@/lib/api';
-import { Button, Spinner } from '@/components/ui';
+import { Button, Spinner, StarRating } from '@/components/ui';
 import AddBookModal from '@/components/AddBookModal';
 import RevealSequence from '@/components/reveal/RevealSequence';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
@@ -474,11 +474,10 @@ function ManualStep({ onDone }: { onDone: () => void }) {
                 <p className="truncate text-xs text-faint">{b.author ?? 'Unknown author'}</p>
               </div>
               {b.effective_rating ? (
-                <span
-                  className="shrink-0 text-sm text-accent"
-                  aria-label={`${b.effective_rating} stars`}
-                >
-                  {'\u2605'.repeat(b.effective_rating)}
+                <span className="shrink-0">
+                  {/* Not '\u2605'.repeat(rating): repeat() truncates its count, so a
+                      4.5 rendered four stars while aria-label said "4.5". */}
+                  <StarRating value={b.effective_rating} readOnly size={14} />
                 </span>
               ) : (
                 <span className="shrink-0 text-xs text-faint">unrated</span>

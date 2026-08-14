@@ -3,10 +3,11 @@ import { withApi, ApiError } from '@/lib/server/http';
 import { getDb, schema } from '@/lib/server/db';
 import { bookSummary } from '@/lib/server/books';
 import { effectiveRating, parseIdParam, utcnowTs } from '@/lib/server/serialize';
+import { isValidRating } from '@/lib/server/rating';
 import { z } from 'zod';
 
 const Body = z.object({
-  rating: z.number().int().nullish(),
+  rating: z.number().nullish(),
   review: z.string().nullish(),
   clear_review: z.boolean().default(false),
   date_read: z
@@ -30,8 +31,9 @@ export const PATCH = withApi('/api/books/[id]/feedback', async (req, ctx) => {
   const bookId = parseIdParam(ctx.params.id);
 
   // Port of library.set_book_feedback — validation order matters.
-  if (b.rating != null && b.rating !== 0 && !(b.rating >= 1 && b.rating <= 5)) {
-    throw new ApiError(422, 'rating must be between 1 and 5 (or 0 to clear).');
+  // 0 is the clear sentinel, not a rating.
+  if (b.rating != null && b.rating !== 0 && !isValidRating(b.rating)) {
+    throw new ApiError(422, 'rating must be 0.5 to 5 in half-star steps (or 0 to clear).');
   }
   if (
     b.rating == null &&
@@ -71,7 +73,7 @@ export const PATCH = withApi('/api/books/[id]/feedback', async (req, ctx) => {
   ) {
     throw new ApiError(
       422,
-      'A review requires a rating. Rate the book 1-5 (same update is fine) before saving a review.'
+      'A review requires a rating. Rate the book 0.5 to 5 (same update is fine) before saving a review.'
     );
   }
 

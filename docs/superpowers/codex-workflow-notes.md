@@ -1520,3 +1520,74 @@ Deliberate, and worth keeping: `npm run build` was excluded from that dispatch o
 the change touched one server module with no route-segment surface, and a multi-minute build inside
 a ~10-minute Codex budget risks eating the task. The controller ran it instead. Excluding a slow
 gate and running it yourself is fine; forgetting a fast one is not.
+
+## Half-star wave: `npm test` is jest-only, and three "obsolete expectations" (2026-08-13)
+
+The half-star plan's gate lists said `npm test` throughout. In this repo that runs **jest only**
+(41 tests, ~1s). The vitest suite — 83 files, 590 tests, ~200s, and where essentially every test
+this plan touches lives — is `npm run test:server`. A plan-faithful dispatch would have reported a
+green `npm test` while never running the suite that actually covers the change.
+
+- **A gate list is only as good as the script names it assumes.** `npm test` reads as "the test
+  suite" and here it is a quarter of one. Check `package.json`'s `scripts` block once at the start
+  of a wave and correct every dispatch, rather than trusting the plan's command text. Same class as
+  the 5b-1 gate that read a blank as a pass: the command succeeded, it just wasn't measuring the
+  thing.
+- **It was the full run that found the real bug.** Tasks 3+6 changed import rounding;
+  `import-csv.test.ts` was green. `import-export-routes.test.ts` — a route-level test that drives a
+  CSV through the handler into PGlite — was not, and that is the one that proved `numeric(2,1)` +
+  `mode: 'number'` round-trips `4.5` as a JS number instead of the string form Global Constraint 2
+  warns fails silently. A targeted vitest run would have shipped a wrong expectation behind six
+  green gates.
+- **`npm run build` cannot be delegated at all.** Codex's sandbox has no network, so `next build`
+  dies fetching Google Fonts. That is not a flaky gate to retry — it is structural. The controller
+  runs `build` every wave; do not read its absence from a Codex report as a pass.
+
+### Three stops, three correct, only one that the plan had not anticipated
+
+Codex halted three times rather than adapt. Worth recording because the hit rate argues for keeping
+the "STOP and report" instruction even though two of the three were resolvable in one message:
+
+1. **"`roundRatingHalfUp` has two callers, the plan said one."** True grep, wrong conclusion — the
+   second was the unit test *of the function being deleted*, not a dependency. Resolved by ruling.
+2. **`.5` parsed to `0.5` where a table expected `1`.** The feature working.
+3. **A route fixture expected `goodreadsRating: 5` from a CSV literally containing `4.5`.** Also the
+   feature working, and the most informative failure of the wave.
+
+- **Cheap stops beat silent adaptation even at a 1-in-3 novel rate.** Each cost one message. A
+  silently "fixed" expectation in case 3 would have removed the only end-to-end evidence that the
+  column change works.
+- **Verify the finding, not the framing** (CLAUDE.md's observations-vs-attributions rule, again).
+  All three reports were factually accurate; two carried conclusions that did not follow. Opening
+  the file took one command each time.
+- **When a table-driven test fails, check every row before editing one.** Of seven rating rows in
+  `numericCases`, exactly one changed. That is what made the edit obviously surgical rather than a
+  guess — and the instruction "stop if a second row changes" would have caught a wider regression.
+
+### Deliberate behavior changes that no test would have called wrong
+
+Two import changes follow from 0.5 becoming the floor, and both look like regressions read cold:
+`.5` now yields `0.5` instead of `1`, and `0.4` now yields `0.5` instead of `null` (unrated). Each
+got an inline comment at the expectation site saying why, because the next reader's instinct is to
+restore the old number.
+
+### The same trap one level down: vitest cannot see `components/`
+
+Task 8 adds `components/ui/__tests__/StarRating.test.tsx` and the plan's gate for it is
+`npx vitest run components/ui/__tests__/StarRating.test.tsx`. That command matches **zero tests and
+exits 0**. `vitest.config.ts` pins `include: ['lib/server/**/*.test.ts', 'app/api/**/*.test.ts']`,
+so nothing under `components/` is reachable, and the pattern is `.ts` where the file is `.tsx`.
+
+- **The runner split is by directory, not by kind.** jest owns everything outside `lib/server/` and
+  `app/api/` (its `testPathIgnorePatterns` names exactly those two); vitest owns those two. So a
+  component test belongs to **jest**, and jest's `testMatch` already covers
+  `**/__tests__/**/*.test.ts?(x)` — the file is picked up with no config change.
+- **Both runners are `testEnvironment: 'node'` and there are zero component tests in the repo.**
+  `jest-environment-jsdom` is a devDependency but unused. Prefer a per-file
+  `/** @jest-environment jsdom */` docblock over flipping the global default, so the five existing
+  node suites keep their environment.
+- **`@testing-library/react` is not installed, and Codex has no network.** Any task whose tests need
+  a new devDependency is controller work first, dispatch second — otherwise the run burns its budget
+  discovering it cannot proceed. Check the dependency exists before writing the brief, not after.
+- Generalizing the wave's two hits: **verify the gate command matches something before sending it.**
+  `--listTests` (jest) and a bare `vitest list` (vitest) both answer this in one command.

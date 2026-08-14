@@ -1,6 +1,10 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { setupParityEnv } from './helpers/parity';
 import { runScenario } from './helpers/write-parity';
+import { loadSeed, makeTestDb, type Seed } from './helpers/pglite';
+import seedJson from './fixtures/parity/seed.json';
+import { eq } from 'drizzle-orm';
+import { _setDbForTests, getDb, schema } from '../db';
 import { DELETE as deleteBook } from '../../../app/api/books/[id]/route';
 import { PATCH as patchBookFeedback } from '../../../app/api/books/[id]/feedback/route';
 import { PATCH as patchBookShelf } from '../../../app/api/books/[id]/shelf/route';
@@ -20,6 +24,91 @@ describe('write parity: books', () => {
   it('book-shelf', () => runScenario('book-shelf'));
   it('enrichment-correction', () => runScenario('enrichment-correction'));
   it('delete-book', () => runScenario('delete-book'));
+});
+
+describe('half-star ratings', () => {
+  setupParityEnv();
+  let closeDb: (() => Promise<void>) | undefined;
+
+  beforeEach(async () => {
+    const { db, close } = await makeTestDb();
+    await loadSeed(db, seedJson as unknown as Seed);
+    _setDbForTests(db);
+    closeDb = close;
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    _setDbForTests(null);
+    await closeDb?.();
+    closeDb = undefined;
+  });
+
+  async function patchRating(rating: number) {
+    return patchBookFeedback(
+      new Request('http://test/api/books/1/feedback', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rating }),
+      }),
+      { params: { id: '1' } }
+    );
+  }
+
+  function silenceLogs() {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  }
+
+  /**
+   * Re-read the column instead of trusting the response body. The route
+   * returns `bookSummary(next)`, built in memory before the UPDATE and never
+   * re-selected, so against an `integer` column it would still answer 4.5
+   * while the database held 4. Only a fresh SELECT catches truncation.
+   */
+  async function storedRating(id: number) {
+    const rows = await getDb()
+      .select({ appRating: schema.books.appRating })
+      .from(schema.books)
+      .where(eq(schema.books.id, id));
+    return rows[0]?.appRating ?? null;
+  }
+
+  it('accepts rating 4.5 and stores it as 4.5', async () => {
+    const res = await patchRating(4.5);
+    expect(res.status).toBe(200);
+    expect((await res.json()).app_rating).toBe(4.5);
+    expect(await storedRating(1)).toBe(4.5);
+  });
+
+  it('accepts rating 0.5 and stores it as 0.5', async () => {
+    const res = await patchRating(0.5);
+    expect(res.status).toBe(200);
+    expect((await res.json()).app_rating).toBe(0.5);
+    expect(await storedRating(1)).toBe(0.5);
+  });
+
+  it('rejects off-grid rating 3.7', async () => {
+    silenceLogs();
+    const res = await patchRating(3.7);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({
+      detail: 'rating must be 0.5 to 5 in half-star steps (or 0 to clear).',
+    });
+  });
+
+  it('still accepts rating 0 as the clear sentinel', async () => {
+    const res = await patchRating(0);
+    expect(res.status).toBe(200);
+  });
+
+  it('still rejects out-of-range rating 7 with the manual guard message', async () => {
+    silenceLogs();
+    const res = await patchRating(7);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({
+      detail: 'rating must be 0.5 to 5 in half-star steps (or 0 to clear).',
+    });
+  });
 });
 
 // Cross-cutting fix (final wave-2 review, finding 2): a non-numeric [id] path param

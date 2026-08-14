@@ -11,6 +11,7 @@ import {
   pyList,
 } from '@/lib/server/serialize';
 import { sameWork } from '@/lib/server/dedup';
+import { isValidRating } from '@/lib/server/rating';
 
 const Query = z.object({
   rated_only: z.string().optional(),
@@ -64,7 +65,7 @@ const AddBook = z.object({
   year: z.number().int().nullish(),
   isbn13: z.string().nullish(),
   shelf: z.string().default('read'),
-  rating: z.number().int().nullish(),
+  rating: z.number().nullish(),
   review: z.string().nullish(),
   cover_url: z.string().nullish(),
   subjects: z.array(z.string()).nullish(),
@@ -89,14 +90,21 @@ export const POST = withApi('/api/books', async (req, ctx) => {
   if (!VALID_SHELVES.includes(b.shelf)) {
     throw new ApiError(422, `shelf must be one of ${pyList(VALID_SHELVES)}.`);
   }
-  if (b.rating != null && b.rating !== 0 && !(b.rating >= 1 && b.rating <= 5)) {
-    throw new ApiError(422, 'rating must be between 1 and 5 (or omitted/0 for unrated).');
+  // 0 is the "unrated" sentinel, not a rating.
+  if (b.rating != null && b.rating !== 0 && !isValidRating(b.rating)) {
+    throw new ApiError(
+      422,
+      'rating must be 0.5 to 5 in half-star steps (or omitted/0 for unrated).'
+    );
   }
   const author = (b.author ?? '').trim() || null;
   const isbn13 = (b.isbn13 ?? '').trim() || null;
   const review = (b.review ?? '').trim() || null;
   if (review && (b.rating == null || b.rating === 0)) {
-    throw new ApiError(422, 'A review requires a rating (1-5). Rate the book, or omit the review.');
+    throw new ApiError(
+      422,
+      'A review requires a rating (0.5 to 5). Rate the book, or omit the review.'
+    );
   }
 
   const db = getDb();
