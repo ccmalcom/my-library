@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
-import seedJson from './fixtures/parity/seed.json';
+import seedJson from './fixtures/seed.json';
 import { makeTestDb, loadSeed } from './helpers/pglite';
-import { setupParityEnv } from './helpers/parity';
+import { setupTestEnv } from './helpers/testEnv';
 import { installHttpReplay } from './helpers/httpReplay';
 import { _setDbForTests, schema } from '../db';
 import { POST } from '@/app/api/discover/route';
@@ -14,7 +14,7 @@ const req = (body?: unknown) =>
   });
 
 describe('POST /api/discover', () => {
-  setupParityEnv();
+  setupTestEnv();
 
   test('mirrors FastAPI’s validation on query and n', async () => {
     const { db, close } = await makeTestDb();
@@ -57,7 +57,7 @@ describe('POST /api/discover', () => {
     const restore = installHttpReplay({}, (u) => seen.push(u));
     try {
       await loadSeed(db, seedJson as any);
-      // setupParityEnv clears the env key, but the SEED stores an encrypted per-user
+      // setupTestEnv clears the env key, but the SEED stores an encrypted per-user
       // key for 'local'. Without clearing it too, a real Anthropic client is built
       // and the run 500s on a live network call.
       await db.update(schema.userSettings).set({ anthropicApiKeyEncrypted: null });

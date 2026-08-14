@@ -42,7 +42,7 @@ describe('csv quote tolerance', () => {
   });
 
   it('parses the checked-in Goodreads fixture end to end', () => {
-    const text = readFileSync(join(process.cwd(), '..', 'tests', 'sample_goodreads.csv'), 'utf8');
+    const text = readFileSync(join(__dirname, 'fixtures', 'sample_goodreads.csv'), 'utf8');
     const parsed = parseGoodreads(text);
     expect(parsed.rows).toHaveLength(6);
     expect(parsed.skipped).toBe(0);

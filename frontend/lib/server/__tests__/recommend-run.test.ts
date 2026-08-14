@@ -1,10 +1,15 @@
 import { describe, test, expect } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
+// Snapshot of the prompt as recorded at the Python cutover (2026-08-14). This is
+// no longer a cross-backend parity check — it is a regression guard proving the
+// deterministic retrieval pipeline still assembles an identical prompt. The
+// recorder (scripts/gen_claude_fixtures.py) is gone, so if the prompt changes
+// legitimately, update this fixture BY HAND and say why in the commit.
 import prompts from './fixtures/claude/prompts.json';
 import httpFixtures from './fixtures/claude/recommend-http.json';
-import seedJson from './fixtures/parity/seed.json';
+import seedJson from './fixtures/seed.json';
 import { makeTestDb, loadSeed } from './helpers/pglite';
-import { setupParityEnv } from './helpers/parity';
+import { setupTestEnv } from './helpers/testEnv';
 import { installHttpReplay } from './helpers/httpReplay';
 import { fakeClaude } from './helpers/fakeClaude';
 import { schema } from '../db';
@@ -12,7 +17,7 @@ import { runRecommend } from '../recommendRun';
 
 const PROFILED_AT = '2026-08-01 00:00:00'; // mirrors _prepare_recommend in the generator
 
-/** Same canned payload the Python fixture generator fed its seed call. */
+/** Canned payload recorded for the prompt snapshot's seed call. */
 const seedResponse = {
   content: [
     {
@@ -60,7 +65,7 @@ function opts() {
 }
 
 describe('runRecommend gates', () => {
-  setupParityEnv();
+  setupTestEnv();
 
   test('400s on an empty library, a missing profile, and a stale profile', async () => {
     const { db, close } = await makeTestDb();
@@ -105,9 +110,9 @@ describe('runRecommend gates', () => {
 });
 
 describe('runRecommend happy path', () => {
-  setupParityEnv();
+  setupTestEnv();
 
-  test('sends exactly the requests Python sends', async () => {
+  test('matches the recorded request snapshots', async () => {
     const { db, close } = await seeded();
     const restore = installHttpReplay(httpFixtures as any);
     const client = fakeClaude([seedResponse, rerankResponse([0, 1, 2])] as any);

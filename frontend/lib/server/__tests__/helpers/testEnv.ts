@@ -1,7 +1,4 @@
-import { afterEach, beforeEach, expect } from 'vitest';
-import fixturesJson from '../fixtures/parity/python-responses.json';
-import seedJson from '../fixtures/parity/seed.json';
-import { makeTestDb, loadSeed, type Seed } from './pglite';
+import { afterEach, beforeEach } from 'vitest';
 import { _setDbForTests } from '../../db';
 import { _resetDebugCache } from '../../config';
 
@@ -23,7 +20,7 @@ const ENV_KEYS = [
 ];
 
 /** Local-mode env identical to the Python fixture run. Registers hooks. */
-export function setupParityEnv(): void {
+export function setupTestEnv(): void {
   let saved: Record<string, string | undefined> = {};
   beforeEach(() => {
     saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
@@ -56,34 +53,4 @@ export function setupParityEnv(): void {
     }
     _setDbForTests(null);
   });
-}
-
-type Stage = 'empty' | 'seeded';
-
-export async function checkParity(
-  stage: Stage,
-  requestKey: string,
-  handler: (req: Request) => Promise<Response>,
-  normalize?: (body: unknown) => unknown
-): Promise<void> {
-  const fixture = (fixturesJson as any)[stage]?.[requestKey];
-  if (!fixture) throw new Error(`no fixture for stage=${stage} request=${requestKey}`);
-  const { db, close } = await makeTestDb();
-  try {
-    if (stage === 'seeded') await loadSeed(db, seedJson as unknown as Seed);
-    _setDbForTests(db);
-    const [method, pathAndQuery] = requestKey.split(' ');
-    const res = await handler(new Request(`http://test/api${pathAndQuery}`, { method }));
-    expect(res.status).toBe(fixture.status);
-    let body: unknown = await res.json();
-    let expected: unknown = fixture.body;
-    if (normalize) {
-      body = normalize(body);
-      expected = normalize(expected);
-    }
-    expect(body).toEqual(expected);
-  } finally {
-    _setDbForTests(null);
-    await close();
-  }
 }

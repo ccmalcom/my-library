@@ -1,431 +1,203 @@
 # Hosting & Deployment — ShelfSprite
 
-## Overview
+## Current runtime
 
-Hosted as: **Vercel frontend → Railway web (uvicorn) → Supabase Postgres/auth**.
-Invite-only / free launch. Bring-your-own Anthropic key (encrypted at rest). Bundled Google Books key.
+ShelfSprite is one Next.js application deployed on Vercel. Pages and same-origin `/api` route
+handlers run from `frontend/`; server modules access Supabase Postgres through drizzle-orm and
+verify Supabase sessions through JWKS. There is no separate web service or resident worker.
 
-Local SQLite single-user mode is still the default when env vars are unset.
+The product is invite-only. Users may store an encrypted Anthropic key, with a server-level key as
+fallback, and the Google Books integration may use a shared server key.
 
-> **Status (wave 5b, 2026-08-12): Railway is being retired.** The Node backend now serves every
-> frontend-facing route — all 54 routes in `mylibrary/api.py` are covered by `NODE_DEFAULT_ROUTES`
-> in `frontend/lib/backend.ts`, leaving only `/health` and `/healthz`, which are Railway's own
-> probes. Once the Node branch merges to `main`, the target architecture is
-> **Vercel (Next.js route handlers) → Supabase Postgres/auth**, with no Python service. Everything
-> below describing Railway is retained because it is still accurate until that merge lands, and
-> because the Alembic notes remain true of any deployment that runs migrations at boot.
+## Configuration ownership
 
-Full plan: **`mylibrary-web-distribution-plan.md`**. Deploy runbook: **`mylibrary-phase5-deploy-runbook.md`**.
+Application environment variables live in **Vercel project settings**. Auth redirect policy,
+users, and other Supabase-managed settings live in the **Supabase dashboard**. Treat both as part
+of the deployed system: a missing variable or dashboard allowlist entry is not repairable with a
+code-only change.
 
-## Environment variables
+Current source readers under `frontend/lib`, `frontend/app`, and `frontend/utils` use:
 
-`config.Settings` reads these (all optional — unset = local SQLite single-user mode):
+| Variable                               | Purpose                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| `DATABASE_URL`                         | Supabase Postgres connection used by `getDb`; required for data access.  |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Browser Supabase client and server-side fallback for the project URL.    |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser/session middleware key.                                          |
+| `SUPABASE_URL`                         | Preferred server-side Supabase URL for JWKS and admin calls.             |
+| `SUPABASE_JWKS_URL`                    | Optional explicit JWKS endpoint override.                                |
+| `SUPABASE_SECRET_KEY`                  | Server-only GoTrue admin credential for invite/list/delete calls.        |
+| `ADMIN_EMAILS`                         | Comma-separated, case-insensitive admin allowlist.                       |
+| `FRONTEND_URL`                         | Public app origin used to build invite `redirect_to`; no trailing slash. |
+| `ENCRYPTION_KEY`                       | AES-256-GCM key for stored per-user Anthropic credentials.               |
+| `ANTHROPIC_API_KEY`                    | Server fallback when a user has no stored key.                           |
+| `GOOGLE_BOOKS_API_KEY`                 | Optional Google Books credential.                                        |
+| `MYLIBRARY_MODEL`                      | Claude model override; defaults to `claude-sonnet-5`.                    |
+| `MYLIBRARY_REQ_PER_SEC`                | Catalog request-rate override.                                           |
+| `MYLIBRARY_MONTHLY_SOFT_CAP_USD`       | Per-user monthly visibility cap; warn-only.                              |
+| `MYLIBRARY_USAGE_WARN_THRESHOLD`       | Fraction of the soft cap at which the warning appears.                   |
+| `FEEDBACK_PROMPTS_ENABLED`             | Global targeted-feedback prompt switch; defaults to `true`.              |
+| `FEEDBACK_SNOOZE_HOURS`                | Prompt snooze period; defaults to 72 hours.                              |
+| `CRON_SECRET`                          | Bearer secret for enrichment tick and janitor routes.                    |
 
-- `DATABASE_URL` — Supabase session pooler URL. `db_url` normalizes `postgresql://` / `postgres://` to `postgresql+psycopg://` (only psycopg v3 is installed).
-- `SUPABASE_URL` — activates auth; also used to build the JWKS URL.
-- `SUPABASE_JWKS_URL` / `SUPABASE_JWT_SECRET` — ES256 (JWKS, preferred) or HS256 fallback.
-- `ENCRYPTION_KEY` — base64 32 bytes for AES-256-GCM per-user key storage. Generate: `python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`. Not needed in local mode unless a per-user key is actually stored.
-- `REDIS_URL` — activates arq worker pool. Unset = BackgroundTask fallback (intended production mode at invite-only scale).
-- `CORS_ORIGINS` — comma-separated frontend origins, trailing slashes stripped. Unset = `localhost:3000`.
-- `MYLIBRARY_DATA_DIR` — base dir for catalog cache + DB (set to `/data` on Railway volume).
-- `ANTHROPIC_API_KEY` — fallback when no per-user key is stored.
-- `GOOGLE_BOOKS_API_KEY` — optional.
-- `ADMIN_EMAILS` — comma-separated allowlist of admin email addresses (lowercased). Unset = no admins. Only checked in hosted multi-tenant mode; local dev always treats the unauthenticated user as admin.
-- `SUPABASE_SERVICE_ROLE_KEY` — GoTrue admin API key for programmatic user invites + deletes (server-only, never sent to frontend). Required to use `/admin/invite` and `/admin/revoke`.
-- `FRONTEND_URL` — deployed frontend origin, no trailing slash (e.g. `https://my-library.vercel.app`). Used to build `redirect_to=<FRONTEND_URL>/auth/callback` on the Supabase invite call, so invited users land somewhere that actually establishes their session — see Admin console notes below. Unset = Supabase falls back to its dashboard-configured Site URL.
-- `MYLIBRARY_MONTHLY_SOFT_CAP_USD` — per-user month-to-date soft spend cap in USD. Default `5.0`. Warn-only; never blocks a call.
-- `MYLIBRARY_USAGE_WARN_THRESHOLD` — fraction of the cap (0..1) at which the soft-warn flag turns on. Default `0.8`.
+`getDb` requires Postgres even when auth is disabled. When the public Supabase variables are
+absent, page middleware is a no-op. API auth resolves the single `local` user only when no
+`SUPABASE_URL`, public project URL, or explicit JWKS URL enables bearer verification; that is the
+current local-development mode.
 
-### Node backend environment variables
+### Invite redirect configuration
 
-The Next.js route handlers read their own set, which **overlaps but is not identical** to
-`config.Settings`. Authoritative list, derived from every environment read under `frontend/lib` and `frontend/app`:
+`supabaseAdmin.ts#inviteUser` includes
+`redirect_to=<FRONTEND_URL>/auth/callback` only when `FRONTEND_URL` is set. The exact callback URL
+must also appear in Supabase Auth → URL Configuration → Redirect URLs. If either half is absent,
+GoTrue falls back to its configured Site URL and invite tokens can land on a page that does not
+establish the session. Because the app is invite-only, this configuration is load-bearing.
 
-`ADMIN_EMAILS`, `ANTHROPIC_API_KEY`, `CRON_SECRET`, `DATABASE_URL`, `ENCRYPTION_KEY`,
-`FEEDBACK_PROMPTS_ENABLED`, `FEEDBACK_SNOOZE_HOURS`, `FRONTEND_URL`, `GOOGLE_BOOKS_API_KEY`,
-`MYLIBRARY_MODEL`, `MYLIBRARY_MONTHLY_SOFT_CAP_USD`, `MYLIBRARY_REQ_PER_SEC`,
-`MYLIBRARY_USAGE_WARN_THRESHOLD`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`,
-`SUPABASE_JWKS_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_URL`, `TZ`.
+At the 2026-08-14 retirement capture, `FRONTEND_URL` was absent from Vercel. The open remediation
+is recorded in `todo.md`; do not assume an external setting changed merely because the code is
+correct.
 
-Differences from Python that have each cost real debugging time:
+## Railway's environment, recorded at retirement (2026-08-14)
 
-- **`SUPABASE_SECRET_KEY`, not `SUPABASE_SERVICE_ROLE_KEY`.** The two backends read different names
-  for the same credential. Node sends it on the `apikey` header ONLY — Supabase parses an
-  `Authorization` value as a JWT, so an opaque `sb_secret_*` key there yields `Invalid JWT`.
-- **`SUPABASE_URL ?? NEXT_PUBLIC_SUPABASE_URL`.** `supabaseAdmin.ts:39` and `auth.ts::jwksUrl` both
-  accept either. Without the fallback, auth works while every admin write 502s.
-- **`CRON_SECRET` is required, and its absence is not a soft failure** — see below.
-- Node has no `REDIS_URL`, `CORS_ORIGINS`, `MYLIBRARY_DATA_DIR`, or `SUPABASE_JWT_SECRET`: there is
-  no queue, same-origin routes need no CORS, the catalog cache is a Postgres table
-  (`catalog_cache`), and only the JWKS/ES256 path is implemented.
-
-### Railway's environment, recorded at retirement (2026-08-14)
-
-Railway's variable set is a configuration fact that dies with the service, so it is recorded here
-before the delete. Eleven variables were set (**names only** — values were never read):
+Railway's variable set was captured before the service disappeared. Only names were recorded;
+values were never read. Eleven variables were present:
 
 `ADMIN_EMAILS`, `CORS_ORIGINS`, `DATABASE_URL`, `ENCRYPTION_KEY`, `FEEDBACK_PROMPTS_ENABLED`,
 `FEEDBACK_SNOOZE_HOURS`, `FRONTEND_URL`, `GOOGLE_BOOKS_API_KEY`, `MYLIBRARY_DATA_DIR`,
 `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL`.
 
-Two absences are themselves findings. **`REDIS_URL` was never set**, which is direct evidence for
-what `worker.py`'s docstring only asserted: arq was opt-in and the no-Redis BackgroundTask path was
-the real production mode. And **none of the four `MYLIBRARY_*` tuning vars** — `MODEL`,
-`REQ_PER_SEC`, `MONTHLY_SOFT_CAP_USD`, `USAGE_WARN_THRESHOLD` — were set, so production ran on their
-code defaults throughout.
+Two absences were findings. `REDIS_URL` was never set, confirming that the optional queue was not
+the production path. None of the four `MYLIBRARY_*` tuning variables (`MODEL`, `REQ_PER_SEC`,
+`MONTHLY_SOFT_CAP_USD`, `USAGE_WARN_THRESHOLD`) was set, so the retired service used code
+defaults.
 
-Dies with the service, correctly: `CORS_ORIGINS` and `MYLIBRARY_DATA_DIR` have no Node reader
-(same-origin routes, Postgres catalog cache). `SUPABASE_SERVICE_ROLE_KEY` is the old name for the
-credential Vercel holds as `SUPABASE_SECRET_KEY` — see above.
+`CORS_ORIGINS` and `MYLIBRARY_DATA_DIR` died with that service: same-origin route handlers need no
+CORS setting, and catalog caching is in Postgres. `SUPABASE_SERVICE_ROLE_KEY` was the old name for
+the credential now read as `SUPABASE_SECRET_KEY` in Vercel.
 
-**Three variables Node DOES read were set on Railway and are absent from Vercel:**
+Three values used by the current app were present on Railway and absent from Vercel at capture
+time:
 
-| Variable | Node reader | Fallback when unset | Verdict |
-|---|---|---|---|
-| `FEEDBACK_SNOOZE_HOURS` | `feedbackPrompts.ts:32` | `72`, matching `.env.example` | benign |
-| `FEEDBACK_PROMPTS_ENABLED` | `feedbackPrompts.ts:27` | `true` | benign **only if Railway's value was also `true`** |
-| `FRONTEND_URL` | `supabaseAdmin.ts:123` | omits `redirect_to` | **live defect — see below** |
+| Variable                   | Current reader                | Fallback when unset | Retirement finding                            |
+| -------------------------- | ----------------------------- | ------------------- | --------------------------------------------- |
+| `FEEDBACK_SNOOZE_HOURS`    | `feedbackPrompts.ts`          | `72`                | Benign.                                       |
+| `FEEDBACK_PROMPTS_ENABLED` | `feedbackPrompts.ts`          | `true`              | Benign only if the old value was also `true`. |
+| `FRONTEND_URL`             | `supabaseAdmin.ts#inviteUser` | Omits `redirect_to` | Invite configuration defect until set.        |
 
-`FEEDBACK_PROMPTS_ENABLED` exists specifically to be flipped to `false` post-beta
-(`.env.example:58`). Node's unset-fallback is `true`, so if Railway held `false`, the cutover
-silently re-enabled targeted prompts. The value was masked; confirm it before assuming benign.
+The value of `FEEDBACK_PROMPTS_ENABLED` was masked during the capture and remains an open question.
+If Railway held `false`, leaving it unset in Vercel silently re-enabled targeted prompts. Preserve
+this question until the old value is independently confirmed or the desired current value is set
+explicitly.
 
-**`FRONTEND_URL` is unset on Vercel and that is a real defect, not bookkeeping.** `inviteUser`
-appends `?redirect_to=<FRONTEND_URL>/auth/callback` only when the variable is present. Without it
-the parameter is omitted entirely and Supabase falls back to the project's dashboard-configured
-Site URL, which may point at the wrong environment — so an invited user can land somewhere that
-never establishes their session. This matters more than it looks: the product is **invite-only**,
-so admin-console invites are the sole way anyone joins. Set `FRONTEND_URL=https://shelfsprite.app`
-on Vercel (Production, and Preview if invites are ever tested there); new values need a redeploy to
-reach running functions.
+## Vercel cron and enrichment continuation
 
-#### `CRON_SECRET` — required, and it fails destructively when unset
+`frontend/vercel.json` registers one cron:
 
-Set it in Vercel for **Production and Preview**; generate with `openssl rand -hex 32`. The value is
-arbitrary and need not match across environments — each environment both signs and validates with
-its own copy. Vercel automatically sends `Authorization: Bearer $CRON_SECRET` to cron endpoints
-whenever a variable of that name exists, so the janitor authenticates with no extra wiring.
+```text
+/api/enrich/janitor  17 3 * * *
+```
 
-`isValidCronSecret` fails closed (`enrichmentDispatch.ts:32`), which is benign. `rearmAfterResponse`
-**throws** when the variable is absent (`enrichmentDispatch.ts:38`), which used to be destructive:
-`deps.dispatch` was awaited with no `try`/`catch`, so any enrichment needing a second chunk 500'd
-`POST /enrich/start`, 500'd `GET /enrich/status/{job_id}` through poll repair, and left the job
-`running` with `leaseExpiresAt` already nulled — orphaned permanently, with
-`uq_enrich_jobs_active_user` blocking that user from starting another enrichment without manual DB
-intervention.
+Vercel cron jobs run against **production deployments only**. Preview deployments do not exercise
+this schedule. When `CRON_SECRET` exists, Vercel sends it as `Authorization: Bearer
+$CRON_SECRET`; `isValidCronSecret` fails closed when the value or header is absent.
 
-**Guarded as of 2026-08-13.** Both call sites now catch dispatch failures. `runClaimedChunk` keeps
-the progress write and the null lease, returns `rearmed: false` instead of throwing, and logs.
-`repairActiveJobs` catches per job so one bad row no longer aborts the janitor's whole sweep, and
-counts the failure in a separate `dispatchFailed` field (`failed` still means "marked error by
-`failIfStale`"). A dispatch failure is therefore recoverable rather than fatal.
+The enrichment flow is serverless:
 
-**It is recoverable, not self-healing.** A null lease is what makes a job reclaimable by
-`repairActiveJobs` — but if `CRON_SECRET` is itself the cause of the dispatch failure, the janitor is
-401ing too, so nothing healthy is left to reclaim it. The job waits, intact, until the secret is
-fixed.
+- `POST /api/enrich/start` creates/claims a durable job and runs one bounded chunk.
+- `frontend/app/api/enrich/start/route.ts` and `tick/route.ts` each export the literal
+  `maxDuration = 300`.
+- `CHUNK_BUDGET_MS = 240_000` stops work below that function ceiling.
+- `rearmAfterResponse` uses Next's `after()` to send only the job ID to
+  `POST /api/enrich/tick`; chunk work never runs inside `after()`.
+- `GET /api/enrich/status/{job_id}` can repair an active reclaimable job during polling.
+- The janitor calls `repairActiveJobs` to mark stale work failed or re-arm an expired/null lease.
 
-It is invisible to a casual smoke test — a small library finishes in one chunk and never calls
-`dispatch` at all. **Any enrichment smoke test must use a library large enough to require a second
-chunk.** Measured 2026-08-13: a forced 159-book run took 221s against the 240s `CHUNK_BUDGET_MS`,
-finishing in one chunk with `/api/enrich/tick` invoked **zero** times. An 18-second margin is not a
-test.
+Dispatch failures are guarded. `runClaimedChunk` preserves progress and returns `rearmed: false`
+when synchronous scheduling fails; `repairActiveJobs` catches failures per job and reports them in
+`dispatchFailed`. This is recoverable, not self-healing: if a missing `CRON_SECRET` also prevents
+the janitor from authenticating, the job remains intact but cannot resume until configuration is
+fixed and a healthy repair path runs.
 
-#### The proxy matcher ate every internal tick (fixed 2026-08-13)
+`frontend/proxy.ts` must continue to exclude `api`. Internal tick and cron calls carry a bearer
+secret but no Supabase session cookie; when page middleware matched `/api/*`, it redirected those
+requests to `/login`. A 307 did not throw, so the failure looked like successful scheduling.
+`rearmAfterResponse` now checks `response.ok` and logs non-2xx outcomes.
 
-**This, not `CRON_SECRET`, is why enrichment continuation had never once run in production.**
-`proxy.ts`'s matcher covered `/api/*`, and `updateSession` redirects any request without a Supabase
-**session cookie** to `/login`. `rearmAfterResponse` self-fetches `/api/enrich/tick` with a
-`CRON_SECRET` bearer and no cookies, so every tick was **307-redirected before the handler ran**.
-Same for `/api/enrich/janitor`, which Vercel's cron also invokes cookieless — so the janitor, the
-backstop the whole recovery design leans on, had never run either.
+### Continuation verification caveat
 
-Fixed by adding `api` to the matcher's negative lookahead. API routes authenticate themselves via
-`withApi` (bearer only — no route under `app/api/` reads cookies or uses `createServerClient`), and
-the cron routes validate `CRON_SECRET`. The middleware gates **pages only**.
+Continuation can be tested reliably only through the production custom domain. The dispatcher
+builds the tick URL from the request origin. Vercel deployment protection can intercept a preview
+self-fetch before the route handler sees `CRON_SECRET`, producing the same symptom as a broken
+secret. Do not diagnose that path from a protected preview URL.
 
-Two things made this invisible for four waves:
+A useful smoke test must force more than one chunk. Tick count alone is insufficient: status-poll
+repair can schedule repeated ticks while progress remains frozen. Require both a successful tick
+invocation and persisted progress advancing across the chunk boundary.
 
-- **A 307 is a successful fetch.** Nothing threw, so the wave-5b dispatch guards never fired and
-  nothing was logged. `rearmAfterResponse` now inspects `response.ok` and logs job id + status.
-- **`rearmed: true` means "a tick was scheduled", not "a tick succeeded".** The fetch runs inside
-  `after()`, post-response, so `runClaimedChunk`'s `try`/`catch` can only ever catch a synchronous
-  throw from `requireCronSecret()` — never a network result. Do not "fix" this by awaiting the
-  dispatch; that would block the response and defeat the design.
+Production verification on 2026-08-13 used a temporary 100-second chunk budget and a forced
+159-book run. One tick advanced the job across the boundary and it completed at 159/159; the budget
+was restored to 240 seconds immediately afterward. This proves start→tick continuation. It does
+**not** prove tick→tick chaining, because the first tick completed the remaining work. Exercising
+that caveat requires a substantially larger library or a temporary budget near 40 seconds.
 
-Diagnostic rule earned here: **tick count alone is not evidence of continuation.** A run showed 21
-`/api/enrich/tick` invocations with progress frozen at 65/159 — each one a 307, and each one caused
-by a status poll triggering poll repair. Require the tick count **and** progress advancing.
+The scheduled janitor's first observed run remains an operational follow-up in `todo.md`. Vercel's
+runtime-log retention did not cover the original observation window, so an absent log line was not
+evidence that the cron failed.
 
-`failIfStale` was verified live the same day: a job started 15:29:06 and abandoned was marked
-`error` with `Enrichment was interrupted, please retry.` on the first status poll after the strict
-1800s threshold (at 16:00:12, 1866s), preserving `progress` at 65/159. That is the only automatic
-recovery that currently exists — it fires on a user-initiated poll, not on a timer.
+## Database migrations: drizzle-kit
 
-#### The continuation path can only be tested against the production custom domain
-
-`rearmAfterResponse` builds the tick URL as `new URL('/api/enrich/tick', request.url)`
-(`enrichmentDispatch.ts:39`) — it self-fetches whatever origin served the request, carrying only
-`Authorization: Bearer $CRON_SECRET`.
-
-Vercel SSO deployment protection is enabled for this project, scoped `all_except_custom_domains`.
-So on a **preview** deployment that self-fetch is intercepted by the protection layer before the
-function runs — it has no protection-bypass token. The tick fails, the job stalls, and the symptom
-is **indistinguishable from a broken `CRON_SECRET`**. Do not debug a continuation failure on a
-preview URL; the answer will be wrong.
-
-Production is exempt only because it is served from the custom domain `shelfsprite.app`. To exercise
-continuation, temporarily lower `CHUNK_BUDGET_MS`, deploy to production, and run a forced enrich
-there. The alternative, Vercel's Protection Bypass for Automation, requires `enrichmentDispatch.ts`
-to send `x-vercel-protection-bypass`, i.e. a change to the very code path under test.
-
-#### Continuation verified in production (2026-08-13)
-
-Run on `shelfsprite.app` under a temporary `CHUNK_BUDGET_MS = 100_000`, forced, 159 rated books:
-
-| Time (UTC) | Event |
-| --- | --- |
-| 18:05:42 | `POST /enrich/start` claims the job and runs chunk 1 inline |
-| ~18:07:22 | Chunk 1 stops at a book boundary, re-arms |
-| 18:07:24 | `POST /api/enrich/tick` → 200, `durationMs` 47385 |
-| 18:08:11 | Job `done` at **159/159** |
-
-Progress crossed the chunk boundary rather than merely moving within one chunk: 86 → 109 → 136 →
-147 → 158 → 159. Real work, not a replay — the confidence histogram shifted (MEDIUM 46→45, LOW
-17→18). `CHUNK_BUDGET_MS` was reverted to `240_000` immediately afterward.
-
-Two corrections to the proof standard this section previously stated:
-
-- **"`/api/enrich/tick` ≥ 2" is the wrong acceptance bar, and reaching `done` is not disqualifying.**
-  That bar was extrapolated from a 221s run, predicting 3 chunks / 2 ticks. The verification run
-  took 149s — catalog latency varies — so it finished in 2 chunks with exactly **1** tick. The
-  honest criterion is the one already stated above: **a tick invocation AND progress advancing
-  across the boundary.** A job reaching `done` after a tick is strictly stronger evidence than a
-  second tick, because the pre-fix failure mode was a job that never finished.
-- **What this run does NOT prove: tick→tick chaining.** The job completed inside the first tick, so
-  no tick ever had to re-arm another one. `rearmAfterResponse` firing from `after()` in the *tick*
-  route remains unexercised in production. At `240_000` this library finishes in a single chunk and
-  cannot test it; reproducing it needs a budget near `40_000` or a substantially larger library.
-  Inductive comfort only: `start` and `tick` dispatch through the identical `deps.dispatch` →
-  `rearmAfterResponse(request, jobId)` path.
-
-## Auth (`auth.py`)
-
-Verifies Supabase access tokens and returns `sub` as `user_id`. Supabase signs with **ES256** (asymmetric); backend verifies against the project's public key fetched from JWKS (`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`, cached via `PyJWKClient`). Legacy **HS256** path (`SUPABASE_JWT_SECRET`) is the fallback. Returns `LOCAL_USER_ID` ("local") when no Supabase auth is configured.
-
-## Multi-tenancy (Phase 2)
-
-- Every user-owned table (`books`, `taste_traits`, `recommendations`, `profile_meta`, `user_settings`, `enrich_jobs`, `reader_archetypes`, `taste_signal`) has a `user_id` column (default `LOCAL_USER_ID`, canonical constant in `config.py`). `Enrichment` is the exception — scoped via its `book_id` FK to `Book`.
-- `ProfileMeta` is no longer a singleton — one row per user, looked up by `user_id`.
-- `books` uniqueness on `goodreads_book_id` is now **per-user** (`uq_book_user_goodreads`). `Enrichment` has no `user_id` (scoped via its `book_id` FK to `Book`).
-- Every core function takes a trailing `user_id: str = LOCAL_USER_ID`. The default keeps the CLI, tests, and unconfigured API working unchanged in local mode.
-- `api.py` has a `current_user` FastAPI dependency (`UserId` alias) on every data route. Returns `LOCAL_USER_ID` until `SUPABASE_URL` is set. `session.get()` reads are guarded with a `user_id` ownership check (cross-tenant id access → 404).
-- **Supabase RLS:** enabled + no policies — the backend's `postgres` role bypasses RLS; the public anon/publishable key can't reach the data API (PostgREST).
-- **No data migration by design:** the old `local`-tenant library is left behind; each Supabase user builds a fresh library on the web.
-
-## Per-user Anthropic key (Phase 3)
-
-- `UserSettings` table (`user_settings`): one row per user, `anthropic_api_key_encrypted` (AES-256-GCM via `crypto.py`), timestamps.
-- `user_settings.py`: `set_anthropic_key` (encrypt+upsert), `clear_anthropic_key`, `anthropic_key_status`, and **`resolve_anthropic_key(user_id)`** — the single place profile/recommend ask "which key for this user?". Returns the user's decrypted stored key, else falls back to `ANTHROPIC_API_KEY` env var.
-- Endpoints: `PUT /settings/api-key`, `GET /settings/api-key/status` (`{configured}`, never the key), `DELETE /settings/api-key`.
-- Frontend: `/settings` page (`app/(main)/settings`) + NavBar link. Settings page also hosts the **Danger Zone** (`DangerAction` two-step confirm): reset profile / clear library / delete account → routes back to `/` so `LibraryGate` shows first-setup.
-
-## Background jobs + rate limiting (Phase 4)
-
-- `EnrichJob` table (`enrich_jobs`): tracks `(job_id, user_id, status, progress, total, started_at, finished_at, error)`. Status: `pending → running → done | error`. Updated every 5 books.
-- `worker.py` — `enrich_books` (arq async task), `run_enrich_job` (blocking core, shared by arq and BackgroundTask fallback), `WorkerSettings`.
-- `POST /enrich/start` — creates `EnrichJob`, enqueues via arq when `REDIS_URL` is set, falls back to FastAPI `BackgroundTasks` otherwise. Rate-limited 5/min per user (SlowAPI). Returns `{job_id, status, ...}` immediately.
-- **BackgroundTasks is the intended production mode** at invite-only scale. arq stays dormant for future horizontal scale. `worker.recover_orphaned_jobs()` at startup recovers mid-job web restarts (gated on REDIS_URL unset); `worker.fail_if_stale` errors jobs stuck 'running' past 30 min.
-- `GET /enrich/status/{job_id}` — returns live `EnrichJobOut`. Frontend polls at 2s intervals.
-- `POST /enrich` kept for CLI / local tooling (synchronous, no rate limit).
-- **SlowAPI** rate limiting keyed on `user_id`: `/enrich/start` → 5/min; `/catalog/search` → 30/min. `REDIS_URL` not needed for SlowAPI.
-
-## Deploy artifacts (Phase 5)
-
-- `Dockerfile` — single image for both Railway services. Python pinned to **3.12-slim** (not 3.14 used locally) so psycopg/pandas/numpy install from prebuilt wheels. Default `CMD` is `start.sh`.
-- `start.sh` — web entrypoint: `alembic upgrade head` then `uvicorn mylibrary.api:app --host 0.0.0.0 --port $PORT`. Only the web service runs this — worker overrides start command to `python -m arq mylibrary.worker.WorkerSettings` so migrations never race.
-- `railway.json` — pins Dockerfile builder + ON_FAILURE restart policy.
-- `GET /healthz` — unauthenticated liveness probe, no DB hit. Use for Railway healthcheck (not `GET /health`, which requires a token).
-- **Catalog cache** lives on a Railway volume at `/data` (`MYLIBRARY_DATA_DIR=/data`), shared between enrich + recommend in the single process; survives redeploys.
-
-**Deploy gotchas:**
-- Railway injects `PORT=8080` (overrides Dockerfile `ENV PORT=8000`) — domain target must match the injected port.
-- `NEXT_PUBLIC_API_URL` must include `https://` and is inlined at build time (rebuild after changing).
-- `CORS_ORIGINS` must be the exact Vercel origin, no trailing slash.
-
-## Migrations: drizzle-kit (current) and Alembic (frozen)
-
-**Alembic is frozen at `0019_add_enrich_job_leases`, which is what production's `alembic_version`
-reads (verified read-only 2026-08-13).** It owned migrations while the Python backend was live.
-With Python retired, every new migration goes through **drizzle-kit**. Do not author an `0020`.
-The Alembic section below is retained as history — it still explains the schema production has.
-
-### Authoring a drizzle migration
+All new migrations use drizzle-kit from `frontend/`:
 
 ```bash
 cd frontend
-npm run db:generate     # diffs lib/server/schema.ts against drizzle/meta, writes drizzle/NNNN_*.sql
-# --- hand-review the generated SQL before going further ---
-npm run db:migrate      # applies pending migrations to $DATABASE_URL
+npm run db:generate
+# inspect drizzle/NNNN_*.sql before continuing
+npm run db:migrate
 ```
 
-**Always read the generated SQL before applying it.** drizzle-kit will happily emit a
-drop-and-recreate for a column type change, which on `books` would destroy real ratings. A type
-change must come out as `ALTER COLUMN ... TYPE ... USING ...`; if it doesn't, hand-write it.
-`0001_half_star_ratings.sql` is the worked example — it widens both rating columns with `USING`
-casts and adds the half-step CHECK constraints, touching no data.
+`drizzle-kit generate` compares `lib/server/schema.ts` with `drizzle/meta/*.json`. It **never reads
+the database**, so an empty diff says nothing about production drift. Verify production columns,
+nullability, and defaults through direct database introspection.
 
-**Migrations are applied manually, never by the build.** The Vercel build must not run
-`db:migrate`: builds run once per deployment (including previews and rollbacks), so a
-build-triggered migration races itself across concurrent deploys and can run against the wrong
-database entirely. Run it by hand, against a known `DATABASE_URL`, in a chosen release window.
+Always inspect generated SQL. A drop-and-recreate for a `books` type change can destroy ratings;
+type changes must be expressed as an in-place `ALTER COLUMN ... TYPE ... USING ...` operation.
+`0001_half_star_ratings.sql` is the worked example.
 
-The same branch-coupling landmine as Alembic applies — see "the running image must contain the
-DB's current revision" below. Do not apply a migration from a branch production does not deploy.
+Migrations are manual and never part of `npm run build`. Vercel builds may run concurrently for
+production, previews, and rollbacks; applying schema changes there can race or target the wrong
+database. Apply a reviewed migration in a deliberate release window against a known
+`DATABASE_URL`.
 
-### The baseline was stamped, not executed
+### Baseline adoption and schema drift
 
-`drizzle/0000_baseline.sql` is a snapshot of the schema Alembic had already built. It was never run
-against production — running it would try to create tables that exist. `npm run db:stamp-baseline`
-(`scripts/stamp-baseline.ts`) instead records `0000_baseline` as already-applied in drizzle's
-`__drizzle_migrations` table, so `db:migrate` starts at `0001`. It is a **one-shot**: it refuses to
-run unless `public.books` already exists, precisely so it can never be mistaken for a way to
-initialize an empty database. Per `docs/hosting.md`'s own rule, the baseline was generated from a
-`pg_dump` of production rather than a fresh `alembic upgrade head`, because
-`enrich_jobs.progress`/`total` differ between the two lineages.
+`drizzle/0000_baseline.sql` snapshots the production schema that already existed. It was stamped,
+not executed: `npm run db:stamp-baseline` records only migration `0000` in drizzle's ledger after
+confirming `public.books` exists. Later migrations must be applied normally; stamping them would
+mark real work complete without running its SQL.
 
-**It stamps `0000` and nothing else, deliberately.** Stamping records a migration as applied
-*without running its SQL*, so stamping anything past the baseline marks real schema work as done
-that was never performed — and `db:migrate` will then never repair it. Concretely: run the
-unrestricted version today against a dev DB restored from a pre-`0001` dump and it marks
-`0001_half_star_ratings` applied while `app_rating` is still `integer`, after which every
-half-star write truncates in silence. The script now slices to the first migration and logs how
-many it skipped. Real migrations belong to `db:migrate`; if you ever need to adopt a database at a
-later revision, verify the column types first rather than widening this loop.
+The baseline came from a production `pg_dump`, never from a fresh `alembic upgrade head`. The two
+lineages gave `enrich_jobs.progress` and `total` different, legitimate server-default shapes.
+Current code is compatible with both because job creation explicitly supplies `progress: 0` and
+`total: 0`, and `NewJobValues` keeps those fields required at compile time.
 
-### `generate` cannot see the database — drift lives outside its diff
+`0002_align_nullability.sql` is intentionally hand-written. The checked-in schema and snapshots
+already said the affected fields were not null, so generate could not detect that the live
+database differed. It is safe on both lineages because setting NOT NULL on an already-NOT NULL
+column is a no-op.
 
-**`drizzle-kit generate` diffs `lib/server/schema.ts` against `drizzle/meta/*.json`. It never reads
-the database.** So any divergence between the snapshot lineage and the *actual* production schema is
-invisible to it: generate emits nothing, the drift persists, and the absence of a generated migration
-reads as "no drift" when it means "not checked". `0002_align_nullability.sql` is hand-written for
-exactly this reason — every column in it is already `.notNull()` in `schema.ts` and already NOT NULL
-in the snapshot, so the two agree and generate has nothing to say.
+Server defaults that remain only in production do not need to be copied into the drizzle schema
+when application inserts always supply the values. Adding such defaults to `schema.ts` can weaken
+drizzle's inferred insert type and remove useful compile-time checks.
 
-**Where the drift came from.** Production was built by Alembic, and the revisions that added these
-columns omitted NOT NULL. The SQLAlchemy models declared `nullable=False` / `default=0`, which
-SQLAlchemy enforces at the ORM layer and which emits no DDL. Nine columns were left nullable in
-production while every layer above them assumed otherwise:
+## Retired migration and deployment history
 
-| Table | Columns |
-|---|---|
-| `invites` | `created_at` |
-| `taste_signal` | `created_at` |
-| `user_directive` | `created_at` |
-| `usage_events` | `created_at`, `input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`, `cost_usd` |
+Alembic owned the production schema while the retired service was live and stopped at
+`0019_add_enrich_job_leases`. The database's historical `alembic_version` row and the deleted
+`alembic/versions/` chain explain the lineage from which `0000_baseline.sql` was captured; neither
+is a live migration mechanism now. Do not author a new legacy revision or restore migration-on-boot
+behavior.
 
-A database created fresh from `0000_baseline` already has these NOT NULL, so `0002` is a no-op there
-and a repair on any Alembic-lineage database. `SET NOT NULL` on an already-NOT NULL column is a no-op
-in Postgres, so it is safe to apply twice.
-
-**Server defaults are deliberately left divergent, and that is not the same bug.** Production also
-carries defaults `schema.ts` does not declare — `enrich_jobs.status` and `invites.status` are
-`DEFAULT 'pending'`, and the five `usage_events` numerics are `DEFAULT 0`. Declaring these in
-`schema.ts` would make them optional in drizzle's `$inferInsert` and dissolve the tsc guard that
-forces call sites to pass values explicitly — the guard that had to be hand-rebuilt as `NewJobValues`
-after the `POST /enrich/start` 500. The divergence is inert, because the app always supplies these
-values, and generate never trips on it because both sides of its diff agree. It is **recorded** in
-`schema.ts` rather than resolved.
-
-**The general lesson, which cost a red production deploy once already:** a claim about the database's
-shape is only worth what the introspection behind it is worth. Two comments in `schema.ts` asserted
-production's nullability and defaults from a reading of the SQLAlchemy models; direct introspection
-falsified both. Verify against `information_schema.columns`, not against the models. Sibling case:
-`enrich_jobs.progress`/`.total` below, where two lineages are both legitimate.
-
-### Alembic (frozen — history)
-
-`alembic.ini` + `alembic/env.py` (pulls `settings.db_url`). Run `alembic upgrade head` on deploy. `init_db()` returns early in multi-tenant mode (Alembic is the source of truth); locally it still self-migrates SQLite and backfills `user_id`.
-
-**Baseline gotcha (fixed):** `0001_initial` builds the schema via `Base.metadata.create_all()` from the _live_ models — so as models gained new columns, the baseline started creating them too. On a fresh DB, later migrations tried to add already-existing columns → `duplicate column name`. Fix: **migrations 0002+ are idempotent** — they inspect the bind and skip if the column/table already exists. Any future migration that adds something already in the models' `create_all` baseline must guard the same way.
-
-Migration chain: `0001_initial_multitenant_schema` → `0002_display_name` → `0003_enrich_jobs` → `0004_...` → `0005_reader_archetypes` → `0006_add_exclude_from_profile` → ... → `0012_book_is_favorite` → `fbc5292134c4_add_enrichment_language` → `0013_invites` → `0014_usage_events` → `0015_enrichment_corrected_at` → `0016_trait_reveal_line` → `0017_user_directive` → `0018_node_wave0_tables` → `0019_add_enrich_job_leases`.
-
-Note `fbc5292134c4` sits between `0012` and `0013` despite its unsequenced name — the chain is
-linear, not branched. `0018` and `0019` were authored on `feat/node-backend` and do not exist on
-`main`.
-
-### Deploy landmine: the running image must contain the DB's current revision
-
-`start.sh` runs `python -m alembic upgrade head` under `set -euo pipefail` **before** `exec uvicorn`.
-Alembic must be able to locate the revision recorded in the database's `alembic_version` table
-inside the image's own `alembic/versions/` directory. If it cannot, it raises
-`CommandError: Can't locate revision identified by '<rev>'`, the script exits non-zero, uvicorn
-never binds `$PORT`, and the platform healthcheck can never pass. `railway.json` sets
-`restartPolicyMaxRetries: 3`, so the deploy then fails.
-
-**This bites whenever a migration is applied to production from a branch checkout that the deployed
-branch does not contain.** It happened in wave 5b: `0018_node_wave0_tables` was applied to
-production by hand from `feat/node-backend`, while Railway deploys from `main`, which stops at
-`0017`. Nothing broke immediately because the running container had booted while the DB was still
-at `0017` — the failure only surfaced on the next deploy.
-
-Two things make it nastier than a failed deploy:
-
-- **A restart is enough to trigger it.** Restarting re-runs the container CMD, so a healthy instance
-  survives only until something restarts it. The service is effectively armed, not merely
-  un-deployable.
-- **It is silent until then.** There is no check that the deployed branch's migration set covers the
-  production revision.
-
-Rule: **never apply a migration to production from a branch the deployment does not track.** If you
-must, cherry-pick the revision files onto the deployed branch in the same window. Migration files
-alone are inert — the Python app reads none of the wave-0 Node tables — so a migrations-only commit
-is a safe repair.
-
-### `enrich_jobs.progress` / `.total`: two legitimate schema lineages
-
-The same migration set produces two different column shapes depending on the database's age, and
-both are correct:
-
-- **Fresh DB** — the `0001` baseline's `create_all()` builds `enrich_jobs` from the live models,
-  where `db.py:271-272` declare `mapped_column(Integer, default=0)`: an ORM-level default with **no**
-  `server_default`, and non-Optional `Mapped[int]` so NOT NULL. `0003` then short-circuits on
-  `if _has_table("enrich_jobs")`. Result: **NOT NULL, no server default.**
-- **Older DB (including production)** — predates the model, so the table came from `0003`'s
-  `op.create_table`, whose lines 47-48 specify `nullable=False, server_default="0"`. Result:
-  **NOT NULL, server default `0`.**
-
-The Node code supplies `progress: 0, total: 0` explicitly (wave 4c-2's fix), so it inserts
-successfully against either shape. The shape that actually breaks things is the first one combined
-with a drizzle schema that declares `.default()` and omits the column from the INSERT — that is the
-500 wave 4c-2 hit.
-
-> **Consequence for the drizzle baseline:** generate it from a `pg_dump` of **production**, never
-> from a fresh `alembic upgrade head`. A fresh run yields the `create_all` lineage and would bake the
-> wrong shape into the baseline.
-
-By contrast, `0019`'s new columns are unambiguous: `lease_expires_at` and `run_limit` are
-`nullable=True`; `attempts` and `force` are `nullable=False` with `server_default` `0` / `false`
-(`0019_add_enrich_job_leases.py:21,25,30,33`).
-
-## Spend tracking (soft-warn)
-
-- **`usage_events` table** (`UsageEvent` model, `mylibrary/db.py`): one append-only row per Claude call — `user_id`, `model`, `operation`, token counts (`input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`), computed `cost_usd`, `created_at`. Migration `0014_usage_events` (idempotent, chains after `0013_invites`).
-- **`usage.tracked_create(client, *, user_id, operation, **create_kwargs)`** wraps `client.messages.create(...)` and records usage after the call. All 5 Claude call sites route through it: `profile.extract_taste_profile` (`profile_full`), `profile.update_taste_profile` (`profile_update`), `recommend._claude_seed_queries` (`recommend_seed`), `recommend._claude_rerank` (`recommend_rerank`), `archetype.derive_archetype` (`archetype`).
-- **`cost_usd(model, usage)`** prices a call from `MODEL_PRICING` (USD per 1M tokens: input/output/cache-write/cache-read), keyed by model name. `claude-sonnet-5` is priced separately via `_sonnet_5_pricing()` (time-boxed promo rate through 2026-08-31, reverting to the Sonnet 4.6 list rate after). Any unlisted model falls back to `DEFAULT_PRICING` (the most expensive tier, so cost is never under-reported). **These are list prices — re-verify against Anthropic's pricing page whenever the model lineup or rates change.**
-- **Recording is best-effort**: `record_usage` swallows any DB failure and logs a warning — a usage-tracking bug can never break a profile/recommend/archetype call.
-- **`cap_status(user_id)`** sums `cost_usd` for the current UTC calendar month (+ a per-operation breakdown) and compares against `monthly_soft_cap_usd`, returning `{spent_usd, cap_usd, pct, warn, by_operation}`. `warn` flips true at `usage_warn_threshold` fraction of the cap.
-- **`GET /settings/usage`** (`UsageOut` schema) exposes `cap_status` to the frontend — powers the `/settings` usage panel and the `UsageWarningBanner`.
-- **Soft-warn only — never blocks.** Nothing in `usage.py` or the cap-status flow prevents a profile/recommend/archetype call from running; it is spend visibility, not spend enforcement.
-
-## Admin console (Phase 6)
-
-- **Admin gating:** Allowlist of admin email addresses via `ADMIN_EMAILS` env var (case-insensitive, comma-separated). Verified against the JWT `email` claim in hosted mode. In local single-user mode (no Supabase auth configured), the unauthenticated local user is treated as admin.
-- **Supabase user management:** `supabase_admin.py` wraps Supabase GoTrue invite/delete APIs using the `SUPABASE_SERVICE_ROLE_KEY` (server-only, never exposed to frontend). Only admin routes call this module.
-- **Invites table:** `invites` table lifecycle: invites are created directly in `active` status when an admin sends an invite. The schema also supports a `pending` status value for potential future use (e.g., before signup completion) but no code path currently sets it. An invite transitions to `revoked` when an admin revokes it. Schema in migration `0013_invites`. Columns: `id`, `email`, `status`, `supabase_user_id` (populated on successful Supabase invite), `invited_by` (admin email), `created_at`, `revoked_at` (NULL until revoked).
-- **Invite email redirect:** `supabase_admin.invite_user()` passes `redirect_to=<FRONTEND_URL>/auth/callback` on the GoTrue `/invite` call (when `FRONTEND_URL` is set). The invite link's session tokens arrive in the URL *hash*, which the Next.js middleware never sees — `frontend/app/auth/callback/page.tsx` is a public client-only route that lets the Supabase JS client consume the hash, establish the session, and prompt the invited user (who has no password yet) to set one before continuing into the app.
-- **Pre-provisioning at invite time:** `POST /admin/invite` accepts optional `display_name` / `anthropic_api_key` (beta launch: the admin supplies the Anthropic key). `create_invite()` writes both under the new Supabase user's id via `user_settings.set_display_name` / `set_anthropic_key` right after the Supabase invite call — no schema change needed, since `UserSettings.user_id` isn't a foreign key. `SetupWizard`'s name/API-key steps auto-skip for that user once they log in.
-- **Revoke lifecycle:** When revoking, the sequence is: (1) call `delete_user` to remove the Supabase account, (2) mark the `invites` row as `revoked` + set `revoked_at`, (3) call `purge.delete_account` to drop the user's books + profile + encrypted API key. The row is marked revoked before local data cleanup to ensure retries never re-call Supabase delete if a retry is needed.
-- **Routes:** `/admin/me` (get current admin + permissions), `/admin/invite` (create invite, optional pre-provisioned name/API key), `/admin/users` (list all invites + book count), `/admin/revoke` (delete user + purge), `/admin/usage` (Wave 4b — paginated `usage_events` across all users, filterable by `operation`, joined against `invites` for email display), `/admin/feedback` (Wave 4b — paginated `feedback` rows across all users, filterable by `category`, same email join).
-- **Wave 4b — usage/feedback browsing:** `usage.admin_list_usage()` and `feedback.admin_list_feedback()` query their tables with no per-user scoping (unlike the existing `cap_status`, which is month-to-date for one user), paginated via `limit`/`offset` (first pagination precedent in the codebase — every other list route returns a full dump). Both join `Invite.supabase_user_id -> Invite.email` to label rows by email instead of a bare `user_id`. Frontend: the single `/admin` page gained a `Users`/`Usage`/`Feedback` tab switcher; the two new tabs live in `frontend/components/admin/` (`UsageTab.tsx`, `FeedbackTab.tsx`, shared `Pagination.tsx`), following the existing `divide-y` row-list convention (no table component exists in this codebase).
+The old container ran `alembic upgrade head` before binding its web port. That made a deployment
+depend on the image containing the database's recorded revision and caused a real failure when a
+migration was applied from a branch the deployed image did not contain. This remains useful
+history, but it is not a Vercel runbook: current schema changes follow the manual drizzle workflow
+above.

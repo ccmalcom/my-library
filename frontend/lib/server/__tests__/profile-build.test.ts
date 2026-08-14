@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { and, asc, eq } from 'drizzle-orm';
 import { makeTestDb, loadSeed } from './helpers/pglite';
 import { fakeClaude } from './helpers/fakeClaude';
-import seedJson from './fixtures/parity/seed.json';
+import seedJson from './fixtures/seed.json';
 import type { Seed } from './helpers/pglite';
 import { tierFor, buildTiers } from '../profileTiers';
 import { pyJsonDumps } from '../serialize';
