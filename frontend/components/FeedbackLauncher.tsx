@@ -61,7 +61,7 @@ export default function FeedbackLauncher() {
         onClick={() => setModalOpen(true)}
         className={[
           'sm:hidden fixed bottom-20 right-4 z-50 rounded-lg px-4 py-2.5 text-sm font-semibold text-base',
-          'bg-accent text-white transition-all',
+          'bg-accent text-base transition-all',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base',
           'hover:opacity-90 active:scale-95',
         ].join(' ')}
