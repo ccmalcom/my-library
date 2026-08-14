@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getSupabaseClient } from '@/utils/supabase/client';
 import { inviteCallbackRedirect } from '@/lib/authRedirect';
-import { Button } from '@/components/ui';
+import { Field, Input, Button } from '@/components/ui';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -38,15 +38,6 @@ export default function LoginPage() {
     window.location.assign('/');
   }
 
-  const inputClass = [
-    'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
-    'placeholder-faint focus:border-accent focus:outline-none',
-    'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base',
-  ].join(' ');
-
-  const labelClass =
-    'mb-1 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-base px-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-2xl">
@@ -58,29 +49,32 @@ export default function LoginPage() {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className={labelClass}>Email</label>
-            <input
-              type="email"
-              required
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClass}
-              placeholder="you@example.com"
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputClass}
-              placeholder={'\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'}
-            />
-          </div>
+          <Field label="Email">
+            {(p) => (
+              <Input
+                {...p}
+                type="email"
+                required
+                autoFocus
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+            )}
+          </Field>
+          <Field label="Password">
+            {(p) => (
+              <Input
+                {...p}
+                type="password"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            )}
+          </Field>
 
           {error && <p className="text-sm text-danger">{error}</p>}
 
@@ -89,7 +83,7 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-4 text-center font-mono text-xs text-faint">
+        <p className="mt-4 text-center font-mono text-xs text-muted">
           Invite-only. Ask the admin for an account.
         </p>
       </div>
