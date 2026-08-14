@@ -1,6 +1,15 @@
 # ShelfSprite Frontend Design Remediation — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **Read the [Execution Guide](#execution-guide) once before starting.** It carries the handoff
+> batching, model/executor assignment, and Codex briefing rules, and it is the only section that
+> needs to be resident. Then read **one task at a time** — this document is ~2,000 lines and
+> holding it in context costs on every turn.
+>
+> **Also load:** `chase-workflow:controller-budget` (handoff cadence, ledger, idle cost) and, if
+> delegating any task to Codex, `chase-workflow:codex-dispatch` (brief construction, gate
+> selection, verification).
 
 **Goal:** Close the five P1 accessibility/correctness defects and the two P2 structural defects found in the 2026-08-14 design critique, then recommit the color strategy from Restrained to Committed so the user's taste identity carries real surface area.
 
@@ -24,6 +33,137 @@
 - **Out of scope, deliberately** (deferred by the user to a later identity pass): the 27 `uppercase tracking-widest` eyebrows outside form labels, the Bricolage Grotesque / Inter pairing, the `text-base` token rename, and the `.fade-in` page-entrance reflex. Do not opportunistically fix these.
 - **Ratings invariants are untouched.** `books.app_rating` / `goodreads_rating` stay `numeric(2,1)` with drizzle `mode: 'number'`; `0` remains the "clear this rating" sentinel. No task here changes rating logic.
 - Component tests opt into jsdom per file with a `/** @jest-environment jsdom */` docblock (see `components/ui/__tests__/StarRating.test.tsx`). Pure-logic tests need no docblock.
+
+---
+
+## Execution Guide
+
+Read this section **once**, at the start of a controller session. It is the shared context for
+every task; nothing below needs re-deriving per task, and no task requires reading its neighbours.
+
+### Controller discipline
+
+Governed by `chase-workflow:controller-budget`. A controller's cost is *context floor × turn
+count* — re-reading context is 63–72% of spend, and the controllers themselves were 89% of a
+measured plan execution against 11% for every dispatch combined. The rules that follow are the
+ones with leverage:
+
+1. **Hand off after each batch below. Do not start the next batch.** Batches are sized 2–3 tasks
+   (~20 turns each) on purpose. A controller handed all fourteen reads them as one group, runs
+   ~159 turns, and ends at roughly double the per-turn cost. Count *tasks*, not tokens — you
+   cannot read your own token count. If Chase reports a `/context` floor above ~120k, hand off
+   immediately regardless of batch position.
+2. **Keep the ledger current after every task, not batched at the end.** `subagent-driven-development`
+   maintains it under `.superpowers/sdd/`; that file is the state of record, and the handoff rule is
+   only safe because a fresh session can reconstruct everything from it. Each entry needs: what was
+   done, what was verified and how, what was deliberately deferred and why, and what the next task is.
+3. **Never park a loaded controller.** Between tasks, either continue or end the session. When the
+   prompt cache expires the whole context re-enters at 12.5× the read price — one measured
+   33-minute gap cost 288,771 units. A cold start is cheaper than a warm park. If Chase needs to
+   step away, hand off first.
+4. **Read one task's text per dispatch.** This document is ~1,850 lines; holding it resident costs
+   roughly 2k units *every turn*. Re-reading the single task you need costs ~2.5k *once*.
+5. **Do not optimize the dispatch.** Shaving subagent prompts is measured noise. Spend the
+   attention on the review instead.
+
+### Handoff batches
+
+| Batch | Tasks | Theme | Hand off after |
+|---|---|---|---|
+| **A** | 1, 2, 3 | Color math + token/ink correctness | ✅ |
+| **B** | 4, 5, 6 | `Field` hardening → auth → settings/admin | ✅ |
+| **C** | 7, 8 | Remaining controls + modal hardening | ✅ |
+| **D** | 9, 10 | Reject-modal clarity + `tasteAccent` rewrite | ✅ |
+| **E** | 11, 12 | Drenched hero + dashboard placement | ✅ |
+| **F** | 13, 14 | Nav reconciliation + whole-app verification | end of plan |
+
+### Model and executor assignment
+
+The controller may be Sonnet 5 — the controller is simply the main session, set with `/model`.
+Subagents **inherit the controller's model** unless the dispatch overrides it with the Agent tool's
+`model` parameter, so a Sonnet controller yields Sonnet implementers by default. (`subagent_type:
+"fork"` always runs the parent's model and ignores an override; subagent-driven-development uses
+fresh agents, not forks, so this does not apply here.)
+
+| Task | Implementer | Codex-suitable? | Why |
+|---|---|---|---|
+| 1 Contrast math | Sonnet | **Yes — ideal** | Pure function, full implementation given, no repo knowledge needed. |
+| 2 Token values | Sonnet | **Yes** | Exact hex values and full test given. |
+| 3 Button ink | Sonnet | **Yes** | Three-line change, full diff given. |
+| 4 `Field` hardening | Sonnet | **Yes** | Full test given; the edit is one class string in two files. |
+| 5 Auth surfaces | Sonnet | **Yes** | Complete replacement JSX given for both files. |
+| 6 Settings + admin | Sonnet | **Partly** | The 7 settings controls follow one shown pattern; the 2 admin `<select>`s need a label read from surrounding JSX. Split the dispatch, or run the selects yourself. |
+| 7 Remaining controls | **Opus** | **No** | Six steps require reading JSX to name a control accurately. No test catches a grammatical but wrong label. |
+| 8 Modal hardening | Sonnet | **Yes** | Full implementation and test given. |
+| 9 Reject modal | Sonnet | **Yes** | Full replacement JSX given. |
+| 10 `tasteAccent` rewrite | **Opus** | **No** | Breaking return-type change fanning out to call sites the brief cannot enumerate blind. |
+| 11 Drench the hero | **Opus** | **No** | Design judgment over which text tiers convert; the Tailwind opacity trap is easy to fumble. |
+| 12 Dashboard placement | **Opus** | **No** | Layout and rhythm judgment. |
+| 13 Nav route table | Sonnet | **Yes** | Full module given; the edit is mechanical. |
+| 14 Verification | Controller | **No** | Requires a browser and a judgment call about what "looks right" means. |
+
+### Dispatching to Codex
+
+Governed by `chase-workflow:codex-dispatch`. Codex runs on a separate quota, so work sent there
+does not consume Claude usage — it is additive capacity, not a cheaper Claude, and it is only worth
+it if the result comes back correct.
+
+- **Keep the forwarder file-blind.** Do not have the dispatch subagent explore the repo before
+  handing off — that is what keeps a dispatch at a tight 18k–56k units instead of scaling with repo
+  size. Everything Codex needs goes *in the brief*. The tasks marked Codex-suitable above already
+  contain complete code blocks for exactly this reason; paste the task body verbatim.
+- **⚠️ Name only the focused Jest command below — never `npm test` or the full gate list.** A slow
+  whole-repo suite in a Codex brief buys nothing (the controller re-runs the gates regardless) and
+  can eat the task via timeout.
+- **⚠️ This repo is the two-runner trap, live.** `vitest.config.ts` claims *only*
+  `lib/server/**/*.test.ts` and `app/api/**/*.test.ts`. **Every test this plan creates is
+  Jest-owned.** A brief that says `npm run test:server` for any task here matches **zero tests,
+  exits 0, and reads as a pass.** Always use the `npx jest <path>` form:
+
+| Task | Focused gate for the Codex brief |
+|---|---|
+| 1 | `npx jest lib/__tests__/contrast.test.ts` |
+| 2 | `npx jest lib/__tests__/tokens.test.ts` |
+| 3 | `npx jest components/ui/__tests__/Button.test.tsx` |
+| 4 | `npx jest components/ui/__tests__/Field.test.tsx` |
+| 5 | `npx jest app/__tests__/login.test.tsx` |
+| 6 | `npx jest app/__tests__/settings.test.tsx` |
+| 8 | `npx jest components/__tests__/Modal.test.tsx` |
+| 9 | `npx jest app/__tests__/rejectModal.test.tsx` |
+| 13 | `npx jest components/__tests__/nav.test.tsx` |
+
+- **State the DO-NOTs explicitly in every brief.** A fresh Codex agent does not know that
+  `SetupWizard.tsx:347`'s label is deliberately correct, that `docs/superpowers/` must not be
+  rewritten, or that the eyebrow styling elsewhere is deliberately left alone. Without being told,
+  it will helpfully "harmonize" them. At minimum, paste the Global Constraints section.
+- **Say when a divergence should be documented rather than fixed.** "Keep the code, write the
+  comment" is a legitimate outcome — e.g. the `text-base` color/font-size collision is knowingly
+  left in place. If the brief does not say so, Codex will fix it and blow the scope.
+- **🚫 Hard rule: never name a `.env` file or ask Codex to inspect secrets.** Codex runs outside
+  Claude Code's hook system, so the `PreToolUse` guard that blocks `.env` reads locally protects
+  nothing on that side. This matters for Task 14, which starts a dev server — run that yourself.
+- **Prefer a fresh dispatch over a resume whenever the round requires an edit.** Write access does
+  not reliably survive a resume; the tell is a *permissions* block rather than a code problem, with
+  `git status` showing nothing changed. Resume is fine for questions and re-running gates.
+- **Verify what comes back — honest reporting is not verification.** Codex reports INCOMPLETE
+  rather than faking green, which is correct behavior, but a claim about the code is a factual
+  claim. Check it, and give a prior task's stated blocker the same scrutiny as a new one; blockers
+  arrive with unearned authority.
+
+### Mutation-test the load-bearing claims
+
+Three constraints in this plan are load-bearing. For each, break it deliberately and confirm
+something goes red — if nothing does, the constraint is documentation, not engineering. Budget:
+about three minutes each.
+
+| After task | Break this | Expect |
+|---|---|---|
+| 2 | Set `--faint` back to `#6e665c` in `globals.css` | `lib/__tests__/tokens.test.ts` fails |
+| 10 | Return a fixed `hsl(240,70%,58%)` from `tasteAccent` | `lib/__tests__/tasteAccent.test.ts` fails on the fuzz case |
+| 11 | Change `ink` in `tailwind.config.ts` to `'var(--user-ink)'` | `text-user-ink/70` emits no CSS — confirm by grepping the built stylesheet, since **no unit test catches this** |
+
+That third one has no automated guard by design: it is a Tailwind code-generation behavior, not
+application logic. It is the single most likely way this plan ships something visibly broken.
 
 ---
 
@@ -94,7 +234,7 @@ Sample panels: `IPBH #972529` · `ICDH #0a6802` · `RCDH #8a3a01` · `RCDM #0258
 
 ---
 
-## Task 1: Contrast math module
+## Task 1 · Batch A: Contrast math module
 
 **Files:**
 - Create: `frontend/lib/contrast.ts`
@@ -288,7 +428,7 @@ git commit -m "add dependency-free contrast and oklch color math"
 
 ---
 
-## Task 2: Token contrast fixes, enforced by test
+## Task 2 · Batch A: Token contrast fixes, enforced by test
 
 **Files:**
 - Modify: `frontend/app/globals.css:5-33`
@@ -403,6 +543,20 @@ Expected: PASS.
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 Expected: all pass.
 
+- [ ] **Step 5b: Mutation-check the guard**
+
+The token test is only worth having if it actually fails when a token regresses. Prove it:
+
+```bash
+cd frontend
+sed -i 's/--faint: #948b81/--faint: #6e665c/' app/globals.css
+npx jest lib/__tests__/tokens.test.ts   # MUST fail on the 4.5 assertion
+git checkout app/globals.css            # revert the deliberate break
+npx jest lib/__tests__/tokens.test.ts   # green again
+```
+
+If the first run passes, the test is not reading the stylesheet — fix the test before continuing.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -412,7 +566,7 @@ git commit -m "raise --faint and --danger to AA body contrast, add --border-stro
 
 ---
 
-## Task 3: Button and interactive-fill ink
+## Task 3 · Batch A: Button and interactive-fill ink
 
 **Files:**
 - Modify: `frontend/components/ui/Button.tsx:14-19`
@@ -507,9 +661,23 @@ git add frontend/components/ui/Button.tsx frontend/components/ui/__tests__/Butto
 git commit -m "use dark ink on accent and danger fills instead of white"
 ```
 
+> ## 🛑 END OF BATCH A — HAND OFF NOW
+>
+> Do **not** start Task 4. Per `chase-workflow:controller-budget`, a controller that runs
+> straight through ends at roughly double the per-turn cost, because cost is context floor ×
+> turn count and the floor only grows.
+>
+> Before ending the session:
+> 1. Update `.superpowers/sdd/` with what was done, what was verified and how, what was deferred
+>    and why, and that **Task 4 is next**.
+> 2. Confirm the working tree is clean and this batch's commits exist (`git log --oneline -3`).
+> 3. End the session. Do not idle with context loaded — an expired cache re-enters at 12.5× the
+>    read price.
+
+
 ---
 
-## Task 4: Make `Field` the path of least resistance
+## Task 4 · Batch B: Make `Field` the path of least resistance
 
 **Files:**
 - Modify: `frontend/components/ui/Field.tsx:24`
@@ -615,7 +783,7 @@ git commit -m "strengthen control borders and cover Field's label association wi
 
 ---
 
-## Task 5: Adopt `Field` — authentication surfaces
+## Task 5 · Batch B: Adopt `Field` — authentication surfaces
 
 **Files:**
 - Modify: `frontend/app/login/page.tsx:41-90`
@@ -719,7 +887,7 @@ git commit -m "label the login and password-reset fields via Field"
 
 ---
 
-## Task 6: Adopt `Field` — settings and admin
+## Task 6 · Batch B: Adopt `Field` — settings and admin
 
 **Files:**
 - Modify: `frontend/app/(main)/settings/page.tsx` — 7 controls at lines 279/282, 304/305, 317/318, 352/353, 365/366, 378/379, 431/432
@@ -820,9 +988,23 @@ git add "frontend/app/(main)/settings/page.tsx" "frontend/app/(main)/admin/page.
 git commit -m "label every settings and admin control, including the three password fields"
 ```
 
+> ## 🛑 END OF BATCH B — HAND OFF NOW
+>
+> Do **not** start Task 7. Per `chase-workflow:controller-budget`, a controller that runs
+> straight through ends at roughly double the per-turn cost, because cost is context floor ×
+> turn count and the floor only grows.
+>
+> Before ending the session:
+> 1. Update `.superpowers/sdd/` with what was done, what was verified and how, what was deferred
+>    and why, and that **Task 7 is next**.
+> 2. Confirm the working tree is clean and this batch's commits exist (`git log --oneline -3`).
+> 3. End the session. Do not idle with context loaded — an expired cache re-enters at 12.5× the
+>    read price.
+
+
 ---
 
-## Task 7: Adopt `Field` — modals and remaining controls
+## Task 7 · Batch C: Adopt `Field` — modals and remaining controls
 
 **Files:**
 - Modify: `frontend/components/BookEditModal.tsx:183-210`
@@ -943,7 +1125,7 @@ git commit -m "label the remaining modal and toolbar controls"
 
 ---
 
-## Task 8: Modal — background isolation, scroll lock, and dirty guard
+## Task 8 · Batch C: Modal — background isolation, scroll lock, and dirty guard
 
 **Files:**
 - Modify: `frontend/components/ui/Modal.tsx`
@@ -1081,9 +1263,23 @@ git add frontend/components/ui/Modal.tsx frontend/components/BookEditModal.tsx f
 git commit -m "lock body scroll and guard backdrop close against unsaved review edits"
 ```
 
+> ## 🛑 END OF BATCH C — HAND OFF NOW
+>
+> Do **not** start Task 9. Per `chase-workflow:controller-budget`, a controller that runs
+> straight through ends at roughly double the per-turn cost, because cost is context floor ×
+> turn count and the floor only grows.
+>
+> Before ending the session:
+> 1. Update `.superpowers/sdd/` with what was done, what was verified and how, what was deferred
+>    and why, and that **Task 9 is next**.
+> 2. Confirm the working tree is clean and this batch's commits exist (`git log --oneline -2`).
+> 3. End the session. Do not idle with context loaded — an expired cache re-enters at 12.5× the
+>    read price.
+
+
 ---
 
-## Task 9: Disambiguate the swipe reject modal
+## Task 9 · Batch D: Disambiguate the swipe reject modal
 
 **Files:**
 - Modify: `frontend/app/(main)/swipe/page.tsx:313-356`
@@ -1164,7 +1360,7 @@ git commit -m "make the reject modal's cancel actually cancel"
 
 ---
 
-## Task 10: Rebuild `tasteAccent` on the verified ramp
+## Task 10 · Batch D: Rebuild `tasteAccent` on the verified ramp
 
 **Files:**
 - Modify: `frontend/lib/tasteAccent.ts` (full rewrite)
@@ -1388,6 +1584,21 @@ Because `--user-ink` is now a triplet rather than a hex, `TasteAccent.ink` must 
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
+- [ ] **Step 7b: Mutation-check the contrast guarantee**
+
+The whole point of this task is that lightness is *solved*, not guessed. Prove the test would
+catch a regression to the old behavior — temporarily replace the body of `build()` with the old
+HSL-pinned shape:
+
+```ts
+function build(hue: number): TasteAccent {
+  return { surface: fitToSrgb(0.45, 0.15, hue), ink: TEXT, vivid: '#4949df' }; // hsl(240,70%,58%)
+}
+```
+
+Run `npx jest lib/__tests__/tasteAccent.test.ts` — it **must** fail the "readable as small text"
+and fuzz cases (that color is 2.69:1 on `--surface`). Revert the mutation and confirm green.
+
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -1395,9 +1606,23 @@ git add frontend/lib/tasteAccent.ts frontend/lib/__tests__/tasteAccent.test.ts f
 git commit -m "solve taste accents for contrast instead of pinning hsl lightness"
 ```
 
+> ## 🛑 END OF BATCH D — HAND OFF NOW
+>
+> Do **not** start Task 11. Per `chase-workflow:controller-budget`, a controller that runs
+> straight through ends at roughly double the per-turn cost, because cost is context floor ×
+> turn count and the floor only grows.
+>
+> Before ending the session:
+> 1. Update `.superpowers/sdd/` with what was done, what was verified and how, what was deferred
+>    and why, and that **Task 11 is next**.
+> 2. Confirm the working tree is clean and this batch's commits exist (`git log --oneline -2`).
+> 3. End the session. Do not idle with context loaded — an expired cache re-enters at 12.5× the
+>    read price.
+
+
 ---
 
-## Task 11: Drench the taste hero (the Committed surface)
+## Task 11 · Batch E: Drench the taste hero (the Committed surface)
 
 **Files:**
 - Modify: `frontend/components/TasteHero.tsx:308-431`
@@ -1539,6 +1764,25 @@ Then lock it in so it cannot regress — add to `frontend/lib/__tests__/tasteAcc
 
 Run: `cd frontend && npm test && npm run type-check && npm run lint && npm run format:check && npm run build`
 
+- [ ] **Step 6b: Prove the opacity utilities actually emit CSS**
+
+**This is the single most likely way this plan ships something visibly broken, and no unit test
+catches it** — it is Tailwind code-generation behavior, not application logic. Verify against the
+real build output:
+
+```bash
+cd frontend && npm run build
+grep -ro "text-user-ink\\\\/70" .next/static/css/ | head -1
+```
+
+Expected: a match. If the grep finds nothing, `--user-ink` is being declared as a hex instead of
+the `rgb(var(--user-ink-rgb) / <alpha-value>)` triplet form, and every `/opacity` class in the
+drenched panel is silently absent — the panel will render with unstyled text. Re-read Task 10
+Step 6 and fix the Tailwind config before committing.
+
+Confirm the failure mode is real by temporarily setting `ink: 'var(--user-ink)'` in
+`tailwind.config.ts`, rebuilding, and watching the grep go empty. Revert it.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1548,7 +1792,7 @@ git commit -m "drench the taste hero in the user's archetype color"
 
 ---
 
-## Task 12: Put the hero on the dashboard and vary the rhythm
+## Task 12 · Batch E: Put the hero on the dashboard and vary the rhythm
 
 **Files:**
 - Modify: `frontend/app/(main)/page.tsx:156-231`
@@ -1646,9 +1890,23 @@ git add "frontend/app/(main)/page.tsx" frontend/app/__tests__/dashboard.test.tsx
 git commit -m "surface the taste hero on the dashboard and break the uniform card rhythm"
 ```
 
+> ## 🛑 END OF BATCH E — HAND OFF NOW
+>
+> Do **not** start Task 13. Per `chase-workflow:controller-budget`, a controller that runs
+> straight through ends at roughly double the per-turn cost, because cost is context floor ×
+> turn count and the floor only grows.
+>
+> Before ending the session:
+> 1. Update `.superpowers/sdd/` with what was done, what was verified and how, what was deferred
+>    and why, and that **Task 13 is next**.
+> 2. Confirm the working tree is clean and this batch's commits exist (`git log --oneline -2`).
+> 3. End the session. Do not idle with context loaded — an expired cache re-enters at 12.5× the
+>    read price.
+
+
 ---
 
-## Task 13: One source of truth for navigation
+## Task 13 · Batch F: One source of truth for navigation
 
 **Files:**
 - Create: `frontend/lib/nav.ts`
@@ -1760,7 +2018,7 @@ git commit -m "drive both navs from one route table so discover is reachable on 
 
 ---
 
-## Task 14: Whole-app verification
+## Task 14 · Batch F: Whole-app verification
 
 **Files:** none modified unless a check fails.
 
