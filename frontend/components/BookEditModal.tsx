@@ -115,6 +115,7 @@ export default function BookEditModal({
     <Modal
       labelId="book-edit-title"
       onClose={onClose}
+      confirmClose={() => !dirty || window.confirm('Discard your unsaved changes to this book?')}
       className="fade-in flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-2xl"
     >
       {/* Header */}
