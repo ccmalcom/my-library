@@ -13,7 +13,8 @@ import {
   PROFILE_STATUS_KEY,
   ARCHETYPE_KEY,
 } from '@/lib/api';
-import { Card, Button, Badge, useToast } from '@/components/ui';
+import { Card, Button, useToast } from '@/components/ui';
+import { TasteHero } from '@/components/TasteHero';
 import { tasteAccent } from '@/lib/tasteAccent';
 
 // ── Stats strip ───────────────────────────────────────────────────────────────
@@ -155,63 +156,44 @@ export default function HomePage() {
 
   return (
     <div
-      className="fade-in space-y-6 py-6"
+      className="fade-in py-6"
       style={{
         ['--user-accent' as string]: accent.vivid,
         ['--user-surface' as string]: accent.surface,
         ['--user-ink-rgb' as string]: '245 240 232',
       }}
     >
-      {/* 1. Greeting + archetype callout */}
-      <div>
-        <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-text leading-tight">
-          {displayName ? (
-            <>
-              Hey, <span className="text-user">{displayName}.</span>
-            </>
-          ) : (
-            'Hey there.'
-          )}
-        </h1>
-        {archetype ? (
-          <Link href="/profile" className="mt-3 inline-flex items-center gap-2 group">
-            <Badge
-              variant="mono"
-              className="text-sm px-2 py-0.5"
-              // style={{ color: accent.vivid, borderColor: accent.vivid }}
-            >
-              {archetype.code}
-            </Badge>
-            <span className="text-sm text-user opacity-60 group-hover:opacity-100 transition-opacity">
-              {archetype.name}
-            </span>
-          </Link>
+      {/* 1. Greeting */}
+      <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-text leading-tight">
+        {displayName ? (
+          <>
+            Hey, <span className="text-user">{displayName}.</span>
+          </>
         ) : (
-          !noProfile && (
-            <Link
-              href="/profile"
-              className="mt-3 inline-block text-sm text-user opacity-60 hover:opacity-100 transition-opacity"
-            >
-              Discover your reader type &rarr;
-            </Link>
-          )
+          'Hey there.'
         )}
+      </h1>
+
+      {/* 2. The hero: the user's taste identity, not a 14px badge at 60% opacity. */}
+      <div className="mt-6">
+        <TasteHero />
       </div>
 
-      {/* 2. Stats strip */}
-      {statsLoading ? (
-        <StatsStripSkeleton />
-      ) : statsError ? (
-        <p className="text-sm text-danger">Your stats didn&apos;t load. Refresh to retry.</p>
-      ) : stats ? (
-        <StatsStrip stats={stats} />
-      ) : null}
+      {/* 3. The quiet utility tier -- tighter rhythm so the hero keeps the room. */}
+      <div className="mt-10 space-y-4">
+        {statsLoading ? (
+          <StatsStripSkeleton />
+        ) : statsError ? (
+          <p className="text-sm text-danger">Your stats didn&apos;t load. Refresh to retry.</p>
+        ) : stats ? (
+          <StatsStrip stats={stats} />
+        ) : null}
 
-      {/* 3. Ratings breakdown */}
-      {stats && <RatingsBreakdown stats={stats} />}
+        {stats && <RatingsBreakdown stats={stats} />}
+      </div>
 
       {/* 4. Run recommendations CTA */}
-      <Card>
+      <Card className="mt-10">
         <div className="text-center">
           <h2 className="mb-1 font-display text-lg font-semibold text-text">
             Ready for new picks?
