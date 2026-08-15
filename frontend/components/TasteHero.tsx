@@ -263,7 +263,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
           href="/profile"
           className={[
             'mt-6 inline-flex items-center gap-2 rounded-lg bg-accent text-sm font-semibold',
-            'text-base hover:bg-accent-hover active:scale-95 transition-all',
+            'text-[color:var(--bg)] hover:bg-accent-hover active:scale-95 transition-all',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
             'focus-visible:ring-offset-2 focus-visible:ring-offset-base px-6 py-3',
           ].join(' ')}

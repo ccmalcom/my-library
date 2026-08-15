@@ -9,7 +9,7 @@ describe('Button ink', () => {
     render(<Button variant="primary">Find my next books</Button>);
     const cls = screen.getByRole('button').className;
     expect(cls).toContain('bg-accent');
-    expect(cls).toContain('text-base');
+    expect(cls).toContain('text-[color:var(--bg)]');
     expect(cls).not.toContain('text-white');
   });
 
