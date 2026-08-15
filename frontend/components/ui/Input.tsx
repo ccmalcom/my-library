@@ -4,7 +4,7 @@ import { forwardRef } from 'react';
 type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
 const baseClasses = [
-  'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
+  'w-full rounded-lg border border-border-strong bg-base px-3 py-2 text-sm text-text',
   'placeholder:text-faint',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
   'focus-visible:ring-offset-2 focus-visible:ring-offset-base',

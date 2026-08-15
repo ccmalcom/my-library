@@ -8,11 +8,12 @@ const FOCUSABLE =
 interface ModalProps {
   labelId: string;
   onClose: () => void;
+  confirmClose?: () => boolean;
   children: ReactNode;
   className?: string;
 }
 
-export function Modal({ labelId, onClose, children, className }: ModalProps) {
+export function Modal({ labelId, onClose, children, className, confirmClose }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const prevFocusRef = useRef<HTMLElement | null>(null);
 
@@ -25,6 +26,14 @@ export function Modal({ labelId, onClose, children, className }: ModalProps) {
     }
     return () => {
       prevFocusRef.current?.focus();
+    };
+  }, []);
+
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
     };
   }, []);
 
@@ -55,10 +64,18 @@ export function Modal({ labelId, onClose, children, className }: ModalProps) {
     }
   }
 
+  function handleBackdropClick() {
+    // Escape and explicit Cancel always close. Only the backdrop — the one that
+    // fires on a stray click — is guarded, because it is the path that silently
+    // discards an unsaved review.
+    if (confirmClose && !confirmClose()) return;
+    onClose();
+  }
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
+      onClick={handleBackdropClick}
     >
       <div
         ref={dialogRef}

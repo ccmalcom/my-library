@@ -6,15 +6,7 @@ import { LogOut } from 'lucide-react';
 import useSWR from 'swr';
 import { authEnabled, getSupabaseClient } from '@/utils/supabase/client';
 import { adminMe, ADMIN_ME_KEY } from '@/lib/api';
-
-const links = [
-  { href: '/', label: 'Home' },
-  { href: '/swipe', label: 'Swipe' },
-  { href: '/discover', label: 'Discover' },
-  { href: '/library', label: 'My library' },
-  { href: '/profile', label: 'My profile' },
-  { href: '/settings', label: 'Settings' },
-];
+import { NAV_ROUTES } from '@/lib/nav';
 
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base';
@@ -37,7 +29,7 @@ export default function NavBar() {
         </span>
         {/* Desktop nav links */}
         <div className="hidden sm:flex gap-1">
-          {links.map(({ href, label }) => {
+          {NAV_ROUTES.map(({ href, label }) => {
             const active = pathname === href;
             return (
               <Link

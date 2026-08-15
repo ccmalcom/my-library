@@ -322,7 +322,7 @@ export default function SwipePage() {
           <p id="reject-reason-title" className="mb-1 text-sm font-semibold text-text">
             What missed?
           </p>
-          <p className="mb-4 text-xs text-faint">
+          <p className="mb-4 text-xs text-muted">
             Optional. Every reason makes the next batch smarter.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -345,11 +345,18 @@ export default function SwipePage() {
             })}
           </div>
           <div className="mt-5 flex gap-3 justify-end">
-            <Button variant="ghost" size="sm" onClick={submitReject}>
-              Skip
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setPendingRejectId(null);
+                setSelectedReasons(new Set());
+              }}
+            >
+              Cancel
             </Button>
             <Button size="sm" onClick={submitReject}>
-              {selectedReasons.size > 0 ? 'Submit' : 'Confirm'}
+              {selectedReasons.size > 0 ? 'Skip with reason' : 'Skip this book'}
             </Button>
           </div>
         </Modal>

@@ -12,7 +12,7 @@ import {
   USER_PROFILE_KEY,
   type Book,
 } from '@/lib/api';
-import { Button, Spinner, StarRating } from '@/components/ui';
+import { Button, Field, Input, Spinner, StarRating } from '@/components/ui';
 import AddBookModal from '@/components/AddBookModal';
 import RevealSequence from '@/components/reveal/RevealSequence';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
@@ -40,17 +40,6 @@ const MANUAL_STEPS: { key: Step; label: string }[] = [
   { key: 'profile', label: 'Profile' },
   { key: 'done', label: 'Done' },
 ];
-
-// ── Shared styles ──────────────────────────────────────────────────────────────
-
-const inputClass = [
-  'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
-  'placeholder-faint focus:border-accent focus:outline-none',
-  'focus-visible:ring-1 focus-visible:ring-accent',
-].join(' ');
-
-const labelClass =
-  'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
 
 // ── Step indicator ─────────────────────────────────────────────────────────────
 
@@ -153,19 +142,21 @@ function NameStep({ onDone }: { onDone: () => void }) {
 
       <form onSubmit={handleSave} className="space-y-4">
         <div>
-          <label className={labelClass}>Your name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setError(null);
-            }}
-            placeholder="e.g. Alex"
-            autoFocus
-            className={inputClass}
-          />
-          {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+          <Field label="Your name" error={error ?? undefined}>
+            {(p) => (
+              <Input
+                {...p}
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError(null);
+                }}
+                placeholder="e.g. Alex"
+                autoFocus
+              />
+            )}
+          </Field>
         </div>
         <Button
           type="submit"
@@ -254,21 +245,25 @@ function ApiKeyStep({ onDone }: { onDone: () => void }) {
 
       <form onSubmit={handleSave} className="space-y-4">
         <div>
-          <label className={labelClass}>API key</label>
-          <input
-            type="password"
-            value={key}
-            onChange={(e) => {
-              setKey(e.target.value);
-              setSaved(false);
-            }}
-            placeholder="sk-ant-..."
-            autoComplete="off"
-            className={[inputClass, 'font-mono'].join(' ')}
-          />
-          <p className="mt-1 text-xs text-faint">
-            Encrypted on the server, never shown again. Manage it in settings.
-          </p>
+          <Field
+            label="API key"
+            hint="Encrypted on the server, never shown again. Manage it in settings."
+          >
+            {(p) => (
+              <Input
+                {...p}
+                type="password"
+                value={key}
+                onChange={(e) => {
+                  setKey(e.target.value);
+                  setSaved(false);
+                }}
+                placeholder="sk-ant-..."
+                autoComplete="off"
+                className="font-mono"
+              />
+            )}
+          </Field>
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}
         {saved && <p className="text-sm text-success">Key saved. Moving on...</p>}

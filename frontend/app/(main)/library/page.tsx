@@ -64,6 +64,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
     <input
       type="search"
       placeholder="Search title or author\u2026"
+      aria-label="Search your library by title or author"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={[
@@ -86,6 +87,7 @@ function SortSelect<T extends string>({
 }) {
   return (
     <select
+      aria-label="Sort books"
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       className={[

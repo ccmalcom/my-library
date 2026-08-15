@@ -85,6 +85,7 @@ function VerdictControls({
     return (
       <div className="space-y-2">
         <textarea
+          aria-label="Rewrite this trait in your own words"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={2}

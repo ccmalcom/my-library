@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
+import Link from 'next/link';
+import { Settings } from 'lucide-react';
 import {
   api,
   setTraitVerdict,
@@ -120,6 +122,7 @@ function TraitCard({ trait, bookMap }: { trait: Trait; bookMap: Map<number, stri
         <div className="flex-1 min-w-0">
           {editing ? (
             <textarea
+              aria-label="Edit trait claim"
               ref={textareaRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -541,6 +544,15 @@ export default function ProfilePage() {
   return (
     <div className="fade-in space-y-8 py-6">
       <div className="space-y-3">
+        <div className="flex justify-end sm:hidden">
+          <Link
+            href="/settings"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-mono text-xs text-faint transition-colors hover:text-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          >
+            <Settings size={14} aria-hidden="true" />
+            Settings
+          </Link>
+        </div>
         <TasteHero compact />
         {traits.length > 0 && (
           <div className="text-center">

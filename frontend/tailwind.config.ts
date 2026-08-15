@@ -14,6 +14,7 @@ const config: Config = {
         surface: 'var(--surface)',
         elevated: 'var(--elevated)',
         border: 'var(--border)',
+        'border-strong': 'var(--border-strong)',
         hairline: 'var(--hairline)',
         text: 'var(--text)',
         muted: 'var(--muted)',
@@ -26,7 +27,11 @@ const config: Config = {
         success: { DEFAULT: 'var(--success)', quiet: 'var(--success-quiet)' },
         danger: { DEFAULT: 'var(--danger)', quiet: 'var(--danger-quiet)' },
         warning: { DEFAULT: 'var(--warning)', quiet: 'var(--warning-quiet)' },
-        user: 'var(--user-accent)',
+        user: {
+          DEFAULT: 'var(--user-accent)',
+          surface: 'var(--user-surface)',
+          ink: 'rgb(var(--user-ink-rgb) / <alpha-value>)',
+        },
       },
       fontFamily: {
         display: ['var(--font-display)', 'system-ui', 'sans-serif'],

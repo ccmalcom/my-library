@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getSupabaseClient } from '@/utils/supabase/client';
 import { parseAuthCallbackHash } from '@/lib/authCallback';
-import { Button, Spinner } from '@/components/ui';
+import { Button, Field, Input, Spinner } from '@/components/ui';
 
 // Landing spot for Supabase invite (and password-recovery) links. Supabase puts the session
 // tokens in the URL *hash* fragment, which never reaches the server — so this must be a plain
@@ -109,15 +109,6 @@ export default function AuthCallbackPage() {
     window.location.assign('/');
   }
 
-  const inputClass = [
-    'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
-    'placeholder-faint focus:border-accent focus:outline-none',
-    'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base',
-  ].join(' ');
-
-  const labelClass =
-    'mb-1 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-base px-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-2xl">
@@ -146,35 +137,37 @@ export default function AuthCallbackPage() {
         {phase === 'set-password' && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <p className="text-sm text-muted">Set a password to finish creating your account.</p>
-            <div>
-              <label className={labelClass}>Password</label>
-              <input
-                type="password"
-                required
-                autoFocus
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setErrorMsg(null);
-                }}
-                className={inputClass}
-                placeholder={'\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Confirm password</label>
-              <input
-                type="password"
-                required
-                value={confirm}
-                onChange={(e) => {
-                  setConfirm(e.target.value);
-                  setErrorMsg(null);
-                }}
-                className={inputClass}
-                placeholder={'••••••••'}
-              />
-            </div>
+            <Field label="Password">
+              {(p) => (
+                <Input
+                  {...p}
+                  type="password"
+                  required
+                  autoFocus
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setErrorMsg(null);
+                  }}
+                />
+              )}
+            </Field>
+            <Field label="Confirm password">
+              {(p) => (
+                <Input
+                  {...p}
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  value={confirm}
+                  onChange={(e) => {
+                    setConfirm(e.target.value);
+                    setErrorMsg(null);
+                  }}
+                />
+              )}
+            </Field>
 
             {errorMsg && <p className="text-sm text-danger">{errorMsg}</p>}
 

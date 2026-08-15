@@ -24,7 +24,9 @@ export function ArchetypeShareModal({ archetype, onClose }: Props) {
   const titleId = 'archetype-share-title';
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const accentColor = tasteAccent(archetype.code);
+  // Small accent text plus a low-opacity wash on a dark card: the vivid role,
+  // not the drenched panel surface.
+  const accentColor = tasteAccent(archetype.code).vivid;
 
   // Axis label pairs for the small row below the code
   const axisPairs = AXIS_LABELS.map((a, i) => {

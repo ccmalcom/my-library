@@ -11,7 +11,8 @@ import {
   PROFILE_STATUS_KEY,
   ARCHETYPE_KEY,
 } from '@/lib/api';
-import { Badge, Button } from '@/components/ui';
+import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui';
 import { useToast } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { tasteAccent } from '@/lib/tasteAccent';
@@ -143,7 +144,12 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   const topSubject = subjects?.overall?.[0]?.subject ?? null;
   const topTrait = traits?.[0] ?? null;
   const seed = archetype ? archetype.code : (topSubject ?? topTrait?.claim ?? null);
-  const accentHsl = tasteAccent(seed);
+  const accent = tasteAccent(seed);
+  const accentVars = {
+    ['--user-accent' as string]: accent.vivid,
+    ['--user-surface' as string]: accent.surface,
+    ['--user-ink-rgb' as string]: '245 240 232',
+  };
 
   const noProfile =
     !isLoading &&
@@ -257,7 +263,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
           href="/profile"
           className={[
             'mt-6 inline-flex items-center gap-2 rounded-lg bg-accent text-sm font-semibold',
-            'text-white hover:bg-accent-hover active:scale-95 transition-all',
+            'text-[color:var(--bg)] hover:bg-accent-hover active:scale-95 transition-all',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
             'focus-visible:ring-offset-2 focus-visible:ring-offset-base px-6 py-3',
           ].join(' ')}
@@ -272,7 +278,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   if (!archetype) {
     return (
       <div
-        style={{ ['--user-accent' as string]: accentHsl }}
+        style={accentVars}
         className={['rounded-2xl border border-border bg-surface text-center', padClass].join(' ')}
       >
         {explainerOpen && <ArchetypeExplainerModal onClose={() => setExplainerOpen(false)} />}
@@ -305,42 +311,43 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   }
 
   // ── Archetype display ───────────────────────────────────────────────────────
+  // The drenched panel: the field itself carries the user's archetype color, so
+  // nothing inside it may use the neutral text tokens -- --muted lands at
+  // 2.67-3.08:1 on these surfaces. Everything here is panel ink at an opacity.
   return (
     <div
-      style={{ ['--user-accent' as string]: accentHsl }}
-      className={['rounded-2xl border border-border bg-surface', padClass].join(' ')}
+      style={accentVars}
+      className={['rounded-2xl bg-user-surface text-user-ink', padClass].join(' ')}
     >
       <div className="flex items-center gap-3 mb-3">
-        <p className="font-mono text-xs uppercase tracking-widest text-muted">Reader type</p>
+        <p className="font-mono text-xs uppercase tracking-widest text-user-ink/85">Reader type</p>
         <button
           type="button"
           onClick={() => setExplainerOpen(true)}
-          className="font-mono text-xs text-faint hover:text-muted transition-colors"
+          className="font-mono text-xs text-user-ink/85 hover:text-user-ink transition-colors"
         >
           What is this?
         </button>
       </div>
       <div className="flex items-center gap-3 mb-1">
-        <Badge variant="mono" className="text-base px-3 py-1">
+        <span className="inline-flex items-center rounded-full bg-user-ink/10 px-3 py-1 font-mono text-[1rem] font-medium text-user-ink">
           {archetype.code}
-        </Badge>
+        </span>
       </div>
-      <p className="font-mono text-xs text-faint mb-3">
+      <p className="font-mono text-xs text-user-ink/85 mb-3">
         {AXIS_META.map((a, i) => {
           const axisData = archetype[a.key];
           const label = axisData.score < 0 ? a.left : a.right;
           return (
             <span key={a.key}>
-              <span className="text-user">{axisData.letter}</span> {label}
+              <span className="text-user-ink">{axisData.letter}</span> {label}
               {i < 3 ? ' · ' : ''}
             </span>
           );
         })}
       </p>
-      <h1 className={headingClass}>
-        <span className="text-user">{archetype.name}</span>
-      </h1>
-      <p className="text-sm text-muted italic mt-2">{archetype.tagline}</p>
+      <h1 className={[headingClass, 'text-user-ink'].join(' ')}>{archetype.name}</h1>
+      <p className="text-sm text-user-ink/85 italic mt-2">{archetype.tagline}</p>
 
       {/* Trait chips as supporting detail -- click to expand truncated claims */}
       {chipTraits.length > 0 && (
@@ -357,7 +364,9 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
                 onClick={() => truncated && setExpandedChip(isExpanded ? null : t.id)}
                 className={truncated ? 'cursor-pointer' : 'cursor-default'}
               >
-                <Badge variant="mono">{chipLabel}</Badge>
+                <span className="inline-flex items-center rounded-full bg-user-ink/10 px-2.5 py-0.5 font-mono text-xs font-medium text-user-ink">
+                  {chipLabel}
+                </span>
               </button>
             );
           })}
@@ -373,20 +382,22 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
             return (
               <div key={a.key}>
                 <div className="flex items-center gap-3">
-                  <span className="w-20 shrink-0 text-xs text-faint capitalize">{a.key}</span>
-                  <div className="relative flex-1 h-2 rounded-full bg-elevated overflow-hidden">
+                  <span className="w-20 shrink-0 text-xs text-user-ink/85 capitalize">{a.key}</span>
+                  <div className="relative flex-1 h-2 rounded-full bg-user-ink/20 overflow-hidden">
                     <div
-                      className="absolute h-2 rounded-full bg-user"
+                      className="absolute h-2 rounded-full bg-user-ink"
                       style={{ left: a.barLeft, width: a.barWidth }}
                     />
                   </div>
                   <div className="w-32 shrink-0 flex items-center gap-1.5">
-                    <span className="font-mono text-xs font-semibold text-user">{a.letter}</span>
-                    <span className="text-xs text-text flex-1 min-w-0">{winningLabel}</span>
+                    <span className="font-mono text-xs font-semibold text-user-ink">
+                      {a.letter}
+                    </span>
+                    <span className="text-xs text-user-ink flex-1 min-w-0">{winningLabel}</span>
                     {a.rationale && (
                       <button
                         type="button"
-                        className="shrink-0 text-xs text-faint hover:text-muted transition-colors"
+                        className="shrink-0 text-xs text-user-ink/85 hover:text-user-ink transition-colors"
                         onClick={() => setExpandedAxis(isExpanded ? null : a.key)}
                         aria-expanded={isExpanded}
                       >
@@ -396,7 +407,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
                   </div>
                 </div>
                 {isExpanded && a.rationale && (
-                  <p className="mt-1 pl-24 text-xs text-muted">{a.rationale}</p>
+                  <p className="mt-1 pl-24 text-xs text-user-ink/85">{a.rationale}</p>
                 )}
               </div>
             );
@@ -408,16 +419,30 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       <div className="flex justify-between items-center mt-5">
         <div>
           {archetype.is_stale && (
-            <span className="text-xs text-warning">
+            // --warning cannot carry the signal on a drenched panel, so the icon does.
+            <span className="flex items-center gap-1.5 text-xs text-user-ink">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               Profile changed, so this archetype may be stale. Re-derive when ready.
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" loading={rederiving} onClick={handleRederive}>
+          {/* ghost/secondary resolve to --muted, which fails AA on every panel hue. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={rederiving}
+            onClick={handleRederive}
+            className="text-user-ink/85 hover:text-user-ink hover:bg-user-ink/10"
+          >
             Re-derive
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setShareOpen(true)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShareOpen(true)}
+            className="border-user-ink/60 bg-user-ink/5 text-user-ink hover:bg-user-ink/10"
+          >
             Share
           </Button>
         </div>

@@ -155,6 +155,7 @@ export default function ImportModal({
                     {required ? ' *' : ''}
                   </span>
                   <select
+                    aria-label={`CSV column for ${label}`}
                     value={mapping[field] ?? ''}
                     onChange={(e) => setMapping((m) => ({ ...m, [field]: e.target.value }))}
                     className={selectClass}

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { listAdminUsage, type AdminUsageEvent } from '@/lib/api';
-import { Badge, Card, Spinner } from '@/components/ui';
+import { Badge, Card, Field, Spinner } from '@/components/ui';
 import { Pagination } from './Pagination';
 
 const PAGE_SIZE = 25;
@@ -45,18 +45,23 @@ export function UsageTab() {
             </p>
           ) : null}
         </div>
-        <select
-          value={operation}
-          onChange={(e) => handleFilterChange(e.target.value)}
-          className="rounded-lg border border-border bg-base px-2 py-1 text-xs text-text focus:border-accent focus:outline-none"
-        >
-          <option value="">All operations</option>
-          <option value="profile_full">profile_full</option>
-          <option value="profile_update">profile_update</option>
-          <option value="recommend_seed">recommend_seed</option>
-          <option value="recommend_rerank">recommend_rerank</option>
-          <option value="archetype">archetype</option>
-        </select>
+        <Field label="Filter by operation">
+          {(p) => (
+            <select
+              {...p}
+              value={operation}
+              onChange={(e) => handleFilterChange(e.target.value)}
+              className="rounded-lg border border-border bg-base px-2 py-1 text-xs text-text focus:border-accent focus:outline-none"
+            >
+              <option value="">All operations</option>
+              <option value="profile_full">profile_full</option>
+              <option value="profile_update">profile_update</option>
+              <option value="recommend_seed">recommend_seed</option>
+              <option value="recommend_rerank">recommend_rerank</option>
+              <option value="archetype">archetype</option>
+            </select>
+          )}
+        </Field>
       </div>
 
       {isLoading ? (

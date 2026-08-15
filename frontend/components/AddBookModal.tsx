@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { BookOpen } from 'lucide-react';
 import { api, type Book, type CatalogResult, type Shelf } from '@/lib/api';
-import { Button, Modal, StarRating, useToast } from '@/components/ui';
+import { Button, Field, Modal, StarRating, Textarea, useToast } from '@/components/ui';
 
 interface Props {
   onAdded: (book: Book) => void;
@@ -126,6 +126,7 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by title, author, or ISBN..."
+            aria-label="Search for a book by title or author"
             className={inputClass}
           />
 
@@ -286,16 +287,18 @@ export default function AddBookModal({ onAdded, onClose, defaultShelf = 'read' }
 
           {/* Optional review */}
           <div className="mt-5">
-            <label className="mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted">
-              Review <span className="font-normal normal-case text-faint">· optional</span>
-            </label>
-            <textarea
-              value={review}
-              onChange={(e) => setReview(e.target.value)}
-              rows={3}
-              placeholder="What did you think? Your words feed the taste profile..."
-              className={[inputClass, 'resize-y'].join(' ')}
-            />
+            <Field label="Review" hint="Optional.">
+              {(p) => (
+                <Textarea
+                  {...p}
+                  value={review}
+                  onChange={(e) => setReview(e.target.value)}
+                  rows={3}
+                  placeholder="What did you think? Your words feed the taste profile..."
+                  className="resize-y"
+                />
+              )}
+            </Field>
             {reviewWithoutRating && (
               <p className="mt-1 text-xs text-warning">
                 A review needs a rating to anchor it. Add stars first.

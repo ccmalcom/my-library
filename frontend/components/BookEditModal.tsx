@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { mutate } from 'swr';
 import { api, PROFILE_STATUS_KEY, type Book, type BookFeedbackRequest } from '@/lib/api';
-import { Button, Modal, StarRating, useToast } from '@/components/ui';
+import { Button, Field, Modal, StarRating, Textarea, useToast } from '@/components/ui';
 
 interface Props {
   book: Book;
@@ -14,12 +14,6 @@ interface Props {
   allowRemove?: boolean;
   allowReviewWithoutRating?: boolean;
 }
-
-const inputClass = [
-  'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
-  'placeholder-faint focus:border-accent focus:outline-none',
-  'focus-visible:ring-1 focus-visible:ring-accent',
-].join(' ');
 
 const labelClass =
   'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
@@ -121,6 +115,7 @@ export default function BookEditModal({
     <Modal
       labelId="book-edit-title"
       onClose={onClose}
+      confirmClose={() => !dirty || window.confirm('Discard your unsaved changes to this book?')}
       className="fade-in flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-2xl"
     >
       {/* Header */}
@@ -180,14 +175,18 @@ export default function BookEditModal({
 
       {/* Review */}
       <div className="mb-5">
-        <label className={labelClass}>Review</label>
-        <textarea
-          value={review}
-          onChange={(e) => setReview(e.target.value)}
-          rows={5}
-          placeholder="What did you think? Your words feed the taste profile..."
-          className={[inputClass, 'resize-y'].join(' ')}
-        />
+        <Field label="Review">
+          {(p) => (
+            <Textarea
+              {...p}
+              value={review}
+              onChange={(e) => setReview(e.target.value)}
+              rows={5}
+              placeholder="What did you think? Your words feed the taste profile..."
+              className="resize-y"
+            />
+          )}
+        </Field>
         {reviewWithoutRating && (
           <p className="mt-1 text-xs text-warning">
             A review needs a rating to anchor it. Add stars first.
@@ -197,17 +196,18 @@ export default function BookEditModal({
 
       {/* Date read */}
       <div className="mb-5">
-        <label className={labelClass}>
-          Date read{' '}
-          <span className="font-normal normal-case text-faint">· optional, if you remember</span>
-        </label>
-        <input
-          type="date"
-          value={dateRead}
-          max={new Date().toISOString().slice(0, 10)}
-          onChange={(e) => setDateRead(e.target.value)}
-          className="rounded-lg border border-border bg-base px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus-visible:ring-1 focus-visible:ring-accent [color-scheme:dark]"
-        />
+        <Field label="Date read" hint="Optional, if you remember.">
+          {(p) => (
+            <input
+              {...p}
+              type="date"
+              value={dateRead}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setDateRead(e.target.value)}
+              className="self-start rounded-lg border border-border bg-base px-3 py-2 text-sm text-text focus:border-accent focus:outline-none focus-visible:ring-1 focus-visible:ring-accent [color-scheme:dark]"
+            />
+          )}
+        </Field>
       </div>
 
       {/* Exclude from profile toggle */}

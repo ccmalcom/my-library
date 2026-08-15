@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { api, type FeedbackSubmit } from '@/lib/api';
-import { Button, Modal, useToast } from '@/components/ui';
+import { Button, Field, Modal, Textarea, useToast } from '@/components/ui';
 
 interface Props {
   trigger?: string;
@@ -18,12 +18,6 @@ const categoryOptions = [
   { value: 'confusing', label: 'Confusing' },
   { value: 'praise', label: 'Praise' },
 ] as const;
-
-const inputClass = [
-  'w-full rounded-lg border border-border bg-base px-3 py-2 text-sm text-text',
-  'placeholder-faint focus:border-accent focus:outline-none',
-  'focus-visible:ring-1 focus-visible:ring-accent',
-].join(' ');
 
 const labelClass =
   'mb-2 block font-mono text-xs font-semibold uppercase tracking-widest text-muted';
@@ -74,8 +68,10 @@ export default function FeedbackModal({ trigger, runId, heading, onClose, onReso
       </div>
 
       {/* Category buttons */}
-      <div className="mb-6">
-        <label className={labelClass}>Category</label>
+      <div className="mb-6" role="group" aria-labelledby="feedback-category-label">
+        <p id="feedback-category-label" className={labelClass}>
+          Category
+        </p>
         <div className="grid grid-cols-2 gap-2">
           {categoryOptions.map(({ value, label }) => (
             <button
@@ -100,17 +96,19 @@ export default function FeedbackModal({ trigger, runId, heading, onClose, onReso
 
       {/* Body textarea */}
       <div className="mb-6 flex-1">
-        <label className={labelClass}>Feedback</label>
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={6}
-          placeholder={'Rough edges, wrong recommendations, small joys. All useful.'}
-          disabled={submitting}
-          className={[inputClass, 'resize-y disabled:opacity-50 disabled:cursor-not-allowed'].join(
-            ' '
+        <Field label="Feedback">
+          {(p) => (
+            <Textarea
+              {...p}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={6}
+              placeholder={'Rough edges, wrong recommendations, small joys. All useful.'}
+              disabled={submitting}
+              className="resize-y"
+            />
           )}
-        />
+        </Field>
       </div>
 
       {/* Footer actions */}

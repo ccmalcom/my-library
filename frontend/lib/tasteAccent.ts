@@ -1,57 +1,83 @@
-// Fixed accent color per archetype code — curated for legibility on the dark theme.
-// Warm hues for Immersive (I) types, cooler hues for Reflective (R) types.
-const ARCHETYPE_COLORS: Record<string, string> = {
-  IPBH: 'hsl(24,  88%, 60%)', // Wandering Escapist      — persimmon orange
-  IPBM: 'hsl(180, 70%, 48%)', // Plot Mechanic           — cyan
-  IPDH: 'hsl(0,   80%, 60%)', // Serial Thrill-Seeker    — red
-  IPDM: 'hsl(270, 68%, 64%)', // Genre Architect         — purple
-  ICBH: 'hsl(345, 78%, 63%)', // Empathic Rover          — rose
-  ICBM: 'hsl(210, 72%, 62%)', // Character Analyst       — cornflower blue
-  ICDH: 'hsl(142, 60%, 50%)', // Devoted Fan             — emerald
-  ICDM: 'hsl(290, 65%, 62%)', // Deep Empath             — violet
-  RPBH: 'hsl(38,  88%, 55%)', // Conscious Adventurer    — amber gold
-  RPBM: 'hsl(170, 68%, 47%)', // Eclectic Critic         — seafoam teal
-  RPDH: 'hsl(18,  74%, 56%)', // Committed Purist        — burnt sienna
-  RPDM: 'hsl(225, 65%, 62%)', // Structural Connoisseur  — slate blue
-  RCBH: 'hsl(318, 72%, 60%)', // Literary Wanderer       — magenta
-  RCBM: 'hsl(195, 75%, 52%)', // Cerebral Explorer       — sky blue
-  RCDH: 'hsl(47,  86%, 54%)', // Canon Keeper            — golden yellow
-  RCDM: 'hsl(248, 65%, 64%)', // Cerebral Architect      — indigo
+// Hue carries archetype identity; lightness is SOLVED for contrast rather than
+// pinned, which is what the previous HSL implementation got wrong (blue and
+// violet seeds landed at 2.69:1 on --surface).
+import { contrastRatio, fitToSrgb, solveLightnessForContrast } from '@/lib/contrast';
+
+/** Theme constants — keep in sync with app/globals.css. */
+const SURFACE = '#1f1b18';
+const TEXT = '#f5f0e8';
+const BRAND_ACCENT = '#ff5c3a';
+
+/** Drenched-panel geometry, verified across all 360 hues (worst ink 6.17:1). */
+const PANEL_L = 0.45;
+const PANEL_C = 0.15;
+/** Vivid-accent chroma; lightness is solved per hue against --surface. */
+const VIVID_C = 0.16;
+
+export interface TasteAccent {
+  /** Large colored field — the drenched taste-hero panel background. */
+  surface: string;
+  /** Ink that sits on `surface`. */
+  ink: string;
+  /** Saturated accent for small text, bars, and letters on the neutral --surface. */
+  vivid: string;
+}
+
+export const ARCHETYPE_HUES: Record<string, number> = {
+  IPBH: 24, // Wandering Escapist
+  IPBM: 180, // Plot Mechanic
+  IPDH: 0, // Serial Thrill-Seeker
+  IPDM: 270, // Genre Architect
+  ICBH: 345, // Empathic Rover
+  ICBM: 210, // Character Analyst
+  ICDH: 142, // Devoted Fan
+  ICDM: 290, // Deep Empath
+  RPBH: 38, // Conscious Adventurer
+  RPBM: 170, // Eclectic Critic
+  RPDH: 18, // Committed Purist
+  RPDM: 225, // Structural Connoisseur
+  RCBH: 318, // Literary Wanderer
+  RCBM: 195, // Cerebral Explorer
+  RCDH: 47, // Canon Keeper
+  RCDM: 248, // Cerebral Architect
 };
 
-const cache = new Map<string, string>();
+const cache = new Map<string, TasteAccent>();
 
 function hash(s: string): number {
   let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-  }
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
 
-/**
- * Returns the accent color for a given seed.
- * If the seed is a known 4-letter archetype code, returns its curated color.
- * Otherwise derives a deterministic HSL from the seed string.
- * Falls back to the brand accent when no seed is provided.
- */
-export function tasteAccent(seed: string | null | undefined): string {
-  if (!seed) return 'var(--accent)';
+function build(hue: number): TasteAccent {
+  return {
+    surface: fitToSrgb(PANEL_L, PANEL_C, hue),
+    ink: TEXT,
+    vivid: solveLightnessForContrast(VIVID_C, hue, SURFACE, 4.5),
+  };
+}
 
-  if (Object.prototype.hasOwnProperty.call(ARCHETYPE_COLORS, seed)) return ARCHETYPE_COLORS[seed]!;
+const BRAND: TasteAccent = {
+  surface: fitToSrgb(PANEL_L, PANEL_C, 24),
+  ink: TEXT,
+  vivid: BRAND_ACCENT,
+};
+
+export function tasteAccent(seed: string | null | undefined): TasteAccent {
+  if (!seed) return BRAND;
 
   const cached = cache.get(seed);
   if (cached) return cached;
 
-  const h1 = hash(seed);
-  const h2 = hash(seed + 'S');
-  const h3 = hash(seed + 'L');
+  const hue = Object.prototype.hasOwnProperty.call(ARCHETYPE_HUES, seed)
+    ? ARCHETYPE_HUES[seed]!
+    : hash(seed) % 360;
 
-  const hue = h1 % 360;
-  const sat = 70 + (h2 % 16); // 70-85
-  const light = 58 + (h3 % 9); // 58-66
-
-  const result = `hsl(${hue}, ${sat}%, ${light}%)`;
+  const result = build(hue);
   cache.set(seed, result);
   return result;
 }
+
+/** Exported for tests and for any future palette tooling. */
+export { contrastRatio };

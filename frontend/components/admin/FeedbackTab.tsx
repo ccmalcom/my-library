@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { listAdminFeedback, type AdminFeedbackItem } from '@/lib/api';
-import { Badge, Card, Spinner } from '@/components/ui';
+import { Badge, Card, Field, Spinner } from '@/components/ui';
 import { Pagination } from './Pagination';
 
 const PAGE_SIZE = 25;
@@ -40,18 +40,23 @@ export function FeedbackTab() {
             </p>
           ) : null}
         </div>
-        <select
-          value={category}
-          onChange={(e) => handleFilterChange(e.target.value)}
-          className="rounded-lg border border-border bg-base px-2 py-1 text-xs text-text focus:border-accent focus:outline-none"
-        >
-          <option value="">All categories</option>
-          <option value="bug">bug</option>
-          <option value="idea">idea</option>
-          <option value="confusing">confusing</option>
-          <option value="praise">praise</option>
-          <option value="targeted">targeted</option>
-        </select>
+        <Field label="Filter by category">
+          {(p) => (
+            <select
+              {...p}
+              value={category}
+              onChange={(e) => handleFilterChange(e.target.value)}
+              className="rounded-lg border border-border bg-base px-2 py-1 text-xs text-text focus:border-accent focus:outline-none"
+            >
+              <option value="">All categories</option>
+              <option value="bug">bug</option>
+              <option value="idea">idea</option>
+              <option value="confusing">confusing</option>
+              <option value="praise">praise</option>
+              <option value="targeted">targeted</option>
+            </select>
+          )}
+        </Field>
       </div>
 
       {isLoading ? (
