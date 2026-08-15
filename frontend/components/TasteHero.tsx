@@ -320,21 +320,21 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
       className={['rounded-2xl bg-user-surface text-user-ink', padClass].join(' ')}
     >
       <div className="flex items-center gap-3 mb-3">
-        <p className="font-mono text-xs uppercase tracking-widest text-user-ink/70">Reader type</p>
+        <p className="font-mono text-xs uppercase tracking-widest text-user-ink/85">Reader type</p>
         <button
           type="button"
           onClick={() => setExplainerOpen(true)}
-          className="font-mono text-xs text-user-ink/60 hover:text-user-ink transition-colors"
+          className="font-mono text-xs text-user-ink/85 hover:text-user-ink transition-colors"
         >
           What is this?
         </button>
       </div>
       <div className="flex items-center gap-3 mb-1">
-        <span className="inline-flex items-center rounded-full bg-user-ink/15 px-3 py-1 font-mono text-[1rem] font-medium text-user-ink">
+        <span className="inline-flex items-center rounded-full bg-user-ink/10 px-3 py-1 font-mono text-[1rem] font-medium text-user-ink">
           {archetype.code}
         </span>
       </div>
-      <p className="font-mono text-xs text-user-ink/70 mb-3">
+      <p className="font-mono text-xs text-user-ink/85 mb-3">
         {AXIS_META.map((a, i) => {
           const axisData = archetype[a.key];
           const label = axisData.score < 0 ? a.left : a.right;
@@ -347,7 +347,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
         })}
       </p>
       <h1 className={[headingClass, 'text-user-ink'].join(' ')}>{archetype.name}</h1>
-      <p className="text-sm text-user-ink/80 italic mt-2">{archetype.tagline}</p>
+      <p className="text-sm text-user-ink/85 italic mt-2">{archetype.tagline}</p>
 
       {/* Trait chips as supporting detail -- click to expand truncated claims */}
       {chipTraits.length > 0 && (
@@ -364,7 +364,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
                 onClick={() => truncated && setExpandedChip(isExpanded ? null : t.id)}
                 className={truncated ? 'cursor-pointer' : 'cursor-default'}
               >
-                <span className="inline-flex items-center rounded-full bg-user-ink/15 px-2.5 py-0.5 font-mono text-xs font-medium text-user-ink">
+                <span className="inline-flex items-center rounded-full bg-user-ink/10 px-2.5 py-0.5 font-mono text-xs font-medium text-user-ink">
                   {chipLabel}
                 </span>
               </button>
@@ -382,7 +382,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
             return (
               <div key={a.key}>
                 <div className="flex items-center gap-3">
-                  <span className="w-20 shrink-0 text-xs text-user-ink/70 capitalize">{a.key}</span>
+                  <span className="w-20 shrink-0 text-xs text-user-ink/85 capitalize">{a.key}</span>
                   <div className="relative flex-1 h-2 rounded-full bg-user-ink/20 overflow-hidden">
                     <div
                       className="absolute h-2 rounded-full bg-user-ink"
@@ -397,7 +397,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
                     {a.rationale && (
                       <button
                         type="button"
-                        className="shrink-0 text-xs text-user-ink/60 hover:text-user-ink transition-colors"
+                        className="shrink-0 text-xs text-user-ink/85 hover:text-user-ink transition-colors"
                         onClick={() => setExpandedAxis(isExpanded ? null : a.key)}
                         aria-expanded={isExpanded}
                       >
@@ -407,7 +407,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
                   </div>
                 </div>
                 {isExpanded && a.rationale && (
-                  <p className="mt-1 pl-24 text-xs text-user-ink/80">{a.rationale}</p>
+                  <p className="mt-1 pl-24 text-xs text-user-ink/85">{a.rationale}</p>
                 )}
               </div>
             );
@@ -433,7 +433,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
             size="sm"
             loading={rederiving}
             onClick={handleRederive}
-            className="text-user-ink/80 hover:text-user-ink hover:bg-user-ink/10"
+            className="text-user-ink/85 hover:text-user-ink hover:bg-user-ink/10"
           >
             Re-derive
           </Button>
@@ -441,7 +441,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
             variant="secondary"
             size="sm"
             onClick={() => setShareOpen(true)}
-            className="border-user-ink/30 bg-user-ink/10 text-user-ink hover:bg-user-ink/20"
+            className="border-user-ink/60 bg-user-ink/5 text-user-ink hover:bg-user-ink/10"
           >
             Share
           </Button>
