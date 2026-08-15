@@ -29,8 +29,12 @@
   --danger-quiet: rgba(234, 107, 100, 0.12);
   --warning-quiet: rgba(245, 184, 46, 0.12);
 
-  /* per-user accent (set at runtime; fallback = persimmon) */
+  /* per-user taste ramp (set at runtime by tasteAccent; fallbacks = brand) */
   --user-accent: #ff5c3a;
+  --user-surface: #972529; /* = fitToSrgb(0.45, 0.15, 24) — the brand hue's drenched panel */
+  /* Channel triplet, NOT hex: Tailwind's /opacity modifier cannot apply an alpha
+     to a var() that already holds a full color. Task 11 needs text-user-ink/70. */
+  --user-ink-rgb: 245 240 232;
 }
 
 html,

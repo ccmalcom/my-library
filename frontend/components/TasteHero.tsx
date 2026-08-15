@@ -143,7 +143,12 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   const topSubject = subjects?.overall?.[0]?.subject ?? null;
   const topTrait = traits?.[0] ?? null;
   const seed = archetype ? archetype.code : (topSubject ?? topTrait?.claim ?? null);
-  const accentHsl = tasteAccent(seed);
+  const accent = tasteAccent(seed);
+  const accentVars = {
+    ['--user-accent' as string]: accent.vivid,
+    ['--user-surface' as string]: accent.surface,
+    ['--user-ink-rgb' as string]: '245 240 232',
+  };
 
   const noProfile =
     !isLoading &&
@@ -272,7 +277,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   if (!archetype) {
     return (
       <div
-        style={{ ['--user-accent' as string]: accentHsl }}
+        style={accentVars}
         className={['rounded-2xl border border-border bg-surface text-center', padClass].join(' ')}
       >
         {explainerOpen && <ArchetypeExplainerModal onClose={() => setExplainerOpen(false)} />}
@@ -307,7 +312,7 @@ export function TasteHero({ compact = false }: TasteHeroProps) {
   // ── Archetype display ───────────────────────────────────────────────────────
   return (
     <div
-      style={{ ['--user-accent' as string]: accentHsl }}
+      style={accentVars}
       className={['rounded-2xl border border-border bg-surface', padClass].join(' ')}
     >
       <div className="flex items-center gap-3 mb-3">

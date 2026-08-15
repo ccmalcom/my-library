@@ -138,7 +138,7 @@ export default function HomePage() {
       : null;
 
   const displayName = userProfile?.display_name ?? null;
-  const accentHsl = tasteAccent(archetype ? archetype.code : null);
+  const accent = tasteAccent(archetype ? archetype.code : null);
 
   async function handleRun() {
     setRunning(true);
@@ -154,7 +154,14 @@ export default function HomePage() {
   }
 
   return (
-    <div className="fade-in space-y-6 py-6" style={{ ['--user-accent' as string]: accentHsl }}>
+    <div
+      className="fade-in space-y-6 py-6"
+      style={{
+        ['--user-accent' as string]: accent.vivid,
+        ['--user-surface' as string]: accent.surface,
+        ['--user-ink-rgb' as string]: '245 240 232',
+      }}
+    >
       {/* 1. Greeting + archetype callout */}
       <div>
         <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-text leading-tight">
@@ -171,7 +178,7 @@ export default function HomePage() {
             <Badge
               variant="mono"
               className="text-sm px-2 py-0.5"
-              // style={{ color: accentHsl, borderColor: accentHsl }}
+              // style={{ color: accent.vivid, borderColor: accent.vivid }}
             >
               {archetype.code}
             </Badge>

@@ -72,7 +72,10 @@ export default function RevealSequence({
     return buildBeats({ stats, traits, archetype, highlights, books, directive });
   }, [ready, stats, traits, archetype, highlights, books, directive]);
 
-  const accent = archetype ? tasteAccent(archetype.code) : 'var(--accent)';
+  // RevealFrame feeds this straight into --user-accent, which is the small
+  // saturated-accent role (text, bars, dots) on the neutral base — .vivid, not
+  // the drenched .surface field.
+  const accent = archetype ? tasteAccent(archetype.code).vivid : 'var(--accent)';
 
   // ── Error state ─────────────────────────────────────────────────────────────
   if (traitsErr || archetypeErr) {
