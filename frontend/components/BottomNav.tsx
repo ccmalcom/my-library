@@ -2,15 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Shuffle, BookOpen, User, Settings } from 'lucide-react';
+import { NAV_ROUTES } from '@/lib/nav';
 
-const links = [
-  { href: '/', label: 'Home', Icon: Home },
-  { href: '/swipe', label: 'Swipe', Icon: Shuffle },
-  { href: '/library', label: 'Library', Icon: BookOpen },
-  { href: '/profile', label: 'Profile', Icon: User },
-  { href: '/settings', label: 'Settings', Icon: Settings },
-];
+const links = NAV_ROUTES.filter((r) => r.primary);
 
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base';
