@@ -38,6 +38,14 @@ describe('tasteAccent', () => {
     expect(tasteAccent('IPBH').ink).toBe(TEXT);
   });
 
+  it.each(Object.keys(ARCHETYPE_HUES))(
+    '%s: --muted is NOT usable on the drenched panel (guards against ghost buttons)',
+    (code) => {
+      // Documents why TasteHero overrides ghost/secondary ink inside the panel.
+      expect(contrastRatio('#a89f92', tasteAccent(code).surface)).toBeLessThan(4.5);
+    }
+  );
+
   it('gives visibly different hues to different archetypes', () => {
     expect(tasteAccent('IPBH').surface).not.toBe(tasteAccent('RCDM').surface);
   });
