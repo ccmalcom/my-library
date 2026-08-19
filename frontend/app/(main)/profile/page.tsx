@@ -21,6 +21,7 @@ import { TasteHero } from '@/components/TasteHero';
 import CustomInstructions from '@/components/CustomInstructions';
 import RevealSequence from '@/components/reveal/RevealSequence';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
+import ShelfSprite from '@/components/ShelfSprite';
 
 const TRAITS_KEY = 'profile-traits';
 const STATS_KEY = 'stats';
@@ -281,6 +282,11 @@ function BuildProfileCTA({ onBuild }: { onBuild: () => Promise<void> }) {
 
   return (
     <Card className="text-center space-y-4">
+      <ShelfSprite
+        variant="analyze"
+        sizes="128px"
+        className={['mx-auto h-32 w-32', running ? 'motion-safe:animate-pulse' : ''].join(' ')}
+      />
       <p className="text-muted font-medium">No taste profile yet.</p>
       <p className="text-sm text-faint">
         Claude will read your rated books and infer what you love and avoid. This takes about 30

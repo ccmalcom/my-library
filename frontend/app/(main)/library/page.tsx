@@ -19,6 +19,7 @@ import BookEditModal from '@/components/BookEditModal';
 import BookDetailModal from '@/components/BookDetailModal';
 import AddBookModal from '@/components/AddBookModal';
 import EnrichmentCorrectionModal from '@/components/EnrichmentCorrectionModal';
+import ShelfSprite from '@/components/ShelfSprite';
 
 const READ_KEY = 'books-read';
 const TO_READ_KEY = 'books-to-read';
@@ -376,8 +377,9 @@ function ToReadTab({ books }: { books: Book[] }) {
 
   if (books.length === 0) {
     return (
-      <div className="py-16 text-center text-faint">
-        Your to-read shelf is empty. Swipe right on something.
+      <div className="py-12 text-center text-faint">
+        <ShelfSprite variant="sleep" sizes="128px" className="mx-auto mb-3 h-32 w-32" />
+        <p>Your to-read shelf is empty. Swipe right on something.</p>
       </div>
     );
   }
