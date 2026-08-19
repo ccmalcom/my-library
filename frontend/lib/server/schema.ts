@@ -385,6 +385,9 @@ export const feedback = pgTable(
     runId: varchar('run_id'),
     page: varchar(),
     appVersion: varchar('app_version'),
+    status: varchar().default('open').notNull(),
+    githubIssueNumber: integer('github_issue_number'),
+    githubIssueUrl: varchar('github_issue_url'),
     createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   },
   (table) => [

@@ -17,6 +17,10 @@ const ENV_KEYS = [
   'FEEDBACK_SNOOZE_HOURS',
   'MYLIBRARY_MODEL',
   'GOOGLE_BOOKS_API_KEY',
+  'GITHUB_TOKEN',
+  'GITHUB_REPO',
+  'GITHUB_WEBHOOK_SECRET',
+  'GITHUB_IN_PROGRESS_LABEL',
 ];
 
 /** Local-mode env identical to the Python fixture run. Registers hooks. */
@@ -41,6 +45,13 @@ export function setupTestEnv(): void {
     // recorded URL; a developer with it exported would build `...&key=...` URLs that
     // match no fixture entry and fail every replayed catalog fetch.
     delete process.env.GOOGLE_BOOKS_API_KEY;
+    // A developer with real GitHub credentials exported would otherwise flip
+    // `github_configured` and change route behavior under test — the same hazard
+    // already documented above for MYLIBRARY_MODEL and GOOGLE_BOOKS_API_KEY.
+    delete process.env.GITHUB_TOKEN;
+    delete process.env.GITHUB_REPO;
+    delete process.env.GITHUB_WEBHOOK_SECRET;
+    delete process.env.GITHUB_IN_PROGRESS_LABEL;
     process.env.ENCRYPTION_KEY = FIXED_TEST_KEY;
     process.env.MYLIBRARY_MONTHLY_SOFT_CAP_USD = '5.0';
     process.env.MYLIBRARY_USAGE_WARN_THRESHOLD = '0.8';
