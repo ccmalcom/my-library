@@ -68,8 +68,31 @@ export function FeedbackTab() {
     setOffset(0);
   }
 
-  /** Splice one updated row back into the cached page without a refetch. */
+  /**
+   * Splice one updated row back into the cached page without a refetch, unless
+   * the new status no longer matches the active status filter — in that case
+   * drop it from the cache immediately and revalidate so pagination/total stay
+   * consistent with what the server would return.
+   */
   function applyUpdated(updated: AdminFeedbackItem) {
+    const allowedStatuses = status ? status.split(',') : null;
+    const stillMatchesFilter = !allowedStatuses || allowedStatuses.includes(updated.status);
+
+    if (!stillMatchesFilter) {
+      void mutate(
+        (current) =>
+          current
+            ? {
+                ...current,
+                items: current.items.filter((i) => i.id !== updated.id),
+                total: Math.max(0, current.total - 1),
+              }
+            : current,
+        { revalidate: true }
+      );
+      return;
+    }
+
     void mutate(
       (current) =>
         current
