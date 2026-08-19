@@ -7,6 +7,7 @@ import useSWR from 'swr';
 import { authEnabled, getSupabaseClient } from '@/utils/supabase/client';
 import { adminMe, ADMIN_ME_KEY } from '@/lib/api';
 import { NAV_ROUTES } from '@/lib/nav';
+import BrandLogo from '@/components/BrandLogo';
 
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base';
@@ -24,9 +25,18 @@ export default function NavBar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-base/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-        <span className="font-mono text-xs font-semibold uppercase tracking-widest text-muted">
-          ShelfSprite
-        </span>
+        <Link
+          href="/"
+          aria-label="ShelfSprite home"
+          className={`shrink-0 rounded-sm ${focusRing}`}
+        >
+          <BrandLogo
+            alt=""
+            priority
+            sizes="(max-width: 640px) 128px, 140px"
+            className="h-auto w-32 sm:w-[140px]"
+          />
+        </Link>
         {/* Desktop nav links */}
         <div className="hidden sm:flex gap-1">
           {NAV_ROUTES.map(({ href, label }) => {

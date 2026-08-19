@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { BookOpen, Plus, Check, Search, Sparkles } from 'lucide-react';
 import { Spinner, useToast } from '@/components/ui';
 import { api, type DiscoverBook } from '@/lib/api';
+import ShelfSprite from '@/components/ShelfSprite';
 
 export default function DiscoverPage() {
   const toast = useToast();
@@ -60,11 +61,21 @@ export default function DiscoverPage() {
 
   return (
     <div className="fade-in space-y-6 py-6">
-      <div>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-text">Discover</h1>
-        <p className="mt-1 text-sm text-muted">
-          Ask for anything and get real books off the live catalog, explained.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-text">
+            Discover
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            Ask for anything and get real books off the live catalog, explained.
+          </p>
+        </div>
+        <ShelfSprite
+          variant="discover"
+          priority
+          sizes="(max-width: 640px) 96px, 112px"
+          className="h-24 w-24 shrink-0 sm:h-28 sm:w-28"
+        />
       </div>
 
       <form onSubmit={runSearch} className="flex gap-2">

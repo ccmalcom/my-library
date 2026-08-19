@@ -16,6 +16,8 @@ import { Button, Field, Input, Spinner, StarRating } from '@/components/ui';
 import AddBookModal from '@/components/AddBookModal';
 import RevealSequence from '@/components/reveal/RevealSequence';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
+import BrandLogo from '@/components/BrandLogo';
+import ShelfSprite from '@/components/ShelfSprite';
 
 type Step = 'name' | 'api-key' | 'upload' | 'enrich' | 'manual' | 'profile' | 'done';
 
@@ -660,7 +662,14 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="text-center">
+        <ShelfSprite
+          variant="analyze"
+          sizes="112px"
+          className={['mx-auto mb-3 h-28 w-28', loading ? 'motion-safe:animate-pulse' : ''].join(
+            ' '
+          )}
+        />
         <h2 className="mb-1 text-xl font-semibold text-text">Build your taste profile</h2>
         <p className="text-sm text-muted">
           This is the good part: Claude reads every rating and review you just imported and works
@@ -726,6 +735,11 @@ function DoneStep({ profiled, onComplete }: { profiled: boolean; onComplete?: ()
     <>
       <div className="space-y-6 text-center">
         <div>
+          <ShelfSprite
+            variant="success"
+            sizes="128px"
+            className="mx-auto mb-3 h-32 w-32"
+          />
           <h2 className="mb-2 text-2xl font-bold text-text">Your library is in.</h2>
           <p className="text-sm text-muted">
             {profiled
@@ -769,10 +783,13 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
     <div className="fade-in flex min-h-[60vh] flex-col items-center justify-center py-6 sm:py-12">
       <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-text">
-            Welcome to ShelfSprite
-          </h1>
-          <p className="mt-1 text-sm text-muted">
+          <BrandLogo
+            priority
+            sizes="208px"
+            className="mx-auto h-auto w-52"
+          />
+          <h1 className="sr-only">Welcome to ShelfSprite</h1>
+          <p className="mt-3 text-sm text-muted">
             {step === 'name' || step === 'api-key'
               ? 'Five minutes, and it starts knowing your taste.'
               : path === 'manual'

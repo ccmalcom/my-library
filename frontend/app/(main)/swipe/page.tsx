@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR, { mutate } from 'swr';
-import { Inbox, Sparkles } from 'lucide-react';
 import {
   api,
   type Book,
@@ -18,6 +17,7 @@ import { Button, Spinner, useToast, Modal } from '@/components/ui';
 import SwipeCard from '@/components/SwipeCard';
 import BookEditModal from '@/components/BookEditModal';
 import { useFeedbackPrompt } from '@/hooks/useFeedbackPrompt';
+import ShelfSprite from '@/components/ShelfSprite';
 
 export default function SwipePage() {
   const router = useRouter();
@@ -147,7 +147,7 @@ export default function SwipePage() {
   if ((recs ?? []).length === 0) {
     return (
       <div className="fade-in py-20 text-center space-y-4">
-        <Inbox className="mx-auto h-12 w-12 text-faint" />
+        <ShelfSprite variant="sleep" sizes="144px" className="mx-auto h-36 w-36" />
         <h2 className="text-xl font-display font-semibold text-text">Nothing to swipe yet</h2>
         <p className="text-muted">Run a batch from the home page and come back.</p>
         <Button onClick={() => router.push('/')}>Back to home</Button>
@@ -159,7 +159,7 @@ export default function SwipePage() {
     return (
       <>
         <div className="fade-in py-20 text-center space-y-4">
-          <Sparkles className="mx-auto h-12 w-12 text-accent" />
+          <ShelfSprite variant="success" sizes="144px" className="mx-auto h-36 w-36" />
           <h2 className="text-xl font-display font-semibold text-text">That&apos;s the batch.</h2>
           <p className="text-muted">
             All {total.length} picks reviewed. Your verdicts are already sharpening the next run.
