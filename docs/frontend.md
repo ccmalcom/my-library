@@ -109,6 +109,14 @@ CSS variables in `globals.css`: `--bg #161412`, `--accent #FF5C3A` (persimmon), 
 - Stats strip: `grid-cols-2 sm:grid-cols-4`; `divide-x`/`-mx-1` confined to `sm:`.
 - Swipe card stack: `h-[440px] sm:h-[560px]`.
 - Library search input: `min-w-0` (was `min-w-40`) so it shrinks on narrow screens.
+- Library tab bar: five tabs never fit one phone row, so the bar is `flex-wrap` and each tab is
+  `grow basis-[calc(33.333%_-_0.25rem)] sm:basis-0`. That basis makes the phone break deterministic
+  (exactly three per row, then two) instead of wherever the labels land; `sm:basis-0` restores the
+  single row. Labels are `short` below `md` (`Reading`, `DNF`) and full from `md` up, via two spans
+  where only one is displayed — so only one name reaches the a11y tree. Do not drop `flex-wrap` or
+  the basis: a plain `flex-1` row cannot shrink past min-content and pushed Rejected off-screen,
+  scrolling the whole page sideways. Tab height is 44px on touch, 36px (`sm:py-2`) on desktop.
+- Read tab star filter row: `flex-wrap` — five star chips are wider than a 320px viewport.
 - Genre breakdown labels: `w-24 sm:w-40`; genre filter row: `flex-wrap`.
 - SetupWizard: drop zone padding `p-6 sm:p-10`; outer wrapper `py-6 sm:py-12`.
 
