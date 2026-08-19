@@ -1,6 +1,8 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { GET as listFeedback } from '../../../app/api/admin/feedback/route';
 import { PATCH as patchFeedback } from '../../../app/api/admin/feedback/[id]/route';
+import { POST as createIssueRoute } from '../../../app/api/admin/feedback/[id]/github-issue/route';
 import { _setDbForTests, schema, type Db } from '../db';
 import { makeTestDb } from './helpers/pglite';
 import { setupTestEnv } from './helpers/testEnv';
@@ -179,6 +181,139 @@ describe('PATCH /api/admin/feedback/[id]', () => {
       _setDbForTests(db);
       await seed(db);
       expect((await patchFeedback(...patchReq(99999, { status: 'open' }))).status).toBe(404);
+    } finally {
+      await close();
+    }
+  });
+});
+
+function issueReq(id: number, body: unknown): [Request, { params: { id: string } }] {
+  return [
+    new Request(`http://localhost/api/admin/feedback/${id}/github-issue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+    { params: { id: String(id) } },
+  ];
+}
+
+describe('POST /api/admin/feedback/[id]/github-issue', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  test('creates the issue, stores the link, and moves the row to reported', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      _setDbForTests(db);
+      await seed(db);
+      process.env.GITHUB_TOKEN = 'ghp_test';
+      process.env.GITHUB_REPO = 'owner/name';
+      vi.stubGlobal(
+        'fetch',
+        async () =>
+          new Response(
+            JSON.stringify({ number: 12, html_url: 'https://github.com/owner/name/issues/12' }),
+            { status: 201 }
+          )
+      );
+      const [row] = await db.select().from(schema.feedback).limit(1);
+
+      const res = await createIssueRoute(
+        ...issueReq(row!.id, { title: 'Crash on import', body: 'from feedback #1' })
+      );
+
+      expect(res.status).toBe(200);
+      const item = await res.json();
+      expect(item.status).toBe('reported');
+      expect(item.github_issue_number).toBe(12);
+      expect(item.github_issue_url).toBe('https://github.com/owner/name/issues/12');
+
+      const [stored] = await db
+        .select()
+        .from(schema.feedback)
+        .where(eq(schema.feedback.id, row!.id));
+      expect(stored!.githubIssueNumber).toBe(12);
+    } finally {
+      await close();
+    }
+  });
+
+  test('returns 409 when the row already has an issue and does not call github', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      _setDbForTests(db);
+      await seed(db);
+      process.env.GITHUB_TOKEN = 'ghp_test';
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+      const [row] = await db.select().from(schema.feedback).limit(1);
+      await db
+        .update(schema.feedback)
+        .set({ githubIssueNumber: 5, githubIssueUrl: 'https://x/5' })
+        .where(eq(schema.feedback.id, row!.id));
+
+      const res = await createIssueRoute(...issueReq(row!.id, { title: 'T', body: 'B' }));
+
+      expect(res.status).toBe(409);
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      await close();
+    }
+  });
+
+  test('returns 404 for a missing row and 503 when github is unconfigured', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      _setDbForTests(db);
+      await seed(db);
+      expect((await createIssueRoute(...issueReq(99999, { title: 'T', body: 'B' }))).status).toBe(
+        404
+      );
+      const [row] = await db.select().from(schema.feedback).limit(1);
+      expect((await createIssueRoute(...issueReq(row!.id, { title: 'T', body: 'B' }))).status).toBe(
+        503
+      );
+    } finally {
+      await close();
+    }
+  });
+
+  test('returns 502 on a github failure and leaves the row untouched', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      _setDbForTests(db);
+      await seed(db);
+      process.env.GITHUB_TOKEN = 'ghp_test';
+      vi.stubGlobal(
+        'fetch',
+        async () => new Response(JSON.stringify({ message: 'Bad credentials' }), { status: 401 })
+      );
+      const [row] = await db.select().from(schema.feedback).limit(1);
+
+      const res = await createIssueRoute(...issueReq(row!.id, { title: 'T', body: 'B' }));
+
+      expect(res.status).toBe(502);
+      const [stored] = await db
+        .select()
+        .from(schema.feedback)
+        .where(eq(schema.feedback.id, row!.id));
+      expect(stored!.githubIssueNumber).toBeNull();
+      expect(stored!.status).not.toBe('reported');
+    } finally {
+      await close();
+    }
+  });
+
+  test('rejects an empty title with 422', async () => {
+    const { db, close } = await makeTestDb();
+    try {
+      _setDbForTests(db);
+      await seed(db);
+      process.env.GITHUB_TOKEN = 'ghp_test';
+      const [row] = await db.select().from(schema.feedback).limit(1);
+      expect(
+        (await createIssueRoute(...issueReq(row!.id, { title: '  ', body: 'B' }))).status
+      ).toBe(422);
     } finally {
       await close();
     }
