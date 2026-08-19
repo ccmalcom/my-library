@@ -784,6 +784,7 @@ export default function SetupWizard({ onComplete }: { onComplete?: () => void })
       <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
           <BrandLogo
+            alt=""
             priority
             sizes="208px"
             className="mx-auto h-auto w-52"
