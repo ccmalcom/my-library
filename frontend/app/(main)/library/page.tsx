@@ -1155,7 +1155,7 @@ function LibraryInner() {
             onClick={() => setTab(t.id)}
             aria-current={activeTab === t.id ? 'true' : undefined}
             className={[
-              'flex grow basis-[calc(33.333%-0.25rem)] items-center justify-center gap-2 whitespace-nowrap',
+              'flex grow basis-[calc(33.333%_-_0.25rem)] items-center justify-center gap-2 whitespace-nowrap',
               'rounded-lg px-3 py-3 text-sm font-medium transition sm:basis-0 sm:py-2',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-elevated',
               activeTab === t.id ? 'bg-surface text-text shadow' : 'text-muted hover:text-text',

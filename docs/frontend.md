@@ -110,7 +110,7 @@ CSS variables in `globals.css`: `--bg #161412`, `--accent #FF5C3A` (persimmon), 
 - Swipe card stack: `h-[440px] sm:h-[560px]`.
 - Library search input: `min-w-0` (was `min-w-40`) so it shrinks on narrow screens.
 - Library tab bar: five tabs never fit one phone row, so the bar is `flex-wrap` and each tab is
-  `grow basis-[calc(33.333%-0.25rem)] sm:basis-0`. That basis makes the phone break deterministic
+  `grow basis-[calc(33.333%_-_0.25rem)] sm:basis-0`. That basis makes the phone break deterministic
   (exactly three per row, then two) instead of wherever the labels land; `sm:basis-0` restores the
   single row. Labels are `short` below `md` (`Reading`, `DNF`) and full from `md` up, via two spans
   where only one is displayed — so only one name reaches the a11y tree. Do not drop `flex-wrap` or
