@@ -1,7 +1,9 @@
 import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { withApi, ApiError } from '@/lib/server/http';
 import { getDb, schema } from '@/lib/server/db';
-import { tsToIso } from '@/lib/server/serialize';
+import { emailsForUserIds, serializeFeedbackRow } from '@/lib/server/adminFeedback';
+import { isFeedbackStatus, type FeedbackStatus } from '@/lib/server/feedbackStatus';
+import { isGithubConfigured } from '@/lib/server/github';
 
 function intParam(raw: string | null, fallback: number, min: number, max: number): number {
   if (raw === null) return fallback;
@@ -10,6 +12,19 @@ function intParam(raw: string | null, fallback: number, min: number, max: number
     throw new ApiError(422, 'validation error: query parameter out of range');
   }
   return n;
+}
+
+/** Comma-separated so one parameter covers both "just resolved" and "everything active". */
+function statusParam(raw: string | null): FeedbackStatus[] | null {
+  if (raw === null) return null;
+  const parts = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length === 0 || !parts.every(isFeedbackStatus)) {
+    throw new ApiError(422, 'validation error: unknown feedback status');
+  }
+  return parts;
 }
 
 /** Port of feedback.py::admin_list_feedback — all users, newest first, paginated. */
@@ -21,10 +36,12 @@ export const GET = withApi(
     const offset = intParam(url.searchParams.get('offset'), 0, 0, Number.MAX_SAFE_INTEGER);
     const userId = url.searchParams.get('user_id');
     const category = url.searchParams.get('category');
+    const statuses = statusParam(url.searchParams.get('status'));
 
     const filters: SQL[] = [];
     if (userId) filters.push(eq(schema.feedback.userId, userId));
     if (category) filters.push(eq(schema.feedback.category, category));
+    if (statuses) filters.push(inArray(schema.feedback.status, statuses));
     const where = filters.length ? and(...filters) : undefined;
 
     const db = getDb();
@@ -42,32 +59,17 @@ export const GET = withApi(
       .offset(offset);
     ctx.timer.mark('db');
 
-    const rowUserIds = [...new Set(rows.map((r) => r.userId))];
-    const emails = new Map<string, string>();
-    if (rowUserIds.length) {
-      const invites = await db
-        .select({ sid: schema.invites.supabaseUserId, email: schema.invites.email })
-        .from(schema.invites)
-        .where(inArray(schema.invites.supabaseUserId, rowUserIds));
-      for (const i of invites) if (i.sid) emails.set(i.sid, i.email);
-    }
+    const emails = await emailsForUserIds(
+      db,
+      rows.map((r) => r.userId)
+    );
 
     return Response.json({
-      items: rows.map((row) => ({
-        id: row.id,
-        user_id: row.userId,
-        email: emails.get(row.userId) ?? null,
-        category: row.category,
-        body: row.body,
-        trigger: row.trigger,
-        run_id: row.runId,
-        page: row.page,
-        app_version: row.appVersion,
-        created_at: tsToIso(row.createdAt),
-      })),
+      items: rows.map((row) => serializeFeedbackRow(row, emails.get(row.userId) ?? null)),
       total: Number(agg?.total ?? 0),
       limit,
       offset,
+      github_configured: isGithubConfigured(),
     });
   },
   { requireAdmin: true }

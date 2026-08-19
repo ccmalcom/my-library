@@ -213,6 +213,9 @@ export async function makeTestDb(): Promise<{ db: Db; close: () => Promise<void>
       run_id text,
       page text,
       app_version text,
+      status text not null default 'open',
+      github_issue_number integer,
+      github_issue_url text,
       created_at timestamp not null default current_timestamp
     );
     create table feedback_prompt_state (

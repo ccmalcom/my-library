@@ -37,12 +37,40 @@ Current source readers under `frontend/lib`, `frontend/app`, and `frontend/utils
 | `MYLIBRARY_USAGE_WARN_THRESHOLD`       | Fraction of the soft cap at which the warning appears.                   |
 | `FEEDBACK_PROMPTS_ENABLED`             | Global targeted-feedback prompt switch; defaults to `true`.              |
 | `FEEDBACK_SNOOZE_HOURS`                | Prompt snooze period; defaults to 72 hours.                              |
+| `GITHUB_TOKEN`                         | Fine-grained token used to create feedback issues.                       |
+| `GITHUB_REPO`                          | Target `owner/name`; defaults to `ccmalcom/shelfsprite`.                 |
+| `GITHUB_WEBHOOK_SECRET`                | Shared secret used to verify GitHub webhook signatures.                  |
+| `GITHUB_IN_PROGRESS_LABEL`             | Issue label mapped to active work; defaults to `in progress`.            |
 | `CRON_SECRET`                          | Bearer secret for enrichment tick and janitor routes.                    |
 
 `getDb` requires Postgres even when auth is disabled. When the public Supabase variables are
 absent, page middleware is a no-op. API auth resolves the single `local` user only when no
 `SUPABASE_URL`, public project URL, or explicit JWKS URL enables bearer verification; that is the
 current local-development mode.
+
+### GitHub issue integration
+
+Set these keys on Vercel for Preview and Production, and in the local environment file for local
+work:
+
+| Key                        | Notes                                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GITHUB_TOKEN`             | Fine-grained PAT scoped to `ccmalcom/shelfsprite` with Issues: read & write. Required; issue creation is hidden in the admin UI when it is unset. |
+| `GITHUB_REPO`              | Target repository in `owner/name` form. Defaults to `ccmalcom/shelfsprite`.                                                                       |
+| `GITHUB_WEBHOOK_SECRET`    | Shared secret for `x-hub-signature-256`. Required; the webhook answers 503 when unset and never skips verification.                               |
+| `GITHUB_IN_PROGRESS_LABEL` | Label that means the issue is being worked. Defaults to `in progress`.                                                                            |
+
+Create the repository webhook under GitHub → Settings → Webhooks → Add webhook:
+
+- Payload URL: `https://shelfsprite.app/api/github/webhook`
+- Content type: `application/json`
+- Secret: the value of `GITHUB_WEBHOOK_SECRET`
+- Events: Let me select individual events → **Issues** only
+
+The route maps `closed` to `resolved`, `reopened` and `assigned` to `in_progress`, and `labeled`
+with the configured label to `in_progress`. Every other event is a 200 no-op. Missed deliveries
+can be redelivered from GitHub's webhook delivery log, and status remains editable by hand in the
+admin Feedback tab.
 
 ### Invite redirect configuration
 

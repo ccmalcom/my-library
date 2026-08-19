@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ShelfSprite">
+  <rect width="64" height="64" rx="12" fill="#161412"/>
+
+  <!-- The sprite: a tiny reading companion emerging from the book. -->
+  <path
+    d="M32 8c-6 4-9 9-9 15-4 2-6 6-6 10 0 7 6 12 15 12s15-5 15-12c0-4-2-8-6-10 0-6-3-11-9-15Z"
+    fill="#ff5c3a"
+  />
+  <path d="M21 31c0-6 5-10 11-10s11 4 11 10-5 9-11 9-11-3-11-9Z" fill="#161412"/>
+  <circle cx="27" cy="30" r="3" fill="#f5f0e8"/>
+  <circle cx="37" cy="30" r="3" fill="#f5f0e8"/>
+
+  <!-- A broad open-book silhouette stays legible at 16 px. -->
+  <path d="M5 36c9-2 18 0 27 7v14C23 51 14 49 5 51V36Z" fill="#ff5c3a"/>
+  <path d="M59 36c-9-2-18 0-27 7v14c9-6 18-8 27-6V36Z" fill="#ff7355"/>
+  <path d="M9 40c7-1 13 1 19 5" fill="none" stroke="#f5f0e8" stroke-width="2" stroke-linecap="round"/>
+  <path d="M55 40c-7-1-13 1-19 5" fill="none" stroke="#f5f0e8" stroke-width="2" stroke-linecap="round"/>
+  <path d="M32 43v14" fill="none" stroke="#2a2420" stroke-width="2" stroke-linecap="round"/>
+</svg>

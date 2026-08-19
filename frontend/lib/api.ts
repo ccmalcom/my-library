@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from '@/utils/supabase/client';
+import type { FeedbackStatus } from '@/lib/server/feedbackStatus';
 
 /** Every route is served same-origin by Next route handlers under /api. */
 const API_BASE = '/api';
@@ -868,6 +869,9 @@ export interface AdminFeedbackItem {
   run_id: string | null;
   page: string | null;
   app_version: string | null;
+  status: string;
+  github_issue_number: number | null;
+  github_issue_url: string | null;
   created_at: string;
 }
 
@@ -876,6 +880,8 @@ export interface AdminFeedbackList {
   total: number;
   limit: number;
   offset: number;
+  /** False when GITHUB_TOKEN is unset; the tab hides issue creation entirely. */
+  github_configured: boolean;
 }
 
 /** Paginated feedback rows across all users (admin-only). GET /admin/feedback */
@@ -883,14 +889,32 @@ export function listAdminFeedback(opts?: {
   limit?: number;
   offset?: number;
   category?: string;
+  /** Comma-separated statuses, e.g. `open,reported,in_progress`. */
+  status?: string;
 }): Promise<AdminFeedbackList> {
   const params = new URLSearchParams();
   if (opts?.limit != null) params.set('limit', String(opts.limit));
   if (opts?.offset != null) params.set('offset', String(opts.offset));
   if (opts?.category) params.set('category', opts.category);
+  if (opts?.status) params.set('status', opts.status);
   const qs = params.toString();
   return get<AdminFeedbackList>(`/admin/feedback${qs ? `?${qs}` : ''}`);
 }
+
+/** Move one feedback row to a new triage status (admin-only). PATCH /admin/feedback/{id} */
+export const updateAdminFeedbackStatus = (
+  id: number,
+  status: FeedbackStatus
+): Promise<AdminFeedbackItem> => patch<AdminFeedbackItem>(`/admin/feedback/${id}`, { status });
+
+/**
+ * Open a GitHub issue for one feedback row and link it (admin-only).
+ * POST /admin/feedback/{id}/github-issue
+ */
+export const createFeedbackGithubIssue = (
+  id: number,
+  req: { title: string; body: string }
+): Promise<AdminFeedbackItem> => post<AdminFeedbackItem>(`/admin/feedback/${id}/github-issue`, req);
 
 // ── Spend guardrails ────────────────────────────────────────────────────────
 

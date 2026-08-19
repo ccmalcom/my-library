@@ -37,6 +37,12 @@ applied with drizzle-kit from `frontend/drizzle/`.
   user-facing failures.
 - `serialize.ts` and `rating.ts` — stable response/prompt serialization and the dependency-free
   half-star domain rules. These are behavior modules, not generic formatting conveniences.
+- `feedbackStatus.ts` — dependency-free feedback triage vocabulary shared by route handlers and
+  client components.
+- `github.ts` — outbound GitHub issue calls, webhook-signature verification, and all `GITHUB_*`
+  environment reads.
+- `adminFeedback.ts` — the admin feedback wire shape and email lookup shared by all three admin
+  feedback routes.
 
 ### Import, library, and export
 
@@ -130,6 +136,9 @@ are returned or stored.
 - `feedbackPrompts.ts` — eligibility and state for one-time and repeatable in-product feedback
   prompts. Feedback and taste-signal writes are implemented in their `app/api/**` handlers and
   update profile dirty-state timestamps.
+- Admin feedback triage uses `GET /api/admin/feedback`, `PATCH /api/admin/feedback/[id]`, and
+  `POST /api/admin/feedback/[id]/github-issue`. `POST /api/github/webhook` is public by necessity
+  and self-authenticates every request with an HMAC signature before updating linked feedback.
 - `invites.ts` — invite creation, Supabase-user backfill, revocation/purge sequencing, and roster
   reads (`createInvite`, `backfillFromSupabase`, `revokeUser`, `listRoster`). Its transaction
   boundaries intentionally differ by operation.

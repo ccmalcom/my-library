@@ -28,7 +28,13 @@ const monoFont = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'ShelfSprite',
   description: 'Your personal AI-powered reading engine',
-  icons: { icon: '/favicon.ico' },
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '48x48' },
+    ],
+    apple: '/apple-icon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
