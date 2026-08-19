@@ -185,7 +185,9 @@ function ReadTab({ books }: { books: Book[] }) {
       <div className="flex flex-wrap items-center gap-2">
         <SearchInput value={search} onChange={setSearch} />
         <SortSelect value={sort} onChange={setSort} options={READ_SORT_OPTIONS} />
-        <div className="flex gap-1">
+        {/* Wraps: five star chips are wider than a 320px phone, and an unwrapped row
+            scrolled the page sideways. */}
+        <div className="flex flex-wrap gap-1">
           {STARS.map((s) => (
             <button
               key={s}
@@ -1092,12 +1094,19 @@ function LibraryInner() {
     void mutate(PROFILE_STATUS_KEY);
   }
 
-  const tabs: { id: Tab; label: string; count: number }[] = [
-    { id: 'read', label: 'Read', count: readBooks.length },
-    { id: 'currently-reading', label: 'Currently reading', count: currentlyReadingBooks.length },
-    { id: 'to-read', label: 'To read', count: toReadBooks.length },
-    { id: 'did-not-finish', label: 'Did not finish', count: dnfBooks.length },
-    { id: 'rejected', label: 'Rejected', count: rejectedRecs.length },
+  // `short` is what narrow screens show: five full labels cannot fit the phone width,
+  // and the abbreviations match the shelf names used elsewhere (see AddBookModal).
+  const tabs: { id: Tab; label: string; short: string; count: number }[] = [
+    { id: 'read', label: 'Read', short: 'Read', count: readBooks.length },
+    {
+      id: 'currently-reading',
+      label: 'Currently reading',
+      short: 'Reading',
+      count: currentlyReadingBooks.length,
+    },
+    { id: 'to-read', label: 'To read', short: 'To read', count: toReadBooks.length },
+    { id: 'did-not-finish', label: 'Did not finish', short: 'DNF', count: dnfBooks.length },
+    { id: 'rejected', label: 'Rejected', short: 'Rejected', count: rejectedRecs.length },
   ];
 
   const isLoading =
@@ -1134,20 +1143,27 @@ function LibraryInner() {
         />
       )}
 
-      {/* Tab bar */}
-      <div className="flex gap-1 rounded-xl border border-border bg-elevated p-1">
+      {/* Tab bar. Wraps instead of overflowing: five tabs never fit one phone-width row, and
+          an unwrapped flex row pushed Rejected off-screen and scrolled the whole page sideways.
+          The one-third basis fixes the phone layout at three tabs then two — three fit a row
+          exactly (3 * (33.333% - gap) + 2 gaps), a fourth cannot — so the rows stay balanced
+          instead of breaking wherever the labels happen to land. */}
+      <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-elevated p-1">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             aria-current={activeTab === t.id ? 'true' : undefined}
             className={[
-              'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition',
+              'flex grow basis-[calc(33.333%-0.25rem)] items-center justify-center gap-2 whitespace-nowrap',
+              'rounded-lg px-3 py-3 text-sm font-medium transition sm:basis-0 sm:py-2',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-elevated',
               activeTab === t.id ? 'bg-surface text-text shadow' : 'text-muted hover:text-text',
             ].join(' ')}
           >
-            {t.label}
+            {/* Only one of these is in the layout (and the a11y tree) at a time. */}
+            <span className="md:hidden">{t.short}</span>
+            <span className="hidden md:inline">{t.label}</span>
             {t.count > 0 && (
               <span
                 className={[
