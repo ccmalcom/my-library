@@ -123,6 +123,7 @@ function ReadTab({ books }: { books: Book[] }) {
   const [editing, setEditing] = useState<Book | null>(null);
   const [queue, setQueue] = useState<Book[] | null>(null);
   const [qIndex, setQIndex] = useState(0);
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   const rated = books.filter((b) => b.effective_rating !== null);
   const unrated = books.filter((b) => b.effective_rating === null && !b.exclude_from_profile);
@@ -141,6 +142,24 @@ function ReadTab({ books }: { books: Book[] }) {
       setQIndex(next);
       return q;
     });
+  }
+
+  async function moveTo(book: Book, shelf: Shelf) {
+    setMoveError(null);
+    try {
+      await api.setBookShelf(book.id, shelf);
+      mutate(
+        READ_KEY,
+        (curr?: Book[]) => (curr ? curr.filter((b) => b.id !== book.id) : curr),
+        { revalidate: false },
+      );
+      void mutate(TO_READ_KEY);
+      void mutate(CURRENTLY_READING_KEY);
+      void mutate(DNF_KEY);
+      mutate('stats', api.stats(), { revalidate: false });
+    } catch (e) {
+      setMoveError(e instanceof Error ? e.message : "Couldn't move that book. Try again.");
+    }
   }
 
   const filtered = rated
@@ -270,11 +289,14 @@ function ReadTab({ books }: { books: Book[] }) {
         </ul>
       )}
 
+      {moveError && <p className="text-sm text-danger">{moveError}</p>}
+
       {editing && (
         <BookEditModal
           book={editing}
           listKey={READ_KEY}
           allowRemove
+          onMove={moveTo}
           onClose={() => {
             setEditing(null);
             void mutate(READ_KEY);
@@ -289,6 +311,7 @@ function ReadTab({ books }: { books: Book[] }) {
           listKey={READ_KEY}
           queuePosition={{ index: qIndex, total: queue.length }}
           onFinishQueue={advanceQueue}
+          onMove={moveTo}
           onClose={() => {
             setQueue(null);
             void mutate(READ_KEY);
