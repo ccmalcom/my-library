@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { mutate } from 'swr';
-import { api, PROFILE_STATUS_KEY, type Book, type BookFeedbackRequest } from '@/lib/api';
+import { api, PROFILE_STATUS_KEY, type Book, type BookFeedbackRequest, type Shelf } from '@/lib/api';
 import { Button, Field, Modal, StarRating, Textarea, useToast } from '@/components/ui';
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
   onFinishQueue?: () => void;
   allowRemove?: boolean;
   allowReviewWithoutRating?: boolean;
+  onMove?: (book: Book, shelf: Shelf) => void;
 }
 
 const labelClass =
@@ -26,6 +27,7 @@ export default function BookEditModal({
   onFinishQueue,
   allowRemove,
   allowReviewWithoutRating = false,
+  onMove,
 }: Props) {
   const toast = useToast();
 
@@ -287,6 +289,66 @@ export default function BookEditModal({
           </Button>
         </div>
       </div>
+
+      {/* Shelf actions */}
+      {onMove && (
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+          {book.exclusive_shelf !== 'to-read' && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (dirty && !window.confirm('Discard your unsaved changes?')) return;
+                onMove(book, 'to-read');
+                onClose();
+              }}
+              className={[
+                'rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted',
+                'transition hover:border-muted hover:text-text disabled:opacity-50',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+              ].join(' ')}
+            >
+              Add to reading list
+            </button>
+          )}
+          {book.exclusive_shelf !== 'currently-reading' && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (dirty && !window.confirm('Discard your unsaved changes?')) return;
+                onMove(book, 'currently-reading');
+                onClose();
+              }}
+              className={[
+                'rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted',
+                'transition hover:border-muted hover:text-text disabled:opacity-50',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+              ].join(' ')}
+            >
+              Start reading
+            </button>
+          )}
+          {book.exclusive_shelf !== 'did-not-finish' && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (dirty && !window.confirm('Discard your unsaved changes?')) return;
+                onMove(book, 'did-not-finish');
+                onClose();
+              }}
+              className={[
+                'rounded-md border border-border px-3 py-1.5 text-xs font-medium text-faint',
+                'transition hover:border-muted hover:text-text disabled:opacity-50',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+              ].join(' ')}
+            >
+              Did not finish
+            </button>
+          )}
+        </div>
+      )}
     </Modal>
   );
 }
