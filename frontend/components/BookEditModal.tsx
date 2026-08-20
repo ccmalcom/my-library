@@ -308,7 +308,7 @@ export default function BookEditModal({
                 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
               ].join(' ')}
             >
-              Move to to&#8209;read
+              Add to reading list
             </button>
           )}
           {book.exclusive_shelf !== 'currently-reading' && (

@@ -156,7 +156,7 @@ function ReadTab({ books }: { books: Book[] }) {
       void mutate(TO_READ_KEY);
       void mutate(CURRENTLY_READING_KEY);
       void mutate(DNF_KEY);
-      mutate('stats', api.stats(), { revalidate: false });
+      void mutate('stats', api.stats(), { revalidate: false });
     } catch (e) {
       setMoveError(e instanceof Error ? e.message : "Couldn't move that book. Try again.");
     }
